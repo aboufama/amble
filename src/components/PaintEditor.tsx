@@ -80,14 +80,11 @@ export function PaintEditor({ asset, isBackdrop, onChange }: PaintEditorProps) {
   const [, force] = useState(0);
   const drag = useRef<{ x: number; y: number; lastX: number; lastY: number } | null>(null);
   const commitTimer = useRef<number | null>(null);
-  const loadedId = useRef<string | null>(null);
 
   const ctx = () => canvasRef.current!.getContext('2d', { willReadFrequently: true })!;
 
   // Load the costume into the canvas when a different costume is selected.
   useEffect(() => {
-    if (loadedId.current === asset.id) return;
-    loadedId.current = asset.id;
     undo.current = [];
     redo.current = [];
     const c = ctx();

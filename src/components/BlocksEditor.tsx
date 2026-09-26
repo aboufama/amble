@@ -11,6 +11,28 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
   const loadedId = useRef<string | null>(null);
   const loading = useRef(false);
   const saveTimer = useRef<number | null>(null);
+  const needsScroll = useRef(false);
+  const visibleRef = useRef(visible);
+
+  /** Untangles overlapping scripts and scrolls to their top-left corner (like Scratch), once Blockly has measured them. */
+  const showScripts = (ws: Blockly.WorkspaceSvg) => {
+    void Blockly.renderManagement.finishQueuedRenders().then(() => {
+      if (wsRef.current !== ws || !visibleRef.current) return;
+      needsScroll.current = false;
+      const tops = ws.getTopBlocks(false);
+      if (!tops.length) return;
+      const boxes = tops.map((b) => b.getBoundingRectangle());
+      const overlap = boxes.some((a, i) => boxes.some((b, j) => i < j && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top));
+      if (overlap) {
+        loading.current = true;
+        ws.cleanUp();
+        loading.current = false;
+        flushSave();
+      }
+      const box = ws.getBlocksBoundingBox();
+      ws.scroll(24 - box.left * ws.scale, 24 - box.top * ws.scale);
+    });
+  };
   const selectedId = useStore((s) => s.selectedId);
   const mode = useStore((s) => s.project.mode);
   const projectId = useStore((s) => s.project.id);
@@ -96,12 +118,17 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       loading.current = false;
     }
     loadedId.current = target?.id ?? null;
-    ws.scrollCenter();
+    needsScroll.current = true;
+    if (visibleRef.current) showScripts(ws);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, target?.id, projectId]);
 
   useEffect(() => {
-    if (visible && wsRef.current) Blockly.svgResize(wsRef.current);
+    visibleRef.current = visible;
+    const ws = wsRef.current;
+    if (!visible || !ws) return;
+    Blockly.svgResize(ws);
+    if (needsScroll.current) showScripts(ws);
   }, [visible]);
 
   return (
