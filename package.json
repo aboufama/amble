@@ -21,6 +21,7 @@
     "acorn-walk": "^8.3.5",
     "blockly": "^13.3.0",
     "idb-keyval": "^6.3.0",
+    "immer": "^11.1.18",
     "magic-string": "^1.4.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

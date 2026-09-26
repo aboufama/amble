@@ -62,6 +62,8 @@ const havokBytes = new Promise<ArrayBuffer>((resolve) => {
 let game: Game | null = null;
 let lastPackage: RunPackage | null = null;
 let loadSeq = 0;
+/** A load that will start the game is in progress. */
+let starting = false;
 
 function initEngine(): Engine {
   if (engine) return engine;
@@ -110,8 +112,14 @@ const host = (): GameHost => ({
 
 async function load(pkg: RunPackage | null, start: boolean): Promise<void> {
   if (!pkg) return;
+  // Editor previews never interrupt a game that is running (or about to).
+  if (!start && (starting || game?.state === 'running' || game?.state === 'paused')) {
+    lastPackage = pkg;
+    return;
+  }
   const seq = ++loadSeq;
   lastPackage = pkg;
+  if (start) starting = true;
   const loading = document.createElement('div');
   loading.className = 'amble-loading';
   loading.textContent = 'Loading…';
@@ -141,6 +149,7 @@ async function load(pkg: RunPackage | null, start: boolean): Promise<void> {
     reportError(err, { phase: 'load' });
   } finally {
     loading.remove();
+    if (seq === loadSeq) starting = false;
   }
 }
 

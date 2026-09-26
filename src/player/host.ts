@@ -112,8 +112,14 @@ export class PlayerHost {
 
   private send(msg: ToPlayer): void {
     if (!this.ready && msg.type !== 'init') {
-      // Only the latest load matters.
-      if (msg.type === 'load') this.queue = this.queue.filter((m) => m.type !== 'load');
+      if (msg.type === 'load') {
+        // Only the newest package matters, but a queued "start" must not be lost.
+        const queued = this.queue.find((m): m is Extract<ToPlayer, { type: 'load' }> => m.type === 'load');
+        if (queued) {
+          this.queue = this.queue.filter((m) => m !== queued);
+          msg = { ...msg, start: msg.start || queued.start };
+        }
+      }
       this.queue.push(msg);
       return;
     }
