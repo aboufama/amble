@@ -1,0 +1,68 @@
+/**
+ * The slice of Babylon.js that games can use. Exposed to compiled game code as
+ * the `BABYLON` namespace and used by the engine itself. Importing individual
+ * modules (instead of the package root) keeps the player bundle small.
+ */
+export * from '@babylonjs/core/Engines/engine';
+export * from '@babylonjs/core/scene';
+export * from '@babylonjs/core/Maths/math.vector';
+export * from '@babylonjs/core/Maths/math.color';
+export * from '@babylonjs/core/Maths/math.scalar';
+export * from '@babylonjs/core/Maths/math.axis';
+export * from '@babylonjs/core/Maths/math.path';
+export * from '@babylonjs/core/Maths/math.plane';
+export * from '@babylonjs/core/Maths/math.viewport';
+export * from '@babylonjs/core/Cameras/freeCamera';
+export * from '@babylonjs/core/Cameras/universalCamera';
+export * from '@babylonjs/core/Cameras/arcRotateCamera';
+export * from '@babylonjs/core/Cameras/followCamera';
+export * from '@babylonjs/core/Cameras/targetCamera';
+export * from '@babylonjs/core/Cameras/camera';
+export * from '@babylonjs/core/Lights/hemisphericLight';
+export * from '@babylonjs/core/Lights/directionalLight';
+export * from '@babylonjs/core/Lights/pointLight';
+export * from '@babylonjs/core/Lights/spotLight';
+export * from '@babylonjs/core/Lights/Shadows/shadowGenerator';
+export * from '@babylonjs/core/Meshes/abstractMesh';
+export * from '@babylonjs/core/Meshes/mesh';
+export * from '@babylonjs/core/Meshes/mesh.vertexData';
+export * from '@babylonjs/core/Meshes/transformNode';
+export * from '@babylonjs/core/Meshes/meshBuilder';
+export * from '@babylonjs/core/Meshes/instancedMesh';
+export * from '@babylonjs/core/Materials/material';
+export * from '@babylonjs/core/Materials/standardMaterial';
+export * from '@babylonjs/core/Buffers/buffer';
+export * from '@babylonjs/core/assetContainer';
+export * from '@babylonjs/core/Collisions/pickingInfo';
+export * from '@babylonjs/core/Materials/PBR/pbrMaterial';
+export * from '@babylonjs/core/Materials/Textures/texture';
+export * from '@babylonjs/core/Materials/Textures/dynamicTexture';
+export * from '@babylonjs/core/Particles/particleSystem';
+import '@babylonjs/core/Particles/particleSystemComponent';
+export * from '@babylonjs/core/Layers/glowLayer';
+export * from '@babylonjs/core/Layers/highlightLayer';
+export * from '@babylonjs/core/Layers/layer';
+export * from '@babylonjs/core/Animations/animation';
+export * from '@babylonjs/core/Animations/animatable';
+export * from '@babylonjs/core/Animations/easing';
+export * from '@babylonjs/core/Culling/ray';
+export * from '@babylonjs/core/Physics/v2/physicsBody';
+export * from '@babylonjs/core/Physics/v2/physicsShape';
+export * from '@babylonjs/core/Physics/v2/physicsAggregate';
+export * from '@babylonjs/core/Physics/v2/physicsConstraint';
+export * from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
+export * from '@babylonjs/core/Physics/v2/Plugins/havokPlugin';
+export * from '@babylonjs/core/Physics/v2/characterController';
+import '@babylonjs/core/Physics/joinedPhysicsEngineComponent';
+import '@babylonjs/core/Physics/v2/physicsEngineComponent';
+export * from '@babylonjs/core/Physics/v2/physicsEngine';
+export * from '@babylonjs/core/Physics/physicsRaycastResult';
+export * from '@babylonjs/core/Misc/tools';
+export * from '@babylonjs/core/Misc/observable';
+export * from '@babylonjs/core/Loading/sceneLoader';
+export * from '@babylonjs/core/Events/pointerEvents';
+export * from '@babylonjs/core/Events/keyboardEvents';
+export * from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline';
+import '@babylonjs/core/Rendering/edgesRenderer';
+export * from '@babylonjs/core/Meshes/trailMesh';
+import '@babylonjs/loaders/glTF/2.0';
