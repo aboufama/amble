@@ -2,7 +2,7 @@
 
 Make games with Scratch-style blocks where **every input is plain English**. Press **Compile** and an AI (OpenAI for now) turns your blocks into a real 2D or 3D game running on [Babylon.js](https://www.babylonjs.com/).
 
-**Try it:** https://aboufama.github.io/amble/ (open **Settings** and paste your OpenAI API key; it stays in your browser).
+**Try it:** https://aboufama.github.io/amble/ (open **Settings** and paste your OpenAI API key; it stays in your browser). Running Amble on your own computer? You can **sign in with ChatGPT** instead.
 
 ![The Amble editor in 2D mode](docs/editor-2d.png)
 
@@ -22,12 +22,24 @@ npm run dev            # http://localhost:5173
 
 Then either:
 
+- press **Sign in with ChatGPT** (top right). This needs the [Codex CLI](https://github.com/openai/codex) (`npm install -g @openai/codex`). Compiles then run on your ChatGPT plan with GPT-6 Astra Light, and no API key is needed ([details](#signing-in-with-chatgpt)), or
 - open **Settings** and paste an OpenAI API key (stored only in your browser), or
 - put `OPENAI_API_KEY=sk-...` in a `.env` file (see `.env.example`). The dev server then proxies OpenAI calls, and the key never reaches the browser.
 
 Try **File → Examples → Star Catcher** or **Coin Hills (3D)** and press **Compile**.
 
-Defaults: `gpt-5` with low reasoning writes the code; `gpt-5-mini` makes compiled art, models and sounds. Any model your key can use can be picked in Settings, and any OpenAI-compatible endpoint works via the base URL.
+Defaults: `gpt-5` with low reasoning writes the code; `gpt-5-mini` makes compiled art, models and sounds. Any model your key can use can be picked in Settings, and any OpenAI-compatible endpoint works via the base URL. Signed in with ChatGPT, everything uses GPT-6 Astra Light (`gpt-6-astra` with low reasoning).
+
+### Signing in with ChatGPT
+
+OpenAI only lets its own Codex app sign in with ChatGPT, not other websites. So when Amble runs on your computer, the dev server (`server/codexBridge.ts`) hands AI requests to your Codex CLI:
+
+- **Sign in with ChatGPT** reuses the ChatGPT sign-in Codex already has, or runs `codex login`, which opens the ChatGPT sign-in page.
+- Each request runs `codex exec` with GPT-6 Astra at low reasoning, the preset ChatGPT calls "Astra Light". It counts toward your ChatGPT plan's Codex usage.
+- Codex runs in a read-only sandbox in an empty temporary folder, without your Codex config (`--ignore-user-config`) and without saving a session (`--ephemeral`).
+- **Sign out** only stops Amble from using it; Codex stays signed in. Set `CODEX_PATH` if `codex` isn't on your PATH.
+
+The GitHub Pages demo has no server, so there it's API keys only.
 
 ## How it works
 
@@ -67,6 +79,7 @@ src/
   player/      editor <-> player protocol, iframe host, run-package builder
   project/     data model, defaults and examples, persistence, importers, HTML export
   components/  React UI (blocks editor, paint editor, sounds, stage, output, sprite pane)
+server/        dev-server bridge for "Sign in with ChatGPT" (runs the Codex CLI)
 dev/engine-test.html   a page for poking the engine directly (npm run dev → /dev/engine-test.html)
 ```
 
@@ -78,12 +91,13 @@ dev/engine-test.html   a page for poking the engine directly (npm run dev → /d
 
 ## Deploying
 
-`.github/workflows/pages.yml` builds the app on every push and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves (Settings → Pages → Deploy from a branch → `gh-pages`, `/ (root)`). The build uses relative paths, so it works from any sub-path. On a static host there's no server key: each visitor uses their own OpenAI key from Settings.
+`.github/workflows/pages.yml` builds the app on every push and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves (Settings → Pages → Deploy from a branch → `gh-pages`, `/ (root)`). The build uses relative paths, so it works from any sub-path. On a static host there's no server key and no ChatGPT sign-in: each visitor uses their own OpenAI key from Settings.
 
 ## Security notes
 
 - The API key lives in `localStorage` (or on the dev server with `OPENAI_API_KEY`). Compiled games can't read it: the player iframe is sandboxed without `allow-same-origin`, and its CSP has no network access (`connect-src data: blob:`).
 - AI-written SVG is sanitized (no scripts, event handlers, or external references) before use.
+- The dev server's AI endpoints (`/api/openai`, `/api/codex`) only answer Amble's own page: they reject requests from other origins and require JSON, so other sites open in your browser can't use your key or your ChatGPT sign-in.
 
 ## Development
 

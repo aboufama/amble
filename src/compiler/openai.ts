@@ -1,12 +1,18 @@
 /**
  * Minimal OpenAI client (Chat Completions + Images). Works directly from the browser with a
- * key from Settings, or through the dev server's `/api/openai` proxy when OPENAI_API_KEY is set
- * there. Any OpenAI-compatible endpoint can be used via the base URL setting.
+ * key from Settings, through the dev server's `/api/openai` proxy when OPENAI_API_KEY is set
+ * there, or, when Amble runs on your computer, with your ChatGPT sign-in through Codex
+ * (src/compiler/chatgpt.ts). Any OpenAI-compatible endpoint can be used via the base URL setting.
  */
+import { fetchCodexStatus } from './chatgpt';
+import type { CodexRunEvent } from './codexTypes';
+import { devServerConfig } from './devServer';
 
-export type ReasoningEffort = 'default' | 'minimal' | 'low' | 'medium' | 'high';
+export type ReasoningEffort = 'default' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface AiSettings {
+  /** Compile with your ChatGPT sign-in (Codex on this computer) instead of an API key. */
+  useChatGpt: boolean;
   apiKey: string;
   baseUrl: string;
   model: string;
@@ -19,6 +25,7 @@ export interface AiSettings {
 }
 
 export const DEFAULT_SETTINGS: AiSettings = {
+  useChatGpt: false,
   apiKey: '',
   baseUrl: 'https://api.openai.com/v1',
   model: 'gpt-5',
@@ -28,25 +35,39 @@ export const DEFAULT_SETTINGS: AiSettings = {
   imageModel: 'gpt-image-1',
 };
 
+/** Signed-in compiles use GPT-6 Astra with low reasoning: the preset ChatGPT calls "Astra Light". */
+export const CHATGPT_MODEL = 'gpt-6-astra';
+export const CHATGPT_REASONING: ReasoningEffort = 'low';
+export const CHATGPT_MODEL_NAME = 'GPT-6 Astra Light';
+
 export interface Transport {
   baseUrl: string;
   headers: Record<string, string>;
-  /** "browser" = user key in this browser; "server" = dev server proxy. */
-  via: 'browser' | 'server';
+  /** "chatgpt" = your ChatGPT sign-in via Codex; "browser" = key in this browser; "server" = dev server key. */
+  via: 'chatgpt' | 'browser' | 'server';
 }
 
-let serverKey: Promise<boolean> | null = null;
+/** The settings a request really uses: the ChatGPT sign-in always runs GPT-6 Astra Light. */
+export function effectiveSettings(settings: AiSettings, t: Transport): AiSettings {
+  if (t.via !== 'chatgpt') return settings;
+  // Codex only answers with text, so compiled art is always vector drawings.
+  return { ...settings, model: CHATGPT_MODEL, reasoningEffort: CHATGPT_REASONING, assetModel: CHATGPT_MODEL, artMode: 'svg' };
+}
 
 /** Does the dev/preview server have OPENAI_API_KEY configured? */
 export function hasServerKey(): Promise<boolean> {
-  serverKey ??= fetch('/api/config')
-    .then((r) => (r.ok ? r.json() : { serverKey: false }))
-    .then((c: { serverKey?: boolean }) => Boolean(c.serverKey))
-    .catch(() => false);
-  return serverKey;
+  return devServerConfig().then((c) => c.serverKey);
 }
 
 export async function resolveTransport(settings: AiSettings): Promise<Transport | null> {
+  if (settings.useChatGpt) {
+    const codex = await fetchCodexStatus();
+    // No bridge means this isn't a local run (e.g. GitHub Pages): fall back to a key.
+    if (codex) {
+      if (codex.auth !== 'chatgpt') throw new AiError("Codex on this computer isn't signed in with ChatGPT anymore. Sign in with ChatGPT again, or sign out in Settings to use an API key.");
+      return { baseUrl: '/api/codex', headers: {}, via: 'chatgpt' };
+    }
+  }
   if (settings.apiKey.trim()) {
     return {
       baseUrl: (settings.baseUrl || DEFAULT_SETTINGS.baseUrl).replace(/\/+$/, ''),
@@ -70,7 +91,7 @@ export class AiError extends Error {
 }
 
 export function isReasoningModel(model: string): boolean {
-  return /^(o\d|gpt-5)/i.test(model.trim());
+  return /^(o\d|gpt-[5-9])/i.test(model.trim());
 }
 
 export type ContentPart = { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string; detail?: 'low' | 'high' | 'auto' } };
@@ -127,6 +148,7 @@ interface Options {
 
 /** Sends a chat request and returns the parsed JSON reply. Retries without features a model/account rejects. */
 export async function chatJson<T>(t: Transport, req: ChatJsonRequest): Promise<T> {
+  if (t.via === 'chatgpt') return parseJsonReply<T>(await codexOnce(req));
   const opts: Options = { stream: true, format: 'json_schema', effort: Boolean(req.reasoningEffort && req.reasoningEffort !== 'default') };
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
@@ -220,6 +242,51 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
   if (refusal) throw new AiError(`The AI refused: ${refusal}`);
   if (finish === 'length') throw new AiError('The AI ran out of room before finishing. Try simplifying, or use a model with a larger output limit.');
   return content;
+}
+
+/** One structured request through Codex on this computer (the dev server's /api/codex bridge). */
+async function codexOnce(req: ChatJsonRequest): Promise<string> {
+  const user = typeof req.user === 'string' ? req.user : req.user.map((p) => (p.type === 'text' ? p.text : '')).join('\n');
+  req.onProgress?.({ phase: 'waiting', chars: 0 });
+  const res = await fetch('/api/codex/run', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      system: req.system,
+      user,
+      schema: req.schema,
+      model: req.model,
+      reasoningEffort: req.reasoningEffort && req.reasoningEffort !== 'default' ? req.reasoningEffort : CHATGPT_REASONING,
+    }),
+    signal: req.signal,
+  });
+  if (!res.ok || !res.body) throw new AiError(`The ChatGPT bridge failed (${res.status} ${res.statusText}).`, res.status);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const handle = (line: string): string | null => {
+    if (!line.trim()) return null;
+    const ev = JSON.parse(line) as CodexRunEvent;
+    if (ev.type === 'error') throw new AiError(ev.message);
+    if (ev.type !== 'result') return null;
+    req.onProgress?.({ phase: 'writing', chars: ev.text.length });
+    return ev.text;
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    let i: number;
+    while ((i = buffer.indexOf('\n')) >= 0) {
+      const text = handle(buffer.slice(0, i));
+      buffer = buffer.slice(i + 1);
+      if (text !== null) return text;
+    }
+    if (done) break;
+  }
+  const text = handle(buffer);
+  if (text !== null) return text;
+  throw new AiError('Codex finished without an answer.');
 }
 
 export interface ImageRequest {

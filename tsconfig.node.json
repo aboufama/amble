@@ -6,8 +6,9 @@
     "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "e2e"]
+  "include": ["vite.config.ts", "playwright.config.ts", "e2e", "server"]
 }

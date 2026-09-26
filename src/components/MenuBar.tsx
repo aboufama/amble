@@ -6,6 +6,8 @@ import { pickFile } from '../project/importers';
 import { EXAMPLES, blankProject } from '../project/examples';
 import { blankBackdrop } from '../project/defaults';
 import type { Project, WorldMode } from '../project/types';
+import { CHATGPT_MODEL_NAME } from '../compiler/openai';
+import { signInWithChatGpt } from '../actions';
 import { GearIcon } from './icons';
 
 /** Converts a project between 2D and 3D (positions are rescaled; the blank white backdrop is dropped in 3D). */
@@ -44,7 +46,10 @@ export function MenuBar() {
   const setProject = useStore((s) => s.setProject);
   const setDialog = useStore((s) => s.setDialog);
   const notify = useStore((s) => s.notify);
+  const codex = useStore((s) => s.codex);
+  const useChatGpt = useStore((s) => s.settings.useChatGpt);
   const [open, setOpen] = useState(false);
+  const signedIn = useChatGpt && codex?.auth === 'chatgpt';
 
   const confirmReplace = () => confirm('Replace the current project? (Save it to your computer first if you want to keep it.)');
 
@@ -123,7 +128,21 @@ export function MenuBar() {
         ))}
       </div>
       <div className="spacer" />
-      <button className="menu-btn" onClick={() => setDialog('settings')} title="Settings (OpenAI key and model)">
+      {codex &&
+        (signedIn ? (
+          <button className="menu-btn account" onClick={() => setDialog('settings')} title={`Signed in with ChatGPT: compiling with ${CHATGPT_MODEL_NAME} on your plan`}>
+            <span className="account-dot" aria-hidden="true" /> ChatGPT · Astra Light
+          </button>
+        ) : (
+          <button
+            className="menu-btn sign-in"
+            onClick={() => (codex.login.pending ? setDialog('settings') : void signInWithChatGpt())}
+            title={`Compile with your ChatGPT plan (${CHATGPT_MODEL_NAME}) instead of an API key`}
+          >
+            {codex.login.pending ? 'Signing in…' : 'Sign in with ChatGPT'}
+          </button>
+        ))}
+      <button className="menu-btn" onClick={() => setDialog('settings')} title="Settings (ChatGPT sign-in, API key, models)">
         <GearIcon size={17} /> Settings
       </button>
     </header>

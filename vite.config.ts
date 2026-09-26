@@ -5,6 +5,7 @@ import { build } from 'esbuild';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -77,20 +78,27 @@ function playerRuntime(): Plugin {
 /**
  * Optional server-side key: if OPENAI_API_KEY is set, `/api/openai/*` is
  * proxied to OpenAI with the key attached so it never reaches the browser.
+ * The same servers also host `/api/codex/*`, the "Sign in with ChatGPT" bridge
+ * (server/codexBridge.ts).
  */
 function openaiProxy(env: Record<string, string>): Plugin {
   const key = env.OPENAI_API_KEY || process.env.OPENAI_API_KEY || '';
   const baseUrl = (env.OPENAI_BASE_URL || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
 
-  const handler: Connect.NextHandleFunction = (req, res, next) => {
+  const handler = (allowed: AllowedHosts): Connect.NextHandleFunction => (req, res, next) => {
     const url = req.url ?? '';
     if (url === '/api/config') {
       res.setHeader('content-type', 'application/json');
-      res.end(JSON.stringify({ serverKey: Boolean(key) }));
+      res.end(JSON.stringify({ serverKey: Boolean(key), codex: true }));
       return;
     }
     if (!url.startsWith('/api/openai/')) {
       next();
+      return;
+    }
+    if (!isSameOrigin(req, allowed)) {
+      res.statusCode = 403;
+      res.end();
       return;
     }
     void (async () => {
@@ -137,10 +145,14 @@ function openaiProxy(env: Record<string, string>): Plugin {
   return {
     name: 'amble-openai-proxy',
     configureServer(server) {
-      server.middlewares.use(handler);
+      const allowed = allowedHostsOf(server.config.server);
+      server.middlewares.use(handler(allowed));
+      server.middlewares.use(codexBridge(allowed));
     },
     configurePreviewServer(server) {
-      server.middlewares.use(handler);
+      const allowed = allowedHostsOf(server.config.preview);
+      server.middlewares.use(handler(allowed));
+      server.middlewares.use(codexBridge(allowed));
     },
   };
 }
@@ -155,7 +167,7 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 2500,
     },
     test: {
-      include: ['tests/**/*.test.ts'],
+      include: ['tests/**/*.test.ts', 'server/**/*.test.ts'],
       environment: 'node',
     },
   };

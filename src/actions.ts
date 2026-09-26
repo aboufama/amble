@@ -1,5 +1,7 @@
 import { compileProject, inputHash } from './compiler/compile';
-import { AiError } from './compiler/openai';
+import { AiError, CHATGPT_MODEL_NAME } from './compiler/openai';
+import { cancelCodexLogin, fetchCodexStatus, startCodexLogin } from './compiler/chatgpt';
+import type { CodexStatus } from './compiler/codexTypes';
 import { buildRunPackage, packageKey } from './player/package';
 import type { PlayerHost } from './player/host';
 import { useStore } from './store';
@@ -81,7 +83,7 @@ export async function compile(fixProblems?: string[]): Promise<void> {
     } else {
       const message = err instanceof AiError || err instanceof Error ? err.message : String(err);
       s.setCompile({ status: 'error', progress: null, error: message });
-      if (/api key|Settings/i.test(message)) s.setDialog('settings');
+      if (/api key|Settings|sign in/i.test(message)) s.setDialog('settings');
     }
   } finally {
     controller = null;
@@ -101,6 +103,91 @@ export function fixWithAi(): void {
   for (const log of run.logs) if (log.level !== 'log') problems.push(log.message);
   if (!problems.length && project.compiled?.warnings.length) problems.push(...project.compiled.warnings.slice(0, 10));
   void compile(problems.length ? problems.slice(0, 30) : ['The game does not behave the way the blocks describe. Review it carefully.']);
+}
+
+// -----------------------------------------------------------------------------
+// Sign in with ChatGPT (through Codex, when Amble runs on your computer)
+// -----------------------------------------------------------------------------
+
+/** Re-reads whether Codex is installed here and how it's signed in (null on static hosting). */
+export async function refreshChatGpt(): Promise<CodexStatus | null> {
+  const status = await fetchCodexStatus();
+  useStore.getState().setCodex(status);
+  return status;
+}
+
+let loginPoll: number | null = null;
+
+function stopLoginPoll(): void {
+  if (loginPoll !== null) window.clearInterval(loginPoll);
+  loginPoll = null;
+}
+
+function signedIn(): void {
+  const { setSettings, notify } = useStore.getState();
+  setSettings({ useChatGpt: true });
+  notify(`Signed in with ChatGPT. Compiling now uses ${CHATGPT_MODEL_NAME} on your ChatGPT plan.`);
+}
+
+/**
+ * Uses Codex's ChatGPT sign-in if it already has one; otherwise runs `codex login`, which opens
+ * the ChatGPT sign-in page, and waits for it to finish.
+ */
+export async function signInWithChatGpt(): Promise<void> {
+  const { notify, setDialog, setCodex } = useStore.getState();
+  try {
+    const status = await refreshChatGpt();
+    if (!status) {
+      notify('Signing in with ChatGPT works when Amble runs on your computer (npm run dev).', 'error');
+      return;
+    }
+    if (!status.installed) {
+      setDialog('settings');
+      return;
+    }
+    if (status.auth === 'chatgpt') {
+      signedIn();
+      return;
+    }
+    const started = await startCodexLogin();
+    setCodex(started);
+    if (started.login.error) {
+      notify(started.login.error, 'error');
+      return;
+    }
+    setDialog('settings');
+    stopLoginPoll();
+    loginPoll = window.setInterval(() => {
+      void refreshChatGpt().then((s) => {
+        if (!s) return stopLoginPoll();
+        if (s.auth === 'chatgpt') {
+          stopLoginPoll();
+          signedIn();
+        } else if (!s.login.pending) {
+          stopLoginPoll();
+          if (s.login.error) notify(`Signing in didn't finish: ${s.login.error}`, 'error');
+        }
+      });
+    }, 1500);
+  } catch (err) {
+    notify(`Couldn't start signing in: ${(err as Error).message}`, 'error');
+  }
+}
+
+export async function cancelChatGptSignIn(): Promise<void> {
+  stopLoginPoll();
+  try {
+    useStore.getState().setCodex(await cancelCodexLogin());
+  } catch {
+    await refreshChatGpt();
+  }
+}
+
+/** Stops using the ChatGPT sign-in. Codex itself stays signed in on this computer. */
+export function signOutOfChatGpt(): void {
+  const { setSettings, notify } = useStore.getState();
+  setSettings({ useChatGpt: false });
+  notify('Signed out. Amble will use an API key if you add one.');
 }
 
 // -----------------------------------------------------------------------------

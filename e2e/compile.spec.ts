@@ -99,6 +99,38 @@ async function mockOpenAI(page: Page, calls: string[]) {
   });
 }
 
+/** Stands in for the dev server's Codex bridge (server/codexBridge.ts): sign-in state and structured replies. */
+async function mockCodex(page: Page, requests: Array<{ model: string; reasoningEffort: string; kind: string }>) {
+  const state = { auth: 'none' as 'none' | 'chatgpt', pending: false };
+  const status = () => ({
+    installed: true,
+    version: '0.157.1',
+    auth: state.auth,
+    login: { pending: state.pending, url: state.pending ? 'https://auth.openai.com/oauth/authorize?test' : null, error: null },
+  });
+  await page.route('**/api/codex/status', (route) => route.fulfill({ json: status() }));
+  await page.route('**/api/codex/login', (route) => {
+    state.pending = true;
+    return route.fulfill({ json: status() });
+  });
+  await page.route('**/api/codex/run', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}');
+    const props = Object.keys(body.schema?.properties ?? {});
+    const kind = props.includes('code') ? 'game' : props.includes('svg') ? 'svg' : 'other';
+    requests.push({ model: body.model, reasoningEffort: body.reasoningEffort, kind });
+    const reply = kind === 'game' ? compileReply : kind === 'svg' ? { svg: coinSvg } : { parts: [] };
+    const lines = [{ type: 'progress', phase: 'thinking' }, { type: 'result', text: JSON.stringify(reply) }];
+    await route.fulfill({ status: 200, headers: { 'content-type': 'application/x-ndjson' }, body: lines.map((l) => JSON.stringify(l)).join('\n') + '\n' });
+  });
+  return {
+    /** What Codex's `login` does once you finish in the browser. */
+    finishSignIn() {
+      state.auth = 'chatgpt';
+      state.pending = false;
+    },
+  };
+}
+
 async function gameFrame(page: Page) {
   const handle = await page.waitForSelector('iframe.player-frame');
   return (await handle.contentFrame())!;
@@ -147,6 +179,41 @@ test('compiles blocks with the AI and plays the game', async ({ page }) => {
   await page.getByRole('tab', { name: /Code/ }).first().click();
   await page.getByRole('button', { name: /Keep as my sprite/ }).click();
   await expect(page.locator('.sprite-tile:not(.compiled)', { hasText: 'Coin' })).toBeVisible();
+});
+
+test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', async ({ page }) => {
+  const requests: Array<{ model: string; reasoningEffort: string; kind: string }> = [];
+  const codex = await mockCodex(page, requests);
+  const direct: string[] = [];
+  await page.route('https://api.openai.com/**', (route) => {
+    direct.push(route.request().url());
+    return route.abort();
+  });
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'Sign in with ChatGPT' }).click();
+  await expect(page.getByText('Finish signing in to ChatGPT in your browser')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open the sign-in page' })).toHaveAttribute('href', /auth\.openai\.com/);
+  codex.finishSignIn();
+  await expect(page.locator('.menu-btn.account')).toContainText('ChatGPT · Astra Light');
+  await expect(page.locator('.account-card')).toContainText('GPT-6 Astra Light');
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('button', { name: /Compile/ }).click();
+  const frame = await gameFrame(page);
+  await expect.poll(async () => frame.evaluate(() => (window as unknown as { __test?: { time: number } }).__test?.time ?? 0), { timeout: 30_000 }).toBeGreaterThan(0.2);
+  expect(requests).toEqual([
+    { model: 'gpt-6-astra', reasoningEffort: 'low', kind: 'game' },
+    { model: 'gpt-6-astra', reasoningEffort: 'low', kind: 'svg' },
+  ]);
+  expect(direct).toEqual([]);
+  await expect(page.getByText(/Built with GPT-6 Astra Light \(ChatGPT\)/)).toBeVisible();
+
+  // Signing out goes back to the API key settings.
+  await page.locator('.menu-btn.account').click();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('heading', { name: 'OpenAI API key' })).toBeVisible();
+  await expect(page.locator('.menu-btn.sign-in')).toHaveText('Sign in with ChatGPT');
 });
 
 test('3D world mode renders and runs', async ({ page }) => {

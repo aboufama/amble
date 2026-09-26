@@ -1,4 +1,5 @@
-import { AiError, chatJson, resolveTransport, type AiSettings, type Transport } from './openai';
+import { AiError, CHATGPT_MODEL_NAME, chatJson, effectiveSettings, resolveTransport, type AiSettings, type Transport } from './openai';
+import { fetchCodexStatus } from './chatgpt';
 import { buildUserPrompt, classNameFor, classNames, systemPrompt, type FixContext } from './prompt';
 import { COMPILE_SCHEMA, type CompileReply } from './schema';
 import { instrumentTargetCode } from './transform';
@@ -253,11 +254,18 @@ async function runJobs(
   return jobs.map((j) => results.find((r) => r.targetId === j.targetId && r.name === j.name)!).filter(Boolean);
 }
 
-/** Compiles the project's blocks into a game with the configured OpenAI model. */
-export async function compileProject(project: Project, opts: CompileOptions): Promise<CompiledGame> {
+/** Compiles the project's blocks into a game with the configured model (GPT-6 Astra Light when signed in with ChatGPT). */
+export async function compileProject(project: Project, options: CompileOptions): Promise<CompiledGame> {
+  const transport = await resolveTransport(options.settings);
+  if (!transport) {
+    throw new AiError(
+      (await fetchCodexStatus())
+        ? 'Sign in with ChatGPT, or add an OpenAI API key in Settings, to compile.'
+        : 'Add your OpenAI API key in Settings (or set OPENAI_API_KEY for the dev server) to compile.',
+    );
+  }
+  const opts = { ...options, settings: effectiveSettings(options.settings, transport) };
   const { settings } = opts;
-  const transport = await resolveTransport(settings);
-  if (!transport) throw new AiError('Add your OpenAI API key in Settings (or set OPENAI_API_KEY for the dev server) to compile.');
 
   opts.onProgress?.({ stage: 'preparing', message: 'Reading your blocks' });
   const names = classNames(project);
@@ -306,7 +314,7 @@ export async function compileProject(project: Project, opts: CompileOptions): Pr
   opts.onProgress?.({ stage: 'done', message: 'Done' });
   return {
     createdAt: Date.now(),
-    model: settings.model,
+    model: transport.via === 'chatgpt' ? `${CHATGPT_MODEL_NAME} (ChatGPT)` : settings.model,
     mode: project.mode,
     inputHash: inputHash(project),
     summary: String(reply.summary ?? ''),

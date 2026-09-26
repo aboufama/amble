@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { CompileProgress } from './compiler/compile';
 import type { AiSettings } from './compiler/openai';
+import type { CodexStatus } from './compiler/codexTypes';
 import type { PlayerError } from './player/protocol';
 import type { CompiledAsset, CompiledSprite, CostumeAsset, Project, SoundAsset, SpriteTarget, Target } from './project/types';
 import { loadSettings, saveSettings } from './project/persistence';
@@ -24,6 +25,8 @@ export interface EditorState {
   costumeSel: Record<string, string>;
   soundSel: Record<string, string>;
   settings: AiSettings;
+  /** ChatGPT sign-in through Codex on this computer; null when unavailable (e.g. GitHub Pages). */
+  codex: CodexStatus | null;
   compile: { status: 'idle' | 'running' | 'error' | 'done'; progress: CompileProgress | null; error: string | null };
   run: { state: RunState; errors: PlayerError[]; logs: LogEntry[] };
   dialog: null | 'settings' | 'new' | 'about';
@@ -37,6 +40,7 @@ export interface EditorState {
   selectCostume(targetId: string, assetId: string): void;
   selectSound(targetId: string, assetId: string): void;
   setSettings(patch: Partial<AiSettings>): void;
+  setCodex(status: CodexStatus | null): void;
   setCompile(patch: Partial<EditorState['compile']>): void;
   setRunState(state: RunState): void;
   addError(error: PlayerError): void;
@@ -58,6 +62,7 @@ export const useStore = create<EditorState>()(
     costumeSel: {},
     soundSel: {},
     settings: loadSettings(),
+    codex: null,
     compile: { status: 'idle', progress: null, error: null },
     run: { state: 'loading', errors: [], logs: [] },
     dialog: null,
@@ -98,6 +103,10 @@ export const useStore = create<EditorState>()(
       set((s) => {
         Object.assign(s.settings, patch);
         saveSettings({ ...s.settings });
+      }),
+    setCodex: (status) =>
+      set((s) => {
+        s.codex = status;
       }),
     setCompile: (patch) =>
       set((s) => {

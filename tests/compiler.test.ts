@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { serializeBlocks } from '../src/compiler/serialize';
 import { buildUserPrompt, classNames, systemPrompt } from '../src/compiler/prompt';
 import { encodeWav, renderSynth, SOUND_PRESETS, SAMPLE_RATE } from '../src/audio/synth';
-import { parseJsonReply } from '../src/compiler/openai';
+import { DEFAULT_SETTINGS, effectiveSettings, isReasoningModel, parseJsonReply, type Transport } from '../src/compiler/openai';
 import { cleanRecipe } from '../src/compiler/assets';
 import { buildRunPackage } from '../src/player/package';
 import { COMPILE_SCHEMA } from '../src/compiler/schema';
@@ -193,6 +193,16 @@ describe('synth', () => {
 });
 
 describe('misc', () => {
+  it('compiles with GPT-6 Astra Light when signed in with ChatGPT', () => {
+    const chatgpt: Transport = { baseUrl: '/api/codex', headers: {}, via: 'chatgpt' };
+    const key: Transport = { baseUrl: 'https://api.openai.com/v1', headers: {}, via: 'browser' };
+    const settings = { ...DEFAULT_SETTINGS, artMode: 'image' as const };
+    expect(effectiveSettings(settings, chatgpt)).toMatchObject({ model: 'gpt-6-astra', reasoningEffort: 'low', assetModel: 'gpt-6-astra', artMode: 'svg' });
+    expect(effectiveSettings(settings, key)).toBe(settings);
+    expect(isReasoningModel('gpt-6-astra')).toBe(true);
+    expect(isReasoningModel('gpt-4.1')).toBe(false);
+  });
+
   it('parses JSON replies with fences', () => {
     expect(parseJsonReply<{ a: number }>('```json\n{"a": 1}\n```').a).toBe(1);
     expect(parseJsonReply<{ a: number }>('Here you go: {"a": 2}').a).toBe(2);
