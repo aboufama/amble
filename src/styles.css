@@ -1446,3 +1446,14 @@ details summary {
 .toast.error {
   background: #b3261e;
 }
+
+.crash {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid #f3c4c6;
+  border-radius: var(--radius);
+  background: #fff6f6;
+  color: #7a1c1f;
+}

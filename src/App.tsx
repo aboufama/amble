@@ -9,6 +9,7 @@ import { StagePanel } from './components/StagePanel';
 import { OutputPanel } from './components/OutputPanel';
 import { SpritePane } from './components/SpritePane';
 import { SettingsDialog, Toast } from './components/Dialogs';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { BrushIcon, CodeIcon, WaveIcon } from './components/icons';
 
 function useAutosave() {
@@ -65,15 +66,31 @@ export function App() {
             ))}
           </div>
           <div className="tab-body">
-            <BlocksEditor visible={tab === 'code'} />
-            {tab === 'costumes' && <CostumesPane />}
-            {tab === 'sounds' && <SoundsPane />}
+            <ErrorBoundary label="block editor">
+              <BlocksEditor visible={tab === 'code'} />
+            </ErrorBoundary>
+            {tab === 'costumes' && (
+              <ErrorBoundary label="costume editor">
+                <CostumesPane />
+              </ErrorBoundary>
+            )}
+            {tab === 'sounds' && (
+              <ErrorBoundary label="sound editor">
+                <SoundsPane />
+              </ErrorBoundary>
+            )}
           </div>
         </section>
         <section className="right">
-          <StagePanel />
-          <OutputPanel />
-          <SpritePane />
+          <ErrorBoundary label="stage">
+            <StagePanel />
+          </ErrorBoundary>
+          <ErrorBoundary label="output panel">
+            <OutputPanel />
+          </ErrorBoundary>
+          <ErrorBoundary label="sprite list">
+            <SpritePane />
+          </ErrorBoundary>
         </section>
       </main>
       {dialog === 'settings' && <SettingsDialog />}

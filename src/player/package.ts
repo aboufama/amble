@@ -97,3 +97,29 @@ export function buildRunPackage(project: Project): RunPackage {
 
   return { mode: project.mode, title: project.title, targets };
 }
+
+/**
+ * A cheap fingerprint of everything that affects the run package (not blocks or descriptions),
+ * so the stage preview only reloads when what you'd see actually changed.
+ */
+export function packageKey(project: Project): string {
+  const asset = (a: { id: string; name: string; kind: string } & Record<string, unknown>) =>
+    [a.id, a.name, a.kind, typeof a.dataUrl === 'string' ? `${(a.dataUrl as string).length}${(a.dataUrl as string).slice(-24)}` : 0, a.centerX ?? '', a.centerY ?? '', a.recipe ? JSON.stringify(a.recipe).length : 0].join(':');
+  const target = (t: Project['stage'] | Project['sprites'][number]) =>
+    [
+      t.id,
+      t.name,
+      t.currentCostume,
+      t.kind === 'sprite' ? [t.x, t.y, t.z, t.size, t.direction, t.visible, t.rotationStyle].join(',') : '',
+      t.costumes.map((c) => asset(c as never)).join('|'),
+      t.sounds.map((c) => asset(c as never)).join('|'),
+    ].join(';');
+  const c = project.compiled;
+  return [
+    project.mode,
+    project.title,
+    target(project.stage),
+    ...project.sprites.map(target),
+    c ? [c.createdAt, c.mode, c.code.map((x) => x.targetId + x.runSource.length).join(','), c.sprites.map((x) => x.id).join(','), c.assets.map((x) => asset(x as never)).join('|')].join('#') : 'none',
+  ].join('\n');
+}

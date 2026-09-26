@@ -1,6 +1,6 @@
 import { compileProject, inputHash } from './compiler/compile';
 import { AiError } from './compiler/openai';
-import { buildRunPackage } from './player/package';
+import { buildRunPackage, packageKey } from './player/package';
 import type { PlayerHost } from './player/host';
 import { useStore } from './store';
 import { uniqueName } from './project/ids';
@@ -14,6 +14,7 @@ let player: PlayerHost | null = null;
 
 export function registerPlayer(host: PlayerHost | null): void {
   player = host;
+  lastPreviewKey = '';
 }
 
 export function getPlayer(): PlayerHost | null {
@@ -25,6 +26,7 @@ export function startGame(): void {
   const { project, clearRunOutput, setOutputTab } = useStore.getState();
   clearRunOutput();
   setOutputTab(project.compiled ? 'game' : 'problems');
+  lastPreviewKey = packageKey(project);
   player?.load(buildRunPackage(project), true);
   player?.focus();
 }
@@ -33,8 +35,13 @@ export function stopGame(): void {
   player?.stop();
 }
 
-/** Shows the current project on the stage without running it. */
-export function previewProject(project: Project): void {
+let lastPreviewKey = '';
+
+/** Shows the current project on the stage without running it (skipped when nothing visible changed). */
+export function previewProject(project: Project, force = false): void {
+  const key = packageKey(project);
+  if (!force && key === lastPreviewKey) return;
+  lastPreviewKey = key;
   player?.load(buildRunPackage(project), false);
 }
 
