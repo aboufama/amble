@@ -148,6 +148,8 @@ function openaiProxy(env: Record<string, string>): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, root, '');
   return {
+    // Relative asset paths, so the build works from any sub-path (e.g. GitHub Pages at /amble/).
+    base: './',
     plugins: [react(), playerRuntime(), openaiProxy(env)],
     build: {
       chunkSizeWarningLimit: 2500,

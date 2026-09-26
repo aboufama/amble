@@ -2,6 +2,8 @@
 
 Make games with Scratch-style blocks where **every input is plain English**. Press **Compile** and an AI (OpenAI for now) turns your blocks into a real 2D or 3D game running on [Babylon.js](https://www.babylonjs.com/).
 
+**Try it:** https://aboufama.github.io/amble/ (open **Settings** and paste your OpenAI API key; it stays in your browser).
+
 ![The Amble editor in 2D mode](docs/editor-2d.png)
 
 - **Blocks give the structure, text gives the meaning.** `when [space] key pressed` → `do [jump up and land on the platform]`. Scripts, loops, `if`/`else`, messages, clones and custom blocks work like Scratch, but you describe what happens in your own words.
@@ -73,6 +75,10 @@ dev/engine-test.html   a page for poking the engine directly (npm run dev → /d
 - Projects autosave in your browser (IndexedDB).
 - **File → Save to your computer** writes a `.amble` file; **Open** reads it back.
 - **File → Export playable web page** produces a single `.html` file with the engine, physics and your game inside. It runs anywhere, with no server.
+
+## Deploying
+
+`.github/workflows/pages.yml` builds the app on every push and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves (Settings → Pages → Deploy from a branch → `gh-pages`, `/ (root)`). The build uses relative paths, so it works from any sub-path. On a static host there's no server key: each visitor uses their own OpenAI key from Settings.
 
 ## Security notes
 
