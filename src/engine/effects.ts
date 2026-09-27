@@ -97,7 +97,9 @@ export class Effects {
     ps.blendMode = ParticleSystem.BLENDMODE_STANDARD;
     ps.manualEmitCount = count;
     ps.targetStopDuration = life + 0.1;
-    ps.disposeOnStop = true;
+    // Cleaned up once its last particle fades, keeping the dot texture every burst shares
+    // (disposeOnStop would dispose it too, and every later burst would never show).
+    ps.onAnimationEnd = () => this.scene.onAfterRenderObservable.addOnce(() => ps.dispose(false));
     ps.renderingGroupId = is2d ? 1 : 0;
     ps.start();
   }

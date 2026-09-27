@@ -13,7 +13,7 @@ const moonSvg =
 function piecesReply(prompt: string) {
   const tasks = [...prompt.matchAll(/^- (p\d+): (\w+)/gm)].map((m) => ({ id: m[1], kind: m[2] }));
   const code: Record<string, string> = {
-    action: 'this.game.effects.burst({ x: this.x, y: this.y, color: "#ffd84d", count: 12 });',
+    action: 'window.__actions = (window.__actions ?? 0) + 1;\nthis.game.effects.burst({ x: this.x, y: this.y, color: "#ffd84d", count: 12 });',
     behavior: 'for (;;) {\n  this.turn(4);\n  window.__twinkles = (window.__twinkles ?? 0) + 1;\n  yield;\n}',
   };
   return {
@@ -161,6 +161,38 @@ test('words are compiled once, in one request, and reused after', async ({ page 
   await page.getByRole('tab', { name: /Code/ }).first().click();
   await page.getByRole('button', { name: /Keep as my sprite/ }).click();
   await expect(page.locator('.sprite-tile:not(.compiled)', { hasText: 'Moon' })).toBeVisible();
+});
+
+test('catching a star runs "when I touch Star", and every burst shows and clears', async ({ page }) => {
+  const calls: string[] = [];
+  await page.addInitScript(() => {
+    localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test', model: 'gpt-5', assetModel: 'gpt-5-mini' }));
+  });
+  await mockOpenAI(page, calls);
+  await page.goto('/');
+  await openExample(page, 'Star Catcher (2D)');
+  await page.getByRole('button', { name: 'Compile' }).click();
+  const frame = await gameFrame(page);
+  await expect.poll(async () => (await game(frame)).state, { timeout: 30_000 }).toBe('running');
+
+  type Star = { x: number; y: number; isClone: boolean; visible: boolean };
+  type Player = { __actions?: number; __ambleGame: { vars: Record<string, number>; find(n: string): Star; findAll(n: string): Star[]; scene: { particleSystems: unknown[] } } };
+  // Amble stands under the lowest star. Each star deletes itself the moment it touches Amble.
+  await expect
+    .poll(
+      () =>
+        frame.evaluate(() => {
+          const g = (window as unknown as Player).__ambleGame;
+          const lowest = g.findAll('Star').filter((s) => s.isClone && s.visible).sort((a, b) => a.y - b.y)[0];
+          if (lowest) g.find('Amble').x = lowest.x;
+          return g.vars.score;
+        }),
+      { timeout: 30_000, intervals: [50] },
+    )
+    .toBeGreaterThanOrEqual(3);
+  // Amble's "when I touch Star" still ran for each catch, and each burst showed and cleared.
+  expect(await frame.evaluate(() => (window as unknown as Player).__actions ?? 0)).toBeGreaterThanOrEqual(3);
+  await expect.poll(() => frame.evaluate(() => (window as unknown as Player).__ambleGame.scene.particleSystems.length)).toBe(0);
 });
 
 test('without an account the flag still plays; words wait', async ({ page }) => {

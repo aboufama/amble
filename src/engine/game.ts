@@ -116,6 +116,18 @@ export class Game {
     }
     scene.onBeforeStepObservable.add(() => this.tick());
     scene.onAfterStepObservable.add(() => this.afterStep());
+    // Particles move with game time: each drawn frame, as far as the ticks that ran in it (Babylon's
+    // lockstep otherwise moves them one tick per frame, so they'd crawl on slow computers and race
+    // on 144 Hz screens). Particle systems read this ratio; 0 would count as 1, so "no tick" is tiny.
+    let ticks = 0;
+    const ratio = scene as unknown as { _animationRatio: number };
+    scene.onBeforeAnimationsObservable.add(() => {
+      ticks = 0;
+      ratio._animationRatio = 1e-6;
+    });
+    scene.onAfterStepObservable.add(() => {
+      ratio._animationRatio = ++ticks;
+    });
   }
 
   /** Loads assets, evaluates compiled code and places every sprite (the game is idle until start()). */
@@ -327,8 +339,9 @@ export class Game {
       }
 
       this._scheduler.runTimers(this.time);
-      for (const e of this.entities()) this.callHook(e, 'update', [this.dt]);
       this._scheduler.stepAll();
+      // After the scripts, so "when I touch" and "when <...>" see what the scripts just did.
+      for (const e of this.entities()) this.callHook(e, 'update', [this.dt]);
       for (const s of this.all) if (!s.destroyed) s._integrate(this.dt);
       this.camera.tick(this.dt);
     } catch (err) {
@@ -370,6 +383,7 @@ export class Game {
     this.pendingDestroy = [];
     for (const s of dead) {
       this._bubbles.delete(s);
+      s._goneThisTick = false;
       s._dispose();
     }
     this.all = this.all.filter((s) => !dead.has(s));
@@ -515,6 +529,7 @@ export class Game {
     if (sprite.destroyed) return;
     this.callHook(sprite, 'onDestroy');
     sprite._destroyed = true;
+    sprite._goneThisTick = sprite.visible;
     this._scheduler.stopOwnedBy(sprite);
     sprite.visible = false;
     this.pendingDestroy.push(sprite);
@@ -536,9 +551,13 @@ export class Game {
     this.world?.addShadowCaster(mesh);
   }
 
-  /** @internal Sprites a touching() check should consider. */
+  /**
+   * @internal Sprites a touching() check should consider. A copy deleted during this tick still
+   * counts until the tick ends, so a star that deletes itself when it touches Amble is still seen
+   * by Amble's "when I touch Star", whichever of the two runs first.
+   */
   _candidates(target: unknown, self: Sprite): Sprite[] {
-    const alive = (s: Sprite) => s !== self && !s.destroyed && s.visible;
+    const alive = (s: Sprite) => s !== self && (s.destroyed ? s._goneThisTick : s.visible);
     if (target === undefined || target === null) return this.all.filter(alive);
     if (Array.isArray(target)) return target.flatMap((t) => this._candidates(t, self));
     if (target instanceof Sprite) return alive(target) ? [target] : [];

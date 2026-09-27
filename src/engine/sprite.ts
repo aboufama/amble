@@ -64,6 +64,8 @@ export abstract class Entity implements CoroutineOwner {
   readonly id: number;
   /** @internal */ readonly _def: TargetDef;
   /** @internal */ _destroyed = false;
+  /** @internal Deleted this tick while showing: other sprites still touch it until the tick ends. */
+  _goneThisTick = false;
   /** @internal */ _hookErrors: Map<string, number> = new Map();
   /** @internal Compiled scripts that are running, by method name. */
   _running = new Map<string, Coroutine>();
