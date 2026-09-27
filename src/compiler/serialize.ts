@@ -81,7 +81,6 @@ export function serializeBlocks(state: BlocksState | null | undefined): Serializ
   const comments = ((state?.workspaceComments as JsonComment[] | undefined) ?? []).map((c) => c.text?.trim()).filter(Boolean);
   const scripts: string[][] = [];
   const rules: string[] = [];
-  const loose: string[][] = [];
 
   for (const b of top) {
     if (isDisabled(b)) continue;
@@ -90,16 +89,13 @@ export function serializeBlocks(state: BlocksState | null | undefined): Serializ
       rules.push(blockLine(b, spec));
       continue;
     }
+    // Like Scratch, only scripts that start with a hat block run. Loose blocks are left out.
+    if (spec?.shape !== 'hat') continue;
     const lines: string[] = [];
-    if (spec?.shape === 'hat') {
-      renderBlock(b, 0, lines);
-      renderChain(b.next?.block, 1, lines);
-      if (lines.length === 1) lines.push('  (no blocks yet)');
-      scripts.push(lines);
-    } else {
-      renderChain(b, 0, lines);
-      loose.push(lines);
-    }
+    renderBlock(b, 0, lines);
+    renderChain(b.next?.block, 1, lines);
+    if (lines.length === 1) lines.push('  (no blocks yet)');
+    scripts.push(lines);
   }
 
   const out: string[] = [];
@@ -108,10 +104,6 @@ export function serializeBlocks(state: BlocksState | null | undefined): Serializ
     out.push(...lines.map((l) => '  ' + l));
   });
   for (const rule of rules) out.push(rule.replace(/^rule: /, 'Rule: '));
-  if (loose.length) {
-    out.push('Loose blocks (not under a "when" block, so they never run on their own; treat them as hints):');
-    for (const lines of loose) out.push(...lines.map((l) => '  ' + l));
-  }
   for (const c of comments) out.push(`Note from the author: ${String(c).replace(/\s*\n\s*/g, ' / ')}`);
   return { text: out.join('\n'), scripts: scripts.length };
 }

@@ -1,6 +1,7 @@
 import { AiError, CHATGPT_MODEL_NAME, chatJson, effectiveSettings, resolveTransport, type AiSettings, type Transport } from './openai';
 import { fetchCodexStatus } from './chatgpt';
 import { buildUserPrompt, classNameFor, classNames, systemPrompt, type FixContext } from './prompt';
+import { serializeBlocks } from './serialize';
 import { COMPILE_SCHEMA, type CompileReply } from './schema';
 import { instrumentTargetCode } from './transform';
 import { generateAsset, placeholderAsset, type AssetJob } from './assets';
@@ -30,7 +31,8 @@ export function inputHash(project: Project): string {
   const t = (x: Project['stage'] | Project['sprites'][number]) => ({
     n: x.name,
     d: x.description,
-    b: x.blocks,
+    // What the AI sees, so moving scripts around or loose blocks don't call for a recompile.
+    b: serializeBlocks(x.blocks).text,
     c: x.costumes.map((c) => [c.name, c.kind, c.kind === 'image' ? [c.width, c.height] : 0]),
     s: x.sounds.map((s) => s.name),
     p: x.kind === 'sprite' ? [x.x, x.y, x.z, x.size, x.direction, x.visible, x.rotationStyle] : 0,

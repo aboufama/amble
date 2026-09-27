@@ -5,6 +5,7 @@ import { encodeWav, renderSynth, SOUND_PRESETS, SAMPLE_RATE } from '../src/audio
 import { DEFAULT_SETTINGS, effectiveSettings, isReasoningModel, parseJsonReply, type Transport } from '../src/compiler/openai';
 import { cleanRecipe } from '../src/compiler/assets';
 import { buildRunPackage } from '../src/player/package';
+import { inputHash } from '../src/compiler/compile';
 import { COMPILE_SCHEMA } from '../src/compiler/schema';
 import type { Project } from '../src/project/types';
 
@@ -104,7 +105,7 @@ function project(): Project {
 }
 
 describe('serializeBlocks', () => {
-  it('renders scripts, nesting, rules, loose blocks and notes', () => {
+  it('renders scripts, nesting, rules and notes, and leaves out loose blocks like Scratch', () => {
     const { text, scripts } = serializeBlocks(blocks);
     expect(scripts).toBe(1);
     expect(text).toBe(
@@ -118,11 +119,20 @@ describe('serializeBlocks', () => {
         '      else',
         '        move [toward / the mouse]',
         'Rule: [the player has 3 lives]',
-        'Loose blocks (not under a "when" block, so they never run on their own; treat them as hints):',
-        '  say [loose]',
         'Note from the author: Make it fast',
       ].join('\n'),
     );
+  });
+
+  it("doesn't ask for a recompile when only loose blocks or positions change", () => {
+    const before = inputHash(project());
+    const p = structuredClone(project());
+    const top = (p.sprites[0].blocks as typeof blocks).blocks.blocks as Array<Record<string, unknown>>;
+    top[0].x = 400;
+    top.push({ type: 'lo_costume', x: 30, y: 300, fields: { COSTUME: 'hero' }, next: { block: { type: 'mo_move', fields: { HOW: '10 steps' } } } });
+    expect(inputHash(p)).toBe(before);
+    top.push({ type: 'ev_key', fields: { KEY: 'space' }, next: { block: { type: 'mo_move', fields: { HOW: 'up' } } } });
+    expect(inputHash(p)).not.toBe(before);
   });
 
   it('handles empty workspaces', () => {
