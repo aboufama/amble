@@ -24,22 +24,29 @@ async function fieldValue(page: Page, type: string, field: string, palette = fal
 
 /** Opens a block's dropdown on the code area and returns its options. */
 async function openMenu(page: Page, type: string, field: string): Promise<string[]> {
-  const at = await page.evaluate(
-    ({ type, field }) => {
-      const main = (window as unknown as { __ambleWorkspace: TestWorkspace }).__ambleWorkspace;
-      const r = main.getBlocksByType(type)[0].getField(field).getSvgRoot().getBoundingClientRect();
-      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-    },
-    { type, field },
-  );
   const items = page.locator('.blocklyDropDownDiv .blocklyMenuItem');
-  // The palette refreshes shortly after a project loads, which closes open menus: try again then.
+  // The palette refreshes shortly after a project loads. That can close a menu right after it
+  // opens, or swallow the click, so click again (at the field's current place) until it stays open.
   for (let attempt = 0; ; attempt++) {
+    const at = await page.evaluate(
+      ({ type, field }) => {
+        const main = (window as unknown as { __ambleWorkspace: TestWorkspace }).__ambleWorkspace;
+        const r = main.getBlocksByType(type)[0].getField(field).getSvgRoot().getBoundingClientRect();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+      },
+      { type, field },
+    );
     await page.mouse.click(at.x, at.y);
-    await expect(items.first()).toBeVisible();
-    await page.waitForTimeout(200);
-    const texts = (await items.allTextContents()).map((t) => t.trim());
-    if (texts.length || attempt === 2) return texts;
+    const opened = await items.first().waitFor({ state: 'visible', timeout: 3000 }).then(
+      () => true,
+      () => false,
+    );
+    if (opened) {
+      await page.waitForTimeout(200);
+      const texts = (await items.allTextContents()).map((t) => t.trim());
+      if (texts.length) return texts;
+    }
+    if (attempt === 4) throw new Error(`The ${field} menu of ${type} didn't open.`);
   }
 }
 
