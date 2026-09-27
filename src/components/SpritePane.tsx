@@ -260,7 +260,7 @@ export function AssetTile({
       className={`${className} ${selected ? 'selected' : ''} ${compiled ? 'compiled' : ''} ${reorder?.placeholder ? 'placeholder' : ''}`}
       data-reorder={reorder ? '' : undefined}
       onPointerDown={reorder?.onPointerDown}
-      title={title ?? name}
+      title={title}
       onClick={onSelect}
       onContextMenu={(e) => {
         if (!onContextMenu) return;

@@ -445,6 +445,18 @@ select {
   width: calc(242px + 16px);
 }
 
+/* Like Scratch, narrow windows get a slightly smaller "normal" stage (408 x 306). */
+@media (max-width: 1095px) {
+  .gui-body.stage-large .stage-and-target {
+    width: calc(410px + 16px);
+  }
+
+  .gui-body.stage-large .stage-shell {
+    width: 410px;
+    height: 308px;
+  }
+}
+
 /* ---------- Blocks ---------- */
 
 .blocks-editor,
@@ -1177,7 +1189,7 @@ select {
 .target-pane {
   flex: 1 1 0;
   display: flex;
-  min-height: 200px;
+  min-height: 180px;
   padding-top: 8px;
 }
 
