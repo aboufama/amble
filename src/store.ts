@@ -31,6 +31,8 @@ export interface LogEntry {
 
 export interface EditorState {
   project: Project;
+  /** Counts whole-project replacements (loading a file, New, examples), so editors reload. */
+  projectLoads: number;
   selectedId: string;
   tab: Tab;
   stageSize: StageSize;
@@ -78,6 +80,7 @@ const initial = newProject('2d');
 export const useStore = create<EditorState>()(
   immer((set) => ({
     project: initial,
+    projectLoads: 0,
     selectedId: initial.sprites[0]?.id ?? initial.stage.id,
     tab: 'code',
     stageSize: 'large',
@@ -97,6 +100,7 @@ export const useStore = create<EditorState>()(
     setProject: (project) =>
       set((s) => {
         s.project = project;
+        s.projectLoads += 1;
         s.selectedId = project.sprites[0]?.id ?? project.stage.id;
         s.costumeSel = {};
         s.soundSel = {};

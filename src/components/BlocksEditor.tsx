@@ -44,7 +44,9 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     });
   };
   const selectedId = useStore((s) => s.selectedId);
-  const projectId = useStore((s) => s.project.id);
+  const projectLoads = useStore((s) => s.projectLoads);
+  /** The project load the workspace shows: after a load, its blocks must not be saved into the new project. */
+  const shownLoad = useRef(projectLoads);
   const target = useStore((s) => findTarget(s.project, s.selectedId));
   const compiledSprites = useStore((s) => s.project.compiled?.sprites);
   const project = useStore.getState().project;
@@ -57,7 +59,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       saveTimer.current = null;
     }
     const id = loadedId.current;
-    if (!ws || !id) return;
+    if (!ws || !id || shownLoad.current !== useStore.getState().projectLoads) return;
     const state = Blockly.serialization.workspaces.save(ws) as Record<string, unknown>;
     useStore.getState().update((p) => {
       const t = findTarget(p, id);
@@ -283,8 +285,10 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws) return;
-    if (loadedId.current === (target?.id ?? null)) return;
+    const replaced = shownLoad.current !== projectLoads;
+    if (!replaced && loadedId.current === (target?.id ?? null)) return;
     flushSave();
+    shownLoad.current = projectLoads;
     loading.current = true;
     Blockly.Events.disable();
     try {
@@ -303,7 +307,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     needsScroll.current = true;
     if (visibleRef.current) showScripts(ws);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, target?.id, projectId]);
+  }, [selectedId, target?.id, projectLoads]);
 
   useEffect(() => {
     visibleRef.current = visible;
