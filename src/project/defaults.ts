@@ -1,4 +1,5 @@
 import { synthToDataUrl, SOUND_PRESETS } from '../audio/synth';
+import { BLOCK_BY_TYPE, SHADOW_TYPES } from '../blocks/spec';
 import { svgDataUrl } from './images';
 import { uid } from './ids';
 import type { BlocksState, ImageAsset, Project, SoundAsset, SpriteTarget, StageTarget, WorldMode } from './types';
@@ -13,21 +14,67 @@ export interface JsonBlock {
   x?: number;
   y?: number;
   fields?: Record<string, string>;
-  inputs?: Record<string, { block: JsonBlock }>;
+  inputs?: Record<string, { block?: JsonBlock; shadow?: JsonBlock }>;
   next?: { block: JsonBlock };
 }
 
-/** A block. `inner` fills the C-slot (SUBSTACK); `inner2` the else slot. */
-export function block(type: string, fields?: Record<string, string>, inner?: JsonBlock[], inner2?: JsonBlock[]): JsonBlock {
+/** What a block's input gets in `block(type, args)`: typed words or numbers, or a block to drop in. */
+export type BlockArg = string | number | JsonBlock;
+
+/** A shadow that fills a value slot until something is dropped in (see SHADOW_TYPES). */
+function shadow(kind: 'number' | 'value' | 'character', value: string): JsonBlock {
+  const type = SHADOW_TYPES[kind];
+  const field = kind === 'number' ? 'NUM' : kind === 'value' ? 'TEXT' : 'NAME';
+  return { type, id: uid('b'), fields: { [field]: value } };
+}
+
+/**
+ * A block, built from the block language (src/blocks/spec.ts). `args` fills inputs by name:
+ * words and menu choices as strings, numbers as numbers, and reporter/boolean blocks as blocks.
+ * Inputs left out get their defaults. `inner` fills the C-slot (SUBSTACK); `inner2` the else slot.
+ */
+export function block(type: string, args: Record<string, BlockArg> = {}, inner?: JsonBlock[], inner2?: JsonBlock[]): JsonBlock {
+  const spec = BLOCK_BY_TYPE.get(type);
   const b: JsonBlock = { type, id: uid('b') };
-  if (fields) b.fields = fields;
-  const inputs: Record<string, { block: JsonBlock }> = {};
+  const fields: Record<string, string> = {};
+  const inputs: NonNullable<JsonBlock['inputs']> = {};
+  for (const [name, input] of Object.entries(spec?.inputs ?? {})) {
+    const arg = args[name];
+    const given = arg !== undefined && typeof arg !== 'object' ? String(arg) : undefined;
+    switch (input.kind) {
+      case 'text':
+      case 'label':
+      case 'menu':
+        fields[name] = given ?? input.default ?? '';
+        break;
+      case 'number':
+      case 'value':
+      case 'character':
+        inputs[name] = { shadow: shadow(input.kind, given ?? input.default ?? '') };
+        if (typeof arg === 'object') inputs[name].block = arg;
+        break;
+      case 'condition':
+        if (typeof arg === 'object') inputs[name] = { block: arg };
+        break;
+    }
+  }
   const first = chain(inner ?? []);
   if (first) inputs.SUBSTACK = { block: first };
   const second = chain(inner2 ?? []);
   if (second) inputs.SUBSTACK2 = { block: second };
+  if (Object.keys(fields).length) b.fields = fields;
   if (Object.keys(inputs).length) b.inputs = inputs;
   return b;
+}
+
+/** A character block, to drop into a character slot: a sprite's name or a special ("me", "mouse"...). */
+export function character(name: string): JsonBlock {
+  return { type: 'char_ref', id: uid('b'), fields: { NAME: name } };
+}
+
+/** A variable's round block. */
+export function variable(name: string): JsonBlock {
+  return { type: 'mem_var', id: uid('b'), fields: { VARIABLE: name } };
 }
 
 /** Links blocks top to bottom and returns the first. */
@@ -36,14 +83,15 @@ export function chain(blocks: JsonBlock[]): JsonBlock | undefined {
   return blocks[0];
 }
 
-/** A whole workspace: each entry is a script (list of blocks), placed top to bottom. */
-export function workspace(...scripts: JsonBlock[][]): BlocksState {
+/** A whole workspace: each entry is a script (list of blocks) or a standalone block, placed top to bottom. */
+export function workspace(...scripts: Array<JsonBlock[] | JsonBlock>): BlocksState {
   let y = 24;
-  const tops = scripts.map((s) => {
+  const tops = scripts.map((entry) => {
+    const s = Array.isArray(entry) ? entry : [entry];
     const first = chain(s)!;
     first.x = 24;
     first.y = y;
-    y += 70 + s.length * 58;
+    y += (s.length > 1 || BLOCK_BY_TYPE.get(first.type)?.shape === 'hat' ? 70 : 40) + s.length * 58;
     return first;
   });
   return { blocks: { languageVersion: 0, blocks: tops } };
@@ -139,31 +187,28 @@ export function newSprite(name: string, mode: WorldMode, costumes: SpriteTarget[
   };
 }
 
-/** A fresh project with Amble, a starter script, and a pop sound. */
+/**
+ * A fresh project: Amble walks, jumps and lands, built only from exact blocks, so it compiles
+ * instantly. The stage holds a short brief.
+ */
 export function newProject(mode: WorldMode = '2d'): Project {
   const amble = newSprite('Amble', mode, ambleCostumes(), 0, mode === '2d' ? -60 : 0);
   amble.description = 'The player: a small, friendly walking creature.';
   amble.sounds = [synthSound('pop', 'pop'), synthSound('jump', 'jump')];
-  amble.blocks =
-    mode === '2d'
-      ? workspace(
-          [
-            block('ev_start'),
-            block('mo_goto', { WHERE: 'the middle of the floor' }),
-            block('mo_control', { CONTROLS: 'the left and right arrow keys, and animate walking' }),
-            block('lo_say_for', { TEXT: "Hi! I'm Amble. Press space to jump!", TIME: '3 seconds' }),
-          ],
-          [block('ev_key', { KEY: 'space' }), block('ga_do', { ACTION: 'jump up and land back on the floor' }), block('so_play', { SOUND: 'jump' })],
-        )
-      : workspace(
-          [
-            block('ev_start'),
-            block('wo_world', { HOW: 'a sunny meadow with a few trees and rocks' }),
-            block('wo_camera', { HOW: 'third person, behind me' }),
-            block('mo_control', { CONTROLS: 'WASD or the arrow keys to walk and turn, space to jump' }),
-          ],
-          [block('ev_click'), block('lo_say_for', { TEXT: 'Hello!', TIME: '2 seconds' }), block('so_play', { SOUND: 'pop' })],
-        );
+  amble.blocks = workspace(
+    [
+      block('ev_start'),
+      block('kit_gravity'),
+      block('kit_walk', { KEYS: mode === '2d' ? 'left and right arrows' : 'arrow keys', SPEED: mode === '2d' ? 220 : 300 }),
+      block('kit_jump', { KEY: 'space', POWER: mode === '2d' ? 650 : 700 }),
+      ...(mode === '3d' ? [block('kit_follow')] : []),
+      block('lk_say_for', { TEXT: mode === '2d' ? "Hi! I'm Amble. Arrows to walk, space to jump!" : "Hi! I'm Amble. Arrow keys to walk, space to jump!", SECONDS: 3 }),
+    ],
+    [block('ev_key', { KEY: 'space' }), block('so_play', { SOUND: 'jump' })],
+    [block('ev_click'), block('lk_say_for', { TEXT: 'Hello!', SECONDS: 2 }), block('so_play', { SOUND: 'pop' })],
+  );
+  const stage = newStage(mode);
+  stage.blocks = workspace(block('br_game', { WHAT: 'Amble explores a little world' }), block('br_audience', { WHO: 'kids who are new to games' }));
   return {
     format: 'amble',
     version: 1,
@@ -171,7 +216,7 @@ export function newProject(mode: WorldMode = '2d'): Project {
     title: 'Untitled game',
     notes: '',
     mode,
-    stage: newStage(mode),
+    stage,
     sprites: [amble],
     variables: ['my variable'],
     compiled: null,
