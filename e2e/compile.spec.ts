@@ -217,6 +217,35 @@ test('catching a star runs "when I touch Star", and every burst shows and clears
   await expect.poll(() => frame.evaluate(() => (window as unknown as Player).__ambleGame.scene.particleSystems.length)).toBe(0);
 });
 
+test('a speech bubble at the edge of the stage stays on it, without breaking its words', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.blocklyMainBackground')).toBeVisible();
+  await page.getByTitle('Start (green flag)').click();
+  const frame = await gameFrame(page);
+  // After Amble's greeting (it says hello for 3 seconds), so this bubble stays up.
+  await expect.poll(async () => (await game(frame)).time, { timeout: 30_000 }).toBeGreaterThan(3.5);
+
+  type Talker = { __ambleGame: { find(n: string): { x: number; say(s: string): void } } };
+  await frame.evaluate(() => {
+    const amble = (window as unknown as Talker).__ambleGame.find('Amble');
+    amble.x = 225;
+    amble.say('Thanks, Dad.');
+  });
+  await frame.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  // In stage pixels (the stage's UI layer is 480 wide, scaled to the player).
+  const box = await frame.evaluate(() => {
+    const stage = document.querySelector('.amble-ui')!.getBoundingClientRect();
+    const b = document.querySelector('.amble-ui__bubble')!.getBoundingClientRect();
+    const k = 480 / stage.width;
+    return { left: (b.left - stage.left) * k, right: (b.right - stage.left) * k, width: b.width * k, height: b.height * k };
+  });
+  expect(box.width).toBeGreaterThan(0);
+  expect(box.left).toBeGreaterThanOrEqual(0);
+  expect(box.right).toBeLessThanOrEqual(480);
+  // One line: its words are not broken up to fit beside the edge.
+  expect(box.height).toBeLessThan(40);
+});
+
 test('without an account the flag still plays; words wait', async ({ page }) => {
   const calls: string[] = [];
   await mockOpenAI(page, calls);

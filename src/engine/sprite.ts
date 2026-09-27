@@ -661,7 +661,12 @@ export class Sprite extends Entity {
       return;
     }
     this._bubble.style.visibility = '';
-    this._bubble.style.left = `${240 + screen.x}px`;
+    // Keep the whole bubble on the stage; its tail still points at the sprite.
+    const width = this._bubble.offsetWidth;
+    const want = 240 + screen.x;
+    const x = width ? Math.min(480 - 4 - width / 2, Math.max(4 + width / 2, want)) : want;
+    this._bubble.style.left = `${x}px`;
+    this._bubble.style.setProperty('--tail', width ? `${Math.min(width - 14, Math.max(14, width / 2 + want - x))}px` : '50%');
     this._bubble.style.top = `${180 - screen.y - 6}px`;
   }
 

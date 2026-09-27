@@ -37,8 +37,8 @@ export const UI_CSS = `
 .amble-ui__value span { min-width: 30px; padding: 1px 6px; border-radius: 5px; background: #ff8c1a; color: white; text-align: center; }
 .amble-ui__button { position: absolute; pointer-events: auto; cursor: pointer; border: none; border-radius: 12px; padding: 8px 18px; font: inherit; font-weight: 700; color: white; background: #4c97ff; box-shadow: 0 4px 0 rgba(0,0,0,0.25); transform: translate(-50%, -50%); }
 .amble-ui__button:active { transform: translate(-50%, calc(-50% + 3px)); box-shadow: 0 1px 0 rgba(0,0,0,0.25); }
-.amble-ui__bubble { position: absolute; max-width: 170px; padding: 6px 10px; background: white; color: #333; border: 2px solid rgba(0,0,0,0.2); border-radius: 14px; font-size: 13px; line-height: 1.25; transform: translate(-50%, -100%); white-space: pre-wrap; word-break: break-word; }
-.amble-ui__bubble::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 12px; height: 12px; background: white; border-right: 2px solid rgba(0,0,0,0.2); border-bottom: 2px solid rgba(0,0,0,0.2); transform: translateX(-50%) rotate(45deg); }
+.amble-ui__bubble { position: absolute; width: max-content; max-width: 170px; padding: 6px 10px; background: white; color: #333; border: 2px solid rgba(0,0,0,0.2); border-radius: 14px; font-size: 13px; line-height: 1.25; transform: translate(-50%, -100%); white-space: pre-wrap; word-break: break-word; }
+.amble-ui__bubble::after { content: ""; position: absolute; left: var(--tail, 50%); bottom: -9px; width: 12px; height: 12px; background: white; border-right: 2px solid rgba(0,0,0,0.2); border-bottom: 2px solid rgba(0,0,0,0.2); transform: translateX(-50%) rotate(45deg); }
 .amble-ui__ask { position: absolute; left: 10px; right: 10px; bottom: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; background: white; border: 2px solid #ddd; border-radius: 10px; pointer-events: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
 .amble-ui__ask b { font-size: 13px; color: #333; }
 .amble-ui__ask form { display: flex; gap: 6px; }
