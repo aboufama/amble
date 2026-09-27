@@ -2,9 +2,10 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useStore } from '../store';
 import { CHATGPT_MODEL_NAME, hasServerKey, listModels, resolveTransport, type ReasoningEffort } from '../compiler/openai';
 import { cancelChatGptSignIn, refreshChatGpt, signInWithChatGpt, signOutOfChatGpt } from '../actions';
+import { answerPrompt } from '../prompt';
 import { XIcon } from './icons';
 
-export function Modal({ title, onClose, children, wide }: { title: string; onClose(): void; children: ReactNode; wide?: boolean }) {
+export function Modal({ title, onClose, children, wide, className = '' }: { title: string; onClose(): void; children: ReactNode; wide?: boolean; className?: string }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -12,11 +13,11 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
   }, [onClose]);
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
+      <div className={`modal ${wide ? 'wide' : ''} ${className}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-head">
           <h2>{title}</h2>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">
-            <XIcon size={18} />
+          <button className="modal-close" onClick={onClose} aria-label="Close">
+            <XIcon size={14} strokeWidth={3} />
           </button>
         </div>
         <div className="modal-body">{children}</div>
@@ -254,5 +255,51 @@ export function Toast() {
     <div className={`toast ${toast.tone}`} role="status" onClick={() => setVisible(false)}>
       {toast.message}
     </div>
+  );
+}
+
+/** Scratch's question dialog: New Variable, Rename Variable, New Message, Make a Block. */
+export function PromptDialog() {
+  const prompt = useStore((s) => s.prompt);
+  const [value, setValue] = useState('');
+  const [scope, setScope] = useState<'global' | 'local'>('global');
+  useEffect(() => {
+    if (!prompt) return;
+    setValue(prompt.defaultValue ?? '');
+    setScope('global');
+  }, [prompt]);
+  if (!prompt) return null;
+  const ok = () => answerPrompt({ value, scope });
+  return (
+    <Modal title={prompt.title} onClose={() => answerPrompt(null)} className="prompt">
+      <div className="prompt-label">{prompt.label}</div>
+      <input
+        className="prompt-input"
+        value={value}
+        autoFocus
+        aria-label={prompt.label}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && ok()}
+      />
+      {prompt.scope && (
+        <div className="prompt-options" role="radiogroup">
+          <label>
+            <input type="radio" name="variable-scope" checked={scope === 'global'} onChange={() => setScope('global')} />
+            <span>For all sprites</span>
+          </label>
+          <label>
+            <input type="radio" name="variable-scope" checked={scope === 'local'} onChange={() => setScope('local')} />
+            <span>For this sprite only</span>
+          </label>
+        </div>
+      )}
+      <div className="prompt-buttons">
+        <button onClick={() => answerPrompt(null)}>Cancel</button>
+        <button className="ok" onClick={ok}>
+          OK
+        </button>
+      </div>
+    </Modal>
   );
 }

@@ -8,7 +8,7 @@ import { SoundsPane } from './components/SoundsPane';
 import { StagePanel } from './components/StagePanel';
 import { OutputPanel } from './components/OutputPanel';
 import { SpritePane } from './components/SpritePane';
-import { SettingsDialog, Toast } from './components/Dialogs';
+import { PromptDialog, SettingsDialog, Toast } from './components/Dialogs';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { BrushIcon, CodeIcon, WaveIcon } from './components/icons';
 
@@ -94,6 +94,7 @@ export function App() {
         </section>
       </main>
       {dialog === 'settings' && <SettingsDialog />}
+      <PromptDialog />
       <Toast />
     </div>
   );

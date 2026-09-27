@@ -1,8 +1,17 @@
 import { useEffect, useRef } from 'react';
-import { AMBLE_THEME, Blockly, registerBlockly, toolboxFor } from '../blocks/blockly';
+import { AMBLE_THEME, Blockly, MAKE_BLOCK, MAKE_VARIABLE, registerBlockly, toolboxFor, type PaletteContext } from '../blocks/blockly';
+import { FieldAmbleMenu, setMenuHost } from '../blocks/fields';
+import { addZoomControls } from '../blocks/workspaceUi';
+import { globalVariables, procedureNames, variablesFor, type MenuContext } from '../blocks/menus';
+import type { MenuKind } from '../blocks/spec';
 import { findCompiledSprite, findTarget, useStore } from '../store';
-import { keepCompiledSprite } from '../actions';
+import { deleteVariable, keepCompiledSprite, registerLiveBlocks, renameVariable } from '../actions';
+import { askUser } from '../prompt';
+import type { BlocksState } from '../project/types';
 import { CodeIcon, KeepIcon, SparkIcon } from './icons';
+
+/** Scratch's default zoom. */
+const START_SCALE = 0.675;
 
 /** The Blockly workspace for the selected sprite (or the stage). */
 export function BlocksEditor({ visible }: { visible: boolean }) {
@@ -11,6 +20,10 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
   const loadedId = useRef<string | null>(null);
   const loading = useRef(false);
   const saveTimer = useRef<number | null>(null);
+  const paletteTimer = useRef<number | null>(null);
+  const paletteKey = useRef('');
+  const liveCache = useRef<BlocksState | null>(null);
+  const newMessages = useRef<string[]>([]);
   const needsScroll = useRef(false);
   const visibleRef = useRef(visible);
 
@@ -34,7 +47,6 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     });
   };
   const selectedId = useStore((s) => s.selectedId);
-  const mode = useStore((s) => s.project.mode);
   const projectId = useStore((s) => s.project.id);
   const target = useStore((s) => findTarget(s.project, s.selectedId));
   const compiledSprites = useStore((s) => s.project.compiled?.sprites);
@@ -56,49 +68,219 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     });
   };
 
+  /** What dropdowns and the palette need: the project, the edited sprite and its blocks as shown. */
+  const menuContext = (): MenuContext => {
+    const s = useStore.getState();
+    const edited = findTarget(s.project, loadedId.current ?? s.selectedId);
+    const ws = wsRef.current;
+    return {
+      project: s.project,
+      target: edited,
+      newMessages: newMessages.current,
+      get liveBlocks() {
+        if (!ws || loading.current || !loadedId.current) return undefined;
+        liveCache.current ??= Blockly.serialization.workspaces.save(ws) as BlocksState;
+        return liveCache.current;
+      },
+    };
+  };
+
+  const paletteContext = (): PaletteContext => {
+    const s = useStore.getState();
+    return { mode: s.project.mode, isStage: findTarget(s.project, s.selectedId)?.kind === 'stage', menus: menuContext() };
+  };
+
+  /** Rebuilds the palette when something it shows changed (costumes, sounds, variables, custom blocks...). */
+  const refreshPalette = () => {
+    const ws = wsRef.current;
+    if (!ws) return;
+    const def = toolboxFor(paletteContext());
+    const key = JSON.stringify(def);
+    if (key === paletteKey.current) return;
+    paletteKey.current = key;
+    ws.updateToolbox(def);
+  };
+  const schedulePalette = () => {
+    if (paletteTimer.current !== null) window.clearTimeout(paletteTimer.current);
+    paletteTimer.current = window.setTimeout(() => {
+      paletteTimer.current = null;
+      refreshPalette();
+    }, 120);
+  };
+
+  const renameMenus = (kinds: MenuKind[], from: string, to: string) => {
+    const ws = wsRef.current;
+    if (!ws) return;
+    Blockly.Events.disable();
+    try {
+      for (const block of ws.getAllBlocks(false)) {
+        for (const input of block.inputList) {
+          for (const field of input.fieldRow) {
+            if (field instanceof FieldAmbleMenu && kinds.includes(field.menuKind) && field.getValue() === from) field.setValue(to);
+          }
+        }
+      }
+    } finally {
+      Blockly.Events.enable();
+    }
+    liveCache.current = null;
+  };
+
+  const makeVariable = async () => {
+    const s = useStore.getState();
+    const edited = findTarget(s.project, loadedId.current ?? s.selectedId);
+    const answer = await askUser({ title: 'New Variable', label: 'New variable name:', scope: edited?.kind === 'sprite' });
+    const name = answer?.value.trim();
+    if (!answer || !name) return;
+    const { project: p, notify, update } = useStore.getState();
+    const taken = new Set([...variablesFor(p, edited), ...(answer.scope === 'global' ? p.sprites.flatMap((x) => x.variables ?? []) : [])]);
+    if (taken.has(name)) {
+      notify(`A variable named "${name}" already exists.`, 'error');
+      return;
+    }
+    update((draft) => {
+      const sprite = draft.sprites.find((x) => x.id === edited?.id);
+      if (answer.scope === 'local' && sprite) sprite.variables = [...(sprite.variables ?? []), name];
+      else draft.variables = [...globalVariables(draft), name];
+    });
+  };
+
+  /** "Make a Block": asks for a name and places a "define" block in the workspace. */
+  const makeBlock = async () => {
+    const ws = wsRef.current;
+    const answer = await askUser({ title: 'Make a Block', label: 'Block name:' });
+    const name = answer?.value.trim();
+    if (!ws || !name) return;
+    if (procedureNames(menuContext()).includes(name)) {
+      useStore.getState().notify(`A block named "${name}" already exists.`, 'error');
+      return;
+    }
+    const block = ws.newBlock('pr_define');
+    block.setFieldValue(name, 'NAME');
+    block.initSvg();
+    block.render();
+    const view = ws.getMetricsManager().getViewMetrics(true);
+    const x = view.left + 32;
+    let y = view.top + 32;
+    const size = block.getHeightWidth();
+    for (const other of ws.getTopBlocks(false)) {
+      if (other === block) continue;
+      const r = other.getBoundingRectangle();
+      if (r.left < x + size.width && r.right > x && r.top < y + size.height && r.bottom > y) y = r.bottom + 32;
+    }
+    block.moveBy(x, y);
+    ws.scrollBoundsIntoView(block.getBoundingRectangle());
+  };
+
   // Create the workspace once.
   useEffect(() => {
     registerBlockly();
+    const initial = toolboxFor(paletteContext());
+    paletteKey.current = JSON.stringify(initial);
     const ws = Blockly.inject(divRef.current!, {
-      renderer: 'zelos',
+      renderer: 'amble',
       theme: AMBLE_THEME,
       media: `${import.meta.env.BASE_URL}blockly-media/`,
-      toolbox: toolboxFor(useStore.getState().project.mode),
+      toolbox: initial,
       plugins: {
-        flyoutsVerticalToolbox: 'ContinuousFlyout',
+        flyoutsVerticalToolbox: 'AmbleFlyout',
         metricsManager: 'ContinuousMetrics',
-        toolbox: 'ContinuousToolbox',
+        toolbox: 'AmbleToolbox',
       },
-      zoom: { controls: true, wheel: false, startScale: 0.8, maxScale: 2, minScale: 0.35, scaleSpeed: 1.15 },
+      zoom: { controls: false, wheel: true, pinch: true, startScale: START_SCALE, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 },
       move: { scrollbars: true, drag: true, wheel: true },
-      trashcan: true,
+      trashcan: false,
       sounds: false,
-      grid: { spacing: 32, length: 2, colour: '#e4e6ee', snap: false },
+      comments: true,
+      grid: { spacing: 40, length: 2, colour: '#ddd', snap: false },
     });
     wsRef.current = ws;
     loadedId.current = null;
     (window as unknown as { __ambleWorkspace?: Blockly.WorkspaceSvg }).__ambleWorkspace = ws;
+    const removeZoom = addZoomControls(ws);
+    ws.registerButtonCallback(MAKE_VARIABLE, () => void makeVariable());
+    ws.registerButtonCallback(MAKE_BLOCK, () => void makeBlock());
+
+    setMenuHost({
+      context: menuContext,
+      newMessage: async () => {
+        const name = (await askUser({ title: 'New Message', label: 'New message name:' }))?.value.trim();
+        if (!name) return null;
+        if (!newMessages.current.includes(name)) newMessages.current = [...newMessages.current, name];
+        schedulePalette();
+        return name;
+      },
+      renameVariable: (from) => {
+        void askUser({ title: 'Rename Variable', label: `Rename all "${from}" variables to:`, defaultValue: from }).then((answer) => {
+          const to = answer?.value.trim();
+          if (!to || to === from) return;
+          const s = useStore.getState();
+          const edited = loadedId.current ? findTarget(s.project, loadedId.current) : null;
+          if (variablesFor(s.project, edited).includes(to)) {
+            s.notify(`A variable named "${to}" already exists.`, 'error');
+            return;
+          }
+          renameVariable(loadedId.current, from, to);
+        });
+      },
+      deleteVariable: (name) => {
+        // Like Scratch: the variable goes, with every block in this sprite that uses it.
+        Blockly.Events.setGroup(true);
+        for (const block of ws.getAllBlocks(false)) {
+          const uses = block.inputList.some((i) => i.fieldRow.some((f) => f instanceof FieldAmbleMenu && f.menuKind === 'variable' && f.getValue() === name));
+          if (uses && !block.isDeadOrDying()) block.dispose(true, true);
+        }
+        Blockly.Events.setGroup(false);
+        flushSave();
+        deleteVariable(loadedId.current, name);
+      },
+    });
+
+    registerLiveBlocks({
+      flush: flushSave,
+      targetId: () => loadedId.current,
+      renameMenus,
+    });
+
     ws.addChangeListener((e: Blockly.Events.Abstract) => {
       if (e.isUiEvent || loading.current || !loadedId.current) return;
+      liveCache.current = null;
+      // Renaming a custom block renames the blocks that run it.
+      if (e.type === Blockly.Events.BLOCK_CHANGE) {
+        const change = e as Blockly.Events.BlockChange;
+        const block = change.blockId ? ws.getBlockById(change.blockId) : null;
+        if (block?.type === 'pr_define' && change.element === 'field' && change.name === 'NAME' && typeof change.oldValue === 'string') {
+          const from = change.oldValue.trim();
+          const to = String(change.newValue ?? '').trim();
+          Blockly.Events.setGroup(change.group || true);
+          for (const call of ws.getBlocksByType('pr_call', false)) if (call.getFieldValue('NAME') === from && to) call.setFieldValue(to, 'NAME');
+          Blockly.Events.setGroup(false);
+        }
+      }
       if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
       saveTimer.current = window.setTimeout(flushSave, 250);
+      schedulePalette();
     });
     const ro = new ResizeObserver(() => Blockly.svgResize(ws));
     ro.observe(divRef.current!);
+    // The palette follows the project: costumes, sounds, sprites, variables, world mode, the selected target.
+    const unsubscribe = useStore.subscribe((state, prev) => {
+      if (state.project !== prev.project || state.selectedId !== prev.selectedId) schedulePalette();
+    });
     return () => {
+      unsubscribe();
       ro.disconnect();
       flushSave();
+      setMenuHost(null);
+      registerLiveBlocks(null);
+      removeZoom();
+      if (paletteTimer.current !== null) window.clearTimeout(paletteTimer.current);
       ws.dispose();
       wsRef.current = null;
       loadedId.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Swap the palette when switching between 2D and 3D.
-  useEffect(() => {
-    wsRef.current?.updateToolbox(toolboxFor(mode));
-  }, [mode]);
 
   // Load the selected target's scripts.
   useEffect(() => {
@@ -117,7 +299,10 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       Blockly.Events.enable();
       loading.current = false;
     }
+    ws.clearUndo();
     loadedId.current = target?.id ?? null;
+    liveCache.current = null;
+    refreshPalette();
     needsScroll.current = true;
     if (visibleRef.current) showScripts(ws);
     // eslint-disable-next-line react-hooks/exhaustive-deps

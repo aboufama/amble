@@ -12,6 +12,15 @@ export type Tab = 'code' | 'costumes' | 'sounds';
 export type RunState = 'loading' | 'idle' | 'running' | 'paused' | 'stopped';
 export type OutputTab = 'game' | 'problems' | 'console' | 'code';
 
+/** A question shown in a Scratch-style dialog (New Variable, New Message...). */
+export interface PromptRequest {
+  title: string;
+  label: string;
+  defaultValue?: string;
+  /** Offer "For all sprites" / "For this sprite only". */
+  scope?: boolean;
+}
+
 export interface LogEntry {
   id: number;
   level: 'log' | 'warn' | 'error';
@@ -30,6 +39,7 @@ export interface EditorState {
   compile: { status: 'idle' | 'running' | 'error' | 'done'; progress: CompileProgress | null; error: string | null };
   run: { state: RunState; errors: PlayerError[]; logs: LogEntry[] };
   dialog: null | 'settings' | 'new' | 'about';
+  prompt: PromptRequest | null;
   outputTab: OutputTab;
   toast: { id: number; message: string; tone: 'info' | 'error' } | null;
 
@@ -47,6 +57,7 @@ export interface EditorState {
   addLog(level: LogEntry['level'], message: string): void;
   clearRunOutput(): void;
   setDialog(dialog: EditorState['dialog']): void;
+  setPrompt(prompt: PromptRequest | null): void;
   setOutputTab(tab: OutputTab): void;
   notify(message: string, tone?: 'info' | 'error'): void;
 }
@@ -66,6 +77,7 @@ export const useStore = create<EditorState>()(
     compile: { status: 'idle', progress: null, error: null },
     run: { state: 'loading', errors: [], logs: [] },
     dialog: null,
+    prompt: null,
     outputTab: 'game',
     toast: null,
 
@@ -133,6 +145,10 @@ export const useStore = create<EditorState>()(
     setDialog: (dialog) =>
       set((s) => {
         s.dialog = dialog;
+      }),
+    setPrompt: (prompt) =>
+      set((s) => {
+        s.prompt = prompt;
       }),
     setOutputTab: (tab) =>
       set((s) => {
