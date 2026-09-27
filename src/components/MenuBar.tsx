@@ -8,6 +8,7 @@ import { blankBackdrop } from '../project/defaults';
 import type { Project, WorldMode } from '../project/types';
 import { CHATGPT_MODEL_NAME } from '../compiler/openai';
 import { signInWithChatGpt } from '../actions';
+import { confirmUser } from '../prompt';
 import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
 
 /** Converts a project between 2D and 3D (positions are rescaled; the blank white backdrop is dropped in 3D). */
@@ -69,7 +70,13 @@ export function MenuBar() {
     };
   }, [open]);
 
-  const confirmReplace = () => confirm('Replace the current project? (Save it to your computer first if you want to keep it.)');
+  const confirmReplace = () =>
+    confirmUser({
+      title: 'Replace Project',
+      message: 'Replace the current project? Save it to your computer first if you want to keep it.',
+      confirmLabel: 'Replace',
+      danger: true,
+    });
 
   const act = (fn: () => void | Promise<void>) => async () => {
     setOpen(null);
@@ -101,10 +108,10 @@ export function MenuBar() {
             {open === 'file' && (
               <div className="menubar-menu" role="menu">
                 <div className="menubar-menu-section">
-                  <button role="menuitem" onClick={act(() => void (confirmReplace() && setProject(blankProject('2d'))))}>
+                  <button role="menuitem" onClick={act(async () => void ((await confirmReplace()) && setProject(blankProject('2d'))))}>
                     New 2D game
                   </button>
-                  <button role="menuitem" onClick={act(() => void (confirmReplace() && setProject(blankProject('3d'))))}>
+                  <button role="menuitem" onClick={act(async () => void ((await confirmReplace()) && setProject(blankProject('3d'))))}>
                     New 3D game
                   </button>
                 </div>
@@ -113,7 +120,9 @@ export function MenuBar() {
                     role="menuitem"
                     onClick={act(async () => {
                       const files = await pickFile('.amble,application/json');
-                      if (files.length && confirmReplace()) setProject(await readProjectFile(files[0]));
+                      if (!files.length) return;
+                      const project = await readProjectFile(files[0]);
+                      if (await confirmReplace()) setProject(project);
                     })}
                   >
                     Load from your computer
@@ -133,7 +142,7 @@ export function MenuBar() {
                 </div>
                 <div className="menubar-menu-section">
                   {EXAMPLES.map((ex) => (
-                    <button key={ex.id} role="menuitem" title={ex.description} onClick={act(() => void (confirmReplace() && setProject(ex.make())))}>
+                    <button key={ex.id} role="menuitem" title={ex.description} onClick={act(async () => void ((await confirmReplace()) && setProject(ex.make())))}>
                       Example: {ex.title}
                     </button>
                   ))}
@@ -182,8 +191,11 @@ export function MenuBar() {
               className={mode === m ? 'on' : ''}
               onClick={() => {
                 if (mode === m) return;
-                if (!confirm(`Switch this project to ${m.toUpperCase()}? You'll need to compile again.`)) return;
-                update((p) => switchMode(p, m));
+                void confirmUser({
+                  title: `Switch to ${m.toUpperCase()}`,
+                  message: `Switch this project to ${m.toUpperCase()}? Sprite positions are converted, and you'll need to compile again.`,
+                  confirmLabel: 'Switch',
+                }).then((ok) => ok && update((p) => switchMode(p, m)));
               }}
             >
               {m.toUpperCase()}

@@ -1677,73 +1677,6 @@ body.reordering * {
   visibility: hidden;
 }
 
-/* "Are you sure you want to delete this sprite?" */
-.delete-prompt {
-  position: fixed;
-  z-index: 520;
-  display: flex;
-}
-
-.delete-prompt-arrow {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  margin-top: -8px;
-  border-radius: 3px;
-  background: var(--looks-secondary);
-  transform: rotate(45deg);
-}
-
-.delete-prompt.on-right .delete-prompt-arrow {
-  left: -6px;
-}
-
-.delete-prompt.on-left .delete-prompt-arrow {
-  right: -6px;
-}
-
-.delete-prompt-body {
-  position: relative;
-  width: 100%;
-  padding: 16px 24px;
-  border-radius: 8px;
-  background: var(--looks-secondary);
-  box-shadow: 0 4px 12px var(--ui-black-transparent);
-}
-
-.delete-prompt-label {
-  margin: 8px 0 20px;
-  color: var(--ui-white);
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.25;
-}
-
-.delete-prompt-buttons {
-  display: flex;
-  justify-content: space-between;
-}
-
-.delete-prompt-buttons button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 47%;
-  padding: 10px 14px;
-  border: 1px solid var(--ui-black-transparent);
-  border-radius: 32px;
-  background: var(--ui-white);
-  color: var(--looks-secondary);
-  font-size: 13.6px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.delete-prompt-buttons button:hover {
-  background: var(--ui-secondary);
-}
-
 /* Scratch's round add buttons, with more buttons that slide up on hover. */
 .action-menu {
   position: absolute;
@@ -2930,6 +2863,40 @@ body.reordering * {
   border-color: var(--looks-secondary);
   background: var(--looks-secondary);
   color: var(--ui-white);
+}
+
+.prompt-buttons button:hover {
+  border-color: var(--looks-secondary);
+}
+
+.prompt-buttons button.ok:hover {
+  background: var(--looks-secondary-dark);
+}
+
+/* Destructive: Delete, Replace. */
+.prompt-buttons button.ok.danger {
+  border-color: #d93a3f;
+  background: #e5484d;
+}
+
+.prompt-buttons button.ok.danger:hover {
+  background: #cc3338;
+}
+
+.prompt-buttons button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--looks-transparent);
+}
+
+.prompt-buttons button.danger:focus-visible {
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.35);
+}
+
+.prompt-message {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .record-body {

@@ -1,6 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { findCompiledSprite, findTarget, useStore } from '../store';
 import { renameSprite } from '../actions';
 import { blankBackdrop, newSprite } from '../project/defaults';
@@ -10,6 +9,7 @@ import { exportSprite, readSpriteFile } from '../project/persistence';
 import { uniqueName, uid } from '../project/ids';
 import type { CostumeAsset, CompiledAsset, ImageAsset, SpriteTarget } from '../project/types';
 import { Library } from './Library';
+import { confirmDelete } from '../prompt';
 import { moveItem, useReorder } from './useReorder';
 import {
   AddCharacterIcon,
@@ -172,52 +172,6 @@ export function ContextMenu({ at, items, onClose }: { at: { x: number; y: number
   );
 }
 
-/** Scratch's "Are you sure you want to delete this sprite?" bubble, beside the tile it asks about. */
-export function DeletePrompt({ what, anchor, onYes, onNo }: { what: string; anchor: DOMRect; onYes(): void; onNo(): void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const close = (e: Event) => {
-      if (!ref.current?.contains(e.target as Node)) onNo();
-    };
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onNo();
-    document.addEventListener('pointerdown', close, true);
-    document.addEventListener('keydown', key);
-    return () => {
-      document.removeEventListener('pointerdown', close, true);
-      document.removeEventListener('keydown', key);
-    };
-  }, [onNo]);
-  const width = 264;
-  const right = anchor.right + 14 + width < window.innerWidth;
-  const left = right ? anchor.right + 14 : anchor.left - 14 - width;
-  const top = Math.max(8, Math.min(anchor.top + anchor.height / 2 - 70, window.innerHeight - 180));
-  const arrowTop = anchor.top + anchor.height / 2 - top;
-  return createPortal(
-    <div
-      className={`delete-prompt ${right ? 'on-right' : 'on-left'}`}
-      ref={ref}
-      role="alertdialog"
-      aria-label={`Delete this ${what}?`}
-      style={{ left, top, width }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="delete-prompt-arrow" style={{ top: arrowTop }} />
-      <div className="delete-prompt-body">
-        <div className="delete-prompt-label">Are you sure you want to delete this {what}?</div>
-        <div className="delete-prompt-buttons">
-          <button className="yes" autoFocus onClick={onYes}>
-            <TrashIcon size={18} strokeWidth={2.4} /> yes
-          </button>
-          <button className="no" onClick={onNo}>
-            no
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
 /** A tile in Scratch's sprite, costume and sound lists. */
 export function AssetTile({
   name,
@@ -244,19 +198,16 @@ export function AssetTile({
   onSelect(): void;
   onDelete?: () => void;
   onContextMenu?: (at: { x: number; y: number }) => void;
-  /** Ask "Are you sure you want to delete this ...?" first. */
-  confirmWhat?: string;
+  /** Ask first, in Amble's dialog ("Delete Sprite"). */
+  confirmWhat?: 'sprite' | 'costume' | 'backdrop' | 'sound';
   className?: string;
   title?: string;
   /** Drag to reorder (see useReorder); `placeholder` while this tile is the one dragged. */
   reorder?: { onPointerDown(e: React.PointerEvent<HTMLElement>): void; placeholder: boolean };
   children?: ReactNode;
 }) {
-  const [confirming, setConfirming] = useState<DOMRect | null>(null);
-  const tileRef = useRef<HTMLDivElement>(null);
   return (
     <div
-      ref={tileRef}
       className={`${className} ${selected ? 'selected' : ''} ${compiled ? 'compiled' : ''} ${reorder?.placeholder ? 'placeholder' : ''}`}
       data-reorder={reorder ? '' : undefined}
       onPointerDown={reorder?.onPointerDown}
@@ -286,23 +237,12 @@ export function AssetTile({
           aria-label="Delete"
           onClick={(e) => {
             e.stopPropagation();
-            if (confirmWhat && tileRef.current) setConfirming(tileRef.current.getBoundingClientRect());
+            if (confirmWhat) void confirmDelete(confirmWhat, name).then((ok) => ok && onDelete());
             else onDelete();
           }}
         >
           <TrashIcon size={14} strokeWidth={2.6} />
         </button>
-      )}
-      {confirming && confirmWhat && onDelete && (
-        <DeletePrompt
-          what={confirmWhat}
-          anchor={confirming}
-          onYes={() => {
-            setConfirming(null);
-            onDelete();
-          }}
-          onNo={() => setConfirming(null)}
-        />
       )}
       {children}
     </div>
@@ -769,7 +709,14 @@ export function SpritePane() {
                   if (sprite) exportSprite(sprite);
                 },
               },
-              { label: 'delete', danger: true, onClick: () => remove(menu.id) },
+              {
+                label: 'delete',
+                danger: true,
+                onClick: () => {
+                  const sprite = project.sprites.find((x) => x.id === menu.id);
+                  if (sprite) void confirmDelete('sprite', sprite.name).then((ok) => ok && remove(sprite.id));
+                },
+              },
             ]}
           />
         )}

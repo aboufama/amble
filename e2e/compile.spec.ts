@@ -218,8 +218,8 @@ test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', 
 
 test('3D world mode renders and runs', async ({ page }) => {
   await page.goto('/');
-  page.once('dialog', (d) => void d.accept());
   await page.getByRole('radio', { name: '3D' }).click();
+  await page.getByRole('dialog', { name: 'Switch to 3D' }).getByRole('button', { name: 'Switch' }).click();
   await expect(page.locator('.mode-badge')).toHaveText('3D');
   const frame = await gameFrame(page);
   // The player reports loading and idle; start it with the green flag.

@@ -10,6 +10,7 @@ import { EDIT_SAMPLE_RATE, SOUND_EFFECTS, applyEffect, chunkLevels, decodeSound,
 import type { CompiledAsset, SoundAsset } from '../project/types';
 import { Modal } from './Dialogs';
 import { Library } from './Library';
+import { confirmDelete } from '../prompt';
 import { moveItem, useReorder } from './useReorder';
 import { ActionMenu, AssetTile, ContextMenu } from './SpritePane';
 import {
@@ -468,7 +469,14 @@ export function SoundsPane() {
                   if (s) void exportAsset(s).catch((err: Error) => toast(err.message, 'error'));
                 },
               },
-              { label: 'delete', danger: true, onClick: () => remove(menu.id) },
+              {
+                label: 'delete',
+                danger: true,
+                onClick: () => {
+                  const s = own.find((x) => x.id === menu.id);
+                  if (s) void confirmDelete('sound', s.name).then((ok) => ok && remove(s.id));
+                },
+              },
             ]}
           />
         )}

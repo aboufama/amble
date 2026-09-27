@@ -6,9 +6,20 @@ import { globalVariables, procedureNames, variablesFor, type MenuContext } from 
 import type { MenuKind } from '../blocks/spec';
 import { findCompiledSprite, findTarget, useStore } from '../store';
 import { deleteVariable, keepCompiledSprite, registerLiveBlocks, renameVariable } from '../actions';
-import { askUser } from '../prompt';
+import { alertUser, askUser, confirmUser } from '../prompt';
 import type { BlocksState } from '../project/types';
 import { CodeIcon, KeepIcon, SparkIcon } from './icons';
+
+// Blockly's own questions ("Delete all 7 blocks?", text prompts on touch screens) use Amble's
+// dialog, never the browser's.
+Blockly.dialog.setConfirm((message, callback) => {
+  const deleting = /^delete/i.test(message);
+  void confirmUser({ title: deleting ? 'Delete Blocks' : 'Confirm', message, confirmLabel: deleting ? 'Delete' : 'OK', danger: deleting }).then(callback);
+});
+Blockly.dialog.setAlert((message, callback) => void alertUser({ title: 'Amble', message }).then(() => callback?.()));
+Blockly.dialog.setPrompt((message, defaultValue, callback) => {
+  void askUser({ title: 'Edit', label: message, defaultValue }).then((answer) => callback(answer ? answer.value : null));
+});
 
 /** The Blockly workspace for the selected sprite (or the stage). */
 export function BlocksEditor({ visible }: { visible: boolean }) {

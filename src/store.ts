@@ -17,10 +17,17 @@ export type OutputTab = 'game' | 'problems' | 'console' | 'code';
 /** A question shown in a Scratch-style dialog (New Variable, New Message...). */
 export interface PromptRequest {
   title: string;
+  /** The question: the text field's label, or the message of a confirmation. */
   label: string;
+  /** 'prompt' (default) asks for a name; 'confirm' asks yes or no; 'alert' only informs. */
+  kind?: 'prompt' | 'confirm' | 'alert';
   defaultValue?: string;
   /** Offer "For all sprites" / "For this sprite only". */
   scope?: boolean;
+  /** The main button's text ("OK" by default). */
+  confirmLabel?: string;
+  /** A destructive action: the main button is red. */
+  danger?: boolean;
 }
 
 export interface LogEntry {

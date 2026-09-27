@@ -19,6 +19,7 @@ import {
   UploadIcon,
 } from './icons';
 import { pickFile } from '../project/importers';
+import { askUser } from '../prompt';
 import { fileToDataUrl } from '../project/images';
 
 /** Backing canvas: 480 x 360 stage pixels at 2x. */
@@ -283,16 +284,20 @@ export function PaintEditor({ asset, isBackdrop, nameField, onChange }: PaintEdi
       return;
     }
     if (tool === 'text') {
-      const text = window.prompt('Text to draw:');
-      if (text) {
-        c.fillStyle = color;
-        c.font = `bold ${Math.max(12, size * 5)}px "Trebuchet MS", sans-serif`;
-        c.textBaseline = 'middle';
-        c.fillText(text, p.x, p.y);
+      void askUser({ title: 'Add Text', label: 'Text to draw:' }).then((answer) => {
+        const text = answer?.value.trim();
+        if (!text) {
+          undo.current.pop();
+          force((n) => n + 1);
+          return;
+        }
+        const g = ctx();
+        g.fillStyle = color;
+        g.font = `bold ${Math.max(12, size * 5)}px "Trebuchet MS", sans-serif`;
+        g.textBaseline = 'middle';
+        g.fillText(text, p.x, p.y);
         commit();
-      } else {
-        undo.current.pop();
-      }
+      });
       return;
     }
     (e.target as HTMLElement).setPointerCapture(e.pointerId);

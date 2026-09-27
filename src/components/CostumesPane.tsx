@@ -10,6 +10,7 @@ import type { CompiledAsset, CostumeAsset, ImageAsset } from '../project/types';
 import { PaintEditor } from './PaintEditor';
 import { ActionMenu, AssetTile, BackdropLibrary, ContextMenu, blankCostume, costumeThumb } from './SpritePane';
 import { Library } from './Library';
+import { confirmDelete } from '../prompt';
 import { moveItem, useReorder } from './useReorder';
 import { AddCharacterIcon, AddPictureIcon, BrushIcon, CubeIcon, KeepIcon, SearchIcon, SparkIcon, SurpriseIcon, TrashIcon, UploadIcon } from './icons';
 
@@ -202,7 +203,18 @@ export function CostumesPane() {
                   void exportAsset({ name: c.name, dataUrl: c.dataUrl, mime }).catch((err: Error) => notify(err.message, 'error'));
                 },
               },
-              ...(own.length > 1 || isStage ? [{ label: 'delete', danger: true, onClick: () => remove(menu.id) }] : []),
+              ...(own.length > 1 || isStage
+                ? [
+                    {
+                      label: 'delete',
+                      danger: true,
+                      onClick: () => {
+                        const c = own.find((x) => x.id === menu.id);
+                        if (c) void confirmDelete(noun, c.name).then((ok) => ok && remove(c.id));
+                      },
+                    },
+                  ]
+                : []),
             ]}
           />
         )}

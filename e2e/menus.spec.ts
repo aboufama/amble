@@ -101,10 +101,10 @@ test('projects saved before dropdowns keep their values', async ({ page }) => {
     { type: 'va_set', id: 'old2', x: 420, y: 160, fields: { VARIABLE: 'lives', VALUE: '3' } },
   );
 
-  page.on('dialog', (d) => void d.accept());
   await page.getByRole('button', { name: /File/ }).click();
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: 'Load from your computer' }).click()]);
   await chooser.setFiles({ name: 'old.amble', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(project)) });
+  await page.getByRole('dialog', { name: 'Replace Project' }).getByRole('button', { name: 'Replace' }).click();
 
   // The old value stays on the block; the menu lists the sprite's real costumes.
   await expect.poll(() => fieldValue(page, 'lo_costume', 'COSTUME')).toBe('the happy one');

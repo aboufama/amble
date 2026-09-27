@@ -24,3 +24,25 @@ export function answerPrompt(answer: PromptAnswer | null): void {
   useStore.getState().setPrompt(null);
   resolve?.(answer);
 }
+
+/** Asks a yes/no question in Amble's dialog (never the browser's): true if confirmed. */
+export async function confirmUser(options: { title: string; message: string; confirmLabel?: string; danger?: boolean }): Promise<boolean> {
+  const answer = await askUser({ kind: 'confirm', title: options.title, label: options.message, confirmLabel: options.confirmLabel, danger: options.danger });
+  return answer !== null;
+}
+
+/** Shows a message in Amble's dialog (never the browser's). */
+export async function alertUser(options: { title: string; message: string }): Promise<void> {
+  await askUser({ kind: 'alert', title: options.title, label: options.message });
+}
+
+/** "Delete Sprite": asks before deleting a sprite, costume, backdrop or sound. */
+export function confirmDelete(what: 'sprite' | 'costume' | 'backdrop' | 'sound', name: string): Promise<boolean> {
+  const What = what[0].toUpperCase() + what.slice(1);
+  return confirmUser({
+    title: `Delete ${What}`,
+    message: `Delete the ${what} "${name}"? You can bring it back with Edit > Restore ${What}.`,
+    confirmLabel: 'Delete',
+    danger: true,
+  });
+}

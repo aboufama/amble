@@ -258,7 +258,11 @@ export function Toast() {
   );
 }
 
-/** Scratch's question dialog: New Variable, Rename Variable, New Message, Make a Block. */
+/**
+ * Amble's one dialog for questions (Scratch's style): New Variable, Rename Variable, New
+ * Message, Make a Block, and every confirmation (delete, replace the project...). Enter
+ * confirms and Esc cancels.
+ */
 export function PromptDialog() {
   const prompt = useStore((s) => s.prompt);
   const [value, setValue] = useState('');
@@ -268,8 +272,35 @@ export function PromptDialog() {
     setValue(prompt.defaultValue ?? '');
     setScope('global');
   }, [prompt]);
+  const kind = prompt?.kind ?? 'prompt';
+  useEffect(() => {
+    if (!prompt || kind === 'prompt') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      answerPrompt({ value: '', scope: 'global' });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [prompt, kind]);
   if (!prompt) return null;
   const ok = () => answerPrompt({ value, scope });
+  const main = (
+    <button className={`ok ${prompt.danger ? 'danger' : ''}`} onClick={ok} autoFocus={kind !== 'prompt'}>
+      {prompt.confirmLabel ?? 'OK'}
+    </button>
+  );
+  if (kind !== 'prompt') {
+    return (
+      <Modal title={prompt.title} onClose={() => answerPrompt(null)} className={`prompt ${kind}`}>
+        <p className="prompt-message">{prompt.label}</p>
+        <div className="prompt-buttons">
+          {kind === 'confirm' && <button onClick={() => answerPrompt(null)}>Cancel</button>}
+          {main}
+        </div>
+      </Modal>
+    );
+  }
   return (
     <Modal title={prompt.title} onClose={() => answerPrompt(null)} className="prompt">
       <div className="prompt-label">{prompt.label}</div>
@@ -296,9 +327,7 @@ export function PromptDialog() {
       )}
       <div className="prompt-buttons">
         <button onClick={() => answerPrompt(null)}>Cancel</button>
-        <button className="ok" onClick={ok}>
-          OK
-        </button>
+        {main}
       </div>
     </Modal>
   );
