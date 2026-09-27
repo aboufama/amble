@@ -1,4 +1,4 @@
-import { compileProject, inputHash } from './compiler/compile';
+import { compileNeedsRequest, compileProject, inputHash, NO_ACCOUNT } from './compiler/compile';
 import { AiError, CHATGPT_MODEL_NAME } from './compiler/openai';
 import { cancelCodexLogin, fetchCodexStatus, startCodexLogin } from './compiler/chatgpt';
 import type { CodexStatus } from './compiler/codexTypes';
@@ -8,7 +8,7 @@ import { findTarget, useStore } from './store';
 import { uniqueName } from './project/ids';
 import { applyRename, deleteVariableDeclaration, renameScope, renameVariableDeclaration, type RenameChange } from './blocks/menus';
 import type { MenuKind } from './blocks/spec';
-import type { CompiledAsset, CostumeAsset, Project, SoundAsset, SpriteTarget } from './project/types';
+import type { CompiledAsset, CompiledGame, CostumeAsset, Project, SoundAsset, SpriteTarget } from './project/types';
 
 // -----------------------------------------------------------------------------
 // The stage player
@@ -25,11 +25,22 @@ export function getPlayer(): PlayerHost | null {
   return player;
 }
 
-/** Green flag: run the latest compiled game from a fresh start. */
+/**
+ * Green flag: runs the blocks as they are now. Changed blocks are compiled first: exact blocks
+ * instantly, and new words with a compile request.
+ */
 export function startGame(): void {
-  const { project, clearRunOutput, setOutputTab } = useStore.getState();
+  if (needsCompile(useStore.getState().project)) {
+    void compile(undefined, { fromFlag: true });
+    return;
+  }
+  runGame();
+}
+
+/** Runs the compiled game from a fresh start. */
+function runGame(): void {
+  const { project, clearRunOutput } = useStore.getState();
   clearRunOutput();
-  setOutputTab(project.compiled ? 'game' : 'problems');
   lastPreviewKey = packageKey(project);
   player?.load(buildRunPackage(project), true);
   player?.focus();
@@ -76,33 +87,47 @@ export function needsCompile(project: Project): boolean {
   return !project.compiled || project.compiled.mode !== project.mode || project.compiled.inputHash !== inputHash(project);
 }
 
-/** Sends the blocks to the AI, stores the compiled game, and starts it. */
-export async function compile(fixProblems?: string[]): Promise<void> {
+/**
+ * Compiles the blocks into the game and starts it. Exact blocks compile instantly; only words
+ * that are new (or, with `fixProblems`, the words of sprites that had problems) are sent in a
+ * compile request.
+ */
+export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean } = {}): Promise<void> {
   if (controller) return;
   const store = useStore.getState();
+  const project = store.project;
   controller = new AbortController();
-  store.setCompile({ status: 'running', progress: { stage: 'preparing', message: 'Reading your blocks' }, error: null });
-  try {
-    const compiled = await compileProject(store.project, {
-      settings: store.settings,
-      signal: controller.signal,
-      fixProblems,
-      onProgress: (progress) => useStore.getState().setCompile({ progress }),
-    });
+  // Instant compiles don't show progress: the game just starts.
+  const instant = !fixProblems?.length && !compileNeedsRequest(project);
+  store.setCompile({ status: instant ? 'idle' : 'running', progress: instant ? null : { stage: 'preparing', message: 'Reading your blocks' }, error: null });
+  const done = (compiled: CompiledGame) => {
     useStore.getState().update((p) => {
       p.compiled = compiled;
     });
     useStore.getState().setCompile({ status: 'done', progress: null });
-    useStore.getState().setOutputTab('game');
-    startGame();
+    runGame();
+  };
+  try {
+    done(
+      await compileProject(project, {
+        settings: store.settings,
+        signal: controller.signal,
+        fixProblems,
+        onProgress: instant ? undefined : (progress) => useStore.getState().setCompile({ progress }),
+      }),
+    );
   } catch (err) {
     const s = useStore.getState();
     if (controller?.signal.aborted) {
       s.setCompile({ status: 'idle', progress: null });
+    } else if (opts.fromFlag && err instanceof AiError && err.code === NO_ACCOUNT) {
+      // The flag still plays the game: blocks in words wait until there's an account.
+      done(await compileProject(project, { settings: s.settings, offline: true }));
+      s.notify('Blocks in your own words need a ChatGPT sign-in or an API key to compile. Until then they do nothing.', 'error');
     } else {
-      const message = err instanceof AiError || err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : String(err);
       s.setCompile({ status: 'error', progress: null, error: message });
-      if (/api key|Settings|sign in/i.test(message)) s.setDialog('settings');
+      if ((err instanceof AiError && (err.code === NO_ACCOUNT || err.status === 401)) || /api key|sign in/i.test(message)) s.setDialog('settings');
     }
   } finally {
     controller = null;
@@ -113,8 +138,8 @@ export function cancelCompile(): void {
   controller?.abort();
 }
 
-/** "Fix with AI": recompile with the problems from the last run. */
-export function fixWithAi(): void {
+/** "Fix": compiles the words again, with the problems from the last run. */
+export function fixProblems(): void {
   const { run, project } = useStore.getState();
   const problems = run.errors.map(
     (e) => `${e.target ? `${e.target}` : 'Game'}${e.script ? ` (${e.script})` : ''}: ${e.message}${e.line ? ` [line ${e.line}]` : ''}`,

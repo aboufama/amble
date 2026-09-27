@@ -120,6 +120,17 @@ export interface CompiledCode {
   runSource: string;
 }
 
+/** Code the compiler wrote for words in a block. It is kept, by content, until those words change. */
+export interface CompiledPiece {
+  /** Content hash of the words and where they are (see src/compiler/codegen.ts). */
+  key: string;
+  kind: string;
+  target: string;
+  /** The block, as text. */
+  block: string;
+  code: string;
+}
+
 export interface CompiledGame {
   createdAt: number;
   model: string;
@@ -132,6 +143,8 @@ export interface CompiledGame {
   code: CompiledCode[];
   sprites: CompiledSprite[];
   assets: CompiledAsset[];
+  /** The compiled words, reused by later compiles (missing in games compiled before them). */
+  pieces?: CompiledPiece[];
 }
 
 export interface Project {

@@ -5,6 +5,7 @@ import type { PhysicsOptions } from './physics';
 import { SpriteVisual, type CostumeResource } from './visuals';
 import { parseColor } from './effects';
 import { warnOnce } from './bridge';
+import { normalizeKey } from './input';
 import type { Game, TargetDef } from './game';
 
 const DEG = Math.PI / 180;
@@ -64,6 +65,8 @@ export abstract class Entity implements CoroutineOwner {
   /** @internal */ readonly _def: TargetDef;
   /** @internal */ _destroyed = false;
   /** @internal */ _hookErrors: Map<string, number> = new Map();
+  /** @internal Compiled scripts that are running, by method name. */
+  _running = new Map<string, Coroutine>();
   private _subs: Array<() => void> = [];
   private _sounds = new Set<SoundHandle>();
 
@@ -78,6 +81,41 @@ export abstract class Entity implements CoroutineOwner {
 
   get destroyed(): boolean {
     return this._destroyed;
+  }
+
+  /**
+   * @internal Starts one of this target's compiled scripts. If its trigger fires again while it
+   * still runs, `restart` starts it over (clicks, messages) or leaves it running (keys, timers).
+   */
+  _script(method: string, restart: boolean, label?: string): Coroutine | null {
+    const running = this._running.get(method);
+    if (running && !running.done) {
+      if (!restart) return running;
+      running.stop();
+    }
+    const fn = (this as unknown as Record<string, unknown>)[method];
+    if (typeof fn !== 'function') return null;
+    const co = this.game._scheduler.start(this, label ?? method, (fn as () => Generator<unknown, unknown, unknown>).call(this));
+    this._running.set(method, co);
+    return co;
+  }
+
+  /** @internal The ÷ block: dividing by zero gives 0 (never NaN or Infinity). */
+  _divide(a: number, b: number): number {
+    const q = Number(a) / Number(b);
+    return Number.isFinite(q) ? q : 0;
+  }
+
+  /** @internal The compare block: numbers when both sides are numbers, otherwise words (ignoring case). */
+  _compare(a: unknown, op: string, b: unknown): boolean {
+    const x = Number(a);
+    const y = Number(b);
+    if (String(a ?? '').trim() !== '' && String(b ?? '').trim() !== '' && Number.isFinite(x) && Number.isFinite(y)) {
+      return op === '<' ? x < y : op === '>' ? x > y : x === y;
+    }
+    const s = String(a ?? '').toLowerCase();
+    const t = String(b ?? '').toLowerCase();
+    return op === '<' ? s < t : op === '>' ? s > t : s === t;
   }
 
   // ---------- coroutines & timers (game clock) ----------
@@ -188,6 +226,8 @@ export class Sprite extends Entity {
   readonly node: TransformNode;
   /** True for instances created with clone()/spawn(). */
   isClone = false;
+  /** This sprite's own variables ("for this sprite only"). Each copy gets its own copy. */
+  vars: Record<string, any> = {};
   /** @internal */ _visual: SpriteVisual;
   /** @internal */ _visualRoot: TransformNode;
   /** @internal */ _body: PhysicsBody | null = null;
@@ -203,6 +243,8 @@ export class Sprite extends Entity {
   private _angle = 0;
   private _rotationStyle: 'all around' | 'left-right' | "don't rotate" = 'all around';
   private _animation: Coroutine | null = null;
+  private _walking: Coroutine | null = null;
+  private _jumping: Coroutine | null = null;
   private _bubble: HTMLDivElement | null = null;
   private _velocityProxy: VectorLike;
   private _tmp = new Vector3();
@@ -861,6 +903,82 @@ export class Sprite extends Entity {
       size: { width: max.x - min.x, height: max.y - min.y, depth: is2d ? 200 : Math.max(0.05, max.z - min.z) },
       center,
     };
+  }
+
+  // ---------- ready-made game behaviors (the Game blocks) ----------
+
+  /** Blocks measure distance in steps: pixels in 2D, and 100 steps to a meter in 3D. */
+  _fromSteps(steps: number): number {
+    const n = Number(steps) || 0;
+    return this.game.mode === '3d' ? n / 100 : n;
+  }
+
+  /**
+   * From now on the player steers this sprite. controls: "arrow keys", "left and right arrows",
+   * "WASD", "A and D" or "the mouse". speed: steps per second. In 3D, left/right turn and
+   * up/down walk forward and back.
+   */
+  walkWith(controls = 'arrow keys', speed = 200): void {
+    this._walking?.stop();
+    const c = String(controls).toLowerCase();
+    const letters = c === 'wasd' || c === 'a and d';
+    const sideways = c === 'left and right arrows' || c === 'a and d';
+    const mouse = c.includes('mouse');
+    const v = this._fromSteps(speed);
+    const input = this.game.input;
+    const is3d = this.game.mode === '3d';
+    this._walking = this.run(function* walk() {
+      for (;;) {
+        if (mouse) {
+          const target = is3d ? this.game.mouseGround() : { x: input.mouse.x, y: input.mouse.y };
+          if (target) this.moveTowards(target, v * this.game.dt);
+        } else {
+          const right = input.isDown(letters ? 'd' : 'right') ? 1 : 0;
+          const left = input.isDown(letters ? 'a' : 'left') ? 1 : 0;
+          const up = input.isDown(letters ? 'w' : 'up') ? 1 : 0;
+          const down = input.isDown(letters ? 's' : 'down') ? 1 : 0;
+          const dx = right - left;
+          const dy = sideways ? 0 : up - down;
+          if (is3d) {
+            this.turn(dx * 150 * this.game.dt);
+            const h = this.heading * DEG;
+            this.velocity.x = Math.sin(h) * dy * v;
+            this.velocity.z = Math.cos(h) * dy * v;
+          } else {
+            this.velocity.x = dx * v;
+            // With gravity, up and down belong to jumping and falling.
+            if (!this._isDynamic()) this.velocity.y = dy * v;
+            if (dx) this.flipX = dx < 0;
+          }
+        }
+        yield;
+      }
+    });
+  }
+
+  /** From now on the key makes this sprite jump when it stands on something. Turns on gravity. strength: steps per second upward. */
+  jumpWith(key = 'space', strength = 600): void {
+    this._jumping?.stop();
+    if (!this._isDynamic()) this.fallWithGravity();
+    const k = normalizeKey(key);
+    const v = this._fromSteps(strength);
+    this._jumping = this.run(function* jump() {
+      for (;;) {
+        if (this.game.input.wasPressed(k) && this.isOnGround()) this.velocity.y = v;
+        yield;
+      }
+    });
+  }
+
+  /** Falls and lands on solid things. In 2D the bottom of the screen is solid too. */
+  fallWithGravity(): void {
+    if (!this._isDynamic()) this.addPhysics({ type: 'dynamic', fixedRotation: true });
+    if (this.game.mode === '2d') this.game._ensureFloor();
+  }
+
+  /** Others can stand on this sprite, like a floor or a platform. */
+  beSolid(): void {
+    this.addPhysics({ type: 'static' });
   }
 
   // ---------- spawning ----------

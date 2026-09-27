@@ -136,7 +136,7 @@ export function parseJsonReply<T>(text: string): T {
   try {
     return JSON.parse(t) as T;
   } catch (err) {
-    throw new AiError(`The AI's reply wasn't valid JSON (${(err as Error).message}).`);
+    throw new AiError(`The compiler's reply wasn't valid JSON (${(err as Error).message}).`);
   }
 }
 
@@ -163,7 +163,7 @@ export async function chatJson<T>(t: Transport, req: ChatJsonRequest): Promise<T
       else throw err;
     }
   }
-  throw new AiError('The AI request failed.');
+  throw new AiError('The compile request failed.');
 }
 
 async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Promise<string> {
@@ -195,8 +195,8 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
       choices?: Array<{ message?: { content?: string | null; refusal?: string | null }; finish_reason?: string }>;
     };
     const choice = json.choices?.[0];
-    if (choice?.message?.refusal) throw new AiError(`The AI refused: ${choice.message.refusal}`);
-    if (choice?.finish_reason === 'length') throw new AiError('The AI ran out of room before finishing. Try simplifying, or use a model with a larger output limit.');
+    if (choice?.message?.refusal) throw new AiError(`The compile request was refused: ${choice.message.refusal}`);
+    if (choice?.finish_reason === 'length') throw new AiError('The compile ran out of room before finishing. Try fewer or shorter blocks in your own words, or a model with a larger output limit.');
     const content = choice?.message?.content ?? '';
     req.onProgress?.({ phase: 'writing', chars: content.length });
     return content;
@@ -229,7 +229,7 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
       } catch {
         continue;
       }
-      if (chunk.error) throw new AiError(chunk.error.message ?? 'The AI stream failed.');
+      if (chunk.error) throw new AiError(chunk.error.message ?? 'The compile request stopped partway.');
       const choice = chunk.choices?.[0];
       if (choice?.delta?.content) {
         content += choice.delta.content;
@@ -239,8 +239,8 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
       if (choice?.finish_reason) finish = choice.finish_reason;
     }
   }
-  if (refusal) throw new AiError(`The AI refused: ${refusal}`);
-  if (finish === 'length') throw new AiError('The AI ran out of room before finishing. Try simplifying, or use a model with a larger output limit.');
+  if (refusal) throw new AiError(`The compile request was refused: ${refusal}`);
+  if (finish === 'length') throw new AiError('The compile ran out of room before finishing. Try fewer or shorter blocks in your own words, or a model with a larger output limit.');
   return content;
 }
 

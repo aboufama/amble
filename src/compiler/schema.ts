@@ -3,29 +3,49 @@
 const str = (description?: string) => ({ type: 'string', ...(description ? { description } : {}) });
 const num = (description?: string) => ({ type: 'number', ...(description ? { description } : {}) });
 
-export interface CompileReply {
-  summary: string;
-  howToPlay: string;
-  sprites: Array<{ name: string; description: string; x: number; y: number; z: number; size: number; direction: number; visible: boolean }>;
-  assets: Array<{ target: string; kind: 'costume' | 'backdrop' | 'model' | 'sound'; name: string; description: string; width: number; height: number; reuse: boolean }>;
-  code: Array<{ target: string; source: string }>;
+export interface AssetRequest {
+  target: string;
+  kind: 'costume' | 'backdrop' | 'model' | 'sound';
+  name: string;
+  description: string;
+  width: number;
+  height: number;
+  reuse: boolean;
+}
+
+/** The reply to a compile request: code for each piece, plus any characters and art they need. */
+export interface PiecesReply {
+  pieces: Array<{ id: string; code: string }>;
+  sprites: Array<{ name: string; description: string; x: number; y: number; z: number; size: number; direction: number; visible: boolean; code: string }>;
+  assets: AssetRequest[];
   warnings: string[];
 }
 
-export const COMPILE_SCHEMA = {
+export const PIECES_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['summary', 'howToPlay', 'sprites', 'assets', 'code', 'warnings'],
+  required: ['pieces', 'sprites', 'assets', 'warnings'],
   properties: {
-    summary: str('2-5 sentences: what the game is and how you interpreted the blocks.'),
-    howToPlay: str('Short instructions for the player (controls and goal). Empty if not a game.'),
-    sprites: {
+    pieces: {
       type: 'array',
-      description: 'Sprites you add because the game needs them (not ones the author already has). Usually empty.',
+      description: 'One entry per piece you were asked to write.',
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['name', 'description', 'x', 'y', 'z', 'size', 'direction', 'visible'],
+        required: ['id', 'code'],
+        properties: {
+          id: str('The piece id, e.g. "p1".'),
+          code: str('JavaScript: the body of the piece method only (no signature, no braces around it).'),
+        },
+      },
+    },
+    sprites: {
+      type: 'array',
+      description: 'New characters your pieces need that the project does not have (usually empty).',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name', 'description', 'x', 'y', 'z', 'size', 'direction', 'visible', 'code'],
         properties: {
           name: str(),
           description: str('What it is and what it does.'),
@@ -35,12 +55,13 @@ export const COMPILE_SCHEMA = {
           size: num('Percent, usually 100.'),
           direction: num('2D angle or 3D heading in degrees.'),
           visible: { type: 'boolean' },
+          code: str('JavaScript: its whole class, `class <Name> extends Sprite { ... }`.'),
         },
       },
     },
     assets: {
       type: 'array',
-      description: 'Every compiled (AI-made) asset the game uses: new ones and reused ones.',
+      description: 'Art, 3D models and sounds your code uses that do not exist yet, plus earlier compiled ones to keep (reuse = true).',
       items: {
         type: 'object',
         additionalProperties: false,
@@ -56,20 +77,7 @@ export const COMPILE_SCHEMA = {
         },
       },
     },
-    code: {
-      type: 'array',
-      description: 'One entry per target (stage or sprite) that has behavior.',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['target', 'source'],
-        properties: {
-          target: str('Exact sprite name, or "Stage".'),
-          source: str('JavaScript: one class declaration (plus optional helpers before it).'),
-        },
-      },
-    },
-    warnings: { type: 'array', items: str(), description: 'Ambiguities, assumptions, or blocks you could not implement.' },
+    warnings: { type: 'array', items: str(), description: 'Assumptions you made, or words you could not turn into code.' },
   },
 } as const;
 

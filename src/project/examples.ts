@@ -1,4 +1,4 @@
-import { ambleCostumes, block, newProject, newSprite, svgAsset, synthSound, workspace } from './defaults';
+import { ambleCostumes, block, character, newProject, newSprite, svgAsset, synthSound, variable, workspace } from './defaults';
 import type { Project } from './types';
 
 const nightSky = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360">
@@ -13,89 +13,96 @@ const nightSky = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="36
   <path d="M0 320 Q 120 290 240 318 T 480 312 V360 H0z" fill="#3f8a4f"/>
 </svg>`;
 
-/** 2D: catch falling stars. The stars are not drawn, so the compiler makes them. */
+const starSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><path d="M22 3l5.6 11.9 13 1.6-9.6 9 2.5 12.9L22 32l-11.5 6.4 2.5-12.9-9.6-9 13-1.6z" fill="#ffd84d" stroke="#c98a00" stroke-width="3" stroke-linejoin="round"/><path d="M22 10l3 6.6 7.1.9-5.2 4.9" fill="none" stroke="#fff6c2" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+
+const coinSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" fill="#ffc933" stroke="#a86b00" stroke-width="5"/><circle cx="40" cy="40" r="23" fill="none" stroke="#ffe48a" stroke-width="4"/><path d="M40 24l4.5 9.5 10.3 1.2-7.6 7.1 2 10.2L40 47l-9.2 5 2-10.2-7.6-7.1 10.3-1.2z" fill="#fff1b8"/></svg>`;
+
+/**
+ * 2D: catch falling stars. Almost every block is exact, so the game compiles in an instant;
+ * two blocks are in the author's own words (the sparkles and the twinkling).
+ */
 export function starCatcher(): Project {
   const p = newProject('2d');
   p.title = 'Star Catcher';
-  p.notes = 'Stars fall from the top of the sky at random places. Move Amble left and right to catch them. Each catch is a point; after 3 missed stars the game is over. Stars fall a little faster over time.';
   p.stage.costumes = [svgAsset('night sky', nightSky, 480, 360)];
   p.variables = ['score', 'misses'];
   p.stage.blocks = workspace(
-    [
-      block('ev_start'),
-      block('va_set', { VARIABLE: 'score', VALUE: '0' }),
-      block('va_set', { VARIABLE: 'misses', VALUE: '0' }),
-      block('va_show', { VARIABLE: 'score' }),
-      block('va_show', { VARIABLE: 'misses' }),
-      block('so_music', { MUSIC: 'none' }),
-    ],
-    [block('ga_rule', { RULE: 'a new star falls every second or so, from a random spot at the top' })],
+    block('br_game', { WHAT: 'catch the falling stars before they reach the grass' }),
+    block('br_audience', { WHO: 'kids who are 6 to 10' }),
+    block('br_style', { STYLE: 'a cute night sky with glowing yellow stars' }),
+    block('br_lose', { COND: block('cd_compare', { A: variable('misses'), OP: '=', B: '3' }) }),
+    [block('ev_start'), block('mem_set', { VARIABLE: 'score', VALUE: '0' }), block('mem_set', { VARIABLE: 'misses', VALUE: '0' }), block('va_show', { VARIABLE: 'score' }), block('va_show', { VARIABLE: 'misses' })],
   );
+
   const amble = p.sprites[0];
-  amble.y = -120;
-  amble.description = 'The catcher. Walks along the grass at the bottom.';
+  amble.y = -130;
+  amble.description = 'The catcher. Walks along the grass.';
   amble.blocks = workspace(
-    [
-      block('ev_start'),
-      block('mo_goto', { WHERE: 'the bottom middle, standing on the grass' }),
-      block('mo_control', { CONTROLS: 'left and right arrow keys, quick and snappy, stay on screen' }),
-      block('lo_animate', { HOW: 'walk while moving' }),
-    ],
-    [block('ev_when', { EVENT: 'I touch a falling star' }), block('va_change', { VARIABLE: 'score', AMOUNT: '1' }), block('so_play', { SOUND: 'pop' }), block('ga_effect', { HOW: 'a small burst of yellow sparkles where the star was' })],
-    [block('ev_when', { EVENT: 'a star reaches the grass without being caught' }), block('va_change', { VARIABLE: 'misses', AMOUNT: '1' }), block('co_if', { CONDITION: 'misses reaches 3' }, [block('ga_over', { HOW: 'and show the final score' })])],
+    [block('ev_start'), block('mv_goto_xy', { X: 0, Y: -130 }), block('kit_walk', { KEYS: 'left and right arrows', SPEED: 280 }), block('lk_animate', { FPS: 8 })],
+    [block('ev_touch', { WHO: character('Star') }), block('so_play', { SOUND: 'pop' }), block('ga_effect', { HOW: 'a small burst of yellow sparkles' })],
+    block('ru_check', { COND: block('cd_compare', { A: variable('score'), OP: '>', B: '-1' }) }),
   );
+
+  const star = newSprite('Star', '2d', [svgAsset('star', starSvg, 44, 44)], 0, 190);
+  star.description = 'A falling star.';
+  star.blocks = workspace(
+    [block('ev_start'), block('lo_hide'), block('co_forever', {}, [block('cp_make', { WHO: 'me' }), block('fl_wait', { SECONDS: block('nm_random', { A: 0.6, B: 1.3 }) })])],
+    [
+      block('ev_created'),
+      block('mv_goto_xy', { X: block('nm_random', { A: -210, B: 210 }), Y: 190 }),
+      block('lo_show'),
+      block('fl_repeat_until', { COND: block('cd_compare', { A: block('nm_my', { PROP: 'y' }), OP: '<', B: '-165' }) }, [
+        block('mv_move', { DIR: 'down', STEPS: block('nm_math', { A: 3, OP: '+', B: block('nm_math', { A: variable('score'), OP: '÷', B: 5 }) }) }),
+        block('fl_if', { COND: block('cd_touching', { WHO: character('Amble') }) }, [block('mem_change', { VARIABLE: 'score', AMOUNT: 1 }), block('co_delete_clone')]),
+      ]),
+      block('mem_change', { VARIABLE: 'misses', AMOUNT: 1 }),
+      block('co_delete_clone'),
+    ],
+    block('ru_always', { RULE: 'twinkle and spin slowly as I fall' }),
+  );
+  p.sprites.push(star);
   return p;
 }
 
-/** 3D: walk around hills collecting coins. */
+/** 3D: walk the hills collecting coins before time runs out. */
 export function coinHills(): Project {
   const p = newProject('3d');
   p.title = 'Coin Hills';
-  p.notes = 'A small 3D adventure: walk around a grassy island and collect all 10 floating, spinning coins before the timer runs out (60 seconds).';
+  p.variables = ['coins'];
+  p.stage.blocks = workspace(
+    block('br_game', { WHAT: 'collect all 10 coins on the hills before time runs out' }),
+    block('br_audience', { WHO: 'kids who are 8 to 12' }),
+    block('br_style', { STYLE: 'bright, friendly low-poly' }),
+    block('br_win', { COND: block('cd_compare', { A: variable('coins'), OP: '=', B: '10' }) }),
+    block('br_lose', { COND: block('cd_compare', { A: block('nm_timer'), OP: '>', B: '60' }) }),
+    [block('ev_start'), block('mem_set', { VARIABLE: 'coins', VALUE: '0' }), block('va_show', { VARIABLE: 'coins' }), block('ga_do', { ACTION: 'build a few rolling green hills, some low-poly trees and rocks around the edges' })],
+  );
+
   const amble = p.sprites[0];
   amble.description = 'The player, a small walking creature (a flat cutout in the 3D world).';
   amble.sounds = [synthSound('coin', 'coin'), synthSound('jump', 'jump')];
   amble.blocks = workspace(
-    [
-      block('ev_start'),
-      block('wo_world', { HOW: 'a green island with gentle hills, a few low-poly trees and rocks, surrounded by blue water' }),
-      block('wo_camera', { HOW: 'third person, behind me, smooth' }),
-      block('mo_physics', { HOW: 'solid, falls with gravity, does not tip over' }),
-      block('mo_control', { CONTROLS: 'WASD or arrow keys to walk and turn; space to jump' }),
-    ],
-    [block('ev_when', { EVENT: 'I touch a coin' }), block('va_change', { VARIABLE: 'coins', AMOUNT: '1' }), block('so_play', { SOUND: 'coin' }), block('ga_effect', { HOW: 'golden sparkle burst' })],
+    [block('ev_start'), block('kit_gravity'), block('kit_walk', { KEYS: 'arrow keys', SPEED: 450 }), block('kit_jump', { KEY: 'space', POWER: 750 }), block('kit_follow')],
+    [block('ev_touch', { WHO: character('Coin') }), block('mem_change', { VARIABLE: 'coins', AMOUNT: 1 }), block('so_play', { SOUND: 'coin' })],
   );
-  p.variables = ['coins', 'time left'];
-  p.stage.blocks = workspace(
-    [
-      block('ev_start'),
-      block('va_set', { VARIABLE: 'coins', VALUE: '0' }),
-      block('va_set', { VARIABLE: 'time left', VALUE: '60 seconds' }),
-      block('va_show', { VARIABLE: 'coins' }),
-      block('va_show', { VARIABLE: 'time left' }),
-      block('wo_build', { WHAT: '10 spinning gold coins floating a little above the ground, spread around the island' }),
-    ],
-    [block('ga_rule', { RULE: 'collect all 10 coins to win; if the 60 second timer runs out first, it is game over' })],
+
+  const coin = newSprite('Coin', '3d', [svgAsset('coin', coinSvg, 80, 80)], 0, 0);
+  coin.size = 60;
+  coin.description = 'A floating gold coin.';
+  coin.blocks = workspace(
+    [block('ev_start'), block('lo_hide'), block('fl_repeat', { TIMES: 10 }, [block('cp_make', { WHO: 'me' })])],
+    [block('ev_created'), block('mv_goto', { WHO: 'random' }), block('lo_show')],
+    [block('ev_touch', { WHO: character('Amble') }), block('co_delete_clone')],
+    block('ru_always', { RULE: 'spin and bob gently up and down' }),
   );
-  const flag = newSprite('Signpost', '3d', [], 3, 0);
-  flag.costumes = [
-    svgAsset(
-      'sign',
-      `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="160" viewBox="0 0 120 160"><rect x="54" y="60" width="12" height="100" rx="3" fill="#8b5a2b" stroke="#4a2f14" stroke-width="3"/><rect x="6" y="8" width="108" height="60" rx="8" fill="#f4d58d" stroke="#4a2f14" stroke-width="4"/><text x="60" y="46" font-family="Trebuchet MS, sans-serif" font-size="22" font-weight="bold" text-anchor="middle" fill="#4a2f14">COINS!</text></svg>`,
-      120,
-      160,
-    ),
-  ];
-  flag.description = 'A wooden sign near the start that says COINS!';
-  flag.blocks = workspace([block('ev_click'), block('lo_say_for', { TEXT: 'Find all 10 coins!', TIME: '2 seconds' })]);
-  p.sprites.push(flag);
+  p.sprites.push(coin);
   return p;
 }
 
 /** Blank projects and examples offered in the File menu. */
 export const EXAMPLES: Array<{ id: string; title: string; description: string; make(): Project }> = [
-  { id: 'star-catcher', title: 'Star Catcher (2D)', description: 'Catch falling stars. The compiler draws the stars.', make: starCatcher },
-  { id: 'coin-hills', title: 'Coin Hills (3D)', description: 'Walk an island collecting coins, with physics.', make: coinHills },
+  { id: 'star-catcher', title: 'Star Catcher (2D)', description: 'Catch the falling stars. Almost all exact blocks.', make: starCatcher },
+  { id: 'coin-hills', title: 'Coin Hills (3D)', description: 'Walk, jump and collect coins before time runs out.', make: coinHills },
 ];
 
 export function blankProject(mode: '2d' | '3d'): Project {

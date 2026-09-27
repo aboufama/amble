@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { fixWithAi } from '../actions';
+import { fixProblems } from '../actions';
 import { useStore, type OutputTab } from '../store';
 import { Modal } from './Dialogs';
 import { CodeIcon, CopyIcon, WandIcon } from './icons';
@@ -71,7 +71,7 @@ export function ProblemsDialog() {
                 className="fix-btn"
                 onClick={() => {
                   setOpen(false);
-                  fixWithAi();
+                  fixProblems();
                 }}
                 disabled={compiling}
               >

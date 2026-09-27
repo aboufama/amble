@@ -1,42 +1,31 @@
 import { serializeBlocks } from './serialize';
-import { globalVariables } from '../blocks/menus';
-import type { CompiledGame, CostumeAsset, Project, SoundAsset, SpriteTarget, Target, WorldMode } from '../project/types';
+import { projectVariables, type PieceRequest, type TargetPlan } from './codegen';
+import type { CompiledGame, CompiledPiece, CostumeAsset, Project, SoundAsset, SpriteTarget, Target, WorldMode } from '../project/types';
 
 // -----------------------------------------------------------------------------
-// System prompt
+// System prompt: writing the pieces (the parts of blocks written in the author's own words)
 // -----------------------------------------------------------------------------
 
-const INTRO = `You are the compiler inside Amble, a Scratch-style game maker. The author builds programs from Scratch-like blocks, but every block input is plain English instead of numbers or variables. You turn the whole block program into a complete, working game for the Amble engine (built on Babylon.js with Havok physics), and list any art, models or sounds the game needs that the author didn't make.
+const INTRO = `You are the compiler inside Amble, a block-based game maker for kids. Amble compiles most blocks itself. Some blocks hold the author's own words: do [...], do [...] for (1) seconds, rule: [...], always: [...], never: [...], physics: [...], camera: [...], particles: [...], a condition or a value written in words, and the text of win the game / game over. You turn each of those into a small piece of JavaScript: the body of one method on the sprite's class, which Amble calls from the compiled scripts.
 
-# How to read the program
-- The project has a Stage and sprites. Each has its own scripts, costumes and sounds.
-- A script starts with a "when ..." block; the blocks under it run in order; indented blocks are inside a loop or branch. Text in [brackets] is what the author typed into a block.
-- A value marked with ▾, like [costume2 ▾], was picked from a dropdown menu. It is an exact name: a costume, backdrop, sound, sprite, message, variable or custom block listed in the project, a key, or one of the block's fixed options. Use it exactly as written (same spelling and case). If such a name isn't listed in the project (an older project may have one), treat it as a request: add the missing asset, or pick the closest match and mention it in warnings.
-- Read the text like a thoughtful game designer: choose concrete numbers that feel good (speeds, sizes, timings, spawn rates) and fill in the obvious details a playable game needs (keep the player on screen, show the score if there is one, a clear win/lose moment if implied, sensible difficulty).
-- Stay faithful to what the author described. Don't add unrelated features, but make what they described feel finished and fun.
-- "Rule:" lines are always-true facts about the game. "Note from the author" lines are extra hints.
-- When something is ambiguous, pick the most fun interpretation and mention it in warnings.
+# Reading the program
+- The project has a Stage and sprites (characters). Each has scripts: a trigger ("when ⚑ clicked", "when [space ▾] key pressed", "when I touch (Star)"...) and the blocks under it, run in order. Indented blocks are inside a loop or an if.
+- Notation: [words] are the author's own words; "text" is exact text typed into a slot; (10) is a number; [name ▾] is a menu choice (an exact name); (Fox) is a character; <...> is a condition.
+- Standalone lines hold for the whole game: the brief (game, made for, art style, you win when, you lose when), rules and checks.
+- The pieces you write are marked like ⟨p3⟩ after their block. Amble compiles every other block itself: read them to know what already happens (movement, gravity, scores...) and don't do it twice.
+- Read the words like a thoughtful game designer: pick concrete numbers that feel good, stay faithful to what the author wrote, and fit the brief (who it's made for, the art style). When something is ambiguous, choose the most fun reading and say so in warnings.
 
-Blocks -> engine:
-- when green flag clicked -> start()   (clones use onSpawn() instead)
-- when [key ▾] key pressed -> onKeyDown(key): "space" -> "space", "up arrow" -> "up", "down arrow" -> "down", "left arrow" -> "left", "right arrow" -> "right", letters and digits as is; "any" -> any key
-- when this sprite clicked -> onClick();  when stage clicked -> the stage's onClick()
-- when backdrop switches to [name ▾] -> onMessage(name) with name === "backdrop:" + the backdrop name (the engine broadcasts it on every switch)
-- when I receive [message ▾] -> onMessage(name, data);  broadcast [message ▾] -> this.broadcast(name);  broadcast and wait -> yield* this.broadcastAndWait(name)
-- when [anything else] -> implement with the right mechanism (checks in update, onCollide, onMessage, timers...)
-- when I start as a clone -> onSpawn();  create clone of [myself ▾] -> this.clone();  create clone of [Name ▾] -> this.game.spawn("Name", {...});  delete this clone -> this.destroy()
-- stop [all ▾] -> end the whole game (this.game.over() with a fitting message, or this.game.pause() if nothing should show);  stop [this script ▾] -> return from this script;  stop [other scripts in sprite ▾] -> stop this sprite's other running scripts and timers, then continue
-- switch costume to [name ▾] -> this.costume = "name";  switch backdrop to [name ▾] -> this.game.backdrop = "name";  [next backdrop ▾] -> this.game.nextBackdrop();  [previous backdrop ▾] / [random backdrop ▾] -> set this.game.backdrop by index
-- start sound [name ▾] -> this.playSound("name");  play sound [name ▾] until done -> yield* this.playSoundUntilDone("name")
-- set rotation style [style ▾] -> this.rotationStyle = "style";  go to [front ▾] / [back ▾] layer -> this.bringToFront() / this.sendToBack()
-- set / change [effect ▾] effect (Scratch's graphic effects, 0 = none): ghost -> this.opacity = 1 - ghost / 100; color -> shift this.tint's hue (color 0 = no tint); brightness -> this.tint toward white (positive) or black (negative); fisheye, whirl, pixelate, mosaic -> approximate with what the engine can do (size, rotation, tint, opacity) and say so in warnings;  clear graphic effects -> this.opacity = 1, this.tint = null
-- define [name] -> a method;  run [name ▾] -> call it (a generator if it waits: yield* this.name())
-- forever -> per-tick logic in update(dt), or a \`for (;;) { ...; yield; }\` loop inside a coroutine when it follows other steps
-- sequences with wait / glide / say for / repeat -> coroutines: write the hook as a generator, e.g. \`*start() { ...; yield* this.wait(1); ... }\`
-- wait until [x] -> yield* this.waitUntil(() => x);  repeat until [x] -> while (!x) { ...; yield; }
-- set / change [variable ▾] -> this.game.vars.name for variables for all sprites, a field like this.speed for a sprite's own variable; show [variable ▾] on screen -> this.game.ui.value(label, () => value)
-- control me with [..] -> read this.game.input in update(dt);  physics: [..] -> this.addPhysics({...});  camera: [..] -> this.game.camera;  particles: [..] -> this.game.effects.burst({...})
-- game over / win the game -> this.game.over(message) / this.game.win(message)`;
+# Pieces
+Reply with the BODY of each piece's method only (no signature, no braces around it):
+- action: body of \`*piece()\`. Runs where its block is; the script goes on when it returns. Use yield* this.wait(s), yield* this.tween(...), yield* this.glideTo(...) for anything that takes time. When "repeats" is yes, it runs again every frame: do one frame's worth of work (e.g. move by speed * this.game.dt) and return; never loop or wait long.
+- timed: body of \`*piece(seconds)\`. Like an action, but it takes \`seconds\` of game time (the author picks the number; it can change without compiling again).
+- condition: body of \`piece()\` that returns true or false. It's checked often (every frame): keep it quick, with no side effects.
+- value: body of \`piece()\` that returns a number or text.
+- message: body of \`piece()\` that returns the text for the end-of-game banner ("" for none).
+- behavior: body of \`*piece()\`, started for the sprite and for each copy of it when the game starts. It runs in the background all game, usually \`for (;;) { ...; yield; }\`.
+- rule: body of \`*piece()\`, started once when the game starts. Make the rule true for the whole game: set things up, then watch in a \`for (;;) { ...; yield; }\` loop if needed.
+Pieces of one sprite share its fields (this.something), and every piece can use the game's variables and the other characters. Reuse the names in "Code already written" for that sprite. Give any field you add a starting value before using it (e.g. \`this.speed ??= 200\`).
+Only the engine API below: no imports, DOM, network, timers or async.`;
 
 const COMMON_API = `# Amble engine API
 Each sprite is \`class <ClassName> extends Sprite { ... }\`; the stage is \`class <ClassName> extends Stage { ... }\`. You never construct them: the engine creates one instance per sprite at its editor position/size/costume/visibility, plus any clones. Use the class names given in the project. Prefer start() over constructors (if you write a constructor it must be \`constructor(...a) { super(...a); ... }\`).
@@ -102,6 +91,14 @@ Sprites and clones:
 
 Sound: this.playSound(name, { volume, pitch, loop }) -> { stop() }; yield* this.playSoundUntilDone(name); this.stopSounds(); this.game.music(name) loops music (null stops); this.game.stopAllSounds()
 
+Ready-made behaviors (the exact blocks use these; you can too):
+  this.walkWith(controls, speed)   the player steers this sprite from now on. controls: "arrow keys" | "left and right arrows" | "WASD" | "A and D" | "the mouse"; speed in steps per second
+  this.jumpWith(key, strength)     the key makes it jump when it stands on something (turns on gravity); strength in steps per second
+  this.fallWithGravity(), this.beSolid()   gravity (in 2D the bottom of the screen is solid) / something others stand on
+  Blocks measure distance in steps: pixels in 2D, and 100 steps = 1 meter in 3D.
+
+Variables: the author's variables "for all sprites" are this.game.vars["name"]; "for this sprite only" are this.vars["name"] (each copy has its own). this.game.lastAnswer is what the player typed at the last ask.
+
 The game (this.game):
   vars: shared object for game-wide state (score, lives, level). Initialize it in the stage's start().
   time (seconds since start), dt, random(min, max) (integers if both are integers), broadcast(name, data), on(name, fn)
@@ -135,27 +132,20 @@ const API_3D = `# 3D world (this project)
 - this.game.mouseGround() -> the point on the ground under the mouse (or null).
 - Build level geometry and scenery in code with BABYLON.MeshBuilder (CreateBox, CreateCylinder, CreateSphere, CreateGround, CreateTorus...) and StandardMaterial/PBRMaterial colors. Call this.game.world.addShadowCaster(mesh) so they cast shadows, set mesh.receiveShadows = true, and make solid ones collidable with new BABYLON.PhysicsAggregate(mesh, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, this.game.scene).`;
 
-const OUTPUT_RULES = `# Output
-Reply with JSON matching the schema.
-- code: one entry per target that has any behavior, including sprites you add. Each source is one class declaration (helper functions or constants may come before it), using the class name given for that target and extending Sprite (or Stage for the stage). No imports/exports, no DOM (document, window), no network, no timers, no async.
-- Use costume, backdrop and sound names exactly as listed. You may only use names that exist or that you add to assets.
-- Initialize game-wide values in the stage's start(). Reset state at the start of the game so it plays the same every time.
-- assets: art, 3D models and sounds the game needs that the author doesn't have. They are generated from your description and shown to the author as compiled assets. Also list every previously compiled asset you want to keep, with reuse = true (same target, kind and name). Reuse them when they still fit, so the game looks the same between builds.
-  - kind "costume": 2D sprite image (in 3D: an upright cutout). width/height in pixels (16..400).
-  - kind "backdrop": stage background image. 480 x 360 in 2D.
-  - kind "model" (3D only): a low-poly model built from primitive shapes. width/height = rough size in meters (a person is ~1.8 tall).
-  - kind "sound": a short sound effect or jingle. width = height = 0.
-  - In the description, be specific about colors, shapes, style and pose (e.g. "a round red apple with a green leaf, side view").
-  - In 3D, build big scenery (floors, walls, platforms, trees) with MeshBuilder in code instead of assets.
-- sprites: new sprites the game needs that the author doesn't have (e.g. enemies, bullets, coins). Each needs at least one costume (or model) asset whose target is the new sprite's name, and its own code entry.
-- Never rename or remove the author's sprites.`;
+const OUTPUT_RULES = `# Characters, art and sound
+- Use costume, backdrop and sound names exactly as listed. Only use names that exist or that you add to assets.
+- If a piece needs a character that doesn't exist (enemies, coins, bullets...), add it to "sprites" with its whole class (\`class <Name> extends Sprite { ... }\`, same API, hooks like start() and update(dt)) and give it a costume (or a model in 3D) in "assets" with the new sprite's name as the target.
+- assets: art, 3D models and sounds your code uses that don't exist yet. They are made from your description, in the game's art style.
+  - costume: 2D image (in 3D an upright cutout); width/height in pixels (16..400). backdrop: 480 x 360 in 2D. model (3D only): made of primitive shapes; width/height in meters. sound: width = height = 0.
+  - Describe colors, shapes, style and pose specifically (e.g. "a round red apple with a green leaf, side view").
+  - Earlier compiled assets are kept; list one again only to replace it.`;
 
-export function systemPrompt(mode: WorldMode): string {
+export function piecesSystemPrompt(mode: WorldMode): string {
   return [INTRO, COMMON_API, mode === '3d' ? API_3D : API_2D, OUTPUT_RULES].join('\n\n');
 }
 
 // -----------------------------------------------------------------------------
-// Project description (user prompt)
+// Class names
 // -----------------------------------------------------------------------------
 
 const RESERVED = new Set(['Sprite', 'Stage', 'BABYLON', 'Vector3', 'Color3', 'Math', 'Object', 'Array', 'String', 'Number', 'Game', 'Date', 'JSON', 'Map', 'Set']);
@@ -193,6 +183,10 @@ export function classNameFor(name: string, taken: Set<string>): string {
   return n;
 }
 
+// -----------------------------------------------------------------------------
+// The compile request: the project, and the pieces to write
+// -----------------------------------------------------------------------------
+
 function describeCostume(c: CostumeAsset, mode: WorldMode): string {
   if (c.kind === 'model') return `"${c.name}" (3D model${c.recipe ? '' : ', uploaded .glb'})`;
   const w = Math.round(c.width / (c.resolution || 1));
@@ -204,72 +198,96 @@ function describeSound(s: SoundAsset): string {
   return `"${s.name}" (${s.duration.toFixed(1)} s)`;
 }
 
-function describeTarget(t: Target, className: string, project: Project): string {
+export interface PieceTask {
+  /** Short id used in the request and the reply ("p1"). */
+  id: string;
+  request: PieceRequest;
+}
+
+export interface PiecesPromptInput {
+  project: Project;
+  plans: TargetPlan[];
+  tasks: PieceTask[];
+  /** Pieces that are already written, by key (shown for consistency). */
+  written: ReadonlyMap<string, CompiledPiece>;
+  /** "Fix": problems from the last run. */
+  problems?: string[];
+}
+
+function describeTarget(t: Target, plan: TargetPlan, input: PiecesPromptInput, ids: ReadonlyMap<string, string>): string {
   const lines: string[] = [];
-  const mode = project.mode;
-  if (t.kind === 'stage') {
-    lines.push(`## Stage - class name: ${className}`);
-  } else {
-    lines.push(`## Sprite "${t.name}" - class name: ${className}`);
-  }
-  if (t.description.trim()) lines.push(`Author's description: ${t.description.trim()}`);
+  const mode = input.project.mode;
+  lines.push(t.kind === 'stage' ? `## Stage (class ${plan.className})` : `## Sprite "${t.name}" (class ${plan.className})`);
+  if (t.description.trim()) lines.push(`About it: ${t.description.trim()}`);
   if (t.kind === 'sprite') {
     const s = t as SpriteTarget;
     if (s.variables?.length) lines.push(`Variables for this sprite only: ${s.variables.map((v) => `"${v}"`).join(', ')}`);
-    const pos = mode === '3d' ? `x=${s.x}, y=${s.y}, z=${s.z}, heading ${s.direction}°` : `x=${s.x}, y=${s.y}, angle ${s.direction}°, rotation style "${s.rotationStyle}"`;
+    const pos = mode === '3d' ? `x=${s.x}, y=${s.y}, z=${s.z}, heading ${s.direction}°` : `x=${s.x}, y=${s.y}, direction ${s.direction}°, rotation style "${s.rotationStyle}"`;
     lines.push(`Starts at ${pos}, size ${s.size}%, ${s.visible ? 'visible' : 'hidden'}`);
   }
-  const costumes = t.costumes.map((c) => describeCostume(c, mode));
-  const current = t.costumes[t.currentCostume]?.name;
   const label = t.kind === 'stage' ? 'Backdrops' : 'Costumes';
-  lines.push(`${label} (made by the author): ${costumes.length ? costumes.join(', ') : '(none)'}${current ? `; current: "${current}"` : ''}`);
-  lines.push(`Sounds (made by the author): ${t.sounds.length ? t.sounds.map(describeSound).join(', ') : '(none)'}`);
-  const { text, scripts } = serializeBlocks(t.blocks);
-  lines.push(scripts || text ? 'Scripts:' : 'Scripts: (none)');
-  if (text) lines.push(text.split('\n').map((l) => '  ' + l).join('\n'));
+  const current = t.costumes[t.currentCostume]?.name;
+  lines.push(`${label}: ${t.costumes.length ? t.costumes.map((c) => describeCostume(c, mode)).join(', ') : '(none)'}${current ? `; current: "${current}"` : ''}`);
+  lines.push(`Sounds: ${t.sounds.length ? t.sounds.map(describeSound).join(', ') : '(none)'}`);
+  const { text } = serializeBlocks(t.blocks, {
+    mark: (b) => {
+      const key = b.id ? plan.markers.get(b.id) : undefined;
+      const id = key ? ids.get(key) : undefined;
+      return id ? `⟨${id}⟩` : undefined;
+    },
+  });
+  lines.push(text ? `Program:\n${text.split('\n').map((l) => '  ' + l).join('\n')}` : 'Program: (none)');
+  const written = plan.pieces.filter((p) => !ids.has(p.key) && input.written.has(p.key));
+  if (written.length) {
+    lines.push('Code already written for this target\'s words (keep using its names):');
+    for (const p of written) lines.push(`### ${p.block}\n\`\`\`js\n${input.written.get(p.key)!.code}\n\`\`\``);
+  }
   return lines.join('\n');
 }
 
-function describePreviousAssets(compiled: CompiledGame | null): string {
+function describeCompiled(compiled: CompiledGame | null): string {
   if (!compiled || (!compiled.assets.length && !compiled.sprites.length)) return '';
-  const lines = ['## Previously compiled assets (keep them with reuse = true when they still fit)'];
-  for (const a of compiled.assets) {
-    const kind = a.kind === 'sound' ? 'sound' : a.kind === 'model' ? 'model' : 'costume';
-    const size = a.kind === 'image' ? ` ${a.width / (a.resolution || 1)}x${a.height / (a.resolution || 1)}` : '';
-    lines.push(`- target "${a.targetName}" ${kind} "${a.name}"${size}: ${a.request}`);
-  }
+  const lines: string[] = [];
   if (compiled.sprites.length) {
-    lines.push('## Sprites added by the previous build (add them again in `sprites` if still needed)');
+    lines.push('## Characters added by earlier compiles (they exist; use them by name)');
     for (const s of compiled.sprites) lines.push(`- "${s.name}": ${s.description}`);
   }
+  if (compiled.assets.length) {
+    lines.push('## Art and sounds made by earlier compiles (they exist)');
+    for (const a of compiled.assets) {
+      const kind = a.kind === 'sound' ? 'sound' : a.kind === 'model' ? 'model' : 'costume';
+      lines.push(`- ${kind} "${a.name}" of "${a.targetName}": ${a.request}`);
+    }
+  }
   return lines.join('\n');
 }
 
-export interface FixContext {
-  problems: string[];
-  /** Previous code per target name. */
-  previous: Array<{ target: string; source: string }>;
-}
-
-/** Everything the compiler needs to know about the project, as text. */
-export function buildUserPrompt(project: Project, names: Map<string, string>, fix?: FixContext): string {
+/** The compile request's text: the whole project for context, then the pieces to write. */
+export function piecesUserPrompt(input: PiecesPromptInput): string {
+  const { project, plans, tasks } = input;
+  const ids = new Map(tasks.map((t) => [t.request.key, t.id]));
   const parts: string[] = [];
   parts.push(`Game title: ${project.title || 'Untitled'}`);
   parts.push(project.mode === '3d' ? 'World: 3D' : 'World: 2D (480 x 360 stage)');
-  if (project.notes.trim()) parts.push(`Author's description of the game: ${project.notes.trim()}`);
-  const variables = globalVariables(project);
+  if (project.notes.trim()) parts.push(`The author's notes: ${project.notes.trim()}`);
+  const brief = plans.flatMap((p) => p.brief);
+  if (brief.length) parts.push(['Brief:', ...brief.map((b) => `- ${b}`)].join('\n'));
+  const variables = projectVariables(project);
   if (variables.length) parts.push(`Variables for all sprites: ${variables.map((v) => `"${v}"`).join(', ')}`);
-  parts.push(describeTarget(project.stage, names.get(project.stage.id) ?? 'StageScript', project));
-  for (const s of project.sprites) parts.push(describeTarget(s, names.get(s.id) ?? pascal(s.name), project));
-  const prev = describePreviousAssets(project.compiled);
-  if (prev) parts.push(prev);
-  if (fix) {
-    parts.push(['## The last build had these problems', ...fix.problems.map((p) => `- ${p}`)].join('\n'));
-    parts.push(
-      ['## Code from the last build', ...fix.previous.map((p) => `### ${p.target}\n\`\`\`js\n${p.source}\n\`\`\``)].join('\n'),
-    );
-    parts.push('Fix these problems. Keep everything that already works the same, and reply with the complete result (all code entries and assets).');
+  const byId = new Map(plans.map((p) => [p.targetId, p]));
+  for (const t of [project.stage, ...project.sprites]) {
+    const plan = byId.get(t.id);
+    if (plan) parts.push(describeTarget(t, plan, input, ids));
   }
+  const compiled = describeCompiled(project.compiled);
+  if (compiled) parts.push(compiled);
+  if (input.problems?.length) parts.push(['## The last run had these problems (fix them in the pieces below)', ...input.problems.map((p) => `- ${p}`)].join('\n'));
+  parts.push(
+    [
+      '## Write these pieces',
+      ...tasks.map(({ id, request: r }) => `- ${id}: ${r.kind}${r.kind === 'action' || r.kind === 'timed' ? `, repeats: ${r.inLoop ? 'yes' : 'no'}` : ''}, in "${r.targetName}" (${r.script}): ${r.block}`),
+    ].join('\n'),
+  );
   return parts.join('\n\n');
 }
 

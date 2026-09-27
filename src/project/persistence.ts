@@ -2,6 +2,7 @@ import { get, set } from 'idb-keyval';
 import { uid } from './ids';
 import type { Project, SpriteTarget } from './types';
 import { DEFAULT_SETTINGS, type AiSettings } from '../compiler/openai';
+import { migrateProject } from './migrate';
 
 const PROJECT_KEY = 'amble:project';
 const SETTINGS_KEY = 'amble:settings';
@@ -10,7 +11,7 @@ const SETTINGS_KEY = 'amble:settings';
 export async function loadSavedProject(): Promise<Project | null> {
   try {
     const p = await get<Project>(PROJECT_KEY);
-    return p && isProject(p) ? p : null;
+    return p && isProject(p) ? migrateProject(p) : null;
   } catch {
     return null;
   }
@@ -39,7 +40,7 @@ export async function readProjectFile(file: File): Promise<Project> {
     throw new Error('That file is not an Amble project.');
   }
   if (!isProject(data)) throw new Error('That file is not an Amble project.');
-  return data;
+  return migrateProject(data);
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {

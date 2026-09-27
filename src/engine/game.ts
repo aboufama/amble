@@ -64,6 +64,8 @@ export class Game {
   readonly world: World3D | null;
   /** Shared variables for game-wide state (score, lives, level...). */
   vars: Record<string, any> = {};
+  /** What the player typed at the last ask. */
+  lastAnswer = '';
   /** Seconds of game time since the game started (advances 1/60 per tick). */
   time = 0;
   /** Seconds per tick (always 1/60). */
@@ -87,6 +89,8 @@ export class Game {
   private backdropLayer: Layer | null = null;
   private backdropIndex = 0;
   private tickCount = 0;
+  private floor: BABYLON.TransformNode | null = null;
+  private failedChecks = new Set<string>();
 
   private constructor(
     private readonly host: GameHost,
@@ -491,6 +495,8 @@ export class Game {
       if (typeof value === 'function') continue;
       (sprite as unknown as Record<string, unknown>)[key] = value;
     }
+    // Variables "for this sprite only": each copy gets its own.
+    sprite.vars = { ...src.vars };
     if (!src.body) sprite.velocity = { x: src.velocity.x, y: src.velocity.y, z: src.velocity.z };
     applyProps(sprite, props);
     this.afterCreate(sprite);
@@ -731,6 +737,7 @@ export class Game {
       answer = a;
     });
     while (answer === null) yield;
+    this.lastAnswer = answer;
     return answer;
   }
 
@@ -776,6 +783,41 @@ export class Game {
   nextBackdrop(): void {
     const n = this._backdropNames().length;
     if (n) this.backdrop = ((this.backdropIndex + 1) % n) + 1;
+  }
+
+  previousBackdrop(): void {
+    const n = this._backdropNames().length;
+    if (n) this.backdrop = ((this.backdropIndex - 1 + n) % n) + 1;
+  }
+
+  randomBackdrop(): void {
+    const n = this._backdropNames().length;
+    if (n > 1) this.backdrop = ((this.backdropIndex + 1 + Math.floor(Math.random() * (n - 1))) % n) + 1;
+  }
+
+  /** A copy of a sprite as it is right now (the original, not one of its copies), like "make a copy of". */
+  cloneOf(name: string): Sprite | null {
+    const wanted = String(name).toLowerCase();
+    const matches = this.all.filter((s) => !s.destroyed && s.name.toLowerCase() === wanted);
+    const source = matches.find((s) => !s.isClone) ?? matches[0];
+    return source ? this._cloneFrom(source, {}) : this.spawn(name);
+  }
+
+  /** @internal In 2D, gravity lands on the bottom of the screen: an invisible, endless floor there. */
+  _ensureFloor(): void {
+    if (this.floor || this.mode !== '2d') return;
+    const depth = 100;
+    this.floor = new BABYLON.TransformNode('amble-floor', this.scene);
+    this.floor.position.set(0, -STAGE_HEIGHT / 2 - depth / 2, 0);
+    this._physics.createBody(this.floor, { width: 200000, height: depth, depth: 400 }, BABYLON.Vector3.Zero(), { type: 'static' });
+  }
+
+  /** @internal A check block found its condition false: tell the author once per game. */
+  _checkFailed(target: string, check: string): void {
+    const key = `${target}|${check}`;
+    if (this.failedChecks.has(key)) return;
+    this.failedChecks.add(key);
+    reportError(new Error(`This check wasn't true: ${check}`), { phase: 'run', target, script: 'check' });
   }
 
   /** @internal */
