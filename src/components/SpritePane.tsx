@@ -6,6 +6,7 @@ import { renameSprite } from '../actions';
 import { blankBackdrop, newSprite } from '../project/defaults';
 import { BACKDROP_LIBRARY, SPRITE_LIBRARY, type LibrarySprite } from '../project/library';
 import { importImageFile, importModelFile, pickFile } from '../project/importers';
+import { exportSprite, readSpriteFile } from '../project/persistence';
 import { uniqueName, uid } from '../project/ids';
 import type { CostumeAsset, CompiledAsset, ImageAsset, SpriteTarget } from '../project/types';
 import { Library } from './Library';
@@ -570,9 +571,14 @@ export function SpritePane() {
 
   const paintNew = () => addSprite(newSprite(uniqueName('Sprite1', names), mode, [blankCostume()], 0, 0), 'costumes');
   const upload = async () => {
-    const files = await pickFile('image/*');
+    const files = await pickFile('image/*,.ambsprite');
     if (!files.length) return;
     try {
+      if (files[0].name.endsWith('.ambsprite')) {
+        const sprite = await readSpriteFile(files[0]);
+        addSprite({ ...sprite, name: uniqueName(sprite.name, names) });
+        return;
+      }
       const costume = await importImageFile(files[0]);
       addSprite(newSprite(uniqueName(costume.name, names), mode, [costume]));
     } catch (err) {
@@ -714,6 +720,13 @@ export function SpritePane() {
             onClose={() => setMenu(null)}
             items={[
               { label: 'duplicate', onClick: () => duplicate(menu.id) },
+              {
+                label: 'export',
+                onClick: () => {
+                  const sprite = project.sprites.find((x) => x.id === menu.id);
+                  if (sprite) exportSprite(sprite);
+                },
+              },
               { label: 'delete', danger: true, onClick: () => remove(menu.id) },
             ]}
           />

@@ -31,9 +31,10 @@ export function stopOptions(isStage: boolean): string[] {
 export const NEW_MESSAGE = '⁣new-message';
 export const RENAME_VARIABLE = '⁣rename-variable';
 export const DELETE_VARIABLE = '⁣delete-variable';
+export const RECORD_SOUND = '⁣record-sound';
 
 export function isActionValue(value: string): boolean {
-  return value === NEW_MESSAGE || value === RENAME_VARIABLE || value === DELETE_VARIABLE;
+  return value === NEW_MESSAGE || value === RENAME_VARIABLE || value === DELETE_VARIABLE || value === RECORD_SOUND;
 }
 
 export const SEPARATOR = 'separator';
@@ -194,7 +195,7 @@ export function menuOptions(kind: MenuKind, ctx: MenuContext | null, current = '
     case 'switchBackdrop':
       return [...same((project?.stage.costumes ?? []).map((c) => c.name)), ...same(BACKDROP_EXTRAS)];
     case 'sound':
-      return orCurrent(same((target?.sounds ?? []).map((s) => s.name)), 'pop');
+      return [...orCurrent(same((target?.sounds ?? []).map((s) => s.name)), 'pop'), ['record...', RECORD_SOUND]];
     case 'clone': {
       const others = (project?.sprites ?? []).filter((s) => s.id !== target?.id).map((s) => s.name);
       return orCurrent([...(target?.kind === 'stage' ? [] : same(['myself'])), ...same(others)], 'myself');

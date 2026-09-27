@@ -32,10 +32,15 @@ async function openMenu(page: Page, type: string, field: string): Promise<string
     },
     { type, field },
   );
-  await page.mouse.click(at.x, at.y);
   const items = page.locator('.blocklyDropDownDiv .blocklyMenuItem');
-  await expect(items.first()).toBeVisible();
-  return (await items.allTextContents()).map((t) => t.trim());
+  // The palette refreshes shortly after a project loads, which closes open menus: try again then.
+  for (let attempt = 0; ; attempt++) {
+    await page.mouse.click(at.x, at.y);
+    await expect(items.first()).toBeVisible();
+    await page.waitForTimeout(200);
+    const texts = (await items.allTextContents()).map((t) => t.trim());
+    if (texts.length || attempt === 2) return texts;
+  }
 }
 
 async function rename(page: Page, tab: 'Costumes' | 'Sounds', from: string, to: string) {
@@ -57,16 +62,23 @@ test('dropdowns list keys, sounds and costumes, and follow renames', async ({ pa
   expect(keys).toEqual(expect.arrayContaining(['a', 'z', '0', '9']));
   await page.keyboard.press('Escape');
 
-  // "start sound [jump]": Amble's own sounds.
-  expect(await openMenu(page, 'so_play', 'SOUND')).toEqual(['pop', 'jump']);
+  // "start sound [jump]": Amble's own sounds, then "record...".
+  expect(await openMenu(page, 'so_play', 'SOUND')).toEqual(['pop', 'jump', 'record...']);
   await page.locator('.blocklyDropDownDiv .blocklyMenuItem', { hasText: 'pop' }).click();
   expect(await fieldValue(page, 'so_play', 'SOUND')).toBe('pop');
 
   // Renaming a sound renames it in the blocks that use it.
   await rename(page, 'Sounds', 'pop', 'boing');
   expect(await fieldValue(page, 'so_play', 'SOUND')).toBe('boing');
-  expect(await openMenu(page, 'so_play', 'SOUND')).toEqual(['boing', 'jump']);
+  expect(await openMenu(page, 'so_play', 'SOUND')).toEqual(['boing', 'jump', 'record...']);
+
+  // "record..." opens the Sounds tab's recorder, like Scratch.
+  await page.locator('.blocklyDropDownDiv .blocklyMenuItem', { hasText: 'record...' }).click();
+  await expect(page.getByRole('dialog', { name: 'Record Sound' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Sounds' })).toHaveAttribute('aria-selected', 'true');
+  expect(await fieldValue(page, 'so_play', 'SOUND')).toBe('boing');
   await page.keyboard.press('Escape');
+  await page.getByRole('tab', { name: 'Code' }).first().click();
 
   // The palette's "switch costume to" offers the sprite's costumes (the second one first, like Scratch).
   expect(await fieldValue(page, 'lo_costume', 'COSTUME', true)).toBe('amble-b');

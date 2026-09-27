@@ -236,6 +236,11 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
         flushSave();
         deleteVariable(loadedId.current, name);
       },
+      recordSound: () => {
+        const s = useStore.getState();
+        s.setTab('sounds');
+        s.setRecording(true);
+      },
     });
 
     registerLiveBlocks({

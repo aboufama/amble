@@ -4,6 +4,7 @@ import {
   DELETE_VARIABLE,
   KEY_OPTIONS,
   NEW_MESSAGE,
+  RECORD_SOUND,
   RENAME_VARIABLE,
   SEPARATOR,
   applyRename,
@@ -98,7 +99,8 @@ describe('dropdown options', () => {
 
   it('lists the edited sprite’s costumes and sounds', () => {
     expect(values(menuOptions('costume', ctx(p, cat.id)))).toEqual(['cat-a', 'cat-b', 'cat-c']);
-    expect(values(menuOptions('sound', ctx(p, cat.id)))).toEqual(['meow', 'purr']);
+    // Then Scratch's "record...", which opens the recorder.
+    expect(menuOptions('sound', ctx(p, cat.id))).toEqual([['meow', 'meow'], ['purr', 'purr'], ['record...', RECORD_SOUND]]);
     // The stage's "costumes" are its backdrops.
     expect(values(menuOptions('costume', ctx(p, p.stage.id)))).toEqual(['day', 'night']);
   });
@@ -158,7 +160,7 @@ describe('dropdown options', () => {
   it('never offers an empty menu', () => {
     const bare = newProject('3d');
     bare.sprites[0].sounds = [];
-    expect(values(menuOptions('sound', ctx(bare, bare.sprites[0].id), 'boing'))).toEqual(['boing']);
+    expect(values(menuOptions('sound', ctx(bare, bare.sprites[0].id), 'boing'))).toEqual(['boing', RECORD_SOUND]);
     expect(values(menuOptions('backdrop', ctx(bare, bare.sprites[0].id)))).toEqual(['backdrop1']);
   });
 });

@@ -48,6 +48,8 @@ export interface EditorState {
   outputTab: OutputTab;
   /** The output panel under the stage can be folded down to its tabs. */
   outputOpen: boolean;
+  /** The Sounds tab's Record Sound dialog is open. */
+  recording: boolean;
   /** Edit > Restore: puts back the last deleted sprite, costume, backdrop or sound. */
   restore: { what: 'Sprite' | 'Costume' | 'Backdrop' | 'Sound'; run(): void } | null;
   toast: { id: number; message: string; tone: 'info' | 'error' } | null;
@@ -71,6 +73,7 @@ export interface EditorState {
   setOutputTab(tab: OutputTab): void;
   setOutputOpen(open: boolean): void;
   setRestore(restore: EditorState['restore']): void;
+  setRecording(open: boolean): void;
   notify(message: string, tone?: 'info' | 'error'): void;
 }
 
@@ -95,6 +98,7 @@ export const useStore = create<EditorState>()(
     outputTab: 'game',
     outputOpen: true,
     restore: null,
+    recording: false,
     toast: null,
 
     setProject: (project) =>
@@ -184,6 +188,10 @@ export const useStore = create<EditorState>()(
     setRestore: (restore) =>
       set((s) => {
         s.restore = restore;
+      }),
+    setRecording: (open) =>
+      set((s) => {
+        s.recording = open;
       }),
     notify: (message, tone = 'info') =>
       set((s) => {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { compiledAssetsFor, findCompiledSprite, findTarget, useStore } from '../store';
 import { deleteCompiledAsset, keepCompiledAsset, renameSound } from '../actions';
 import { importSoundFile, pickFile } from '../project/importers';
+import { exportAsset } from '../project/persistence';
 import { synthSound } from '../project/defaults';
 import { uniqueName, uid } from '../project/ids';
 import { SOUND_PRESETS } from '../audio/synth';
@@ -287,7 +288,8 @@ export function SoundsPane() {
   const toast = useStore((s) => s.notify);
   const playing = usePlaying();
   const [library, setLibrary] = useState(false);
-  const [recording, setRecording] = useState(false);
+  const recording = useStore((s) => s.recording);
+  const setRecording = useStore((s) => s.setRecording);
   const [menu, setMenu] = useState<{ id: string; at: { x: number; y: number } } | null>(null);
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [samples, setSamples] = useState<{ url: string; data: Float32Array } | null>(null);
@@ -459,6 +461,13 @@ export function SoundsPane() {
             onClose={() => setMenu(null)}
             items={[
               { label: 'duplicate', onClick: () => duplicate(menu.id) },
+              {
+                label: 'export',
+                onClick: () => {
+                  const s = own.find((x) => x.id === menu.id);
+                  if (s) void exportAsset(s).catch((err: Error) => toast(err.message, 'error'));
+                },
+              },
               { label: 'delete', danger: true, onClick: () => remove(menu.id) },
             ]}
           />

@@ -1,7 +1,7 @@
 import * as Blockly from 'blockly/core';
 import { FieldMultilineInput } from '@blockly/field-multilineinput';
 import type { MenuKind } from './spec';
-import { DELETE_VARIABLE, NEW_MESSAGE, RENAME_VARIABLE, isActionValue, menuOptions, type MenuContext } from './menus';
+import { DELETE_VARIABLE, NEW_MESSAGE, RECORD_SOUND, RENAME_VARIABLE, isActionValue, menuOptions, type MenuContext } from './menus';
 
 // -----------------------------------------------------------------------------
 // The editor's hooks for menus that need the project or a dialog
@@ -14,6 +14,8 @@ export interface MenuHost {
   newMessage(): Promise<string | null>;
   renameVariable(name: string): void;
   deleteVariable(name: string): void;
+  /** "record...": opens the Sounds tab's recorder. */
+  recordSound(): void;
 }
 
 let host: MenuHost | null = null;
@@ -251,6 +253,8 @@ export class FieldAmbleMenu extends Blockly.FieldDropdown {
       host?.renameVariable(current);
     } else if (value === DELETE_VARIABLE) {
       host?.deleteVariable(current);
+    } else if (value === RECORD_SOUND) {
+      host?.recordSound();
     } else {
       super.onItemSelected_(menu, menuItem);
     }

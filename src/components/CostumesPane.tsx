@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { compiledAssetsFor, findCompiledSprite, findTarget, useStore } from '../store';
 import { deleteCompiledAsset, keepCompiledAsset, renameCostume } from '../actions';
 import { importImageFile, importModelFile, pickFile } from '../project/importers';
+import { exportAsset } from '../project/persistence';
 import { blankBackdrop } from '../project/defaults';
 import { BACKDROP_LIBRARY, libraryCostumes } from '../project/library';
 import { uniqueName, uid } from '../project/ids';
@@ -192,6 +193,15 @@ export function CostumesPane() {
             onClose={() => setMenu(null)}
             items={[
               { label: 'duplicate', onClick: () => duplicate(menu.id) },
+              {
+                label: 'export',
+                onClick: () => {
+                  const c = own.find((x) => x.id === menu.id);
+                  if (!c?.dataUrl) return;
+                  const mime = c.kind === 'image' ? c.mime : 'model/gltf-binary';
+                  void exportAsset({ name: c.name, dataUrl: c.dataUrl, mime }).catch((err: Error) => notify(err.message, 'error'));
+                },
+              },
               ...(own.length > 1 || isStage ? [{ label: 'delete', danger: true, onClick: () => remove(menu.id) }] : []),
             ]}
           />
