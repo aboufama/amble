@@ -90,7 +90,9 @@ export type ToPlayer =
   | { type: 'greenFlag' }
   | { type: 'stop' }
   | { type: 'key'; phase: 'down' | 'up'; key: string; code: string }
-  | { type: 'releaseKeys' };
+  | { type: 'releaseKeys' }
+  /** The mouse button went up in the editor (it may not reach the player while it drags a sprite). */
+  | { type: 'pointerUp' };
 
 export interface PlayerError {
   message: string;
@@ -107,6 +109,8 @@ export type FromPlayer =
   | { type: 'loaded' }
   | { type: 'status'; state: 'idle' | 'running' | 'paused' | 'stopped' }
   | ({ type: 'error' } & PlayerError)
-  | { type: 'log'; level: 'log' | 'warn' | 'error'; message: string };
+  | { type: 'log'; level: 'log' | 'warn' | 'error'; message: string }
+  /** A sprite was dragged to a new place on the stopped stage (editor only, 2D). */
+  | { type: 'spriteMoved'; name: string; x: number; y: number };
 
 export const CHANNEL = 'amble-player';

@@ -623,6 +623,19 @@ export class Game {
     return best;
   }
 
+  /** Editor: the frontmost visible sprite at a canvas point (CSS pixels from the canvas's top left). */
+  spriteAt(canvasX: number, canvasY: number): Sprite | null {
+    return this.pickAt(canvasX, canvasY);
+  }
+
+  /** Editor (2D): the stage position under a canvas point (CSS pixels from the canvas's top left). */
+  stagePointAt(canvasX: number, canvasY: number): { x: number; y: number } {
+    const rect = this.host.canvas.getBoundingClientRect();
+    const screenX = (canvasX / rect.width) * STAGE_WIDTH - STAGE_WIDTH / 2;
+    const screenY = STAGE_HEIGHT / 2 - (canvasY / rect.height) * STAGE_HEIGHT;
+    return { x: this.camera.x + screenX / this.camera.zoom, y: this.camera.y + screenY / this.camera.zoom };
+  }
+
   /** @internal */
   _mouseOver(sprite: Sprite): boolean {
     if (this.mode === '2d') {

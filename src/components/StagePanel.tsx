@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { PlayerHost } from '../player/host';
-import { cancelCompile, compile, needsCompile, previewProject, registerPlayer, startGame, stopGame } from '../actions';
+import { cancelCompile, compile, moveSpriteFromStage, needsCompile, previewProject, registerPlayer, startGame, stopGame } from '../actions';
 import { useStore } from '../store';
 import { ExpandIcon, FlagIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, SparkIcon, StopIcon, XIcon } from './icons';
 
@@ -34,6 +34,7 @@ export function StagePanel() {
         store().setOutputTab('problems');
       },
       onLog: (level, message) => store().addLog(level, message),
+      onSpriteMoved: moveSpriteFromStage,
     });
     hostRef.current = host;
     registerPlayer(host);

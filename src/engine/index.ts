@@ -8,6 +8,7 @@ import { STAGE_HEIGHT, STAGE_WIDTH, type RunPackage, type ToPlayer } from '../pl
 import { forwardConsole, onEditorMessage, post, reportError, resetReports } from './bridge';
 import { clearGameTimers } from './sandbox';
 import { Game, type GameHost, type GameState } from './game';
+import type { Sprite } from './sprite';
 import { UI_CSS } from './ui';
 
 const standalone = window.parent === window;
@@ -180,6 +181,9 @@ function handle(msg: ToPlayer): void {
     case 'releaseKeys':
       game?.input.releaseAll();
       break;
+    case 'pointerUp':
+      endStageDrag();
+      break;
   }
 }
 
@@ -187,6 +191,51 @@ function keyNameFrom(key: string, code: string): string {
   if (code?.startsWith('Digit')) return code.slice(5);
   if (code?.startsWith('Key') && code.length === 4) return code.slice(3).toLowerCase();
   return key;
+}
+
+/**
+ * In the editor, sprites on a stage that isn't running can be dragged into place, like
+ * Scratch; the editor then stores their new start position.
+ */
+let endStageDrag = (): void => {};
+
+function enableDragging(): void {
+  let drag: { sprite: Sprite; dx: number; dy: number; moved: boolean } | null = null;
+  const at = (e: PointerEvent) => {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+  const draggable = () => game && game.mode === '2d' && (game.state === 'idle' || game.state === 'stopped');
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || !draggable()) return;
+    const p = at(e);
+    const sprite = game!.spriteAt(p.x, p.y);
+    if (!sprite) return;
+    const point = game!.stagePointAt(p.x, p.y);
+    drag = { sprite, dx: sprite.x - point.x, dy: sprite.y - point.y, moved: false };
+    canvas.style.cursor = 'grabbing';
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!drag) {
+      const p = at(e);
+      canvas.style.cursor = draggable() && game!.spriteAt(p.x, p.y) ? 'grab' : '';
+      return;
+    }
+    const point = game!.stagePointAt(at(e).x, at(e).y);
+    drag.sprite.setPosition(
+      Math.round(Math.max(-STAGE_WIDTH / 2, Math.min(STAGE_WIDTH / 2, point.x + drag.dx))),
+      Math.round(Math.max(-STAGE_HEIGHT / 2, Math.min(STAGE_HEIGHT / 2, point.y + drag.dy))),
+    );
+    drag.moved = true;
+  });
+  const end = () => {
+    if (drag?.moved) post({ type: 'spriteMoved', name: drag.sprite.name, x: drag.sprite.x, y: drag.sprite.y });
+    drag = null;
+    canvas.style.cursor = '';
+  };
+  endStageDrag = end;
+  window.addEventListener('pointerup', end);
+  window.addEventListener('pointercancel', end);
 }
 
 window.addEventListener('resize', layout);
@@ -218,5 +267,6 @@ if (standalone) {
   }
 } else {
   onEditorMessage(handle);
+  enableDragging();
   post({ type: 'hello' });
 }

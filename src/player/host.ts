@@ -5,6 +5,7 @@ export interface PlayerHandlers {
   onLoaded?(): void;
   onError?(error: PlayerError): void;
   onLog?(level: 'log' | 'warn' | 'error', message: string): void;
+  onSpriteMoved?(name: string, x: number, y: number): void;
 }
 
 const base = (): string => new URL(import.meta.env?.BASE_URL ?? '/', window.location.href).href;
@@ -52,6 +53,9 @@ export class PlayerHost {
   readonly iframe: HTMLIFrameElement;
   private ready = false;
   private queue: ToPlayer[] = [];
+  private readonly onPointerUp = () => {
+    if (this.ready) this.post({ type: 'pointerUp' });
+  };
   private readonly onMessage = (event: MessageEvent) => {
     if (event.source !== this.iframe.contentWindow) return;
     const msg = event.data as (FromPlayer & { channel?: string }) | null;
@@ -71,6 +75,7 @@ export class PlayerHost {
     iframe.srcdoc = playerSrcdoc();
     this.iframe = iframe;
     window.addEventListener('message', this.onMessage);
+    window.addEventListener('pointerup', this.onPointerUp, true);
     container.append(iframe);
     void loadHavokWasm().catch((err: Error) => handlers.onError?.({ message: err.message, phase: 'load' }));
   }
@@ -100,6 +105,9 @@ export class PlayerHost {
       }
       case 'log':
         this.handlers.onLog?.(msg.level, msg.message);
+        break;
+      case 'spriteMoved':
+        this.handlers.onSpriteMoved?.(msg.name, msg.x, msg.y);
         break;
     }
   }
@@ -153,6 +161,7 @@ export class PlayerHost {
 
   destroy(): void {
     window.removeEventListener('message', this.onMessage);
+    window.removeEventListener('pointerup', this.onPointerUp, true);
     this.iframe.remove();
   }
 }

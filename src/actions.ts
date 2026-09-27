@@ -49,6 +49,23 @@ export function previewProject(project: Project, force = false): void {
   player?.load(buildRunPackage(project), false);
 }
 
+/** A sprite was dragged on the stage: it starts there from now on (the stage already shows it there). */
+export function moveSpriteFromStage(name: string, x: number, y: number): void {
+  const store = useStore.getState();
+  const own = store.project.sprites.find((s) => s.name === name);
+  const compiled = own ? null : store.project.compiled?.sprites.find((s) => s.name === name);
+  if (!own && !compiled) return;
+  store.update((p) => {
+    const s = own ? p.sprites.find((t) => t.id === own.id) : p.compiled?.sprites.find((t) => t.id === compiled!.id);
+    if (!s) return;
+    s.x = x;
+    s.y = y;
+  });
+  lastPreviewKey = packageKey(useStore.getState().project);
+  // Like Scratch, the sprite you drag becomes the one you edit.
+  store.select((own ?? compiled)!.id);
+}
+
 // -----------------------------------------------------------------------------
 // Compiling
 // -----------------------------------------------------------------------------
