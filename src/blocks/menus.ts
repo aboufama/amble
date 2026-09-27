@@ -6,7 +6,7 @@
  * serialization of workspaces, so it is shared by the editor, the compiler and the tests.
  */
 import type { BlocksState, Project, Target } from '../project/types';
-import { BLOCK_BY_TYPE, type MenuKind } from './spec';
+import { BLOCK_BY_TYPE, CHARACTER_SPECIAL_LABELS, MENU_CHOICES, type CharacterSpecial, type MenuKind } from './spec';
 
 export const KEY_OPTIONS = [
   'space',
@@ -18,14 +18,10 @@ export const KEY_OPTIONS = [
   ...'abcdefghijklmnopqrstuvwxyz'.split(''),
   ...'0123456789'.split(''),
 ];
-export const ROTATION_OPTIONS = ['left-right', "don't rotate", 'all around'];
-export const LAYER_OPTIONS = ['front', 'back'];
-export const EFFECT_OPTIONS = ['color', 'fisheye', 'whirl', 'pixelate', 'mosaic', 'brightness', 'ghost'];
 export const BACKDROP_EXTRAS = ['next backdrop', 'previous backdrop', 'random backdrop'];
 
-export function stopOptions(isStage: boolean): string[] {
-  return ['all', 'this script', isStage ? 'other scripts in stage' : 'other scripts in sprite'];
-}
+/** Every special character, in menu order. */
+export const ALL_SPECIALS: CharacterSpecial[] = ['me', 'mouse', 'random', 'center', 'edge', 'anyone'];
 
 /** Menu entries that run an action instead of becoming the value. They are never saved. */
 export const NEW_MESSAGE = '⁣new-message';
@@ -67,7 +63,7 @@ function topBlocks(state: BlocksState | null | undefined): JsonBlockLike[] {
   return ((state?.blocks as { blocks?: JsonBlockLike[] } | undefined)?.blocks ?? []) as JsonBlockLike[];
 }
 
-/** Calls `fn` for every block in a workspace state (nested and following blocks included). */
+/** Calls `fn` for every block in a workspace state (nested, dropped-in and following blocks included). */
 export function forEachBlock(state: BlocksState | null | undefined, fn: (b: JsonBlockLike) => void): void {
   const visit = (b: JsonBlockLike | undefined) => {
     while (b) {
@@ -82,28 +78,39 @@ export function forEachBlock(state: BlocksState | null | undefined, fn: (b: Json
   for (const top of topBlocks(state)) visit(top);
 }
 
-/** Values of every dropdown of the given kinds in a workspace state. */
+/**
+ * The fields of a block that name something from a list: its dropdowns, plus the names on
+ * character blocks and variable blocks.
+ */
+export function namedFields(type: string): Array<[field: string, kind: MenuKind]> {
+  const out: Array<[string, MenuKind]> = [];
+  for (const [name, input] of Object.entries(BLOCK_BY_TYPE.get(type)?.inputs ?? {})) {
+    if (input.kind === 'menu' && input.menu) out.push([name, input.menu]);
+  }
+  if (type === 'char_ref') out.push(['NAME', 'character']);
+  if (type === 'mem_var') out.push(['VARIABLE', 'variable']);
+  return out;
+}
+
+/** Values of every field of the given kinds in a workspace state. */
 export function menuValues(state: BlocksState | null | undefined, kinds: MenuKind[]): string[] {
   const out: string[] = [];
   forEachBlock(state, (b) => {
-    const menus = BLOCK_BY_TYPE.get(b.type)?.menus;
-    if (!menus) return;
-    for (const [field, menu] of Object.entries(menus)) {
+    for (const [field, kind] of namedFields(b.type)) {
       const value = b.fields?.[field];
-      if (kinds.includes(menu.kind) && typeof value === 'string' && value) out.push(value);
+      if (kinds.includes(kind) && typeof value === 'string' && value) out.push(value);
     }
   });
   return out;
 }
 
-/** Sets every dropdown of the given kinds whose value is `from` to `to`. Returns how many changed. */
+/** Sets every field of the given kinds whose value is `from` to `to`. Returns how many changed. */
 export function renameInBlocks(state: BlocksState | null | undefined, kinds: MenuKind[], from: string, to: string): number {
   let changed = 0;
   forEachBlock(state, (b) => {
-    const menus = BLOCK_BY_TYPE.get(b.type)?.menus;
-    if (!menus || !b.fields) return;
-    for (const [field, menu] of Object.entries(menus)) {
-      if (kinds.includes(menu.kind) && b.fields[field] === from) {
+    if (!b.fields) return;
+    for (const [field, kind] of namedFields(b.type)) {
+      if (kinds.includes(kind) && b.fields[field] === from) {
         b.fields[field] = to;
         changed++;
       }
@@ -126,10 +133,10 @@ function blocksByTarget(ctx: MenuContext): BlocksState[] {
 }
 
 // -----------------------------------------------------------------------------
-// Messages, variables and custom blocks
+// Messages, variables, skills and characters
 // -----------------------------------------------------------------------------
 
-/** Every broadcast message used anywhere in the project, sorted (like Scratch). */
+/** Every message used anywhere in the project, sorted (like Scratch). */
 export function projectMessages(ctx: MenuContext): string[] {
   return uniqueSorted([...blocksByTarget(ctx).flatMap((state) => menuValues(state, ['message'])), ...(ctx.newMessages ?? [])]);
 }
@@ -151,7 +158,7 @@ export function variablesFor(project: Project, target: Target | null): string[] 
   return uniqueSorted([...globalVariables(project), ...localVariables(target)]);
 }
 
-/** Custom blocks ("define ...") in the edited sprite, in the order they appear. */
+/** Skills ("skill [...]" blocks) in the edited sprite, in the order they appear. */
 export function procedureNames(ctx: MenuContext): string[] {
   const state = ctx.liveBlocks !== undefined ? ctx.liveBlocks : ctx.target?.blocks;
   const names: string[] = [];
@@ -160,6 +167,14 @@ export function procedureNames(ctx: MenuContext): string[] {
     if (name && !names.includes(name)) names.push(name);
   }
   return names;
+}
+
+/** The characters a block can name: the project's sprites (the edited one is "me"), then compiled ones. */
+export function characterNames(ctx: MenuContext | null): string[] {
+  if (!ctx) return [];
+  const own = ctx.project.sprites.filter((s) => s.id !== ctx.target?.id).map((s) => s.name);
+  const compiled = (ctx.project.compiled?.sprites ?? []).map((s) => s.name).filter((n) => !ctx.project.sprites.some((s) => s.name === n));
+  return [...own, ...compiled];
 }
 
 // -----------------------------------------------------------------------------
@@ -171,8 +186,9 @@ const same = (names: string[]): MenuOption[] => names.map((n) => [n, n]);
 /**
  * The options a dropdown shows. `current` is the field's value: it is listed only when a
  * menu would otherwise be empty (a value that isn't an option is kept, but not offered).
+ * `specials` are the special characters a character slot offers.
  */
-export function menuOptions(kind: MenuKind, ctx: MenuContext | null, current = ''): MenuOption[] {
+export function menuOptions(kind: MenuKind, ctx: MenuContext | null, current = '', specials: CharacterSpecial[] = ALL_SPECIALS): MenuOption[] {
   const target = ctx?.target ?? null;
   const project = ctx?.project;
   const orCurrent = (options: MenuOption[], fallback: string): MenuOption[] =>
@@ -180,26 +196,12 @@ export function menuOptions(kind: MenuKind, ctx: MenuContext | null, current = '
   switch (kind) {
     case 'key':
       return same(KEY_OPTIONS);
-    case 'rotation':
-      return same(ROTATION_OPTIONS);
-    case 'layer':
-      return same(LAYER_OPTIONS);
-    case 'effect':
-      return same(EFFECT_OPTIONS);
-    case 'stop':
-      return same(stopOptions(target?.kind === 'stage'));
     case 'costume':
       return orCurrent(same((target?.costumes ?? []).map((c) => c.name)), 'costume1');
-    case 'backdrop':
-      return orCurrent(same((project?.stage.costumes ?? []).map((c) => c.name)), 'backdrop1');
     case 'switchBackdrop':
       return [...same((project?.stage.costumes ?? []).map((c) => c.name)), ...same(BACKDROP_EXTRAS)];
     case 'sound':
       return [...orCurrent(same((target?.sounds ?? []).map((s) => s.name)), 'pop'), ['record...', RECORD_SOUND]];
-    case 'clone': {
-      const others = (project?.sprites ?? []).filter((s) => s.id !== target?.id).map((s) => s.name);
-      return orCurrent([...(target?.kind === 'stage' ? [] : same(['myself'])), ...same(others)], 'myself');
-    }
     case 'message': {
       const messages = ctx ? projectMessages(ctx) : [];
       return [...same(messages.length ? messages : [current || 'message1']), ['New message', NEW_MESSAGE]];
@@ -211,6 +213,14 @@ export function menuOptions(kind: MenuKind, ctx: MenuContext | null, current = '
     }
     case 'procedure':
       return orCurrent(same(ctx ? procedureNames(ctx) : []), 'jump');
+    case 'character': {
+      const shown = target?.kind === 'stage' ? specials.filter((s) => s !== 'me') : specials;
+      const options: MenuOption[] = [...shown.map((s): MenuOption => [CHARACTER_SPECIAL_LABELS[s], s]), ...same(characterNames(ctx))];
+      const value = current || 'me';
+      return options.length ? options : [[(CHARACTER_SPECIAL_LABELS as Record<string, string>)[value] ?? value, value]];
+    }
+    default:
+      return same(MENU_CHOICES[kind] ?? []);
   }
 }
 
@@ -223,27 +233,22 @@ export function menuDefault(kind: MenuKind, ctx: MenuContext | null, fallback: s
       const costumes = target?.costumes ?? [];
       return costumes[costumes.length > 1 ? 1 : 0]?.name ?? fallback;
     }
-    case 'backdrop':
     case 'switchBackdrop': {
       const backdrops = project?.stage.costumes ?? [];
-      return backdrops[backdrops.length > 1 ? 1 : 0]?.name ?? (kind === 'switchBackdrop' ? 'next backdrop' : fallback);
+      return backdrops[backdrops.length > 1 ? 1 : 0]?.name ?? 'next backdrop';
     }
     case 'sound': {
       const sounds = target?.sounds ?? [];
       return sounds[sounds.length - 1]?.name ?? fallback;
     }
-    case 'clone':
-      return target?.kind === 'stage' ? (project?.sprites[0]?.name ?? fallback) : 'myself';
     case 'message':
       return (ctx && projectMessages(ctx)[0]) || 'message1';
     case 'variable':
       return (project && variablesFor(project, target)[0]) || fallback;
     case 'procedure':
       return (ctx && procedureNames(ctx)[0]) || fallback;
-    case 'stop':
-      return 'all';
     default:
-      return fallback;
+      return fallback || MENU_CHOICES[kind]?.[0] || '';
   }
 }
 
@@ -262,16 +267,16 @@ export interface RenameChange {
   to: string;
 }
 
-/** Which dropdown kinds a rename touches, and in which targets. */
+/** Which fields a rename touches, and in which targets. */
 export function renameScope(project: Project, change: RenameChange): { kinds: MenuKind[]; targetIds: string[] } {
   const all = allTargets(project).map((t) => t.id);
   switch (change.kind) {
     case 'costume':
-      return change.targetId === project.stage.id ? { kinds: ['backdrop', 'switchBackdrop', 'costume'], targetIds: all } : { kinds: ['costume'], targetIds: [change.targetId] };
+      return change.targetId === project.stage.id ? { kinds: ['switchBackdrop', 'costume'], targetIds: all } : { kinds: ['costume'], targetIds: [change.targetId] };
     case 'sound':
       return { kinds: ['sound'], targetIds: [change.targetId] };
     case 'sprite':
-      return { kinds: ['clone'], targetIds: all };
+      return { kinds: ['character'], targetIds: all };
     case 'variable':
       // A sprite's own variable is only used in that sprite; the stage id stands for "all sprites".
       return { kinds: ['variable'], targetIds: change.targetId === project.stage.id ? all : [change.targetId] };

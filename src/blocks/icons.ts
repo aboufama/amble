@@ -35,3 +35,25 @@ const lens = '<circle cx="17.5" cy="17.5" r="6.5"/><path d="M22.3 22.3l3.4 3.4"/
 export const ZOOM_IN_ICON = zoomButton(`${lens}<path d="M15 17.5h5M17.5 15v5"/>`);
 export const ZOOM_OUT_ICON = zoomButton(`${lens}<path d="M15 17.5h5"/>`);
 export const ZOOM_RESET_ICON = zoomButton('<path d="M13.5 15h9M13.5 21h9" stroke-width="2"/>');
+
+/** Little pictures for the special characters (white, drawn on the teal character blocks). */
+const specialIcon = (body: string) =>
+  svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`);
+
+export const SPECIAL_ICONS: Record<string, string> = {
+  // A face: the sprite running the script.
+  me: specialIcon('<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5q3.5 3 7 0"/><circle cx="9" cy="10" r=".6" fill="#fff"/><circle cx="15" cy="10" r=".6" fill="#fff"/>'),
+  // A mouse pointer.
+  mouse: specialIcon('<path d="M6 3l12 9-5.2.9 3 6-2.6 1.2-3-6L6 17z" fill="#fff" fill-opacity=".25"/>'),
+  // A die.
+  random: specialIcon('<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r=".8" fill="#fff"/><circle cx="15.5" cy="15.5" r=".8" fill="#fff"/><circle cx="12" cy="12" r=".8" fill="#fff"/>'),
+  // Crosshairs.
+  center: specialIcon('<circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>'),
+  // The screen's frame.
+  edge: specialIcon('<rect x="3" y="5" width="18" height="14" rx="2" stroke-dasharray="3 2.4"/>'),
+  // Two people.
+  anyone: specialIcon('<circle cx="8.5" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3 19c.5-3.5 2.6-5.5 5.5-5.5s5 2 5.5 5.5M14.5 14c2.6-.4 5.3 1.2 6 4.5"/>'),
+};
+
+/** A sprite without a picture (or one that no longer exists). */
+export const UNKNOWN_CHARACTER_ICON = specialIcon('<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.8-4.2 3.6-6.5 7.5-6.5s6.7 2.3 7.5 6.5"/>');

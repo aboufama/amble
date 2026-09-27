@@ -164,7 +164,7 @@ export function SettingsDialog() {
       </label>
       <div className="row wrap">
         <label className="text-field grow">
-          <span>Model (writes the game code)</span>
+          <span>Model (compiles the blocks in your own words)</span>
           <input list="amble-models" value={settings.model} onChange={(e) => setSettings({ model: e.target.value })} />
         </label>
         <label className="text-field">
@@ -217,7 +217,7 @@ export function SettingsDialog() {
   return (
     <Modal title="Settings" onClose={() => setDialog(null)}>
       <section className="settings">
-        <h3>ChatGPT</h3>
+        <h3>Compiler</h3>
         <ChatGptSection />
         {signedIn ? (
           <details>

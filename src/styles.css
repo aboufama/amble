@@ -527,10 +527,6 @@ select {
   margin-top: 14px;
 }
 
-.spark {
-  color: var(--looks-secondary);
-}
-
 /* ---------- Buttons ---------- */
 
 .btn {
@@ -682,22 +678,9 @@ select {
   background: var(--looks-secondary-dark);
 }
 
-.compile-btn.dirty {
-  animation: glow 2.4s ease-in-out infinite;
-}
 
 .compile-btn.running {
   background: var(--looks-secondary-dark);
-}
-
-@keyframes glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 var(--looks-transparent);
-  }
-  50% {
-    box-shadow: 0 0 0 5px var(--looks-transparent);
-  }
 }
 
 .spinner {
@@ -707,6 +690,15 @@ select {
   border-top-color: var(--ui-white);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+/* On white (the compile card). */
+.spinner.dark {
+  width: 22px;
+  height: 22px;
+  border-width: 3px;
+  border-color: var(--ui-black-transparent);
+  border-top-color: var(--looks-secondary);
 }
 
 @keyframes spin {
@@ -908,20 +900,6 @@ select {
   text-align: center;
 }
 
-.compile-card svg {
-  color: var(--looks-secondary);
-}
-
-.pulse {
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  50% {
-    transform: scale(1.25);
-    opacity: 0.7;
-  }
-}
 
 .bar {
   width: 180px;
@@ -1406,10 +1384,6 @@ select {
   font-size: 11.5px;
 }
 
-.compiled-note svg {
-  color: var(--looks-secondary);
-}
-
 .sprite-scroll {
   flex: 1;
   min-height: 0;
@@ -1542,24 +1516,6 @@ select {
   z-index: 2;
   font-size: 10px;
   font-weight: bold;
-}
-
-.ai-badge {
-  position: absolute;
-  right: 3px;
-  bottom: 24px;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--looks-secondary);
-  color: var(--ui-white);
-}
-
-.asset-tile .ai-badge {
-  bottom: 34px;
 }
 
 .delete-button {
@@ -2228,10 +2184,6 @@ body.reordering * {
   margin-right: 12px;
   font-size: 13px;
   font-weight: bold;
-}
-
-.compiled-title svg {
-  color: var(--looks-secondary);
 }
 
 .editor-row .btn + .btn {
@@ -2905,6 +2857,13 @@ body.reordering * {
 
 .record-button.recording .record-button-circle {
   animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
 }
 
 .record-actions {

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { AMBLE_THEME, Blockly, MAKE_BLOCK, MAKE_VARIABLE, registerBlockly, toolboxFor, type PaletteContext } from '../blocks/blockly';
-import { FieldAmbleMenu, setMenuHost } from '../blocks/fields';
+import { AMBLE_THEME, Blockly, MAKE_SKILL, MAKE_VARIABLE, registerBlockly, toolboxFor, type PaletteContext } from '../blocks/blockly';
+import { FieldAmbleMenu, FieldCharacter, setMenuHost } from '../blocks/fields';
 import { BLOCK_SCALE, addZoomControls } from '../blocks/workspaceUi';
 import { globalVariables, procedureNames, variablesFor, type MenuContext } from '../blocks/menus';
 import type { MenuKind } from '../blocks/spec';
@@ -8,7 +8,7 @@ import { findCompiledSprite, findTarget, useStore } from '../store';
 import { deleteVariable, keepCompiledSprite, registerLiveBlocks, renameVariable } from '../actions';
 import { alertUser, askUser, confirmUser } from '../prompt';
 import type { BlocksState } from '../project/types';
-import { CodeIcon, KeepIcon, SparkIcon } from './icons';
+import { CodeIcon, KeepIcon } from './icons';
 
 // Blockly's own questions ("Delete all 7 blocks?", text prompts on touch screens) use Amble's
 // dialog, never the browser's.
@@ -20,6 +20,14 @@ Blockly.dialog.setAlert((message, callback) => void alertUser({ title: 'Amble', 
 Blockly.dialog.setPrompt((message, defaultValue, callback) => {
   void askUser({ title: 'Edit', label: message, defaultValue }).then((answer) => callback(answer ? answer.value : null));
 });
+
+/** What a field names, if anything: a dropdown's kind, or the character / variable on a round block. */
+function fieldKind(block: Blockly.Block, field: Blockly.Field): MenuKind | null {
+  if (field instanceof FieldAmbleMenu) return field.menuKind;
+  if (field instanceof FieldCharacter) return 'character';
+  if (block.type === 'mem_var' && field.name === 'VARIABLE') return 'variable';
+  return null;
+}
 
 /** The Blockly workspace for the selected sprite (or the stage). */
 export function BlocksEditor({ visible }: { visible: boolean }) {
@@ -103,15 +111,33 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     return { mode: s.project.mode, isStage: findTarget(s.project, s.selectedId)?.kind === 'stage', menus: menuContext() };
   };
 
-  /** Rebuilds the palette when something it shows changed (costumes, sounds, variables, custom blocks...). */
+  /** Rebuilds the palette when something it shows changed (costumes, sounds, variables, skills, characters...). */
   const refreshPalette = () => {
     const ws = wsRef.current;
     if (!ws) return;
     const def = toolboxFor(paletteContext());
-    const key = JSON.stringify(def);
+    const key = JSON.stringify(def) + pictureKey();
     if (key === paletteKey.current) return;
     paletteKey.current = key;
     ws.updateToolbox(def);
+  };
+
+  /** What the character blocks' pictures show: each sprite's current costume. */
+  const pictureKey = () => {
+    const p = useStore.getState().project;
+    return p.sprites.map((s) => `${s.name}:${s.costumes[s.currentCostume]?.id ?? ''}`).join('|');
+  };
+  const shownPictures = useRef('');
+  /** Character blocks in the code area show the sprites' current pictures. */
+  const refreshPictures = () => {
+    const ws = wsRef.current;
+    const key = pictureKey();
+    if (!ws || key === shownPictures.current) return;
+    shownPictures.current = key;
+    for (const block of ws.getBlocksByType('char_ref', false)) {
+      const field = block.getField('NAME');
+      if (field instanceof FieldCharacter) field.forceRerender();
+    }
   };
   const schedulePalette = () => {
     if (paletteTimer.current !== null) window.clearTimeout(paletteTimer.current);
@@ -129,7 +155,9 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       for (const block of ws.getAllBlocks(false)) {
         for (const input of block.inputList) {
           for (const field of input.fieldRow) {
-            if (field instanceof FieldAmbleMenu && kinds.includes(field.menuKind) && field.getValue() === from) field.setValue(to);
+            if (field.getValue() !== from) continue;
+            const kind = fieldKind(block, field);
+            if (kind && kinds.includes(kind)) field.setValue(to);
           }
         }
       }
@@ -158,14 +186,14 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     });
   };
 
-  /** "Make a Block": asks for a name and places a "define" block in the workspace. */
-  const makeBlock = async () => {
+  /** "Make a Skill": asks for a name and places a "skill" block in the workspace. */
+  const makeSkill = async () => {
     const ws = wsRef.current;
-    const answer = await askUser({ title: 'Make a Block', label: 'Block name:' });
+    const answer = await askUser({ title: 'Make a Skill', label: 'What is the skill called?' });
     const name = answer?.value.trim();
     if (!ws || !name) return;
     if (procedureNames(menuContext()).includes(name)) {
-      useStore.getState().notify(`A block named "${name}" already exists.`, 'error');
+      useStore.getState().notify(`A skill called "${name}" already exists.`, 'error');
       return;
     }
     const block = ws.newBlock('pr_define');
@@ -212,7 +240,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     (window as unknown as { __ambleWorkspace?: Blockly.WorkspaceSvg }).__ambleWorkspace = ws;
     const removeZoom = addZoomControls(ws);
     ws.registerButtonCallback(MAKE_VARIABLE, () => void makeVariable());
-    ws.registerButtonCallback(MAKE_BLOCK, () => void makeBlock());
+    ws.registerButtonCallback(MAKE_SKILL, () => void makeSkill());
 
     setMenuHost({
       context: menuContext,
@@ -240,7 +268,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
         // Like Scratch: the variable goes, with every block in this sprite that uses it.
         Blockly.Events.setGroup(true);
         for (const block of ws.getAllBlocks(false)) {
-          const uses = block.inputList.some((i) => i.fieldRow.some((f) => f instanceof FieldAmbleMenu && f.menuKind === 'variable' && f.getValue() === name));
+          const uses = block.inputList.some((i) => i.fieldRow.some((f) => fieldKind(block, f) === 'variable' && f.getValue() === name));
           if (uses && !block.isDeadOrDying()) block.dispose(true, true);
         }
         Blockly.Events.setGroup(false);
@@ -283,7 +311,10 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     ro.observe(divRef.current!);
     // The palette follows the project: costumes, sounds, sprites, variables, world mode, the selected target.
     const unsubscribe = useStore.subscribe((state, prev) => {
-      if (state.project !== prev.project || state.selectedId !== prev.selectedId) schedulePalette();
+      if (state.project !== prev.project || state.selectedId !== prev.selectedId) {
+        schedulePalette();
+        refreshPictures();
+      }
     });
     return () => {
       unsubscribe();
@@ -347,10 +378,9 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       {compiledSprite && (
         <div className="compiled-overlay">
           <div className="compiled-card">
-            <SparkIcon size={26} className="spark" />
             <h3>{compiledSprite.sprite.name} was made by the compiler</h3>
-            <p>{compiledSprite.sprite.description || 'The AI added this sprite because your game needed it.'}</p>
-            <p className="muted small">It has no blocks; its behavior is in the generated code. Keep it to make it yours and add blocks.</p>
+            <p>{compiledSprite.sprite.description || 'The compiler added this sprite because your game needed it.'}</p>
+            <p className="muted small">It has no blocks; its behavior is in the compiled code. Keep it to make it yours and add blocks.</p>
             <div className="row">
               <button
                 className="btn"

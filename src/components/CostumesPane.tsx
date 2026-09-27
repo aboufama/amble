@@ -12,7 +12,7 @@ import { ActionMenu, AssetTile, BackdropLibrary, ContextMenu, blankCostume, cost
 import { Library } from './Library';
 import { confirmDelete } from '../prompt';
 import { moveItem, useReorder } from './useReorder';
-import { AddCharacterIcon, AddPictureIcon, BrushIcon, CubeIcon, KeepIcon, SearchIcon, SparkIcon, SurpriseIcon, TrashIcon, UploadIcon } from './icons';
+import { AddCharacterIcon, AddPictureIcon, BrushIcon, CubeIcon, KeepIcon, SearchIcon, SurpriseIcon, TrashIcon, UploadIcon } from './icons';
 
 function sizeLabel(c: CostumeAsset | CompiledAsset): string {
   if (c.kind === 'image') return `${Math.round(c.width / (c.resolution || 1))}×${Math.round(c.height / (c.resolution || 1))}`;
@@ -157,7 +157,7 @@ export function CostumesPane() {
           })}
           {compiled.length > 0 && (
             <div className="compiled-heading">
-              <SparkIcon size={13} /> Compiled
+              Made by the compiler
             </div>
           )}
           {compiled.map((c) => (
@@ -282,7 +282,7 @@ export function CostumesPane() {
               <div className="editor-row">
                 {currentIsCompiled ? (
                   <span className="compiled-title">
-                    <SparkIcon size={14} /> {current.name}
+                    {current.name}
                   </span>
                 ) : (
                   nameField

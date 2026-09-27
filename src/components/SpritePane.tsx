@@ -22,7 +22,6 @@ import {
   EyeOffIcon,
   HorizontalArrowsIcon,
   SearchIcon,
-  SparkIcon,
   SurpriseIcon,
   TrashIcon,
   UploadIcon,
@@ -225,11 +224,6 @@ export function AssetTile({
         <div className="name">{name}</div>
         {details && <div className="details">{details}</div>}
       </div>
-      {compiled && (
-        <span className="ai-badge" title="Made by the compiler">
-          <SparkIcon size={11} />
-        </span>
-      )}
       {selected && onDelete && (
         <button
           className="delete-button"
@@ -456,7 +450,7 @@ function SpriteInfo({ sprite }: { sprite: SpriteTarget }) {
         <input
           className="info-input about"
           value={sprite.description}
-          placeholder="What is this sprite? (optional, helps the AI)"
+          placeholder="What is this sprite? (optional)"
           onChange={(e) => set((t) => (t.description = e.target.value))}
         />
       </label>
@@ -517,7 +511,7 @@ function StageInfo() {
           className="info-input notes"
           rows={2}
           value={notes}
-          placeholder="Describe your game (optional, the AI reads this first). For example: a cozy platformer where a fox collects acorns before winter."
+          placeholder="Describe your game (optional). For example: a cozy platformer where a fox collects acorns before winter."
           onChange={(e) => update((p) => void (p.notes = e.target.value))}
         />
       </label>
@@ -656,7 +650,7 @@ export function SpritePane() {
         {selected?.kind === 'stage' && <StageInfo />}
         {compiledSel && (
           <div className="sprite-info compiled-note">
-            <SparkIcon size={16} /> <b>{compiledSel.sprite.name}</b>&nbsp;was added by the compiler.
+            <b>{compiledSel.sprite.name}</b>&nbsp;was added by the compiler.
           </div>
         )}
         <div className="sprite-scroll">

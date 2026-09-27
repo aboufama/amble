@@ -7,6 +7,7 @@ import type { PlayerError } from './player/protocol';
 import type { CompiledAsset, CompiledSprite, CostumeAsset, Project, SoundAsset, SpriteTarget, Target } from './project/types';
 import { loadSettings, saveSettings } from './project/persistence';
 import { newProject } from './project/defaults';
+import { migrateProject } from './project/migrate';
 
 export type Tab = 'code' | 'costumes' | 'sounds';
 /** Scratch's stage size buttons: the normal stage, or a small one that leaves more room for code. */
@@ -111,7 +112,8 @@ export const useStore = create<EditorState>()(
 
     setProject: (project) =>
       set((s) => {
-        s.project = project;
+        // Projects from older versions of Amble get the current blocks.
+        s.project = migrateProject(project);
         s.projectLoads += 1;
         s.selectedId = project.sprites[0]?.id ?? project.stage.id;
         s.costumeSel = {};

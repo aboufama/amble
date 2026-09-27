@@ -39,6 +39,9 @@ class AmbleFlyout extends ContinuousFlyout {
     super(options);
     // Blocks line up with the palette's left margin (Scratch leaves no room for output tabs).
     (this as unknown as { tabWidth_: number }).tabWidth_ = 0;
+    // Recycling reuses a block by its type only: the palette has many blocks of one type that
+    // differ by their values (a character block per sprite, a variable block per variable...).
+    this.setRecyclingEnabled(false);
   }
 
   /** Like Scratch, the palette keeps its size when the code area zooms. */

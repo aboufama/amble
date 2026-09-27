@@ -206,8 +206,8 @@ export function MenuBar() {
       <div className="menubar-account">
         {codex &&
           (signedIn ? (
-            <button className="menu-btn account" onClick={() => setDialog('settings')} title={`Signed in with ChatGPT: compiling with ${CHATGPT_MODEL_NAME} on your plan`}>
-              <span className="account-dot" aria-hidden="true" /> ChatGPT · Astra Light
+            <button className="menu-btn account" onClick={() => setDialog('settings')} title={`Signed in with ChatGPT: compiling uses ${CHATGPT_MODEL_NAME} on your ChatGPT plan`}>
+              <span className="account-dot" aria-hidden="true" /> Signed in
             </button>
           ) : (
             <button

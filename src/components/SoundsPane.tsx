@@ -32,7 +32,6 @@ import {
   SlowerIcon,
   SofterIcon,
   SoundIcon,
-  SparkIcon,
   StopSquareIcon,
   SurpriseIcon,
   TrashIcon,
@@ -437,7 +436,7 @@ export function SoundsPane() {
           {reorder.order(own.length).map((i, shown) => tile(own[i], i, true, shown))}
           {compiled.length > 0 && (
             <div className="compiled-heading">
-              <SparkIcon size={13} /> Compiled
+              Made by the compiler
             </div>
           )}
           {compiled.map((s) => tile(s, undefined, false))}
@@ -488,7 +487,7 @@ export function SoundsPane() {
             <div className="editor-row">
               {isCompiled ? (
                 <span className="compiled-title">
-                  <SparkIcon size={14} /> {sound.name}
+                  {sound.name}
                 </span>
               ) : (
                 <label className="info-group">

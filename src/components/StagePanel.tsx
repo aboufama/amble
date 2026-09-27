@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayerHost } from '../player/host';
 import { cancelCompile, compile, moveSpriteFromStage, needsCompile, previewProject, registerPlayer, startGame, stopGame } from '../actions';
+import { compileNeedsRequest } from '../compiler/compile';
 import { useStore } from '../store';
-import { ExpandIcon, FlagIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, SparkIcon, StopIcon, WarningIcon, XIcon } from './icons';
+import { ExpandIcon, FlagIcon, HammerIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, StopIcon, WarningIcon, XIcon } from './icons';
 import { useProblemCount } from './ProblemsDialog';
 
 function isEditable(el: EventTarget | null): boolean {
@@ -24,7 +25,8 @@ export function StagePanel() {
   const setStageSize = useStore((s) => s.setStageSize);
   const [fullscreen, setFullscreen] = useState(false);
   const problems = useProblemCount();
-  const dirty = needsCompile(project);
+  // Exact blocks compile instantly when the game starts; only new words wait for Compile.
+  const dirty = useMemo(() => needsCompile(project) && compileNeedsRequest(project), [project]);
 
   useEffect(() => {
     const store = useStore.getState;
@@ -124,10 +126,14 @@ export function StagePanel() {
               aria-label="Compile"
               onClick={() => void compile()}
               title={
-                dirty ? 'Your blocks changed since the last build' : project.compiled ? `Build the game again (last built with ${project.compiled.model})` : 'Build the game'
+                dirty
+                  ? 'Some blocks in your own words are new: compile them'
+                  : project.compiled?.model
+                    ? `Compile again (last compiled with ${project.compiled.model})`
+                    : 'Compile the game'
               }
             >
-              <SparkIcon size={16} />
+              <HammerIcon size={16} />
               <span className="compile-label">Compile{dirty && project.compiled ? ' •' : ''}</span>
             </button>
           )}
@@ -175,10 +181,10 @@ export function StagePanel() {
         {compiling && progress && (
           <div className="compile-overlay">
             <div className="compile-card">
-              <SparkIcon size={22} className="pulse" />
+              <span className="spinner dark" />
               <b>{progress.message}</b>
               {progress.stage === 'writing' && progress.chars ? <small>{(progress.chars / 1000).toFixed(1)}k characters of code</small> : null}
-              {progress.stage === 'thinking' ? <small>Reasoning models can take a minute.</small> : null}
+              {progress.stage === 'thinking' ? <small>This can take a minute.</small> : null}
               {progress.stage === 'assets' && progress.assetsTotal ? (
                 <div className="bar">
                   <div style={{ width: `${((progress.assetsDone ?? 0) / progress.assetsTotal) * 100}%` }} />
@@ -189,7 +195,7 @@ export function StagePanel() {
         )}
         {!compiling && !project.compiled && runState !== 'running' && (
           <div className="stage-hint">
-            Build your scripts with blocks, then press <b>Compile</b> to turn them into a game.
+            Click the green flag to play.
           </div>
         )}
       </div>

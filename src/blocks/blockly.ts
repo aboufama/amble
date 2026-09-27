@@ -1,6 +1,18 @@
 import * as Blockly from 'blockly/core';
 import * as En from 'blockly/msg/en';
-import { BLOCKS, CATEGORIES, blocksFor, labelFields, type BlockSpec } from './spec';
+import {
+  BLOCKS,
+  CATEGORIES,
+  CHARACTER_SPECIAL_LABELS,
+  SHADOW_TYPES,
+  blocksFor,
+  labelInputs,
+  type BlockSpec,
+  type CharacterSpecial,
+  type InputSpec,
+  type MenuKind,
+  type OutputKind,
+} from './spec';
 import { menuDefault, procedureNames, variablesFor, type MenuContext } from './menus';
 import { FLAG_ICON, REPEAT_ICON } from './icons';
 import { registerFields } from './fields';
@@ -9,25 +21,48 @@ import { BLOCK_FONT_FAMILY, registerRenderer } from './renderer';
 import { registerWorkspaceUi } from './workspaceUi';
 
 /** Loops get Scratch's little arrow at the bottom right. */
-const LOOPS = new Set(['co_repeat', 'co_forever', 'co_repeat_until']);
+const LOOPS = new Set(['fl_repeat', 'co_forever', 'fl_repeat_until']);
 
-/** Blocks get a style per category; hats use the "cap" top and "define" the bowler hat. */
+/** Menus drawn as ovals (a choice of a thing) rather than square fields (a setting). */
+const ROUND_MENUS: ReadonlySet<MenuKind> = new Set(['costume', 'switchBackdrop', 'sound', 'message', 'character']);
+
+/** What reporters give, and what slots take: numbers and words mix; characters and conditions don't. */
+const OUTPUT_CHECK: Record<OutputKind, string> = { number: 'Number', value: 'Value', character: 'Character' };
+const SLOT_CHECK: Partial<Record<InputSpec['kind'], string[]>> = {
+  number: ['Number', 'Value', 'Boolean'],
+  value: ['Number', 'Value', 'Boolean'],
+  character: ['Character'],
+  condition: ['Boolean'],
+};
+
+/** zelos output shapes. */
+const HEXAGONAL = 1;
+const ROUND = 2;
+
+/** Blocks get a style per category; hats use the "cap" top and skills the bowler hat. */
 function styleFor(spec: BlockSpec): string {
   if (spec.type === 'pr_define') return 'myblocks_define';
   return spec.shape === 'hat' ? `${spec.category}_hat` : `${spec.category}_blocks`;
 }
 
+function fieldFor(spec: BlockSpec, name: string, input: InputSpec): Record<string, unknown> {
+  switch (input.kind) {
+    case 'text':
+      return { type: 'field_amble_text', name, text: input.default ?? '', spellcheck: true };
+    case 'label':
+      return spec.type === 'char_ref' ? { type: 'field_amble_character', name, text: input.default ?? '' } : { type: 'field_label_serializable', name, text: input.default ?? '' };
+    case 'menu':
+      return { type: 'field_amble_menu', name, menu: input.menu, shape: ROUND_MENUS.has(input.menu!) ? 'round' : 'square', value: input.default ?? '' };
+    default:
+      return { type: 'input_value', name, check: SLOT_CHECK[input.kind] };
+  }
+}
+
 function blockJson(spec: BlockSpec): Record<string, unknown> {
   const args: unknown[] = [];
   const message = spec.label.replace(/\{([A-Z_]+)\}/g, (_, name: string) => {
-    const menu = spec.menus?.[name];
-    if (name === 'FLAG') {
-      args.push({ type: 'field_image', src: FLAG_ICON, width: 24, height: 24, alt: 'green flag' });
-    } else if (menu) {
-      args.push({ type: 'field_amble_menu', name, menu: menu.kind, shape: menu.shape, value: spec.fields?.[name] ?? '' });
-    } else {
-      args.push({ type: 'field_amble_text', name, text: spec.fields?.[name] ?? '', spellcheck: true });
-    }
+    if (name === 'FLAG') args.push({ type: 'field_image', src: FLAG_ICON, width: 24, height: 24, alt: 'green flag' });
+    else args.push(fieldFor(spec, name, spec.inputs![name]));
     return `%${args.length}`;
   });
   const json: Record<string, unknown> = {
@@ -65,6 +100,14 @@ function blockJson(spec: BlockSpec): Record<string, unknown> {
       json.previousStatement = null;
       json.nextStatement = null;
       break;
+    case 'reporter':
+      json.output = OUTPUT_CHECK[spec.output ?? 'value'];
+      json.outputShape = ROUND;
+      break;
+    case 'boolean':
+      json.output = 'Boolean';
+      json.outputShape = HEXAGONAL;
+      break;
     case 'rule':
       break;
   }
@@ -73,35 +116,14 @@ function blockJson(spec: BlockSpec): Record<string, unknown> {
     json.args2 = [{ type: 'field_image', src: REPEAT_ICON, width: 24, height: 24, alt: '*', flipRtl: true }];
     json.implicitAlign2 = 'RIGHT';
   }
-  if (spec.type === 'co_stop') json.extensions = ['amble_stop_shape'];
   return json;
 }
 
-/**
- * Like Scratch, "stop [other scripts in sprite]" can have blocks under it; "stop [all]" and
- * "stop [this script]" end a script. The shape follows the value (also while loading).
- */
-function stopShapeExtension(this: Blockly.Block) {
-  const field = this.getField('WHAT');
-  if (!field) return;
-  const update = (value: unknown) => {
-    const hasNext = /^other scripts/.test(String(value ?? ''));
-    if (hasNext === Boolean(this.nextConnection)) return;
-    if (!hasNext) {
-      const next = this.nextConnection?.targetBlock();
-      if (next) {
-        next.unplug();
-        if (next instanceof Blockly.BlockSvg) next.moveBy(0, 8);
-      }
-    }
-    this.setNextStatement(hasNext, null);
-  };
-  field.setValidator((value: unknown) => {
-    update(value);
-    return undefined;
-  });
-  update(field.getValue());
-}
+/** The white ovals that fill number and word slots until a block is dropped in. */
+const SHADOW_BLOCKS = [
+  { type: SHADOW_TYPES.number, message0: '%1', args0: [{ type: 'field_number', name: 'NUM', value: 0 }], output: 'Number', outputShape: ROUND, style: 'shadow_blocks' },
+  { type: SHADOW_TYPES.value, message0: '%1', args0: [{ type: 'field_input', name: 'TEXT', text: '' }], output: 'Value', outputShape: ROUND, style: 'shadow_blocks' },
+];
 
 let registered = false;
 
@@ -114,11 +136,13 @@ export function registerBlockly(): void {
   registerFields();
   registerWorkspaceUi();
   registerComments();
-  Blockly.Extensions.register('amble_stop_shape', stopShapeExtension);
-  Blockly.common.defineBlocksWithJsonArray(BLOCKS.map(blockJson));
+  Blockly.common.defineBlocksWithJsonArray([...SHADOW_BLOCKS, ...BLOCKS.map(blockJson)]);
 }
 
-const blockStyles: Record<string, Partial<Blockly.Theme.BlockStyle>> = {};
+const blockStyles: Record<string, Partial<Blockly.Theme.BlockStyle>> = {
+  // Typed-in numbers and words: white ovals (zelos fills a shadow with its secondary colour).
+  shadow_blocks: { colourPrimary: '#ffffff', colourSecondary: '#ffffff', colourTertiary: '#c6c6c6', hat: '' },
+};
 for (const c of CATEGORIES) {
   const colours = { colourPrimary: c.colour, colourSecondary: c.secondary, colourTertiary: c.tertiary };
   blockStyles[`${c.id}_blocks`] = { ...colours, hat: '' };
@@ -152,45 +176,105 @@ export const AMBLE_THEME = Blockly.Theme.defineTheme('amble', {
 // -----------------------------------------------------------------------------
 
 export const MAKE_VARIABLE = 'MAKE_VARIABLE';
-export const MAKE_BLOCK = 'MAKE_BLOCK';
+export const MAKE_SKILL = 'MAKE_SKILL';
 
 export interface PaletteContext {
   mode: '2d' | '3d';
-  /** Editing the stage (Scratch shows no motion blocks and only stage blocks then). */
+  /** Editing the stage (it has no motion blocks, and only stage blocks). */
   isStage: boolean;
-  /** The project and edited sprite, for dropdown defaults (the second costume, the last sound...). */
+  /** The project and edited sprite, for menu defaults and the character and variable blocks. */
   menus: MenuContext | null;
 }
 
 /** Gap after a group of blocks, and between categories (Scratch's `<sep gap="36"/>`). */
 const GROUP_GAP = 36;
 
-function paletteBlock(spec: BlockSpec, ctx: PaletteContext): Blockly.utils.toolbox.BlockInfo {
+type BlockInfo = Blockly.utils.toolbox.BlockInfo;
+type Inputs = NonNullable<BlockInfo['inputs']>;
+
+/** A block for the palette with its inputs filled in (typed values as shadows, like Scratch). */
+export function paletteBlock(spec: BlockSpec, ctx: PaletteContext, values: Record<string, string> = {}): BlockInfo {
   const fields: Record<string, string> = {};
-  for (const [name, menu] of Object.entries(spec.menus ?? {})) {
-    fields[name] = menuDefault(menu.kind, ctx.menus, spec.fields?.[name] ?? '');
+  const inputs: Inputs = {};
+  for (const [name, input] of Object.entries(spec.inputs ?? {})) {
+    const given = values[name];
+    switch (input.kind) {
+      case 'text':
+      case 'label':
+        fields[name] = given ?? input.default ?? '';
+        break;
+      case 'menu':
+        fields[name] = given ?? menuDefault(input.menu!, ctx.menus, input.default ?? '');
+        break;
+      case 'number':
+        inputs[name] = { shadow: { type: SHADOW_TYPES.number, fields: { NUM: Number(given ?? input.default ?? 0) } } };
+        break;
+      case 'value':
+        inputs[name] = { shadow: { type: SHADOW_TYPES.value, fields: { TEXT: given ?? input.default ?? '' } } };
+        break;
+      case 'character': {
+        // The stage isn't a character: its blocks start with the first sprite instead of "me".
+        let who = given ?? input.default ?? 'me';
+        if (who === 'me' && ctx.isStage) who = ctx.menus?.project.sprites[0]?.name ?? who;
+        inputs[name] = { shadow: { type: SHADOW_TYPES.character, fields: { NAME: who } } };
+        break;
+      }
+      case 'condition':
+        break;
+    }
   }
-  const info: Blockly.utils.toolbox.BlockInfo = { kind: 'block', type: spec.type };
+  const info: BlockInfo = { kind: 'block', type: spec.type };
   if (Object.keys(fields).length) info.fields = fields;
+  if (Object.keys(inputs).length) info.inputs = inputs;
   if (spec.groupEnd) info.gap = GROUP_GAP;
   return info;
 }
 
-/** The block palette for a world mode and the sprite or stage being edited, like Scratch's. */
+const CHARACTER_SPECIALS: CharacterSpecial[] = ['me', 'mouse', 'random', 'center', 'edge', 'anyone'];
+
+/** Characters: one block per sprite (with its picture), then the special ones. */
+function characterBlocks(ctx: PaletteContext): Blockly.utils.toolbox.FlyoutItemInfoArray {
+  const project = ctx.menus?.project;
+  const names = [...(project?.sprites ?? []).map((s) => s.name), ...(project?.compiled?.sprites ?? []).filter((s) => !project?.sprites.some((u) => u.name === s.name)).map((s) => s.name)];
+  const items: Blockly.utils.toolbox.FlyoutItemInfoArray = names.map((name) => ({ kind: 'block', type: 'char_ref', fields: { NAME: name } }));
+  if (items.length) (items[items.length - 1] as BlockInfo).gap = GROUP_GAP;
+  const specials = CHARACTER_SPECIALS.filter((s) => !(ctx.isStage && s === 'me'));
+  specials.forEach((s, i) => items.push({ kind: 'block', type: 'char_ref', fields: { NAME: s }, ...(i === specials.length - 1 ? { gap: GROUP_GAP } : {}) }));
+  return items;
+}
+
+/** The block palette for a world mode and the sprite or stage being edited. */
 export function toolboxFor(ctx: PaletteContext): Blockly.utils.toolbox.ToolboxInfo {
   const available = blocksFor(ctx.mode, ctx.isStage ? 'stage' : 'sprite').filter((b) => !b.hidden);
-  const hasVariables = ctx.menus ? variablesFor(ctx.menus.project, ctx.menus.target).length > 0 : false;
-  const hasProcedures = ctx.menus ? procedureNames(ctx.menus).length > 0 : false;
+  const variables = ctx.menus ? variablesFor(ctx.menus.project, ctx.menus.target) : [];
+  const skills = ctx.menus ? procedureNames(ctx.menus) : [];
   return {
     kind: 'categoryToolbox',
     contents: CATEGORIES.filter((c) => !c.modes || c.modes.includes(ctx.mode)).map((c) => {
       const contents: Blockly.utils.toolbox.FlyoutItemInfoArray = [];
-      if (c.id === 'motion' && ctx.isStage) contents.push({ kind: 'label', text: 'Stage selected: no motion blocks' });
-      if (c.id === 'variables') contents.push({ kind: 'button', text: 'Make a Variable', callbackkey: MAKE_VARIABLE });
-      if (c.id === 'myblocks') contents.push({ kind: 'button', text: 'Make a Block', callbackkey: MAKE_BLOCK });
       const blocks = available.filter((b) => b.category === c.id);
-      const show = (c.id !== 'variables' || hasVariables) && (c.id !== 'myblocks' || hasProcedures);
-      if (show) for (const b of blocks) contents.push(paletteBlock(b, ctx));
+      switch (c.id) {
+        case 'motion':
+          if (ctx.isStage) contents.push({ kind: 'label', text: 'Stage selected: no motion blocks' });
+          for (const b of blocks) contents.push(paletteBlock(b, ctx));
+          break;
+        case 'characters':
+          contents.push(...characterBlocks(ctx));
+          for (const b of blocks) contents.push(paletteBlock(b, ctx));
+          break;
+        case 'variables':
+          contents.push({ kind: 'button', text: 'Make a Variable', callbackkey: MAKE_VARIABLE });
+          variables.forEach((v, i) => contents.push({ kind: 'block', type: 'mem_var', fields: { VARIABLE: v }, ...(i === variables.length - 1 ? { gap: GROUP_GAP } : {}) }));
+          // Like Scratch, "set" and "change" appear once there is a variable.
+          for (const b of blocks) if (variables.length || !['mem_set', 'mem_change', 'va_show'].includes(b.type)) contents.push(paletteBlock(b, ctx));
+          break;
+        case 'myblocks':
+          contents.push({ kind: 'button', text: 'Make a Skill', callbackkey: MAKE_SKILL });
+          for (const name of skills) contents.push(paletteBlock(blocks.find((b) => b.type === 'pr_call')!, ctx, { NAME: name }));
+          break;
+        default:
+          for (const b of blocks) contents.push(paletteBlock(b, ctx));
+      }
       contents.push({ kind: 'sep', gap: GROUP_GAP });
       return {
         kind: 'category',
@@ -203,4 +287,9 @@ export function toolboxFor(ctx: PaletteContext): Blockly.utils.toolbox.ToolboxIn
   };
 }
 
-export { Blockly, labelFields };
+/** How a character is written on blocks and in menus ("the mouse", "Fox"). */
+export function characterLabel(name: string): string {
+  return (CHARACTER_SPECIAL_LABELS as Record<string, string>)[name] ?? name;
+}
+
+export { Blockly, labelInputs };

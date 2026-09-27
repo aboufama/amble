@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { fixProblems } from '../actions';
 import { useStore, type OutputTab } from '../store';
 import { Modal } from './Dialogs';
-import { CodeIcon, CopyIcon, WandIcon } from './icons';
+import { CodeIcon, CopyIcon, WrenchIcon } from './icons';
 
 const TABS: Array<{ id: Exclude<OutputTab, 'game'>; label: string }> = [
   { id: 'problems', label: 'Problems' },
@@ -19,7 +19,7 @@ export function useProblemCount(): { count: number; errors: number } {
 
 /**
  * What the compiler and the running game reported, in a Scratch-style dialog opened from
- * the warning button next to Compile: the problems (with "Fix with AI"), the console, and
+ * the warning button next to Compile: the problems (with "Fix"), the console, and
  * the compiled code (read-only).
  */
 export function ProblemsDialog() {
@@ -75,7 +75,7 @@ export function ProblemsDialog() {
                 }}
                 disabled={compiling}
               >
-                <WandIcon size={15} /> Fix with AI
+                <WrenchIcon size={15} /> Fix
               </button>
             )}
           </div>

@@ -69,7 +69,7 @@ test('dropdowns list keys, sounds and costumes, and follow renames', async ({ pa
   expect(keys).toEqual(expect.arrayContaining(['a', 'z', '0', '9']));
   await page.keyboard.press('Escape');
 
-  // "start sound [jump]": Amble's own sounds, then "record...".
+  // "play sound [jump]": Amble's own sounds, then "record...".
   expect(await openMenu(page, 'so_play', 'SOUND')).toEqual(['pop', 'jump', 'record...']);
   await page.locator('.blocklyDropDownDiv .blocklyMenuItem', { hasText: 'pop' }).click();
   expect(await fieldValue(page, 'so_play', 'SOUND')).toBe('pop');
@@ -105,6 +105,7 @@ test('projects saved before dropdowns keep their values', async ({ page }) => {
   for (const s of project.sprites) delete s.variables;
   project.sprites[0].blocks.blocks.blocks.push(
     { type: 'lo_costume', id: 'old1', x: 420, y: 60, fields: { COSTUME: 'the happy one' } },
+    // A block from before Amble's own block language: it becomes "set [lives] to (3)".
     { type: 'va_set', id: 'old2', x: 420, y: 160, fields: { VARIABLE: 'lives', VALUE: '3' } },
   );
 
@@ -120,6 +121,6 @@ test('projects saved before dropdowns keep their values', async ({ page }) => {
   expect(await fieldValue(page, 'lo_costume', 'COSTUME')).toBe('amble-a');
 
   // Variables of old projects come from the blocks that use them.
-  const vars = await openMenu(page, 'va_set', 'VARIABLE');
+  const vars = await openMenu(page, 'mem_set', 'VARIABLE');
   expect(vars).toEqual(['lives', 'Rename variable', 'Delete the "lives" variable']);
 });

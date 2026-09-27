@@ -26,10 +26,11 @@ export const StopIcon = (p: P) => (
     <path d="M8.3 2.5h7.4l5.8 5.8v7.4l-5.8 5.8H8.3l-5.8-5.8V8.3z" fill="#ec5959" stroke="#b84848" strokeWidth="1.2" strokeLinejoin="round" />
   </svg>
 );
-export const SparkIcon = (p: P) => (
+/** Compile: a hammer (building the game). */
+export const HammerIcon = (p: P) => (
   <svg {...base(p)}>
-    <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" fill="currentColor" stroke="none" />
-    <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" fill="currentColor" stroke="none" />
+    <path d="M14.5 5.5l4 4M12 8l4 4M3.5 20.5l8.8-8.8" />
+    <path d="M10.5 6.5l3-3c1.6-.6 3.7-.2 5 1l.6.6-2.6 2.6 1.9 1.9-2.4 2.4z" fill="currentColor" fillOpacity=".25" />
   </svg>
 );
 export const GearIcon = (p: P) => (
@@ -163,9 +164,10 @@ export const CopyIcon = (p: P) => (
     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
   </svg>
 );
-export const WandIcon = (p: P) => (
+/** Fix: a wrench. */
+export const WrenchIcon = (p: P) => (
   <svg {...base(p)}>
-    <path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M15 9h.01M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5" />
+    <path d="M14.7 6.3a4 4 0 0 0 5 5L21 12.6a6 6 0 0 1-7.8 1.2L6 21l-3-3 7.2-7.2A6 6 0 0 1 11.4 3l1.3 1.3a4 4 0 0 0 2 2z" />
   </svg>
 );
 

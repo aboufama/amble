@@ -1,7 +1,8 @@
 import * as Blockly from 'blockly/core';
 import { FieldMultilineInput } from '@blockly/field-multilineinput';
-import type { MenuKind } from './spec';
-import { DELETE_VARIABLE, NEW_MESSAGE, RECORD_SOUND, RENAME_VARIABLE, isActionValue, menuOptions, type MenuContext } from './menus';
+import { BLOCK_BY_TYPE, CHARACTER_SPECIAL_LABELS, type CharacterSpecial, type MenuKind } from './spec';
+import { ALL_SPECIALS, DELETE_VARIABLE, NEW_MESSAGE, RECORD_SOUND, RENAME_VARIABLE, isActionValue, menuOptions, type MenuContext } from './menus';
+import { SPECIAL_ICONS, UNKNOWN_CHARACTER_ICON } from './icons';
 
 // -----------------------------------------------------------------------------
 // The editor's hooks for menus that need the project or a dialog
@@ -225,13 +226,22 @@ export class FieldAmbleMenu extends Blockly.FieldDropdown {
     super(Blockly.Field.SKIP_SETUP);
     this.menuKind = kind;
     this.menuShape = shape;
-    this.menuGenerator_ = () => menuOptions(this.menuKind, host?.context() ?? null, String(this.getValue() ?? '')) as Blockly.MenuOption[];
+    this.menuGenerator_ = () => menuOptions(this.menuKind, host?.context() ?? null, String(this.getValue() ?? ''), this.specials()) as Blockly.MenuOption[];
     if (config) this.configure_(config);
     this.setValue(value);
   }
 
   protected override doClassValidation_(newValue?: string): string | null {
     return typeof newValue === 'string' && !isActionValue(newValue) ? newValue : null;
+  }
+
+  /** A character menu lists the special characters its slot allows ("go to" offers "a random spot"...). */
+  private specials(): CharacterSpecial[] {
+    if (this.menuKind !== 'character') return ALL_SPECIALS;
+    const shadow = this.getSourceBlock();
+    const parent = shadow?.getParent();
+    const input = parent?.inputList.find((i) => i.connection?.targetBlock() === shadow || i.connection?.getShadowState()?.id === shadow?.id);
+    return (input && BLOCK_BY_TYPE.get(parent!.type)?.inputs?.[input.name]?.specials) || ALL_SPECIALS;
   }
 
   protected override getText_(): string | null {
@@ -298,6 +308,77 @@ export class FieldAmbleMenu extends Blockly.FieldDropdown {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Character blocks: a sprite's picture and name (or a special character's icon)
+// -----------------------------------------------------------------------------
+
+/** Size of the picture on character blocks. */
+const PICTURE = 22;
+const PICTURE_GAP = 6;
+
+/** The picture of a sprite as it looks now (its current costume), or of a compiled sprite. */
+export function characterPicture(ctx: MenuContext | null, name: string): { url: string; icon: boolean } {
+  if (name in SPECIAL_ICONS && name !== 'me') return { url: SPECIAL_ICONS[name], icon: true };
+  const project = ctx?.project;
+  const sprite = name === 'me' ? (ctx?.target?.kind === 'sprite' ? ctx.target : null) : project?.sprites.find((s) => s.name === name);
+  if (sprite) {
+    const c = sprite.costumes[sprite.currentCostume] ?? sprite.costumes[0];
+    const url = c?.kind === 'image' ? c.dataUrl : c?.kind === 'model' ? c.thumbnail : undefined;
+    if (url) return { url, icon: false };
+  }
+  if (name === 'me') return { url: SPECIAL_ICONS.me, icon: true };
+  const compiled = project?.compiled?.assets.find((a) => a.targetName === name && a.kind === 'image');
+  if (compiled?.kind === 'image') return { url: compiled.dataUrl, icon: false };
+  return { url: UNKNOWN_CHARACTER_ICON, icon: true };
+}
+
+/**
+ * The name on a character block, with the character's picture in front. It can't be edited:
+ * each character has its own block in the palette. The saved value is the sprite's name, or a
+ * special character ("me", "mouse", "random", "center", "edge", "anyone").
+ */
+export class FieldCharacter extends Blockly.FieldLabelSerializable {
+  static override fromJson(options: Blockly.FieldLabelConfig & { text?: string }): FieldCharacter {
+    return new FieldCharacter(options.text ?? '', undefined, options);
+  }
+
+  private backdrop: SVGRectElement | null = null;
+  private picture: SVGImageElement | null = null;
+
+  override initView() {
+    super.initView();
+    const group = this.fieldGroup_ as SVGGElement;
+    this.backdrop = Blockly.utils.dom.createSvgElement(Blockly.utils.Svg.RECT, { width: PICTURE, height: PICTURE, rx: 6, ry: 6, fill: '#fff', 'fill-opacity': 0.9 }, group);
+    this.picture = Blockly.utils.dom.createSvgElement(Blockly.utils.Svg.IMAGE, { width: PICTURE, height: PICTURE }, group);
+    group.insertBefore(this.picture, group.firstChild);
+    group.insertBefore(this.backdrop, group.firstChild);
+  }
+
+  protected override getText_(): string | null {
+    const name = String(this.getValue() ?? '');
+    return (CHARACTER_SPECIAL_LABELS as Record<string, string>)[name] ?? name;
+  }
+
+  protected override render_() {
+    if (this.textContent_) this.textContent_.nodeValue = this.getDisplayText_();
+    const c = this.getConstants()!;
+    const text = this.getTextElement();
+    const textWidth = Blockly.utils.dom.getTextWidth(text);
+    const height = Math.max(c.FIELD_TEXT_HEIGHT, PICTURE);
+    this.size_ = new Blockly.utils.Size(PICTURE + PICTURE_GAP + textWidth, height);
+    this.positionTextElement_(PICTURE + PICTURE_GAP, textWidth);
+    const { url, icon } = characterPicture(host?.context() ?? null, String(this.getValue() ?? ''));
+    const inset = icon ? 0 : 2;
+    this.picture?.setAttribute('href', url);
+    this.picture?.setAttribute('x', String(inset));
+    this.picture?.setAttribute('y', String((height - PICTURE) / 2 + inset));
+    this.picture?.setAttribute('width', String(PICTURE - 2 * inset));
+    this.picture?.setAttribute('height', String(PICTURE - 2 * inset));
+    this.backdrop?.setAttribute('y', String((height - PICTURE) / 2));
+    this.backdrop?.setAttribute('display', icon ? 'none' : 'block');
+  }
+}
+
 let registered = false;
 
 export function registerFields(): void {
@@ -306,4 +387,5 @@ export function registerFields(): void {
   FieldMultilineInput.showHint = false;
   Blockly.fieldRegistry.register('field_amble_text', FieldAmbleText);
   Blockly.fieldRegistry.register('field_amble_menu', FieldAmbleMenu);
+  Blockly.fieldRegistry.register('field_amble_character', FieldCharacter);
 }

@@ -1,72 +1,28 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Frame, type Page, type Route } from '@playwright/test';
 
 /**
- * End-to-end: press Compile with a mocked OpenAI API, check that compiled code, a compiled
- * sprite and compiled art arrive, then play the game with the keyboard.
+ * End-to-end compiling. Exact blocks compile instantly when the green flag is clicked, with no
+ * request. Blocks in the author's own words are compiled once, in one request (answered here by
+ * a mock of the OpenAI API or of the Codex bridge), and reused after that.
  */
 
-const ambleCode = `class Amble extends Sprite {
-  start() {
-    this.speed = 240;
-    this.setPosition(-120, -100);
-    this.animate(['amble-a', 'amble-b'], 6);
-    this.say("Hi! I'm Amble.");
-    this.after(1.5, () => this.say(''));
-  }
-  update(dt) {
-    const dir = this.game.input.axis('horizontal');
-    this.x += dir * this.speed * dt;
-    if (dir) this.flipX = dir < 0;
-    this.keepOnStage();
-    const coin = this.touching('Coin');
-    if (coin) {
-      coin.destroy();
-      this.game.vars.score += 1;
-      this.playSound('pop');
-      this.game.effects.burst({ x: coin.x, y: coin.y });
-    }
-    window.__test = { x: this.x, y: this.y, score: this.game.vars.score, time: this.game.time };
-  }
-  onKeyDown(key) {
-    if (key === 'space') {
-      this.say('jump!');
-      this.wait(0.3);
-      this.say('');
-    }
-  }
-}`;
+const moonSvg =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><path d="M40 6a26 26 0 1 0 14 40A22 22 0 0 1 40 6z" fill="#fff3b0" stroke="#c9a400" stroke-width="3"/></svg>';
 
-const stageCode = `class StageScript extends Stage {
-  start() {
-    this.game.vars.score = 0;
-    this.game.ui.value('Score', () => this.game.vars.score);
-  }
-}`;
-
-const coinCode = `class Coin extends Sprite {
-  start() {
-    this.setPosition(60, -100);
-  }
-  update(dt) {
-    this.turn(90 * dt);
-  }
-}`;
-
-const compileReply = {
-  summary: 'Amble walks left and right collecting a coin.',
-  howToPlay: 'Use the arrow keys to walk. Grab the coin!',
-  sprites: [{ name: 'Coin', description: 'A spinning gold coin', x: 60, y: -100, z: 0, size: 100, direction: 0, visible: true }],
-  assets: [{ target: 'Coin', kind: 'costume', name: 'coin', description: 'a shiny gold coin with a star', width: 40, height: 40, reuse: false }],
-  code: [
-    { target: 'Amble', source: ambleCode },
-    { target: 'Stage', source: stageCode },
-    { target: 'Coin', source: coinCode },
-  ],
-  warnings: ['Picked a walking speed of 240 px/s.'],
-};
-
-const coinSvg =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="#ffd21f" stroke="#a87b00" stroke-width="4"/><path d="M20 10l3 7h7l-6 4 2 8-6-5-6 5 2-8-6-4h7z" fill="#fff3a8"/></svg>';
+/** Writes each piece the compile request asks for (listed under "## Write these pieces"). */
+function piecesReply(prompt: string) {
+  const tasks = [...prompt.matchAll(/^- (p\d+): (\w+)/gm)].map((m) => ({ id: m[1], kind: m[2] }));
+  const code: Record<string, string> = {
+    action: 'this.game.effects.burst({ x: this.x, y: this.y, color: "#ffd84d", count: 12 });',
+    behavior: 'for (;;) {\n  this.turn(4);\n  window.__twinkles = (window.__twinkles ?? 0) + 1;\n  yield;\n}',
+  };
+  return {
+    pieces: tasks.map((t) => ({ id: t.id, code: code[t.kind] ?? '' })),
+    sprites: [{ name: 'Moon', description: 'A sleepy moon in the corner', x: 170, y: 130, z: 0, size: 100, direction: 0, visible: true, code: 'class Moon extends Sprite {\n  start() {\n    this.setPosition(170, 130);\n  }\n}' }],
+    assets: [{ target: 'Moon', kind: 'costume', name: 'moon', description: 'a smiling crescent moon', width: 60, height: 60, reuse: false }],
+    warnings: [],
+  };
+}
 
 function sse(content: string): string {
   const chunks: string[] = [];
@@ -83,14 +39,7 @@ async function mockOpenAI(page: Page, calls: string[]) {
     const body = JSON.parse(route.request().postData() ?? '{}');
     const name: string = body.response_format?.json_schema?.name ?? 'unknown';
     calls.push(name);
-    const reply =
-      name === 'amble_game'
-        ? compileReply
-        : name === 'svg_art'
-          ? { svg: coinSvg }
-          : name === 'sound_recipe'
-            ? { segments: [{ wave: 'square', startFreq: 800, endFreq: 1200, duration: 0.1, startVolume: 0.6, endVolume: 0 }] }
-            : { parts: [] };
+    const reply = name === 'amble_pieces' ? piecesReply(body.messages[1].content) : name === 'svg_art' ? { svg: moonSvg } : { parts: [] };
     await route.fulfill({
       status: 200,
       headers: { 'content-type': 'text/event-stream', 'access-control-allow-origin': '*' },
@@ -116,9 +65,9 @@ async function mockCodex(page: Page, requests: Array<{ model: string; reasoningE
   await page.route('**/api/codex/run', async (route) => {
     const body = JSON.parse(route.request().postData() ?? '{}');
     const props = Object.keys(body.schema?.properties ?? {});
-    const kind = props.includes('code') ? 'game' : props.includes('svg') ? 'svg' : 'other';
+    const kind = props.includes('pieces') ? 'pieces' : props.includes('svg') ? 'svg' : 'other';
     requests.push({ model: body.model, reasoningEffort: body.reasoningEffort, kind });
-    const reply = kind === 'game' ? compileReply : kind === 'svg' ? { svg: coinSvg } : { parts: [] };
+    const reply = kind === 'pieces' ? piecesReply(body.user) : kind === 'svg' ? { svg: moonSvg } : { parts: [] };
     const lines = [{ type: 'progress', phase: 'thinking' }, { type: 'result', text: JSON.stringify(reply) }];
     await route.fulfill({ status: 200, headers: { 'content-type': 'application/x-ndjson' }, body: lines.map((l) => JSON.stringify(l)).join('\n') + '\n' });
   });
@@ -131,60 +80,102 @@ async function mockCodex(page: Page, requests: Array<{ model: string; reasoningE
   };
 }
 
-async function gameFrame(page: Page) {
+async function gameFrame(page: Page): Promise<Frame> {
   const handle = await page.waitForSelector('iframe.player-frame');
   return (await handle.contentFrame())!;
 }
 
-test('compiles blocks with the AI and plays the game', async ({ page }) => {
+const game = (frame: Frame) =>
+  frame.evaluate(() => {
+    const g = (window as unknown as { __ambleGame?: { state: string; time: number; findAll(name: string): unknown[] } }).__ambleGame;
+    return { state: g?.state ?? '', time: g?.time ?? 0, twinkles: (window as unknown as { __twinkles?: number }).__twinkles ?? 0 };
+  });
+
+async function openExample(page: Page, title: string) {
+  await page.getByRole('button', { name: /File/ }).click();
+  await page.getByRole('menuitem', { name: title }).click();
+  await page.getByRole('dialog', { name: 'Replace Project' }).getByRole('button', { name: 'Replace' }).click();
+  await expect(page.locator('.sprite-tile', { hasText: 'Star' })).toBeVisible();
+}
+
+test('exact blocks compile instantly with the green flag, without any request', async ({ page }) => {
+  const calls: string[] = [];
+  await mockOpenAI(page, calls);
+  await page.goto('/');
+  await expect(page.locator('.blocklyMainBackground')).toBeVisible();
+
+  await page.getByTitle('Start (green flag)').click();
+  const frame = await gameFrame(page);
+  await expect.poll(async () => (await game(frame)).time, { timeout: 30_000 }).toBeGreaterThan(0.3);
+  // Amble falls with gravity and walks with the arrow keys.
+  await page.keyboard.down('ArrowRight');
+  await expect
+    .poll(() => frame.evaluate(() => (window as unknown as { __ambleGame: { find(n: string): { x: number } } }).__ambleGame.find('Amble').x), { timeout: 10_000 })
+    .toBeGreaterThan(40);
+  await page.keyboard.up('ArrowRight');
+  expect(calls).toEqual([]);
+  await expect(page.locator('.problems-btn')).toHaveCount(0);
+});
+
+test('words are compiled once, in one request, and reused after', async ({ page }) => {
   const calls: string[] = [];
   await page.addInitScript(() => {
     localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test', model: 'gpt-5', assetModel: 'gpt-5-mini' }));
   });
   await mockOpenAI(page, calls);
   await page.goto('/');
+  await openExample(page, 'Star Catcher (2D)');
 
-  // The default project shows the starter scripts.
-  await expect(page.locator('.blocklyMainBackground')).toBeVisible();
-  await expect(page.locator('.sprite-tile', { hasText: 'Amble' })).toBeVisible();
-
-  await page.getByRole('button', { name: /Compile/ }).click();
-
-  // The compiled game starts by itself.
+  // Two blocks are written in words: Compile is marked.
+  await expect(page.locator('.compile-btn')).toHaveClass(/dirty/);
+  await page.getByRole('button', { name: 'Compile' }).click();
   const frame = await gameFrame(page);
-  await expect.poll(async () => frame.evaluate(() => (window as unknown as { __test?: { time: number } }).__test?.time ?? 0), { timeout: 30_000 }).toBeGreaterThan(0.2);
-  expect(calls).toEqual(['amble_game', 'svg_art']);
+  await expect.poll(async () => (await game(frame)).twinkles, { timeout: 30_000 }).toBeGreaterThan(5);
+  // One request for the words, one for the art of the character the compiler added.
+  expect(calls).toEqual(['amble_pieces', 'svg_art']);
+  await expect(page.locator('.compile-btn')).not.toHaveClass(/dirty/);
 
-  // The compiler's sprite shows up as a compiled sprite.
-  await expect(page.locator('.sprite-tile.compiled', { hasText: 'Coin' })).toBeVisible();
-  // The compiler's summary and "how to play" are not shown anywhere.
-  await expect(page.getByText('Grab the coin')).toHaveCount(0);
+  // Playing again, or after moving scripts around, compiles instantly.
+  await page.getByTitle('Stop').click();
+  await page.evaluate(() => {
+    const ws = (window as unknown as { __ambleWorkspace: { getTopBlocks(o: boolean): Array<{ moveBy(x: number, y: number): void }> } }).__ambleWorkspace;
+    ws.getTopBlocks(false)[0].moveBy(160, 40);
+  });
+  await page.getByTitle('Start (green flag)').click();
+  await expect.poll(async () => (await game(frame)).state).toBe('running');
+  await page.waitForTimeout(500);
+  expect(calls).toEqual(['amble_pieces', 'svg_art']);
 
-  // Walk right into the coin.
-  await page.keyboard.down('ArrowRight');
-  await expect.poll(async () => frame.evaluate(() => (window as unknown as { __test?: { score: number } }).__test?.score ?? 0), { timeout: 15_000 }).toBe(1);
-  await page.keyboard.up('ArrowRight');
+  // The compiled code is there to read.
+  await page.getByRole('button', { name: 'Compile' }).hover();
+  await expect(page.getByRole('button', { name: 'Compile' })).toHaveAttribute('title', /last compiled with gpt-5/);
 
-  // The wait() in a normal method was auto-fixed (the method became a generator).
-  // It's listed in the problems dialog, opened from the warning button next to Compile.
-  await page.locator('.problems-btn').click();
-  const problems = page.getByRole('dialog', { name: 'Problems' });
-  await expect(problems.locator('.problem.warning').first()).toBeVisible();
-  await expect(problems.locator('.problems')).toContainText('Made onKeyDown() a generator');
-  await problems.getByRole('tab', { name: 'Code' }).click();
-  await expect(page.getByRole('dialog', { name: 'Compiled Code' }).locator('.code-view')).toContainText('class');
-  await page.keyboard.press('Escape');
-
-  // The compiled art is listed under the Coin's costumes.
-  await page.locator('.sprite-tile.compiled', { hasText: 'Coin' }).click();
+  // The compiler's character shows up as a compiled sprite, with its art.
+  await expect(page.locator('.sprite-tile.compiled', { hasText: 'Moon' })).toBeVisible();
+  await page.locator('.sprite-tile.compiled', { hasText: 'Moon' }).click();
   await page.getByRole('tab', { name: /Costumes/ }).click();
-  await expect(page.locator('.asset-tile.compiled', { hasText: 'coin' })).toBeVisible();
-  await expect(page.locator('.compiled-preview')).toContainText('a shiny gold coin with a star');
+  await expect(page.locator('.asset-tile.compiled', { hasText: 'moon' })).toBeVisible();
+  await expect(page.locator('.compiled-preview')).toContainText('a smiling crescent moon');
 
-  // Keep the compiled sprite: it becomes one of the author's sprites.
+  // Keep it: it becomes one of the author's sprites.
   await page.getByRole('tab', { name: /Code/ }).first().click();
   await page.getByRole('button', { name: /Keep as my sprite/ }).click();
-  await expect(page.locator('.sprite-tile:not(.compiled)', { hasText: 'Coin' })).toBeVisible();
+  await expect(page.locator('.sprite-tile:not(.compiled)', { hasText: 'Moon' })).toBeVisible();
+});
+
+test('without an account the flag still plays; words wait', async ({ page }) => {
+  const calls: string[] = [];
+  await mockOpenAI(page, calls);
+  await page.goto('/');
+  await openExample(page, 'Star Catcher (2D)');
+  await page.getByTitle('Start (green flag)').click();
+  const frame = await gameFrame(page);
+  await expect.poll(async () => (await game(frame)).time, { timeout: 30_000 }).toBeGreaterThan(0.3);
+  await expect(page.getByText('Blocks in your own words need a ChatGPT sign-in or an API key')).toBeVisible();
+  expect((await game(frame)).twinkles).toBe(0);
+  expect(calls).toEqual([]);
+  await page.locator('.problems-btn').click();
+  await expect(page.getByRole('dialog', { name: 'Problems' })).toContainText("2 blocks in your own words aren't compiled yet");
 });
 
 test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', async ({ page }) => {
@@ -201,19 +192,20 @@ test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', 
   await expect(page.getByText('Finish signing in to ChatGPT in your browser')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open the sign-in page' })).toHaveAttribute('href', /auth\.openai\.com/);
   codex.finishSignIn();
-  await expect(page.locator('.menu-btn.account')).toContainText('ChatGPT · Astra Light');
+  await expect(page.locator('.menu-btn.account')).toContainText('Signed in');
   await expect(page.locator('.account-card')).toContainText('GPT-6 Astra Light');
   await page.keyboard.press('Escape');
 
-  await page.getByRole('button', { name: /Compile/ }).click();
+  await openExample(page, 'Star Catcher (2D)');
+  await page.getByRole('button', { name: 'Compile' }).click();
   const frame = await gameFrame(page);
-  await expect.poll(async () => frame.evaluate(() => (window as unknown as { __test?: { time: number } }).__test?.time ?? 0), { timeout: 30_000 }).toBeGreaterThan(0.2);
+  await expect.poll(async () => (await game(frame)).twinkles, { timeout: 30_000 }).toBeGreaterThan(5);
   expect(requests).toEqual([
-    { model: 'gpt-6-astra', reasoningEffort: 'low', kind: 'game' },
+    { model: 'gpt-6-astra', reasoningEffort: 'low', kind: 'pieces' },
     { model: 'gpt-6-astra', reasoningEffort: 'low', kind: 'svg' },
   ]);
   expect(direct).toEqual([]);
-  await expect(page.getByRole('button', { name: 'Compile' })).toHaveAttribute('title', /last built with GPT-6 Astra Light \(ChatGPT\)/);
+  await expect(page.getByRole('button', { name: 'Compile' })).toHaveAttribute('title', /last compiled with GPT-6 Astra Light/);
 
   // Signing out goes back to the API key settings.
   await page.locator('.menu-btn.account').click();
