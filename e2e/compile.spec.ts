@@ -117,6 +117,23 @@ test('exact blocks compile instantly with the green flag, without any request', 
   await expect(page.locator('.problems-btn')).toHaveCount(0);
 });
 
+test('the Edit menu shows the JavaScript the blocks compiled to', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.blocklyMainBackground')).toBeVisible();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: 'Show compiled code' })).toBeDisabled();
+  await page.keyboard.press('Escape');
+
+  await page.getByTitle('Start (green flag)').click();
+  const frame = await gameFrame(page);
+  await expect.poll(async () => (await game(frame)).state, { timeout: 30_000 }).toBe('running');
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Show compiled code' }).click();
+  const code = page.getByRole('dialog', { name: 'Compiled Code' }).locator('.code-view');
+  await expect(code).toContainText('extends Sprite');
+  await expect(code).toContainText('walkWith(');
+});
+
 test('words are compiled once, in one request, and reused after', async ({ page }) => {
   const calls: string[] = [];
   await page.addInitScript(() => {

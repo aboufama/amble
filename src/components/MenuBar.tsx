@@ -51,6 +51,7 @@ export function MenuBar() {
   const useChatGpt = useStore((s) => s.settings.useChatGpt);
   const restore = useStore((s) => s.restore);
   const setRestore = useStore((s) => s.setRestore);
+  const compiledCount = useStore((s) => s.project.compiled?.code.length ?? 0);
   const [open, setOpen] = useState<'file' | 'edit' | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const signedIn = useChatGpt && codex?.auth === 'chatgpt';
@@ -168,6 +169,20 @@ export function MenuBar() {
                     })}
                   >
                     {restore ? `Restore ${restore.what}` : 'Restore'}
+                  </button>
+                </div>
+                <div className="menubar-menu-section">
+                  <button
+                    role="menuitem"
+                    disabled={!compiledCount}
+                    title={compiledCount ? 'The JavaScript your blocks compiled to' : 'Compile the game first'}
+                    onClick={act(() => {
+                      const s = useStore.getState();
+                      s.setOutputTab('code');
+                      s.setProblemsOpen(true);
+                    })}
+                  >
+                    Show compiled code
                   </button>
                 </div>
               </div>
