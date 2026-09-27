@@ -1998,7 +1998,7 @@ body.reordering * {
 }
 
 /* Scratch shows only the name and x, y next to a small stage. */
-.gui-body.stage-small .sprite-info:not(.stage-info) .info-row:not(:first-child),
+.gui-body.stage-small .sprite-info .info-row:not(:first-child):not(.info-notes),
 .gui-body.stage-small .sprite-info .info-icon,
 .gui-body.stage-small .sprite-info .info-row:first-child > .info-group:first-child .info-label {
   display: none;
