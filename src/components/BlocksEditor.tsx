@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AMBLE_THEME, Blockly, MAKE_BLOCK, MAKE_VARIABLE, registerBlockly, toolboxFor, type PaletteContext } from '../blocks/blockly';
 import { FieldAmbleMenu, setMenuHost } from '../blocks/fields';
-import { addZoomControls } from '../blocks/workspaceUi';
+import { BLOCK_SCALE, addZoomControls } from '../blocks/workspaceUi';
 import { globalVariables, procedureNames, variablesFor, type MenuContext } from '../blocks/menus';
 import type { MenuKind } from '../blocks/spec';
 import { findCompiledSprite, findTarget, useStore } from '../store';
@@ -9,9 +9,6 @@ import { deleteVariable, keepCompiledSprite, registerLiveBlocks, renameVariable 
 import { askUser } from '../prompt';
 import type { BlocksState } from '../project/types';
 import { CodeIcon, KeepIcon, SparkIcon } from './icons';
-
-/** Scratch's default zoom. */
-const START_SCALE = 0.675;
 
 /** The Blockly workspace for the selected sprite (or the stage). */
 export function BlocksEditor({ visible }: { visible: boolean }) {
@@ -187,7 +184,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
         metricsManager: 'ContinuousMetrics',
         toolbox: 'AmbleToolbox',
       },
-      zoom: { controls: false, wheel: true, pinch: true, startScale: START_SCALE, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 },
+      zoom: { controls: false, wheel: true, pinch: true, startScale: BLOCK_SCALE, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 },
       move: { scrollbars: true, drag: true, wheel: true },
       trashcan: false,
       sounds: false,

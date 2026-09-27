@@ -5,6 +5,8 @@ import { BLOCK_FONT_FAMILY } from './renderer';
 
 /** Width of the block palette, like Scratch's. */
 export const FLYOUT_WIDTH = 250;
+/** Scratch draws blocks at 0.675 (the palette always, the code area until you zoom). */
+export const BLOCK_SCALE = 0.675;
 
 // -----------------------------------------------------------------------------
 // Category column: small colored circles with labels under them
@@ -33,14 +35,33 @@ class AmbleFlyout extends ContinuousFlyout {
   override readonly MARGIN = 12;
   override readonly GAP_Y = 12;
 
-  /** The palette keeps Scratch's fixed width unless a block is wider. */
-  protected override reflowInternal_() {
-    super.reflowInternal_();
-    if (this.width_ < FLYOUT_WIDTH) {
-      this.width_ = FLYOUT_WIDTH;
-      this.position();
-      this.targetWorkspace.resizeContents();
-      this.targetWorkspace.recordDragTargets();
+  constructor(options: Blockly.Options) {
+    super(options);
+    // Blocks line up with the palette's left margin (Scratch leaves no room for output tabs).
+    (this as unknown as { tabWidth_: number }).tabWidth_ = 0;
+  }
+
+  /** Like Scratch, the palette keeps its size when the code area zooms. */
+  override getFlyoutScale() {
+    return BLOCK_SCALE;
+  }
+
+  /** Scratch's palette is always 250 pixels wide; a wider block is cut off at the edge. */
+  override getWidth() {
+    return FLYOUT_WIDTH;
+  }
+
+  /**
+   * Stacks the palette's contents, starting half a gap higher than Blockly does: that is
+   * where Scratch shows the first heading (its palette opens scrolled to the first category).
+   */
+  protected override layout_(contents: Blockly.FlyoutItem[]) {
+    this.workspace_.scale = this.getFlyoutScale();
+    const x = this.MARGIN;
+    let y = this.MARGIN - this.GAP_Y / 2;
+    for (const item of contents) {
+      item.getElement().moveBy(x, y);
+      y += item.getElement().getBoundingRectangle().getHeight();
     }
   }
 }
