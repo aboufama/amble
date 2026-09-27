@@ -111,10 +111,10 @@ describe('serializeBlocks', () => {
       [
         'Script 1:',
         '  when green flag clicked',
-        '    set [score] to [0]',
+        '    set [score ▾] to [0]',
         '    forever',
         '      if [I touch a coin] then',
-        '        change [score] by [1]',
+        '        change [score ▾] by [1]',
         '      else',
         '        move [toward / the mouse]',
         'Rule: [the player has 3 lives]',

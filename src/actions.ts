@@ -4,8 +4,10 @@ import { cancelCodexLogin, fetchCodexStatus, startCodexLogin } from './compiler/
 import type { CodexStatus } from './compiler/codexTypes';
 import { buildRunPackage, packageKey } from './player/package';
 import type { PlayerHost } from './player/host';
-import { useStore } from './store';
+import { findTarget, useStore } from './store';
 import { uniqueName } from './project/ids';
+import { applyRename, deleteVariableDeclaration, renameScope, renameVariableDeclaration, type RenameChange } from './blocks/menus';
+import type { MenuKind } from './blocks/spec';
 import type { CompiledAsset, CostumeAsset, Project, SoundAsset, SpriteTarget } from './project/types';
 
 // -----------------------------------------------------------------------------
@@ -261,4 +263,98 @@ export function keepCompiledSprite(spriteId: string): void {
   });
   select(spriteId);
   notify('Kept. Its behavior now comes from its description until you add blocks.');
+}
+
+// -----------------------------------------------------------------------------
+// Renaming (blocks follow, like in Scratch)
+// -----------------------------------------------------------------------------
+
+/** The block editor, so that renames also reach the blocks on screen. */
+export interface LiveBlocks {
+  /** Saves the editor's blocks into the project now. */
+  flush(): void;
+  /** The sprite or stage shown in the editor. */
+  targetId(): string | null;
+  /** Renames dropdown values in the editor's blocks. */
+  renameMenus(kinds: MenuKind[], from: string, to: string): void;
+}
+
+let live: LiveBlocks | null = null;
+
+export function registerLiveBlocks(next: LiveBlocks | null): void {
+  live = next;
+}
+
+/** Applies a rename to the project (with `rename` changing the name itself) and to the blocks on screen. */
+function renameWithBlocks(rename: (p: Project) => RenameChange | null): void {
+  live?.flush();
+  let change: RenameChange | null = null;
+  useStore.getState().update((p) => {
+    change = rename(p);
+    if (change) applyRename(p, change);
+  });
+  const done = change as RenameChange | null;
+  const shown = live?.targetId();
+  if (!done || !shown) return;
+  const { kinds, targetIds } = renameScope(useStore.getState().project, done);
+  if (!targetIds.includes(shown)) return;
+  live?.renameMenus(kinds.filter((k) => k !== 'costume' || shown === done.targetId), done.from, done.to);
+}
+
+/** Renames a costume (or backdrop); blocks that switch to it follow. */
+export function renameCostume(targetId: string, assetId: string, name: string): void {
+  const wanted = name.trim();
+  if (!wanted) return;
+  renameWithBlocks((p) => {
+    const t = findTarget(p, targetId);
+    const c = t?.costumes.find((x) => x.id === assetId);
+    if (!t || !c) return null;
+    const next = uniqueName(wanted, t.costumes.filter((x) => x.id !== assetId).map((x) => x.name));
+    if (next === c.name) return null;
+    const change: RenameChange = { kind: 'costume', targetId, from: c.name, to: next };
+    c.name = next;
+    return change;
+  });
+}
+
+/** Renames a sound; blocks that play it follow. */
+export function renameSound(targetId: string, assetId: string, name: string): void {
+  const wanted = name.trim();
+  if (!wanted) return;
+  renameWithBlocks((p) => {
+    const t = findTarget(p, targetId);
+    const snd = t?.sounds.find((x) => x.id === assetId);
+    if (!t || !snd) return null;
+    const next = uniqueName(wanted, t.sounds.filter((x) => x.id !== assetId).map((x) => x.name));
+    if (next === snd.name) return null;
+    const change: RenameChange = { kind: 'sound', targetId, from: snd.name, to: next };
+    snd.name = next;
+    return change;
+  });
+}
+
+/** Renames a sprite; "create clone of" blocks that name it follow. */
+export function renameSprite(spriteId: string, name: string): void {
+  const wanted = name.trim();
+  if (!wanted) return;
+  renameWithBlocks((p) => {
+    const sprite = p.sprites.find((x) => x.id === spriteId);
+    if (!sprite) return null;
+    const next = uniqueName(wanted, p.sprites.filter((x) => x.id !== spriteId).map((x) => x.name));
+    if (next === sprite.name) return null;
+    const change: RenameChange = { kind: 'sprite', targetId: spriteId, from: sprite.name, to: next };
+    sprite.name = next;
+    return change;
+  });
+}
+
+/** Renames a variable (for all sprites, or the edited sprite's own); every block using it follows. */
+export function renameVariable(editedTargetId: string | null, from: string, to: string): void {
+  if (!to || to === from) return;
+  renameWithBlocks((p) => renameVariableDeclaration(p, editedTargetId, from, to));
+}
+
+/** Removes a variable's declaration. */
+export function deleteVariable(editedTargetId: string | null, name: string): void {
+  useStore.getState().update((p) => deleteVariableDeclaration(p, editedTargetId, name));
 }

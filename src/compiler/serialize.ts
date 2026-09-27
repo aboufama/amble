@@ -20,14 +20,26 @@ function isDisabled(b: JsonBlock): boolean {
   return b.enabled === false || (Array.isArray(b.disabledReasons) && b.disabledReasons.length > 0);
 }
 
+/** What the author typed: `[jump up high]`. */
 function fieldText(value: unknown): string {
   const s = String(value ?? '').replace(/\s*\n\s*/g, ' / ').trim();
   return `[${s || '…'}]`;
 }
 
+/** A value picked from a dropdown menu, an exact name or option: `[costume2 ▾]`. */
+export const MENU_MARK = '▾';
+
+function menuText(value: unknown): string {
+  const s = String(value ?? '').replace(/\s+/g, ' ').trim();
+  return `[${s || '…'} ${MENU_MARK}]`;
+}
+
 function blockLine(b: JsonBlock, spec: BlockSpec | undefined, label = spec?.label): string {
   if (!spec || !label) return `(${b.type})`;
-  return label.replace(/\{([A-Z_]+)\}/g, (_, name: string) => (name === 'FLAG' ? 'green flag' : fieldText(b.fields?.[name])));
+  return label.replace(/\{([A-Z_]+)\}/g, (_, name: string) => {
+    if (name === 'FLAG') return 'green flag';
+    return spec.menus?.[name] ? menuText(b.fields?.[name]) : fieldText(b.fields?.[name]);
+  });
 }
 
 function renderChain(first: JsonBlock | undefined, depth: number, out: string[]): void {

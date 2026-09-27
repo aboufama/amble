@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { compiledAssetsFor, findCompiledSprite, findTarget, useStore } from '../store';
-import { deleteCompiledAsset, keepCompiledAsset } from '../actions';
+import { deleteCompiledAsset, keepCompiledAsset, renameCostume } from '../actions';
 import { importImageFile, importModelFile, pickFile } from '../project/importers';
 import { blankBackdrop } from '../project/defaults';
 import { uniqueName, uid } from '../project/ids';
@@ -180,12 +180,7 @@ export function CostumesPane() {
                   onChange={(e) => setNameDraft(e.target.value)}
                   onBlur={() => {
                     const v = (nameDraft ?? '').trim();
-                    if (v && v !== current.name) {
-                      setOwn((list) => {
-                        const c = list.find((x) => x.id === current.id);
-                        if (c) c.name = uniqueName(v, list.filter((x) => x.id !== current.id).map((x) => x.name));
-                      });
-                    }
+                    if (v && v !== current.name) renameCostume(selectedId, current.id, v);
                     setNameDraft(null);
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}

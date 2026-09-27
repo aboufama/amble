@@ -70,6 +70,8 @@ export interface StageTarget extends TargetBase {
 
 export interface SpriteTarget extends TargetBase {
   kind: 'sprite';
+  /** Variables "for this sprite only" (Make a Variable). */
+  variables?: string[];
   x: number;
   y: number;
   /** 3D only. */
@@ -142,5 +144,10 @@ export interface Project {
   mode: WorldMode;
   stage: StageTarget;
   sprites: SpriteTarget[];
+  /**
+   * Variables "for all sprites" (Make a Variable). Missing in projects saved before
+   * variables were declared; their names then come from the blocks that use them.
+   */
+  variables?: string[];
   compiled: CompiledGame | null;
 }

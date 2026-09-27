@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { useState } from 'react';
 import { findCompiledSprite, findTarget, useStore } from '../store';
+import { renameSprite } from '../actions';
 import { ambleCostumes, newSprite } from '../project/defaults';
 import { importImageFile, importModelFile, pickFile } from '../project/importers';
 import { uniqueName, uid } from '../project/ids';
@@ -37,8 +38,6 @@ function NumberField({ label, value, onChange, step = 1 }: { label: string; valu
 function SpriteInfo({ sprite }: { sprite: SpriteTarget }) {
   const update = useStore((s) => s.update);
   const mode = useStore((s) => s.project.mode);
-  const sprites = useStore((s) => s.project.sprites);
-  const names = sprites.map((x) => x.name);
   const set = (fn: (s: SpriteTarget) => void) =>
     update((p) => {
       const t = p.sprites.find((x) => x.id === sprite.id);
@@ -55,7 +54,7 @@ function SpriteInfo({ sprite }: { sprite: SpriteTarget }) {
             onChange={(e) => setNameDraft(e.target.value)}
             onBlur={() => {
               const v = (nameDraft ?? '').trim();
-              if (v && v !== sprite.name) set((t) => (t.name = uniqueName(v, names.filter((n) => n !== sprite.name))));
+              if (v && v !== sprite.name) renameSprite(sprite.id, v);
               setNameDraft(null);
             }}
             onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}

@@ -19,8 +19,16 @@ export function starCatcher(): Project {
   p.title = 'Star Catcher';
   p.notes = 'Stars fall from the top of the sky at random places. Move Amble left and right to catch them. Each catch is a point; after 3 missed stars the game is over. Stars fall a little faster over time.';
   p.stage.costumes = [svgAsset('night sky', nightSky, 480, 360)];
+  p.variables = ['score', 'misses'];
   p.stage.blocks = workspace(
-    [block('ev_start'), block('va_set', { VARIABLE: 'score', VALUE: '0' }), block('va_set', { VARIABLE: 'misses', VALUE: '0' }), block('va_show', { VARIABLE: 'score and misses' }), block('so_music', { MUSIC: 'none' })],
+    [
+      block('ev_start'),
+      block('va_set', { VARIABLE: 'score', VALUE: '0' }),
+      block('va_set', { VARIABLE: 'misses', VALUE: '0' }),
+      block('va_show', { VARIABLE: 'score' }),
+      block('va_show', { VARIABLE: 'misses' }),
+      block('so_music', { MUSIC: 'none' }),
+    ],
     [block('ga_rule', { RULE: 'a new star falls every second or so, from a random spot at the top' })],
   );
   const amble = p.sprites[0];
@@ -57,11 +65,14 @@ export function coinHills(): Project {
     ],
     [block('ev_when', { EVENT: 'I touch a coin' }), block('va_change', { VARIABLE: 'coins', AMOUNT: '1' }), block('so_play', { SOUND: 'coin' }), block('ga_effect', { HOW: 'golden sparkle burst' })],
   );
+  p.variables = ['coins', 'time left'];
   p.stage.blocks = workspace(
     [
       block('ev_start'),
       block('va_set', { VARIABLE: 'coins', VALUE: '0' }),
-      block('va_show', { VARIABLE: 'coins (out of 10) and time left' }),
+      block('va_set', { VARIABLE: 'time left', VALUE: '60 seconds' }),
+      block('va_show', { VARIABLE: 'coins' }),
+      block('va_show', { VARIABLE: 'time left' }),
       block('wo_build', { WHAT: '10 spinning gold coins floating a little above the ground, spread around the island' }),
     ],
     [block('ga_rule', { RULE: 'collect all 10 coins to win; if the 60 second timer runs out first, it is game over' })],

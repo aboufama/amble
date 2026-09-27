@@ -1,4 +1,5 @@
 import { serializeBlocks } from './serialize';
+import { globalVariables } from '../blocks/menus';
 import type { CompiledGame, CostumeAsset, Project, SoundAsset, SpriteTarget, Target, WorldMode } from '../project/types';
 
 // -----------------------------------------------------------------------------
@@ -10,6 +11,7 @@ const INTRO = `You are the compiler inside Amble, a Scratch-style game maker. Th
 # How to read the program
 - The project has a Stage and sprites. Each has its own scripts, costumes and sounds.
 - A script starts with a "when ..." block; the blocks under it run in order; indented blocks are inside a loop or branch. Text in [brackets] is what the author typed into a block.
+- A value marked with ▾, like [costume2 ▾], was picked from a dropdown menu. It is an exact name: a costume, backdrop, sound, sprite, message, variable or custom block listed in the project, a key, or one of the block's fixed options. Use it exactly as written (same spelling and case). If such a name isn't listed in the project (an older project may have one), treat it as a request: add the missing asset, or pick the closest match and mention it in warnings.
 - Read the text like a thoughtful game designer: choose concrete numbers that feel good (speeds, sizes, timings, spawn rates) and fill in the obvious details a playable game needs (keep the player on screen, show the score if there is one, a clear win/lose moment if implied, sensible difficulty).
 - Stay faithful to what the author described. Don't add unrelated features, but make what they described feel finished and fun.
 - "Rule:" lines are always-true facts about the game. "Note from the author" lines are extra hints. Loose blocks (not under a "when" block) are only hints.
@@ -17,16 +19,22 @@ const INTRO = `You are the compiler inside Amble, a Scratch-style game maker. Th
 
 Blocks -> engine:
 - when green flag clicked -> start()   (clones use onSpawn() instead)
-- when [key] key pressed -> onKeyDown(key) (compare key)
-- when this sprite clicked -> onClick()
-- when I receive [message] -> onMessage(name, data);  broadcast [message] -> this.broadcast(name);  broadcast and wait -> yield* this.broadcastAndWait(name)
+- when [key ▾] key pressed -> onKeyDown(key): "space" -> "space", "up arrow" -> "up", "down arrow" -> "down", "left arrow" -> "left", "right arrow" -> "right", letters and digits as is; "any" -> any key
+- when this sprite clicked -> onClick();  when stage clicked -> the stage's onClick()
+- when backdrop switches to [name ▾] -> onMessage(name) with name === "backdrop:" + the backdrop name (the engine broadcasts it on every switch)
+- when I receive [message ▾] -> onMessage(name, data);  broadcast [message ▾] -> this.broadcast(name);  broadcast and wait -> yield* this.broadcastAndWait(name)
 - when [anything else] -> implement with the right mechanism (checks in update, onCollide, onMessage, timers...)
-- when I start as a clone -> onSpawn();  create clone of [x] -> this.clone() / this.game.spawn("Name", {...});  delete this clone -> this.destroy()
+- when I start as a clone -> onSpawn();  create clone of [myself ▾] -> this.clone();  create clone of [Name ▾] -> this.game.spawn("Name", {...});  delete this clone -> this.destroy()
+- stop [all ▾] -> end the whole game (this.game.over() with a fitting message, or this.game.pause() if nothing should show);  stop [this script ▾] -> return from this script;  stop [other scripts in sprite ▾] -> stop this sprite's other running scripts and timers, then continue
+- switch costume to [name ▾] -> this.costume = "name";  switch backdrop to [name ▾] -> this.game.backdrop = "name";  [next backdrop ▾] -> this.game.nextBackdrop();  [previous backdrop ▾] / [random backdrop ▾] -> set this.game.backdrop by index
+- start sound [name ▾] -> this.playSound("name");  play sound [name ▾] until done -> yield* this.playSoundUntilDone("name")
+- set rotation style [style ▾] -> this.rotationStyle = "style";  go to [front ▾] / [back ▾] layer -> this.bringToFront() / this.sendToBack()
+- set / change [effect ▾] effect (Scratch's graphic effects, 0 = none): ghost -> this.opacity = 1 - ghost / 100; color -> shift this.tint's hue (color 0 = no tint); brightness -> this.tint toward white (positive) or black (negative); fisheye, whirl, pixelate, mosaic -> approximate with what the engine can do (size, rotation, tint, opacity) and say so in warnings;  clear graphic effects -> this.opacity = 1, this.tint = null
+- define [name] -> a method;  run [name ▾] -> call it (a generator if it waits: yield* this.name())
 - forever -> per-tick logic in update(dt), or a \`for (;;) { ...; yield; }\` loop inside a coroutine when it follows other steps
 - sequences with wait / glide / say for / repeat -> coroutines: write the hook as a generator, e.g. \`*start() { ...; yield* this.wait(1); ... }\`
 - wait until [x] -> yield* this.waitUntil(() => x);  repeat until [x] -> while (!x) { ...; yield; }
-- define [name] / run [name] -> a method (a generator if it waits; call it with yield* this.name())
-- set / change [variable] -> this.game.vars.name for game-wide values, a field like this.speed for one sprite's own; show [variable] on screen -> this.game.ui.value(label, () => value)
+- set / change [variable ▾] -> this.game.vars.name for variables for all sprites, a field like this.speed for a sprite's own variable; show [variable ▾] on screen -> this.game.ui.value(label, () => value)
 - control me with [..] -> read this.game.input in update(dt);  physics: [..] -> this.addPhysics({...});  camera: [..] -> this.game.camera;  particles: [..] -> this.game.effects.burst({...})
 - game over / win the game -> this.game.over(message) / this.game.win(message)`;
 
@@ -207,6 +215,7 @@ function describeTarget(t: Target, className: string, project: Project): string 
   if (t.description.trim()) lines.push(`Author's description: ${t.description.trim()}`);
   if (t.kind === 'sprite') {
     const s = t as SpriteTarget;
+    if (s.variables?.length) lines.push(`Variables for this sprite only: ${s.variables.map((v) => `"${v}"`).join(', ')}`);
     const pos = mode === '3d' ? `x=${s.x}, y=${s.y}, z=${s.z}, heading ${s.direction}°` : `x=${s.x}, y=${s.y}, angle ${s.direction}°, rotation style "${s.rotationStyle}"`;
     lines.push(`Starts at ${pos}, size ${s.size}%, ${s.visible ? 'visible' : 'hidden'}`);
   }
@@ -248,6 +257,8 @@ export function buildUserPrompt(project: Project, names: Map<string, string>, fi
   parts.push(`Game title: ${project.title || 'Untitled'}`);
   parts.push(project.mode === '3d' ? 'World: 3D' : 'World: 2D (480 x 360 stage)');
   if (project.notes.trim()) parts.push(`Author's description of the game: ${project.notes.trim()}`);
+  const variables = globalVariables(project);
+  if (variables.length) parts.push(`Variables for all sprites: ${variables.map((v) => `"${v}"`).join(', ')}`);
   parts.push(describeTarget(project.stage, names.get(project.stage.id) ?? 'StageScript', project));
   for (const s of project.sprites) parts.push(describeTarget(s, names.get(s.id) ?? pascal(s.name), project));
   const prev = describePreviousAssets(project.compiled);

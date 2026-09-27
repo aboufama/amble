@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { compiledAssetsFor, findCompiledSprite, findTarget, useStore } from '../store';
-import { deleteCompiledAsset, keepCompiledAsset } from '../actions';
+import { deleteCompiledAsset, keepCompiledAsset, renameSound } from '../actions';
 import { importSoundFile, pickFile } from '../project/importers';
 import { synthSound } from '../project/defaults';
 import { uniqueName, uid } from '../project/ids';
@@ -208,11 +208,7 @@ export function SoundsPane() {
                   onChange={(e) => setNameDraft(e.target.value)}
                   onBlur={() => {
                     const v = (nameDraft ?? '').trim();
-                    if (v && v !== current.name)
-                      setOwn((list) => {
-                        const s = list.find((x) => x.id === current.id);
-                        if (s) s.name = uniqueName(v, list.filter((x) => x.id !== current.id).map((x) => x.name));
-                      });
+                    if (v && v !== current.name) renameSound(selectedId, current.id, v);
                     setNameDraft(null);
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}

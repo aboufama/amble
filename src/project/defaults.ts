@@ -173,6 +173,7 @@ export function newProject(mode: WorldMode = '2d'): Project {
     mode,
     stage: newStage(mode),
     sprites: [amble],
+    variables: ['my variable'],
     compiled: null,
   };
 }
