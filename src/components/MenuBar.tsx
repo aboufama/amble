@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { downloadProject, readProjectFile } from '../project/persistence';
 import { exportGameHtml } from '../project/exportHtml';
@@ -8,7 +8,7 @@ import { blankBackdrop } from '../project/defaults';
 import type { Project, WorldMode } from '../project/types';
 import { CHATGPT_MODEL_NAME } from '../compiler/openai';
 import { signInWithChatGpt } from '../actions';
-import { GearIcon } from './icons';
+import { AmbleMark, CaretDownIcon, FileIcon, SettingsIcon } from './icons';
 
 /** Converts a project between 2D and 3D (positions are rescaled; the blank white backdrop is dropped in 3D). */
 export function switchMode(p: Project, mode: WorldMode): void {
@@ -49,7 +49,18 @@ export function MenuBar() {
   const codex = useStore((s) => s.codex);
   const useChatGpt = useStore((s) => s.settings.useChatGpt);
   const [open, setOpen] = useState(false);
+  const fileRef = useRef<HTMLDivElement>(null);
   const signedIn = useChatGpt && codex?.auth === 'chatgpt';
+
+  // Like Scratch, a menu closes when you click anywhere else.
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => {
+      if (!fileRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [open]);
 
   const confirmReplace = () => confirm('Replace the current project? (Save it to your computer first if you want to keep it.)');
 
@@ -64,87 +75,106 @@ export function MenuBar() {
 
   return (
     <header className="menubar">
-      <div className="brand">
-        <span className="logo">amble</span>
-      </div>
-      <div className="menu-wrap">
-        <button className="menu-btn" onClick={() => setOpen((o) => !o)}>
-          File
+      <div className="menubar-main">
+        <div className="menubar-brand" aria-label="Amble">
+          <AmbleMark size={28} />
+          <span className="logo">amble</span>
+        </div>
+        <button className="menubar-item" onClick={() => setDialog('settings')} title="Settings (ChatGPT sign-in, API key, models)">
+          <SettingsIcon size={20} />
+          <span>Settings</span>
         </button>
-        {open && (
-          <div className="menu dropdown" onMouseLeave={() => setOpen(false)}>
-            <button onClick={act(() => void (confirmReplace() && setProject(blankProject('2d'))))}>New 2D game</button>
-            <button onClick={act(() => void (confirmReplace() && setProject(blankProject('3d'))))}>New 3D game</button>
-            <div className="menu-sep" />
+        <div className={`menubar-item file-menu ${open ? 'active' : ''}`} ref={fileRef}>
+          <button className="menubar-button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            <FileIcon size={20} />
+            <span>File</span>
+            <CaretDownIcon size={16} className="dropdown-caret" />
+          </button>
+          {open && (
+            <div className="menubar-menu" role="menu">
+              <div className="menubar-menu-section">
+                <button role="menuitem" onClick={act(() => void (confirmReplace() && setProject(blankProject('2d'))))}>
+                  New 2D game
+                </button>
+                <button role="menuitem" onClick={act(() => void (confirmReplace() && setProject(blankProject('3d'))))}>
+                  New 3D game
+                </button>
+              </div>
+              <div className="menubar-menu-section">
+                <button
+                  role="menuitem"
+                  onClick={act(async () => {
+                    const files = await pickFile('.amble,application/json');
+                    if (files.length && confirmReplace()) setProject(await readProjectFile(files[0]));
+                  })}
+                >
+                  Load from your computer
+                </button>
+                <button role="menuitem" onClick={act(() => downloadProject(useStore.getState().project))}>
+                  Save to your computer
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={act(async () => {
+                    if (!useStore.getState().project.compiled) notify('Compile first: the web page contains the compiled game.');
+                    await exportGameHtml(useStore.getState().project);
+                  })}
+                >
+                  Export playable web page
+                </button>
+              </div>
+              <div className="menubar-menu-section">
+                {EXAMPLES.map((ex) => (
+                  <button key={ex.id} role="menuitem" title={ex.description} onClick={act(() => void (confirmReplace() && setProject(ex.make())))}>
+                    Example: {ex.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="menubar-divider" />
+        <input
+          className="title-input"
+          value={title}
+          onChange={(e) => update((p) => void (p.title = e.target.value))}
+          aria-label="Project title"
+          placeholder="Untitled game"
+        />
+        <div className="mode-switch" role="radiogroup" aria-label="World">
+          {(['2d', '3d'] as const).map((m) => (
             <button
-              onClick={act(async () => {
-                const files = await pickFile('.amble,application/json');
-                if (files.length && confirmReplace()) setProject(await readProjectFile(files[0]));
-              })}
+              key={m}
+              role="radio"
+              aria-checked={mode === m}
+              className={mode === m ? 'on' : ''}
+              onClick={() => {
+                if (mode === m) return;
+                if (!confirm(`Switch this project to ${m.toUpperCase()}? You'll need to compile again.`)) return;
+                update((p) => switchMode(p, m));
+              }}
             >
-              Open from your computer…
+              {m.toUpperCase()}
             </button>
-            <button onClick={act(() => downloadProject(useStore.getState().project))}>Save to your computer</button>
+          ))}
+        </div>
+      </div>
+      <div className="menubar-account">
+        {codex &&
+          (signedIn ? (
+            <button className="menu-btn account" onClick={() => setDialog('settings')} title={`Signed in with ChatGPT: compiling with ${CHATGPT_MODEL_NAME} on your plan`}>
+              <span className="account-dot" aria-hidden="true" /> ChatGPT · Astra Light
+            </button>
+          ) : (
             <button
-              onClick={act(async () => {
-                if (!useStore.getState().project.compiled) notify('Compile first: the web page contains the compiled game.');
-                await exportGameHtml(useStore.getState().project);
-              })}
+              className="menu-btn sign-in"
+              onClick={() => (codex.login.pending ? setDialog('settings') : void signInWithChatGpt())}
+              title={`Compile with your ChatGPT plan (${CHATGPT_MODEL_NAME}) instead of an API key`}
             >
-              Export playable web page (.html)
+              {codex.login.pending ? 'Signing in…' : 'Sign in with ChatGPT'}
             </button>
-            <div className="menu-sep" />
-            <div className="menu-label">Examples</div>
-            {EXAMPLES.map((ex) => (
-              <button key={ex.id} title={ex.description} onClick={act(() => void (confirmReplace() && setProject(ex.make())))}>
-                {ex.title}
-              </button>
-            ))}
-          </div>
-        )}
+          ))}
       </div>
-      <input
-        className="title-input"
-        value={title}
-        onChange={(e) => update((p) => void (p.title = e.target.value))}
-        aria-label="Project title"
-        placeholder="Untitled game"
-      />
-      <div className="mode-switch" role="radiogroup" aria-label="World">
-        {(['2d', '3d'] as const).map((m) => (
-          <button
-            key={m}
-            role="radio"
-            aria-checked={mode === m}
-            className={mode === m ? 'on' : ''}
-            onClick={() => {
-              if (mode === m) return;
-              if (!confirm(`Switch this project to ${m.toUpperCase()}? You'll need to compile again.`)) return;
-              update((p) => switchMode(p, m));
-            }}
-          >
-            {m.toUpperCase()}
-          </button>
-        ))}
-      </div>
-      <div className="spacer" />
-      {codex &&
-        (signedIn ? (
-          <button className="menu-btn account" onClick={() => setDialog('settings')} title={`Signed in with ChatGPT: compiling with ${CHATGPT_MODEL_NAME} on your plan`}>
-            <span className="account-dot" aria-hidden="true" /> ChatGPT · Astra Light
-          </button>
-        ) : (
-          <button
-            className="menu-btn sign-in"
-            onClick={() => (codex.login.pending ? setDialog('settings') : void signInWithChatGpt())}
-            title={`Compile with your ChatGPT plan (${CHATGPT_MODEL_NAME}) instead of an API key`}
-          >
-            {codex.login.pending ? 'Signing in…' : 'Sign in with ChatGPT'}
-          </button>
-        ))}
-      <button className="menu-btn" onClick={() => setDialog('settings')} title="Settings (ChatGPT sign-in, API key, models)">
-        <GearIcon size={17} /> Settings
-      </button>
     </header>
   );
 }

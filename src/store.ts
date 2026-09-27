@@ -9,6 +9,8 @@ import { loadSettings, saveSettings } from './project/persistence';
 import { newProject } from './project/defaults';
 
 export type Tab = 'code' | 'costumes' | 'sounds';
+/** Scratch's stage size buttons: the normal stage, or a small one that leaves more room for code. */
+export type StageSize = 'small' | 'large';
 export type RunState = 'loading' | 'idle' | 'running' | 'paused' | 'stopped';
 export type OutputTab = 'game' | 'problems' | 'console' | 'code';
 
@@ -31,6 +33,7 @@ export interface EditorState {
   project: Project;
   selectedId: string;
   tab: Tab;
+  stageSize: StageSize;
   costumeSel: Record<string, string>;
   soundSel: Record<string, string>;
   settings: AiSettings;
@@ -41,12 +44,15 @@ export interface EditorState {
   dialog: null | 'settings' | 'new' | 'about';
   prompt: PromptRequest | null;
   outputTab: OutputTab;
+  /** The output panel under the stage can be folded down to its tabs. */
+  outputOpen: boolean;
   toast: { id: number; message: string; tone: 'info' | 'error' } | null;
 
   setProject(project: Project): void;
   update(fn: (draft: Project) => void): void;
   select(id: string): void;
   setTab(tab: Tab): void;
+  setStageSize(size: StageSize): void;
   selectCostume(targetId: string, assetId: string): void;
   selectSound(targetId: string, assetId: string): void;
   setSettings(patch: Partial<AiSettings>): void;
@@ -59,6 +65,7 @@ export interface EditorState {
   setDialog(dialog: EditorState['dialog']): void;
   setPrompt(prompt: PromptRequest | null): void;
   setOutputTab(tab: OutputTab): void;
+  setOutputOpen(open: boolean): void;
   notify(message: string, tone?: 'info' | 'error'): void;
 }
 
@@ -70,6 +77,7 @@ export const useStore = create<EditorState>()(
     project: initial,
     selectedId: initial.sprites[0]?.id ?? initial.stage.id,
     tab: 'code',
+    stageSize: 'large',
     costumeSel: {},
     soundSel: {},
     settings: loadSettings(),
@@ -79,6 +87,7 @@ export const useStore = create<EditorState>()(
     dialog: null,
     prompt: null,
     outputTab: 'game',
+    outputOpen: true,
     toast: null,
 
     setProject: (project) =>
@@ -102,6 +111,10 @@ export const useStore = create<EditorState>()(
     setTab: (tab) =>
       set((s) => {
         s.tab = tab;
+      }),
+    setStageSize: (size) =>
+      set((s) => {
+        s.stageSize = size;
       }),
     selectCostume: (targetId, assetId) =>
       set((s) => {
@@ -153,6 +166,11 @@ export const useStore = create<EditorState>()(
     setOutputTab: (tab) =>
       set((s) => {
         s.outputTab = tab;
+        s.outputOpen = true;
+      }),
+    setOutputOpen: (open) =>
+      set((s) => {
+        s.outputOpen = open;
       }),
     notify: (message, tone = 'info') =>
       set((s) => {

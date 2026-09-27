@@ -10,7 +10,7 @@ import { OutputPanel } from './components/OutputPanel';
 import { SpritePane } from './components/SpritePane';
 import { PromptDialog, SettingsDialog, Toast } from './components/Dialogs';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { BrushIcon, CodeIcon, WaveIcon } from './components/icons';
+import { BlocksTabIcon, BrushTabIcon, SpeakerTabIcon } from './components/icons';
 
 function useAutosave() {
   const [loaded, setLoaded] = useState(false);
@@ -43,12 +43,13 @@ export function App() {
   const tab = useStore((s) => s.tab);
   const setTab = useStore((s) => s.setTab);
   const dialog = useStore((s) => s.dialog);
+  const stageSize = useStore((s) => s.stageSize);
   const isStage = useStore((s) => findTarget(s.project, s.selectedId)?.kind === 'stage');
 
   const tabs: Array<{ id: Tab; label: string; icon: ReactElement }> = [
-    { id: 'code', label: 'Code', icon: <CodeIcon size={15} /> },
-    { id: 'costumes', label: isStage ? 'Backdrops' : 'Costumes', icon: <BrushIcon size={15} /> },
-    { id: 'sounds', label: 'Sounds', icon: <WaveIcon size={15} /> },
+    { id: 'code', label: 'Code', icon: <BlocksTabIcon size={22} /> },
+    { id: 'costumes', label: isStage ? 'Backdrops' : 'Costumes', icon: <BrushTabIcon size={22} /> },
+    { id: 'sounds', label: 'Sounds', icon: <SpeakerTabIcon size={22} /> },
   ];
 
   if (!loaded) return <div className="app-loading">Loading…</div>;
@@ -56,12 +57,13 @@ export function App() {
   return (
     <div className="app">
       <MenuBar />
-      <main className="workspace">
-        <section className="left">
-          <div className="tabs" role="tablist">
+      <main className={`gui-body stage-${stageSize}`}>
+        <section className="editor-wrapper">
+          <div className="gui-tabs" role="tablist">
             {tabs.map((t) => (
-              <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
-                {t.icon} {t.label}
+              <button key={t.id} role="tab" aria-selected={tab === t.id} className={`gui-tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+                {t.icon}
+                <span>{t.label}</span>
               </button>
             ))}
           </div>
@@ -81,7 +83,7 @@ export function App() {
             )}
           </div>
         </section>
-        <section className="right">
+        <section className="stage-and-target">
           <ErrorBoundary label="stage">
             <StagePanel />
           </ErrorBoundary>

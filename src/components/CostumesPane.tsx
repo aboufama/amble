@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { compiledAssetsFor, findCompiledSprite, findTarget, useStore } from '../store';
 import { deleteCompiledAsset, keepCompiledAsset, renameCostume } from '../actions';
 import { importImageFile, importModelFile, pickFile } from '../project/importers';
 import { blankBackdrop } from '../project/defaults';
+import { BACKDROP_LIBRARY, libraryCostumes } from '../project/library';
 import { uniqueName, uid } from '../project/ids';
 import type { CompiledAsset, CostumeAsset, ImageAsset } from '../project/types';
 import { PaintEditor } from './PaintEditor';
-import { costumeThumb } from './SpritePane';
-import { BrushIcon, CopyIcon, CubeIcon, KeepIcon, SparkIcon, TrashIcon, UploadIcon } from './icons';
+import { ActionMenu, AssetTile, BackdropLibrary, ContextMenu, blankCostume, costumeThumb } from './SpritePane';
+import { Library } from './Library';
+import { AddCharacterIcon, AddPictureIcon, BrushIcon, CubeIcon, KeepIcon, SearchIcon, SparkIcon, SurpriseIcon, TrashIcon, UploadIcon } from './icons';
 
 function sizeLabel(c: CostumeAsset | CompiledAsset): string {
   if (c.kind === 'image') return `${Math.round(c.width / (c.resolution || 1))}×${Math.round(c.height / (c.resolution || 1))}`;
@@ -24,6 +26,8 @@ export function CostumesPane() {
   const update = useStore((s) => s.update);
   const notify = useStore((s) => s.notify);
   const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ id: string; at: { x: number; y: number } } | null>(null);
+  const [library, setLibrary] = useState(false);
 
   const target = findTarget(project, selectedId);
   const compiledView = target ? null : findCompiledSprite(project, selectedId);
@@ -52,19 +56,15 @@ export function CostumesPane() {
 
   const paint = () => {
     if (isStage) add({ ...blankBackdrop(uniqueName('backdrop1', own.map((c) => c.name))), id: uid('a') });
-    else
-      add({
-        id: uid('a'),
-        name: 'costume1',
-        kind: 'image',
-        dataUrl: 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"/>'),
-        mime: 'image/svg+xml',
-        width: 2,
-        height: 2,
-        resolution: 1,
-        centerX: 1,
-        centerY: 1,
-      });
+    else add(blankCostume());
+  };
+  const surprise = () => {
+    if (isStage) {
+      add(BACKDROP_LIBRARY[Math.floor(Math.random() * BACKDROP_LIBRARY.length)].make());
+      return;
+    }
+    const all = libraryCostumes();
+    add(all[Math.floor(Math.random() * all.length)]);
   };
   const upload = async () => {
     const files = await pickFile('image/*', true);
@@ -101,114 +101,122 @@ export function CostumesPane() {
 
   if (!target && !compiledView) return <div className="pane-empty">Select a sprite.</div>;
 
+  const Noun = isStage ? 'Backdrop' : 'Costume';
   return (
-    <div className="assets-pane">
-      <div className="asset-list">
-        {own.map((c, i) => (
-          <div
-            key={c.id}
-            className={`asset-tile ${current?.id === c.id ? 'selected' : ''}`}
-            onClick={() => {
-              selectCostume(selectedId, c.id);
-              setOwn((_, t) => void (t.currentCostume = i));
-            }}
-          >
-            <span className="index">{i + 1}</span>
-            {costumeThumb(c)}
-            <span className="name">{c.name}</span>
-            <span className="meta">{sizeLabel(c)}</span>
-            {current?.id === c.id && (
-              <div className="tile-actions">
-                <button title="Duplicate" onClick={(e) => (e.stopPropagation(), duplicate(c.id))}>
-                  <CopyIcon size={12} />
-                </button>
-                <button title="Delete" onClick={(e) => (e.stopPropagation(), remove(c.id))}>
-                  <TrashIcon size={12} />
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-        {compiled.length > 0 && (
-          <div className="compiled-heading">
-            <SparkIcon size={13} /> Compiled
-          </div>
-        )}
-        {compiled.map((c) => (
-          <div key={c.id} className={`asset-tile compiled ${current?.id === c.id ? 'selected' : ''}`} onClick={() => selectCostume(selectedId, c.id)}>
-            {costumeThumb(c)}
-            <span className="name">{c.name}</span>
-            <span className="meta">{sizeLabel(c)}</span>
-            <span className="ai-badge">
-              <SparkIcon size={11} />
-            </span>
-          </div>
-        ))}
+    <div className="asset-panel">
+      <div className="asset-selector">
+        <div className="asset-list">
+          {own.map((c, i) => (
+            <AssetTile
+              key={c.id}
+              className="asset-tile"
+              number={i + 1}
+              name={c.name}
+              details={sizeLabel(c)}
+              image={costumeThumb(c)}
+              selected={current?.id === c.id}
+              onSelect={() => {
+                selectCostume(selectedId, c.id);
+                setOwn((_, t) => void (t.currentCostume = i));
+              }}
+              onDelete={own.length > 1 || isStage ? () => remove(c.id) : undefined}
+              confirmWhat={noun}
+              onContextMenu={(at) => setMenu({ id: c.id, at })}
+            />
+          ))}
+          {compiled.length > 0 && (
+            <div className="compiled-heading">
+              <SparkIcon size={13} /> Compiled
+            </div>
+          )}
+          {compiled.map((c) => (
+            <AssetTile
+              key={c.id}
+              className="asset-tile"
+              compiled
+              name={c.name}
+              details={sizeLabel(c)}
+              image={costumeThumb(c)}
+              selected={current?.id === c.id}
+              onSelect={() => selectCostume(selectedId, c.id)}
+            />
+          ))}
+        </div>
         {target && (
-          <div className="asset-add">
-            <button title={`Paint a new ${noun}`} onClick={paint}>
-              <BrushIcon size={16} />
-            </button>
-            <button title={`Upload a ${noun}`} onClick={() => void upload()}>
-              <UploadIcon size={16} />
-            </button>
-            {project.mode === '3d' && !isStage && (
-              <button title="Upload a 3D model (.glb)" onClick={() => void uploadModel()}>
-                <CubeIcon size={16} />
-              </button>
-            )}
-          </div>
+          <ActionMenu
+            className="add-asset"
+            title={`Choose a ${Noun}`}
+            icon={isStage ? <AddPictureIcon size={26} /> : <AddCharacterIcon size={28} />}
+            onClick={() => setLibrary(true)}
+            items={[
+              { label: `Upload ${Noun}`, icon: <UploadIcon size={20} strokeWidth={2.4} />, onClick: () => void upload() },
+              ...(project.mode === '3d' && !isStage ? [{ label: 'Upload 3D Model', icon: <CubeIcon size={20} strokeWidth={2.2} />, onClick: () => void uploadModel() }] : []),
+              { label: 'Surprise', icon: <SurpriseIcon size={20} />, onClick: surprise },
+              { label: 'Paint', icon: <BrushIcon size={20} strokeWidth={2.4} />, onClick: paint },
+              { label: `Choose a ${Noun}`, icon: <SearchIcon size={20} />, onClick: () => setLibrary(true) },
+            ]}
+          />
+        )}
+        {menu && (
+          <ContextMenu
+            at={menu.at}
+            onClose={() => setMenu(null)}
+            items={[
+              { label: 'duplicate', onClick: () => duplicate(menu.id) },
+              ...(own.length > 1 || isStage ? [{ label: 'delete', danger: true, onClick: () => remove(menu.id) }] : []),
+            ]}
+          />
         )}
       </div>
+      {library &&
+        (isStage ? (
+          <BackdropLibrary
+            onClose={() => setLibrary(false)}
+            onChoose={(name) => {
+              setLibrary(false);
+              const b = BACKDROP_LIBRARY.find((x) => x.name === name);
+              if (b) add(b.make());
+            }}
+          />
+        ) : (
+          <CostumeLibrary
+            onClose={() => setLibrary(false)}
+            onChoose={(c) => {
+              setLibrary(false);
+              add(c);
+            }}
+          />
+        ))}
       <div className="asset-detail">
         {!current && (
           <div className="pane-empty">
             No {noun}s yet. {target ? 'Paint or upload one.' : ''}
           </div>
         )}
-        {current && (
-          <>
-            <div className="asset-header">
-              {currentIsCompiled ? (
-                <span className="compiled-title">
-                  <SparkIcon size={14} /> {current.name}
-                </span>
-              ) : (
-                <input
-                  className="name-input"
-                  value={nameDraft ?? current.name}
-                  onChange={(e) => setNameDraft(e.target.value)}
-                  onBlur={() => {
-                    const v = (nameDraft ?? '').trim();
-                    if (v && v !== current.name) renameCostume(selectedId, current.id, v);
-                    setNameDraft(null);
-                  }}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-                />
-              )}
-              {currentIsCompiled && target && (
-                <>
-                  <button className="btn primary small" onClick={() => keepCompiledAsset(current.id)} title="Move it into your own costumes">
-                    <KeepIcon size={14} /> Keep
-                  </button>
-                  <button className="btn small" onClick={() => deleteCompiledAsset(current.id)} title="Delete (the next compile may make a new one)">
-                    <TrashIcon size={14} />
-                  </button>
-                </>
-              )}
-            </div>
-            {currentIsCompiled ? (
-              <div className="compiled-preview">
-                {current.kind === 'image' ? <img src={current.dataUrl} alt={current.name} /> : <div className="model-preview"><CubeIcon size={64} /></div>}
-                <p>
-                  <b>Made by the compiler:</b> {(current as CompiledAsset).request}
-                </p>
-                <p className="muted small">Keep it to make it yours (you can then edit it). Compiled assets are reused by later compiles.</p>
-              </div>
-            ) : current.kind === 'image' ? (
+        {current && (() => {
+          const nameField = (
+            <label className="info-group">
+              <span className="info-label">{Noun}</span>
+              <input
+                className="info-input name-input"
+                aria-label={`${Noun} name`}
+                value={nameDraft ?? current.name}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={() => {
+                  const v = (nameDraft ?? '').trim();
+                  if (v && v !== current.name) renameCostume(selectedId, current.id, v);
+                  setNameDraft(null);
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+              />
+            </label>
+          );
+          if (!currentIsCompiled && current.kind === 'image') {
+            return (
               <PaintEditor
                 asset={current as ImageAsset}
                 isBackdrop={isStage}
+                nameField={nameField}
                 onChange={(patch) =>
                   setOwn((list) => {
                     const c = list.find((x) => x.id === current.id);
@@ -216,17 +224,71 @@ export function CostumesPane() {
                   })
                 }
               />
-            ) : (
-              <div className="compiled-preview">
-                <div className="model-preview">
-                  <CubeIcon size={64} />
-                </div>
-                <p>3D model{current.dataUrl ? ' (uploaded .glb)' : ''}. It shows up in the 3D stage.</p>
+            );
+          }
+          return (
+            <div className="asset-editor">
+              <div className="editor-row">
+                {currentIsCompiled ? (
+                  <span className="compiled-title">
+                    <SparkIcon size={14} /> {current.name}
+                  </span>
+                ) : (
+                  nameField
+                )}
+                {currentIsCompiled && target && (
+                  <>
+                    <button className="btn primary small" onClick={() => keepCompiledAsset(current.id)} title="Move it into your own costumes">
+                      <KeepIcon size={14} /> Keep
+                    </button>
+                    <button className="btn small" onClick={() => deleteCompiledAsset(current.id)} title="Delete (the next compile may make a new one)">
+                      <TrashIcon size={14} />
+                    </button>
+                  </>
+                )}
               </div>
-            )}
-          </>
-        )}
+              {currentIsCompiled ? (
+                <div className="compiled-preview">
+                  {current.kind === 'image' ? (
+                    <img src={current.dataUrl} alt={current.name} />
+                  ) : (
+                    <div className="model-preview">
+                      <CubeIcon size={64} />
+                    </div>
+                  )}
+                  <p>
+                    <b>Made by the compiler:</b> {(current as CompiledAsset).request}
+                  </p>
+                  <p className="muted small">Keep it to make it yours (you can then edit it). Compiled assets are reused by later compiles.</p>
+                </div>
+              ) : (
+                <div className="compiled-preview">
+                  <div className="model-preview">
+                    <CubeIcon size={64} />
+                  </div>
+                  <p>3D model{current.dataUrl ? ' (uploaded .glb)' : ''}. It shows up in the 3D stage.</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
+  );
+}
+
+/** "Choose a Costume": every costume of Amble's built-in sprites. */
+function CostumeLibrary({ onChoose, onClose }: { onChoose(costume: ImageAsset): void; onClose(): void }) {
+  const costumes = useMemo(() => libraryCostumes(), []);
+  return (
+    <Library
+      title="Choose a Costume"
+      onClose={onClose}
+      onChoose={(id) => {
+        const found = costumes.find((c) => c.id === id);
+        if (found) onChoose({ ...found, id: uid('a') });
+      }}
+      items={costumes.map((c) => ({ id: c.id, name: c.name, image: <img src={c.dataUrl} alt="" draggable={false} /> }))}
+    />
   );
 }

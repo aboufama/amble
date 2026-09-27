@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { fixWithAi } from '../actions';
 import { useStore, type OutputTab } from '../store';
-import { CodeIcon, CopyIcon, WandIcon } from './icons';
+import { CaretDownIcon, CodeIcon, CopyIcon, WandIcon } from './icons';
 
 const TABS: Array<{ id: OutputTab; label: string }> = [
   { id: 'game', label: 'Game' },
@@ -14,6 +14,8 @@ const TABS: Array<{ id: OutputTab; label: string }> = [
 export function OutputPanel() {
   const tab = useStore((s) => s.outputTab);
   const setTab = useStore((s) => s.setOutputTab);
+  const open = useStore((s) => s.outputOpen);
+  const setOpen = useStore((s) => s.setOutputOpen);
   const compiled = useStore((s) => s.project.compiled);
   const errors = useStore((s) => s.run.errors);
   const logs = useStore((s) => s.run.logs);
@@ -21,55 +23,62 @@ export function OutputPanel() {
   const problemCount = errors.length + (compiled?.warnings.length ?? 0);
 
   return (
-    <div className="output-panel">
-      <div className="output-tabs" role="tablist">
-        {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
-            {t.label}
-            {t.id === 'problems' && problemCount > 0 && <span className={`count ${errors.length ? 'bad' : ''}`}>{problemCount}</span>}
-            {t.id === 'console' && logs.length > 0 && <span className="count">{logs.length}</span>}
-          </button>
-        ))}
+    <div className={`output-panel ${open ? '' : 'collapsed'}`}>
+      <div className="output-header">
+        <div className="output-tabs" role="tablist" aria-label="Output">
+          {TABS.map((t) => (
+            <button key={t.id} role="tab" aria-selected={tab === t.id} className={`output-tab ${tab === t.id && open ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+              {t.label}
+              {t.id === 'problems' && problemCount > 0 && <span className={`count ${errors.length ? 'bad' : ''}`}>{problemCount}</span>}
+              {t.id === 'console' && logs.length > 0 && <span className="count">{logs.length}</span>}
+            </button>
+          ))}
+        </div>
+        <button className="output-toggle" aria-expanded={open} aria-label={open ? 'Hide output' : 'Show output'} title={open ? 'Hide' : 'Show'} onClick={() => setOpen(!open)}>
+          <CaretDownIcon size={14} />
+        </button>
       </div>
-      <div className="output-body">
-        {tab === 'game' && <GameTab />}
-        {tab === 'problems' && (
-          <div className="problems">
-            {errors.length === 0 && !compiled?.warnings.length && <p className="muted">No problems. 🎉</p>}
-            {errors.map((e, i) => (
-              <div key={`e${i}`} className="problem error">
-                <b>
-                  {e.target ?? 'Game'}
-                  {e.script ? ` · ${e.script}` : ''}
-                  {e.line ? ` · line ${e.line}` : ''}
-                </b>
-                <span>{e.message}</span>
-              </div>
-            ))}
-            {compiled?.warnings.map((w, i) => (
-              <div key={`w${i}`} className="problem warning">
-                <span>{w}</span>
-              </div>
-            ))}
-            {compiled && (
-              <button className="fix-btn" onClick={fixWithAi} disabled={compiling}>
-                <WandIcon size={15} /> Fix with AI
-              </button>
-            )}
-          </div>
-        )}
-        {tab === 'console' && (
-          <div className="console">
-            {logs.length === 0 && <p className="muted">Messages from the running game appear here.</p>}
-            {logs.map((l) => (
-              <div key={l.id} className={`log ${l.level}`}>
-                {l.message}
-              </div>
-            ))}
-          </div>
-        )}
-        {tab === 'code' && <CodeTab />}
-      </div>
+      {open && (
+        <div className="output-body">
+          {tab === 'game' && <GameTab />}
+          {tab === 'problems' && (
+            <div className="problems">
+              {errors.length === 0 && !compiled?.warnings.length && <p className="muted">No problems.</p>}
+              {errors.map((e, i) => (
+                <div key={`e${i}`} className="problem error">
+                  <b>
+                    {e.target ?? 'Game'}
+                    {e.script ? ` · ${e.script}` : ''}
+                    {e.line ? ` · line ${e.line}` : ''}
+                  </b>
+                  <span>{e.message}</span>
+                </div>
+              ))}
+              {compiled?.warnings.map((w, i) => (
+                <div key={`w${i}`} className="problem warning">
+                  <span>{w}</span>
+                </div>
+              ))}
+              {compiled && (
+                <button className="fix-btn" onClick={fixWithAi} disabled={compiling}>
+                  <WandIcon size={15} /> Fix with AI
+                </button>
+              )}
+            </div>
+          )}
+          {tab === 'console' && (
+            <div className="console">
+              {logs.length === 0 && <p className="muted">Messages from the running game appear here.</p>}
+              {logs.map((l) => (
+                <div key={l.id} className={`log ${l.level}`}>
+                  {l.message}
+                </div>
+              ))}
+            </div>
+          )}
+          {tab === 'code' && <CodeTab />}
+        </div>
+      )}
     </div>
   );
 }

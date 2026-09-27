@@ -1,7 +1,23 @@
-import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { loadImage, trimTransparent } from '../project/images';
 import type { ImageAsset } from '../project/types';
-import { BrushIcon, BucketIcon, EllipseIcon, EraserIcon, LineIcon, PickerIcon, RectIcon, RedoIcon, TextIcon, TrashIcon, UndoIcon, UploadIcon } from './icons';
+import {
+  BrushIcon,
+  BrushSizeIcon,
+  BucketIcon,
+  EllipseIcon,
+  EraserIcon,
+  FlipHorizontalIcon,
+  FlipVerticalIcon,
+  LineIcon,
+  PickerIcon,
+  RectIcon,
+  RedoIcon,
+  TextIcon,
+  TrashIcon,
+  UndoIcon,
+  UploadIcon,
+} from './icons';
 import { pickFile } from '../project/importers';
 import { fileToDataUrl } from '../project/images';
 
@@ -14,19 +30,104 @@ type Tool = 'brush' | 'eraser' | 'line' | 'rect' | 'ellipse' | 'fill' | 'picker'
 const SWATCHES = ['#000000', '#ffffff', '#ff4d4d', '#ff9f1a', '#ffd93b', '#5ccb5f', '#2fb4ff', '#4c6fff', '#9b59ff', '#ff6fb5', '#8b5a2b', '#9aa0a6'];
 
 const TOOLS: Array<{ id: Tool; label: string; icon: ReactElement }> = [
-  { id: 'brush', label: 'Brush', icon: <BrushIcon size={17} /> },
-  { id: 'eraser', label: 'Eraser', icon: <EraserIcon size={17} /> },
-  { id: 'line', label: 'Line', icon: <LineIcon size={17} /> },
-  { id: 'rect', label: 'Rectangle', icon: <RectIcon size={17} /> },
-  { id: 'ellipse', label: 'Ellipse', icon: <EllipseIcon size={17} /> },
-  { id: 'fill', label: 'Fill', icon: <BucketIcon size={17} /> },
-  { id: 'picker', label: 'Pick color', icon: <PickerIcon size={17} /> },
-  { id: 'text', label: 'Text', icon: <TextIcon size={17} /> },
+  { id: 'brush', label: 'Brush', icon: <BrushIcon size={22} /> },
+  { id: 'line', label: 'Line', icon: <LineIcon size={22} /> },
+  { id: 'ellipse', label: 'Circle', icon: <EllipseIcon size={22} /> },
+  { id: 'rect', label: 'Rectangle', icon: <RectIcon size={22} /> },
+  { id: 'text', label: 'Text', icon: <TextIcon size={22} /> },
+  { id: 'fill', label: 'Fill', icon: <BucketIcon size={22} /> },
+  { id: 'eraser', label: 'Eraser', icon: <EraserIcon size={22} /> },
+  { id: 'picker', label: 'Pick color', icon: <PickerIcon size={22} /> },
 ];
 
 function hexToRgba(hex: string): [number, number, number, number] {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 255];
+}
+
+/** Hex color to Scratch's color, saturation and brightness (each 0-100). */
+function hexToHsv(hex: string): [number, number, number] {
+  const [r, g, b] = hexToRgba(hex).map((v) => v / 255);
+  const max = Math.max(r, g, b);
+  const d = max - Math.min(r, g, b);
+  let h = 0;
+  if (d) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+  }
+  return [(h / 360) * 100, max ? (d / max) * 100 : 0, max * 100];
+}
+
+function hsvToHex(h: number, s: number, v: number): string {
+  const H = ((h / 100) * 360) % 360;
+  const S = s / 100;
+  const V = v / 100;
+  const c = V * S;
+  const x = c * (1 - Math.abs(((H / 60) % 2) - 1));
+  const m = V - c;
+  const [r, g, b] = H < 60 ? [c, x, 0] : H < 120 ? [x, c, 0] : H < 180 ? [0, c, x] : H < 240 ? [0, x, c] : H < 300 ? [x, 0, c] : [c, 0, x];
+  return `#${[r, g, b].map((n) => Math.round((n + m) * 255).toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** Scratch's color popover: Color, Saturation and Brightness sliders, a few swatches, and the eyedropper. */
+function ColorPopover({ color, onChange, onPick, onClose }: { color: string; onChange(c: string): void; onPick(): void; onClose(): void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [hsv, setHsv] = useState(() => hexToHsv(color));
+  useEffect(() => {
+    const close = (e: Event) => {
+      if (!ref.current?.contains(e.target as Node) && !(e.target as Element).closest?.('.color-button')) onClose();
+    };
+    document.addEventListener('pointerdown', close, true);
+    return () => document.removeEventListener('pointerdown', close, true);
+  }, [onClose]);
+  const set = (i: number, v: number) => {
+    const next = [...hsv] as [number, number, number];
+    next[i] = v;
+    setHsv(next);
+    onChange(hsvToHex(...next));
+  };
+  const [h, sat, v] = hsv;
+  const hues = Array.from({ length: 7 }, (_, i) => hsvToHex((i / 6) * 100, Math.max(sat, 30), Math.max(v, 50))).join(', ');
+  const sliders: Array<{ label: string; value: number; track: string }> = [
+    { label: 'Color', value: h, track: `linear-gradient(to right, ${hues})` },
+    { label: 'Saturation', value: sat, track: `linear-gradient(to right, ${hsvToHex(h, 0, v)}, ${hsvToHex(h, 100, v)})` },
+    { label: 'Brightness', value: v, track: `linear-gradient(to right, #000, ${hsvToHex(h, sat, 100)})` },
+  ];
+  return (
+    <div className="color-popover" ref={ref} role="dialog" aria-label="Fill color">
+      {sliders.map((sl, i) => (
+        <label key={sl.label} className="color-slider-row">
+          <span className="color-slider-label">
+            <span>{sl.label}</span>
+            <span className="color-slider-value">{Math.round(sl.value)}</span>
+          </span>
+          <input type="range" className="color-slider" min={0} max={100} value={Math.round(sl.value)} style={{ background: sl.track }} onChange={(e) => set(i, Number(e.target.value))} />
+        </label>
+      ))}
+      <div className="color-popover-footer">
+        <div className="swatches">
+          {SWATCHES.map((sw) => (
+            <button
+              key={sw}
+              style={{ background: sw }}
+              className={sw === color ? 'on' : ''}
+              title={sw}
+              aria-label={sw}
+              onClick={() => {
+                setHsv(hexToHsv(sw));
+                onChange(sw);
+              }}
+            />
+          ))}
+        </div>
+        <button className="eyedropper" title="Pick a color from the costume" aria-label="Pick a color from the costume" onClick={onPick}>
+          <PickerIcon size={18} />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function floodFill(ctx: CanvasRenderingContext2D, x: number, y: number, color: [number, number, number, number]): void {
@@ -64,17 +165,20 @@ function floodFill(ctx: CanvasRenderingContext2D, x: number, y: number, color: [
 export interface PaintEditorProps {
   asset: ImageAsset;
   isBackdrop: boolean;
+  /** The costume's name field, shown first in the top row like Scratch. */
+  nameField?: ReactNode;
   onChange(patch: Pick<ImageAsset, 'dataUrl' | 'mime' | 'width' | 'height' | 'resolution' | 'centerX' | 'centerY'>): void;
 }
 
 /** A simple bitmap paint editor (costumes are saved trimmed, at 2x resolution, centered on the canvas center). */
-export function PaintEditor({ asset, isBackdrop, onChange }: PaintEditorProps) {
+export function PaintEditor({ asset, isBackdrop, nameField, onChange }: PaintEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const [tool, setTool] = useState<Tool>('brush');
   const [color, setColor] = useState('#4c6fff');
   const [size, setSize] = useState(8);
   const [filled, setFilled] = useState(true);
+  const [picker, setPicker] = useState(false);
   const undo = useRef<ImageData[]>([]);
   const redo = useRef<ImageData[]>([]);
   const [, force] = useState(0);
@@ -258,6 +362,21 @@ export function PaintEditor({ asset, isBackdrop, onChange }: PaintEditorProps) {
     ctx().clearRect(0, 0, W, H);
     commit();
   };
+  const flip = (horizontal: boolean) => {
+    snapshot();
+    const c = ctx();
+    const copy = document.createElement('canvas');
+    copy.width = W;
+    copy.height = H;
+    copy.getContext('2d')!.drawImage(canvasRef.current!, 0, 0);
+    c.save();
+    c.clearRect(0, 0, W, H);
+    c.translate(horizontal ? W : 0, horizontal ? 0 : H);
+    c.scale(horizontal ? -1 : 1, horizontal ? 1 : -1);
+    c.drawImage(copy, 0, 0);
+    c.restore();
+    commit();
+  };
   const importImage = async () => {
     const files = await pickFile('image/*');
     if (!files.length) return;
@@ -272,60 +391,105 @@ export function PaintEditor({ asset, isBackdrop, onChange }: PaintEditorProps) {
 
   return (
     <div className="paint-editor">
-      <div className="paint-toolbar">
-        {TOOLS.map((t) => (
-          <button key={t.id} className={`tool ${tool === t.id ? 'active' : ''}`} title={t.label} onClick={() => setTool(t.id)}>
-            {t.icon}
+      <div className="editor-row">
+        {nameField}
+        <div className="button-group">
+          <button className="group-button" title="Undo" aria-label="Undo" onClick={doUndo} disabled={!undo.current.length}>
+            <UndoIcon size={18} strokeWidth={2.6} />
           </button>
-        ))}
-        <span className="sep" />
-        <button className="tool" title="Undo" onClick={doUndo} disabled={!undo.current.length}>
-          <UndoIcon size={17} />
-        </button>
-        <button className="tool" title="Redo" onClick={doRedo} disabled={!redo.current.length}>
-          <RedoIcon size={17} />
-        </button>
-        <button className="tool" title="Import an image into this costume" onClick={() => void importImage()}>
-          <UploadIcon size={17} />
-        </button>
-        <button className="tool" title="Clear" onClick={clear}>
-          <TrashIcon size={17} />
-        </button>
-      </div>
-      <div className="paint-options">
-        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} title="Color" />
-        <div className="swatches">
-          {SWATCHES.map((s) => (
-            <button key={s} style={{ background: s }} className={s === color ? 'on' : ''} onClick={() => setColor(s)} title={s} />
-          ))}
+          <button className="group-button" title="Redo" aria-label="Redo" onClick={doRedo} disabled={!redo.current.length}>
+            <RedoIcon size={18} strokeWidth={2.6} />
+          </button>
         </div>
-        <label className="size">
-          Size
-          <input type="range" min={1} max={40} value={size} onChange={(e) => setSize(Number(e.target.value))} />
+        <div className="tool-group">
+          <button className="tool-button" title="Import an image into this costume" onClick={() => void importImage()}>
+            <UploadIcon size={20} strokeWidth={2.4} />
+            <span>Import</span>
+          </button>
+          <button className="tool-button" onClick={clear}>
+            <TrashIcon size={20} strokeWidth={2.4} />
+            <span>Clear</span>
+          </button>
+        </div>
+        <div className="tool-group">
+          <button className="tool-button" onClick={() => flip(true)}>
+            <FlipHorizontalIcon size={22} />
+            <span>Flip Horizontal</span>
+          </button>
+          <button className="tool-button" onClick={() => flip(false)}>
+            <FlipVerticalIcon size={22} />
+            <span>Flip Vertical</span>
+          </button>
+        </div>
+      </div>
+      <div className="editor-row paint-mode-row">
+        <div className="info-group color-field">
+          <span className="info-label">Fill</span>
+          <button className="color-button" aria-label="Fill color" aria-expanded={picker} onClick={() => setPicker((o) => !o)}>
+            <span className="color-swatch" style={{ background: color }} />
+            <span className="color-caret" aria-hidden="true" />
+          </button>
+          {picker && (
+            <ColorPopover
+              color={color}
+              onChange={setColor}
+              onClose={() => setPicker(false)}
+              onPick={() => {
+                setTool('picker');
+                setPicker(false);
+              }}
+            />
+          )}
+        </div>
+        <label className="info-group brush-size" title="Brush size">
+          <BrushSizeIcon size={22} />
+          <input
+            className="info-input small"
+            type="number"
+            min={1}
+            max={100}
+            value={size}
+            aria-label="Brush size"
+            onChange={(e) => setSize(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+          />
         </label>
         {(tool === 'rect' || tool === 'ellipse') && (
-          <label className="toggle">
-            <input type="checkbox" checked={filled} onChange={(e) => setFilled(e.target.checked)} /> Filled
-          </label>
+          <div className="toggle-buttons" role="group" aria-label="Shape">
+            <button aria-pressed={filled} onClick={() => setFilled(true)}>
+              Filled
+            </button>
+            <button aria-pressed={!filled} onClick={() => setFilled(false)}>
+              Outlined
+            </button>
+          </div>
         )}
       </div>
-      <div className="paint-canvas-wrap">
-        <div className="paint-canvas">
-          <canvas ref={canvasRef} width={W} height={H} />
-          <canvas
-            ref={overlayRef}
-            width={W}
-            height={H}
-            className="overlay"
-            onPointerDown={onDown}
-            onPointerMove={onMove}
-            onPointerUp={onUp}
-            onPointerCancel={onUp}
-          />
-          {!isBackdrop && <div className="center-mark" title="Rotation center" />}
+      <div className="paint-main">
+        <div className="paint-tools" role="toolbar" aria-label="Paint tools">
+          {TOOLS.map((t) => (
+            <button key={t.id} className={`paint-tool ${tool === t.id ? 'active' : ''}`} title={t.label} aria-label={t.label} aria-pressed={tool === t.id} onClick={() => setTool(t.id)}>
+              {t.icon}
+            </button>
+          ))}
+        </div>
+        <div className="paint-canvas-area">
+          <div className="paint-canvas">
+            <canvas ref={canvasRef} width={W} height={H} />
+            <canvas
+              ref={overlayRef}
+              width={W}
+              height={H}
+              className={`overlay tool-${tool}`}
+              onPointerDown={onDown}
+              onPointerMove={onMove}
+              onPointerUp={onUp}
+              onPointerCancel={onUp}
+            />
+            {!isBackdrop && <div className="center-mark" title="Rotation center" />}
+          </div>
+          {asset.mime === 'image/svg+xml' && asset.width > 2 && <p className="paint-note">Vector costume: painting on it turns it into a bitmap.</p>}
         </div>
       </div>
-      {asset.mime === 'image/svg+xml' && asset.width > 2 && <p className="muted small">Vector costume: painting on it turns it into a bitmap.</p>}
     </div>
   );
 }

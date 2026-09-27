@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PlayerHost } from '../player/host';
 import { cancelCompile, compile, needsCompile, previewProject, registerPlayer, startGame, stopGame } from '../actions';
 import { useStore } from '../store';
-import { FlagIcon, FullscreenIcon, SparkIcon, StopIcon, XIcon } from './icons';
+import { ExpandIcon, FlagIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, SparkIcon, StopIcon, XIcon } from './icons';
 
 function isEditable(el: EventTarget | null): boolean {
   const node = el as HTMLElement | null;
@@ -19,6 +19,8 @@ export function StagePanel() {
   const project = useStore((s) => s.project);
   const runState = useStore((s) => s.run.state);
   const compileState = useStore((s) => s.compile);
+  const stageSize = useStore((s) => s.stageSize);
+  const setStageSize = useStore((s) => s.setStageSize);
   const [fullscreen, setFullscreen] = useState(false);
   const dirty = needsCompile(project);
 
@@ -84,39 +86,58 @@ export function StagePanel() {
 
   const compiling = compileState.status === 'running';
   const progress = compileState.progress;
+  const running = runState === 'running' || runState === 'paused';
 
   return (
     <div className="stage-panel">
-      <div className="stage-controls">
-        <button className={`icon-btn flag ${runState === 'running' ? 'active' : ''}`} title="Start (green flag)" onClick={startGame} disabled={compiling}>
-          <FlagIcon size={24} />
-        </button>
-        <button className="icon-btn" title="Stop" onClick={stopGame}>
-          <StopIcon size={22} />
-        </button>
-        <span className="mode-badge" title="World type">
-          {project.mode.toUpperCase()}
-        </span>
-        <div className="spacer" />
-        {compiling ? (
-          <button className="compile-btn running" onClick={cancelCompile} title="Cancel">
-            <span className="spinner" /> Compiling… <XIcon size={14} />
+      <div className="stage-header">
+        <div className="stage-controls">
+          <button className={`green-flag ${runState === 'running' ? 'active' : ''}`} title="Start (green flag)" aria-label="Start (green flag)" onClick={startGame} disabled={compiling}>
+            <FlagIcon size={24} />
           </button>
-        ) : (
-          <button
-            className={`compile-btn ${dirty ? 'dirty' : ''}`}
-            onClick={() => void compile()}
-            title={dirty ? 'Your blocks changed since the last build' : 'Build the game again'}
-          >
-            <SparkIcon size={16} /> Compile{dirty && project.compiled ? ' •' : ''}
+          <button className={`stop-all ${running ? 'active' : ''}`} title="Stop" aria-label="Stop" onClick={stopGame}>
+            <StopIcon size={24} />
           </button>
-        )}
-        <button className="icon-btn" title="Full screen" onClick={toggleFullscreen}>
-          <FullscreenIcon size={18} />
-        </button>
+          {compiling ? (
+            <button className="compile-btn running" onClick={cancelCompile} title="Cancel" aria-label="Compiling… (cancel)">
+              <span className="spinner" /> <span className="compile-label">Compiling…</span> <XIcon size={13} strokeWidth={3} />
+            </button>
+          ) : (
+            <button
+              className={`compile-btn ${dirty ? 'dirty' : ''}`}
+              aria-label="Compile"
+              onClick={() => void compile()}
+              title={dirty ? 'Your blocks changed since the last build' : 'Build the game again'}
+            >
+              <SparkIcon size={16} />
+              <span className="compile-label">Compile{dirty && project.compiled ? ' •' : ''}</span>
+            </button>
+          )}
+          <span className="mode-badge" title="World type">
+            {project.mode.toUpperCase()}
+          </span>
+        </div>
+        <div className="stage-size-row">
+          <div className="stage-size-toggle" role="group" aria-label="Stage size">
+            <button aria-pressed={stageSize === 'small'} title="Small stage" onClick={() => setStageSize('small')}>
+              <SmallStageIcon size={20} />
+            </button>
+            <button aria-pressed={stageSize === 'large'} title="Normal stage" onClick={() => setStageSize('large')}>
+              <LargeStageIcon size={20} />
+            </button>
+          </div>
+          <button className="stage-button" title="Full screen" aria-label="Full screen" onClick={toggleFullscreen}>
+            <ExpandIcon size={18} />
+          </button>
+        </div>
       </div>
       <div className={`stage-shell ${fullscreen ? 'is-fullscreen' : ''}`} ref={shellRef}>
         <div className="stage-frame" ref={frameRef} />
+        {fullscreen && (
+          <button className="stage-button exit-fullscreen" title="Exit full screen" aria-label="Exit full screen" onClick={toggleFullscreen}>
+            <ShrinkIcon size={18} />
+          </button>
+        )}
         {compiling && progress && (
           <div className="compile-overlay">
             <div className="compile-card">
