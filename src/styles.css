@@ -453,10 +453,30 @@ select {
   inset: 0;
 }
 
+/* The edited sprite, faded, in the code area's top right corner. */
+.sprite-watermark {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.sprite-watermark img {
+  max-width: 48px;
+  max-height: 48px;
+  opacity: 0.35;
+}
+
 .compiled-overlay {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  /* Above Blockly's palette and category column: a compiled sprite has no blocks to edit. */
+  z-index: 80;
   display: grid;
   place-items: center;
   background: hsla(215, 75%, 95%, 0.92);

@@ -51,6 +51,9 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
   const compiledSprites = useStore((s) => s.project.compiled?.sprites);
   const project = useStore.getState().project;
   const compiledSprite = target || !compiledSprites ? null : findCompiledSprite(project, selectedId);
+  // Like Scratch, a faded picture of the edited sprite sits in the code area's top right corner.
+  const shown = target ? target.costumes[target.currentCostume] : null;
+  const watermark = shown?.kind === 'image' ? shown.dataUrl : shown?.kind === 'model' ? shown.thumbnail : undefined;
 
   const flushSave = () => {
     const ws = wsRef.current;
@@ -320,6 +323,11 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
   return (
     <div className="blocks-editor" style={{ display: visible ? undefined : 'none' }}>
       <div ref={divRef} className="blockly-host" />
+      {watermark && (
+        <div className="sprite-watermark" aria-hidden="true">
+          <img src={watermark} alt="" draggable={false} />
+        </div>
+      )}
       {compiledSprite && (
         <div className="compiled-overlay">
           <div className="compiled-card">
