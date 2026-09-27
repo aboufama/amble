@@ -46,6 +46,8 @@ export interface EditorState {
   outputTab: OutputTab;
   /** The output panel under the stage can be folded down to its tabs. */
   outputOpen: boolean;
+  /** Edit > Restore: puts back the last deleted sprite, costume, backdrop or sound. */
+  restore: { what: 'Sprite' | 'Costume' | 'Backdrop' | 'Sound'; run(): void } | null;
   toast: { id: number; message: string; tone: 'info' | 'error' } | null;
 
   setProject(project: Project): void;
@@ -66,6 +68,7 @@ export interface EditorState {
   setPrompt(prompt: PromptRequest | null): void;
   setOutputTab(tab: OutputTab): void;
   setOutputOpen(open: boolean): void;
+  setRestore(restore: EditorState['restore']): void;
   notify(message: string, tone?: 'info' | 'error'): void;
 }
 
@@ -88,6 +91,7 @@ export const useStore = create<EditorState>()(
     prompt: null,
     outputTab: 'game',
     outputOpen: true,
+    restore: null,
     toast: null,
 
     setProject: (project) =>
@@ -99,6 +103,7 @@ export const useStore = create<EditorState>()(
         s.compile = { status: 'idle', progress: null, error: null };
         s.run.errors = [];
         s.run.logs = [];
+        s.restore = null;
       }),
     update: (fn) =>
       set((s) => {
@@ -171,6 +176,10 @@ export const useStore = create<EditorState>()(
     setOutputOpen: (open) =>
       set((s) => {
         s.outputOpen = open;
+      }),
+    setRestore: (restore) =>
+      set((s) => {
+        s.restore = restore;
       }),
     notify: (message, tone = 'info') =>
       set((s) => {

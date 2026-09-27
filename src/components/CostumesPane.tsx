@@ -9,6 +9,7 @@ import type { CompiledAsset, CostumeAsset, ImageAsset } from '../project/types';
 import { PaintEditor } from './PaintEditor';
 import { ActionMenu, AssetTile, BackdropLibrary, ContextMenu, blankCostume, costumeThumb } from './SpritePane';
 import { Library } from './Library';
+import { moveItem, useReorder } from './useReorder';
 import { AddCharacterIcon, AddPictureIcon, BrushIcon, CubeIcon, KeepIcon, SearchIcon, SparkIcon, SurpriseIcon, TrashIcon, UploadIcon } from './icons';
 
 function sizeLabel(c: CostumeAsset | CompiledAsset): string {
@@ -28,6 +29,14 @@ export function CostumesPane() {
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ id: string; at: { x: number; y: number } } | null>(null);
   const [library, setLibrary] = useState(false);
+  // Reordering keeps the same costume current.
+  const reorder = useReorder((from, to) =>
+    setOwn((list, t) => {
+      const currentId = list[t.currentCostume]?.id;
+      moveItem(list, from, to);
+      t.currentCostume = Math.max(0, list.findIndex((c) => c.id === currentId));
+    }),
+  );
 
   const target = findTarget(project, selectedId);
   const compiledView = target ? null : findCompiledSprite(project, selectedId);
@@ -85,12 +94,28 @@ export function CostumesPane() {
       notify((err as Error).message, 'error');
     }
   };
-  const remove = (id: string) =>
+  const remove = (id: string) => {
+    const index = own.findIndex((c) => c.id === id);
+    const removed = own[index];
+    if (!removed) return;
     setOwn((list, t) => {
-      const i = list.findIndex((c) => c.id === id);
-      if (i >= 0) list.splice(i, 1);
+      list.splice(index, 1);
       t.currentCostume = Math.max(0, Math.min(t.currentCostume, list.length - 1));
     });
+    const targetId = selectedId;
+    useStore.getState().setRestore({
+      what: isStage ? 'Backdrop' : 'Costume',
+      run: () => {
+        update((p) => {
+          const t = findTarget(p, targetId);
+          if (!t) return;
+          t.costumes.splice(Math.min(index, t.costumes.length), 0, { ...removed, name: uniqueName(removed.name, t.costumes.map((c) => c.name)) });
+        });
+        useStore.getState().select(targetId);
+        selectCostume(targetId, removed.id);
+      },
+    });
+  };
   const duplicate = (id: string) =>
     setOwn((list) => {
       const i = list.findIndex((c) => c.id === id);
@@ -105,25 +130,29 @@ export function CostumesPane() {
   return (
     <div className="asset-panel">
       <div className="asset-selector">
-        <div className="asset-list">
-          {own.map((c, i) => (
-            <AssetTile
-              key={c.id}
-              className="asset-tile"
-              number={i + 1}
-              name={c.name}
-              details={sizeLabel(c)}
-              image={costumeThumb(c)}
-              selected={current?.id === c.id}
-              onSelect={() => {
-                selectCostume(selectedId, c.id);
-                setOwn((_, t) => void (t.currentCostume = i));
-              }}
-              onDelete={own.length > 1 || isStage ? () => remove(c.id) : undefined}
-              confirmWhat={noun}
-              onContextMenu={(at) => setMenu({ id: c.id, at })}
-            />
-          ))}
+        <div className="asset-list" ref={reorder.containerRef}>
+          {reorder.order(own.length).map((i, shown) => {
+            const c = own[i];
+            return (
+              <AssetTile
+                key={c.id}
+                className="asset-tile"
+                number={shown + 1}
+                name={c.name}
+                details={sizeLabel(c)}
+                image={costumeThumb(c)}
+                selected={current?.id === c.id}
+                onSelect={() => {
+                  selectCostume(selectedId, c.id);
+                  setOwn((list, t) => void (t.currentCostume = Math.max(0, list.findIndex((x) => x.id === c.id))));
+                }}
+                onDelete={own.length > 1 || isStage ? () => remove(c.id) : undefined}
+                confirmWhat={noun}
+                onContextMenu={(at) => setMenu({ id: c.id, at })}
+                reorder={{ onPointerDown: reorder.onPointerDown(i), placeholder: reorder.drag?.from === i }}
+              />
+            );
+          })}
           {compiled.length > 0 && (
             <div className="compiled-heading">
               <SparkIcon size={13} /> Compiled

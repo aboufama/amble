@@ -8,7 +8,7 @@ import { blankBackdrop } from '../project/defaults';
 import type { Project, WorldMode } from '../project/types';
 import { CHATGPT_MODEL_NAME } from '../compiler/openai';
 import { signInWithChatGpt } from '../actions';
-import { AmbleMark, CaretDownIcon, FileIcon, SettingsIcon } from './icons';
+import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
 
 /** Converts a project between 2D and 3D (positions are rescaled; the blank white backdrop is dropped in 3D). */
 export function switchMode(p: Project, mode: WorldMode): void {
@@ -48,24 +48,31 @@ export function MenuBar() {
   const notify = useStore((s) => s.notify);
   const codex = useStore((s) => s.codex);
   const useChatGpt = useStore((s) => s.settings.useChatGpt);
-  const [open, setOpen] = useState(false);
-  const fileRef = useRef<HTMLDivElement>(null);
+  const restore = useStore((s) => s.restore);
+  const setRestore = useStore((s) => s.setRestore);
+  const [open, setOpen] = useState<'file' | 'edit' | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const signedIn = useChatGpt && codex?.auth === 'chatgpt';
 
   // Like Scratch, a menu closes when you click anywhere else.
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent) => {
-      if (!fileRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!menuRef.current?.contains(e.target as Node)) setOpen(null);
     };
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(null);
     document.addEventListener('pointerdown', close);
-    return () => document.removeEventListener('pointerdown', close);
+    document.addEventListener('keydown', key);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', key);
+    };
   }, [open]);
 
   const confirmReplace = () => confirm('Replace the current project? (Save it to your computer first if you want to keep it.)');
 
   const act = (fn: () => void | Promise<void>) => async () => {
-    setOpen(false);
+    setOpen(null);
     try {
       await fn();
     } catch (err) {
@@ -84,54 +91,79 @@ export function MenuBar() {
           <SettingsIcon size={20} />
           <span>Settings</span>
         </button>
-        <div className={`menubar-item file-menu ${open ? 'active' : ''}`} ref={fileRef}>
-          <button className="menubar-button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-            <FileIcon size={20} />
-            <span>File</span>
-            <CaretDownIcon size={16} className="dropdown-caret" />
-          </button>
-          {open && (
-            <div className="menubar-menu" role="menu">
-              <div className="menubar-menu-section">
-                <button role="menuitem" onClick={act(() => void (confirmReplace() && setProject(blankProject('2d'))))}>
-                  New 2D game
-                </button>
-                <button role="menuitem" onClick={act(() => void (confirmReplace() && setProject(blankProject('3d'))))}>
-                  New 3D game
-                </button>
-              </div>
-              <div className="menubar-menu-section">
-                <button
-                  role="menuitem"
-                  onClick={act(async () => {
-                    const files = await pickFile('.amble,application/json');
-                    if (files.length && confirmReplace()) setProject(await readProjectFile(files[0]));
-                  })}
-                >
-                  Load from your computer
-                </button>
-                <button role="menuitem" onClick={act(() => downloadProject(useStore.getState().project))}>
-                  Save to your computer
-                </button>
-                <button
-                  role="menuitem"
-                  onClick={act(async () => {
-                    if (!useStore.getState().project.compiled) notify('Compile first: the web page contains the compiled game.');
-                    await exportGameHtml(useStore.getState().project);
-                  })}
-                >
-                  Export playable web page
-                </button>
-              </div>
-              <div className="menubar-menu-section">
-                {EXAMPLES.map((ex) => (
-                  <button key={ex.id} role="menuitem" title={ex.description} onClick={act(() => void (confirmReplace() && setProject(ex.make())))}>
-                    Example: {ex.title}
+        <div className="menubar-menus" ref={menuRef}>
+          <div className={`menubar-item menubar-dropdown ${open === 'file' ? 'active' : ''}`}>
+            <button className="menubar-button" aria-haspopup="menu" aria-expanded={open === 'file'} onClick={() => setOpen((o) => (o === 'file' ? null : 'file'))}>
+              <FileIcon size={20} />
+              <span>File</span>
+              <CaretDownIcon size={16} className="dropdown-caret" />
+            </button>
+            {open === 'file' && (
+              <div className="menubar-menu" role="menu">
+                <div className="menubar-menu-section">
+                  <button role="menuitem" onClick={act(() => void (confirmReplace() && setProject(blankProject('2d'))))}>
+                    New 2D game
                   </button>
-                ))}
+                  <button role="menuitem" onClick={act(() => void (confirmReplace() && setProject(blankProject('3d'))))}>
+                    New 3D game
+                  </button>
+                </div>
+                <div className="menubar-menu-section">
+                  <button
+                    role="menuitem"
+                    onClick={act(async () => {
+                      const files = await pickFile('.amble,application/json');
+                      if (files.length && confirmReplace()) setProject(await readProjectFile(files[0]));
+                    })}
+                  >
+                    Load from your computer
+                  </button>
+                  <button role="menuitem" onClick={act(() => downloadProject(useStore.getState().project))}>
+                    Save to your computer
+                  </button>
+                  <button
+                    role="menuitem"
+                    onClick={act(async () => {
+                      if (!useStore.getState().project.compiled) notify('Compile first: the web page contains the compiled game.');
+                      await exportGameHtml(useStore.getState().project);
+                    })}
+                  >
+                    Export playable web page
+                  </button>
+                </div>
+                <div className="menubar-menu-section">
+                  {EXAMPLES.map((ex) => (
+                    <button key={ex.id} role="menuitem" title={ex.description} onClick={act(() => void (confirmReplace() && setProject(ex.make())))}>
+                      Example: {ex.title}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+          <div className={`menubar-item menubar-dropdown ${open === 'edit' ? 'active' : ''}`}>
+            <button className="menubar-button" aria-haspopup="menu" aria-expanded={open === 'edit'} onClick={() => setOpen((o) => (o === 'edit' ? null : 'edit'))}>
+              <PencilIcon size={18} />
+              <span>Edit</span>
+              <CaretDownIcon size={16} className="dropdown-caret" />
+            </button>
+            {open === 'edit' && (
+              <div className="menubar-menu" role="menu">
+                <div className="menubar-menu-section">
+                  <button
+                    role="menuitem"
+                    disabled={!restore}
+                    onClick={act(() => {
+                      restore?.run();
+                      setRestore(null);
+                    })}
+                  >
+                    {restore ? `Restore ${restore.what}` : 'Restore'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div className="menubar-divider" />
         <input

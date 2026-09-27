@@ -9,9 +9,12 @@ import { importImageFile, importModelFile, pickFile } from '../project/importers
 import { uniqueName, uid } from '../project/ids';
 import type { CostumeAsset, CompiledAsset, ImageAsset, SpriteTarget } from '../project/types';
 import { Library } from './Library';
+import { moveItem, useReorder } from './useReorder';
 import {
   AddCharacterIcon,
   AddPictureIcon,
+  AllAroundIcon,
+  DontRotateIcon,
   BrushIcon,
   CubeIcon,
   EyeIcon,
@@ -228,6 +231,7 @@ export function AssetTile({
   confirmWhat,
   className = '',
   title,
+  reorder,
   children,
 }: {
   name: string;
@@ -243,6 +247,8 @@ export function AssetTile({
   confirmWhat?: string;
   className?: string;
   title?: string;
+  /** Drag to reorder (see useReorder); `placeholder` while this tile is the one dragged. */
+  reorder?: { onPointerDown(e: React.PointerEvent<HTMLElement>): void; placeholder: boolean };
   children?: ReactNode;
 }) {
   const [confirming, setConfirming] = useState<DOMRect | null>(null);
@@ -250,7 +256,9 @@ export function AssetTile({
   return (
     <div
       ref={tileRef}
-      className={`${className} ${selected ? 'selected' : ''} ${compiled ? 'compiled' : ''}`}
+      className={`${className} ${selected ? 'selected' : ''} ${compiled ? 'compiled' : ''} ${reorder?.placeholder ? 'placeholder' : ''}`}
+      data-reorder={reorder ? '' : undefined}
+      onPointerDown={reorder?.onPointerDown}
       title={title ?? name}
       onClick={onSelect}
       onContextMenu={(e) => {
@@ -312,6 +320,7 @@ function NumberField({
   step = 1,
   width,
   secondary,
+  onFocus,
 }: {
   label: string;
   icon?: ReactElement;
@@ -321,6 +330,7 @@ function NumberField({
   width?: number;
   /** Scratch writes Size and Direction in plain text, Sprite, x and y in bold. */
   secondary?: boolean;
+  onFocus?: () => void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   return (
@@ -331,6 +341,8 @@ function NumberField({
         className="info-input small"
         style={width ? { width } : undefined}
         inputMode="decimal"
+        aria-label={label}
+        onFocus={onFocus}
         value={draft ?? String(Math.round(value * 100) / 100)}
         onChange={(e) => {
           setDraft(e.target.value);
@@ -348,6 +360,102 @@ function NumberField({
         onBlur={() => setDraft(null)}
       />
     </label>
+  );
+}
+
+/** Scratch's direction (0 = up, 90 = right, clockwise) from Amble's 2D angle (0 = right, counter-clockwise). */
+export function angleToDirection(angle: number): number {
+  const d = ((((90 - angle) % 360) + 540) % 360) - 180;
+  return d === -180 ? 180 : Math.round(d * 100) / 100;
+}
+
+export function directionToAngle(direction: number): number {
+  return ((((90 - direction) % 360) + 360) % 360);
+}
+
+/** The dial in Scratch's direction popover: drag the handle to point the sprite. */
+function DirectionDial({ direction, onChange }: { direction: number; onChange(direction: number): void }) {
+  const size = 136;
+  const c = size / 2;
+  const r = 56;
+  const rad = (direction * Math.PI) / 180;
+  const point = (radius: number) => [c + radius * Math.sin(rad), c - radius * Math.cos(rad)];
+  const [gx, gy] = point(r);
+  const [hx, hy] = point(r - 12);
+  const gauge = `M${c} ${c}L${c} ${c - r}A${r} ${r} 0 0 ${direction >= 0 ? 1 : 0} ${gx.toFixed(2)} ${gy.toFixed(2)}Z`;
+  const aim = (e: React.PointerEvent<SVGSVGElement>) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    const deg = Math.round((Math.atan2(e.clientX - box.left - box.width / 2, box.top + box.height / 2 - e.clientY) * 180) / Math.PI);
+    onChange(deg === -180 ? 180 : deg);
+  };
+  return (
+    <svg
+      className="direction-dial"
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        aim(e);
+      }}
+      onPointerMove={(e) => e.buttons && aim(e)}
+    >
+      <circle className="dial-face" cx={c} cy={c} r={r} />
+      {Array.from({ length: 24 }, (_, i) => {
+        const a = (i * 15 * Math.PI) / 180;
+        const inner = i % 6 === 0 ? r - 9 : r - 5;
+        return <line key={i} className="dial-tick" x1={c + inner * Math.sin(a)} y1={c - inner * Math.cos(a)} x2={c + (r - 1) * Math.sin(a)} y2={c - (r - 1) * Math.cos(a)} />;
+      })}
+      <path className="dial-gauge" d={gauge} />
+      <g className="dial-handle" transform={`translate(${hx.toFixed(2)} ${hy.toFixed(2)}) rotate(${direction})`}>
+        <circle r={13} />
+        <path d="M0-7l6 7h-3.5v6h-5v-6H-6z" />
+      </g>
+    </svg>
+  );
+}
+
+const ROTATION_STYLES: Array<{ id: SpriteTarget['rotationStyle']; label: string; icon: ReactElement }> = [
+  { id: 'all around', label: 'All Around', icon: <AllAroundIcon size={20} /> },
+  { id: 'left-right', label: 'Left/Right', icon: <HorizontalArrowsIcon size={20} /> },
+  { id: "don't rotate", label: "Don't Rotate", icon: <DontRotateIcon size={20} /> },
+];
+
+/** Direction, with Scratch's popover (dial and rotation style) while the field has focus. */
+function DirectionField({ sprite, set }: { sprite: SpriteTarget; set(fn: (s: SpriteTarget) => void): void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('pointerdown', close, true);
+    document.addEventListener('keydown', key);
+    return () => {
+      document.removeEventListener('pointerdown', close, true);
+      document.removeEventListener('keydown', key);
+    };
+  }, [open]);
+  const direction = angleToDirection(sprite.direction);
+  const point = (d: number) => set((t) => (t.direction = directionToAngle(d)));
+  return (
+    <div className="direction-field" ref={ref}>
+      <NumberField label="Direction" secondary value={direction} onChange={point} step={15} width={64} onFocus={() => setOpen(true)} />
+      {open && (
+        <div className="direction-popover" role="dialog" aria-label="Direction">
+          <DirectionDial direction={direction} onChange={point} />
+          <div className="toggle-buttons rotation-styles" role="group" aria-label="Rotation style">
+            {ROTATION_STYLES.map((r) => (
+              <button key={r.id} aria-pressed={sprite.rotationStyle === r.id} title={r.label} aria-label={r.label} onClick={() => set((t) => (t.rotationStyle = r.id))}>
+                {r.icon}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -396,7 +504,11 @@ function SpriteInfo({ sprite }: { sprite: SpriteTarget }) {
           </div>
         </div>
         <NumberField label="Size" secondary value={sprite.size} onChange={(v) => set((t) => (t.size = Math.max(1, v)))} step={10} width={64} />
-        <NumberField label={three ? 'Heading' : 'Direction'} secondary value={sprite.direction} onChange={(v) => set((t) => (t.direction = v))} step={15} width={64} />
+        {three ? (
+          <NumberField label="Heading" secondary value={sprite.direction} onChange={(v) => set((t) => (t.direction = v))} step={15} width={64} />
+        ) : (
+          <DirectionField sprite={sprite} set={set} />
+        )}
       </div>
       <label className="info-row info-about">
         <span className="info-label secondary">About</span>
@@ -444,6 +556,7 @@ export function SpritePane() {
   const notify = useStore((s) => s.notify);
   const [menu, setMenu] = useState<{ id: string; at: { x: number; y: number } } | null>(null);
   const [library, setLibrary] = useState<'sprite' | 'backdrop' | null>(null);
+  const reorder = useReorder((from, to) => update((p) => moveItem(p.sprites, from, to)));
   const selected = findTarget(project, selectedId);
   const compiledSel = selected ? null : findCompiledSprite(project, selectedId);
   const mode = project.mode;
@@ -495,10 +608,23 @@ export function SpritePane() {
     addSprite(copy);
   };
   const remove = (id: string) => {
+    const index = project.sprites.findIndex((x) => x.id === id);
+    const removed = project.sprites[index];
+    if (!removed) return;
     update((p) => {
       p.sprites = p.sprites.filter((x) => x.id !== id);
     });
     if (selectedId === id) select(project.sprites.find((x) => x.id !== id)?.id ?? project.stage.id);
+    useStore.getState().setRestore({
+      what: 'Sprite',
+      run: () => {
+        update((p) => {
+          const sprite = { ...removed, name: uniqueName(removed.name, p.sprites.map((x) => x.name)) };
+          p.sprites.splice(Math.min(index, p.sprites.length), 0, sprite);
+        });
+        select(removed.id);
+      },
+    });
   };
 
   // Backdrops are added from the stage selector, like Scratch.
@@ -546,20 +672,24 @@ export function SpritePane() {
           </div>
         )}
         <div className="sprite-scroll">
-          <div className="sprite-grid">
-            {project.sprites.map((s) => (
-              <AssetTile
-                key={s.id}
-                className="sprite-tile"
-                name={s.name}
-                image={costumeThumb(s.costumes[s.currentCostume])}
-                selected={s.id === selectedId}
-                onSelect={() => select(s.id)}
-                onDelete={() => remove(s.id)}
-                confirmWhat="sprite"
-                onContextMenu={(at) => setMenu({ id: s.id, at })}
-              />
-            ))}
+          <div className="sprite-grid" ref={reorder.containerRef}>
+            {reorder.order(project.sprites.length).map((i) => {
+              const s = project.sprites[i];
+              return (
+                <AssetTile
+                  key={s.id}
+                  className="sprite-tile"
+                  name={s.name}
+                  image={costumeThumb(s.costumes[s.currentCostume])}
+                  selected={s.id === selectedId}
+                  onSelect={() => select(s.id)}
+                  onDelete={() => remove(s.id)}
+                  confirmWhat="sprite"
+                  onContextMenu={(at) => setMenu({ id: s.id, at })}
+                  reorder={{ onPointerDown: reorder.onPointerDown(i), placeholder: reorder.drag?.from === i }}
+                />
+              );
+            })}
             {compiledSprites.map((s) => {
               const look = project.compiled!.assets.find((a) => a.targetId === s.id && a.kind !== 'sound');
               return (

@@ -73,23 +73,36 @@ export function StagePanel() {
     };
   }, [runState]);
 
+  // Scratch's full screen mode fills the page (not the screen): the stage header on top,
+  // the stage as large as fits below it. Escape leaves it.
+  const [fit, setFit] = useState({ width: 480, height: 360 });
   useEffect(() => {
-    const onChange = () => setFullscreen(document.fullscreenElement === shellRef.current);
-    document.addEventListener('fullscreenchange', onChange);
-    return () => document.removeEventListener('fullscreenchange', onChange);
-  }, []);
-
-  const toggleFullscreen = () => {
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void shellRef.current?.requestFullscreen();
-  };
+    if (!fullscreen) return;
+    const measure = () => {
+      let height = window.innerHeight - 44 - 6;
+      let width = (height * 4) / 3;
+      if (width > window.innerWidth - 6) {
+        width = window.innerWidth - 6;
+        height = (width * 3) / 4;
+      }
+      setFit({ width: Math.floor(width), height: Math.floor(height) });
+    };
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setFullscreen(false);
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('keydown', key);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('keydown', key);
+    };
+  }, [fullscreen]);
 
   const compiling = compileState.status === 'running';
   const progress = compileState.progress;
   const running = runState === 'running' || runState === 'paused';
 
   return (
-    <div className="stage-panel">
+    <div className={`stage-panel ${fullscreen ? 'full-screen' : ''}`}>
       <div className="stage-header">
         <div className="stage-controls">
           <button className={`green-flag ${runState === 'running' ? 'active' : ''}`} title="Start (green flag)" aria-label="Start (green flag)" onClick={startGame} disabled={compiling}>
@@ -126,18 +139,19 @@ export function StagePanel() {
               <LargeStageIcon size={20} />
             </button>
           </div>
-          <button className="stage-button" title="Full screen" aria-label="Full screen" onClick={toggleFullscreen}>
-            <ExpandIcon size={18} />
-          </button>
+          {fullscreen ? (
+            <button className="stage-button" title="Exit full screen" aria-label="Exit full screen" onClick={() => setFullscreen(false)}>
+              <ShrinkIcon size={18} />
+            </button>
+          ) : (
+            <button className="stage-button" title="Full screen" aria-label="Full screen" onClick={() => setFullscreen(true)}>
+              <ExpandIcon size={18} />
+            </button>
+          )}
         </div>
       </div>
-      <div className={`stage-shell ${fullscreen ? 'is-fullscreen' : ''}`} ref={shellRef}>
+      <div className="stage-shell" ref={shellRef} style={fullscreen ? fit : undefined}>
         <div className="stage-frame" ref={frameRef} />
-        {fullscreen && (
-          <button className="stage-button exit-fullscreen" title="Exit full screen" aria-label="Exit full screen" onClick={toggleFullscreen}>
-            <ShrinkIcon size={18} />
-          </button>
-        )}
         {compiling && progress && (
           <div className="compile-overlay">
             <div className="compile-card">

@@ -9,6 +9,7 @@ import { EDIT_SAMPLE_RATE, SOUND_EFFECTS, applyEffect, chunkLevels, decodeSound,
 import type { CompiledAsset, SoundAsset } from '../project/types';
 import { Modal } from './Dialogs';
 import { Library } from './Library';
+import { moveItem, useReorder } from './useReorder';
 import { ActionMenu, AssetTile, ContextMenu } from './SpritePane';
 import {
   AddSoundIcon,
@@ -290,6 +291,7 @@ export function SoundsPane() {
   const [menu, setMenu] = useState<{ id: string; at: { x: number; y: number } } | null>(null);
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [samples, setSamples] = useState<{ url: string; data: Float32Array } | null>(null);
+  const reorder = useReorder((from, to) => setOwn((list) => moveItem(list, from, to)));
   const history = useRef<Record<string, { undo: Snapshot[]; redo: Snapshot[] }>>({});
   const [, forceHistory] = useState(0);
 
@@ -336,10 +338,23 @@ export function SoundsPane() {
     }
   };
   const remove = (id: string) => {
+    const index = own.findIndex((x) => x.id === id);
+    const removed = own[index];
+    if (!removed) return;
     stopSound();
-    setOwn((list) => {
-      const i = list.findIndex((x) => x.id === id);
-      if (i >= 0) list.splice(i, 1);
+    setOwn((list) => void list.splice(index, 1));
+    const targetId = selectedId;
+    useStore.getState().setRestore({
+      what: 'Sound',
+      run: () => {
+        update((p) => {
+          const t = findTarget(p, targetId);
+          if (!t) return;
+          t.sounds.splice(Math.min(index, t.sounds.length), 0, { ...removed, name: uniqueName(removed.name, t.sounds.map((x) => x.name)) });
+        });
+        useStore.getState().select(targetId);
+        selectSound(targetId, removed.id);
+      },
     });
   };
   const duplicate = (id: string) => {
@@ -381,11 +396,11 @@ export function SoundsPane() {
   const h = sound ? history.current[sound.id] : undefined;
   const isPlaying = (s: Sound) => playing.key === s.id;
   const togglePlay = (s: Sound) => (isPlaying(s) ? stopSound() : playSound(s.id, s.dataUrl));
-  const tile = (s: Sound, i: number | undefined, isOwn: boolean) => (
+  const tile = (s: Sound, i: number | undefined, isOwn: boolean, shown?: number) => (
     <AssetTile
       key={s.id}
       className="asset-tile sound-tile"
-      number={i}
+      number={shown === undefined ? undefined : shown + 1}
       name={s.name}
       details={s.duration.toFixed(2)}
       image={<SoundIcon size={32} className="sound-tile-icon" />}
@@ -395,6 +410,7 @@ export function SoundsPane() {
       onDelete={isOwn ? () => remove(s.id) : undefined}
       confirmWhat={isOwn ? 'sound' : undefined}
       onContextMenu={isOwn ? (at) => setMenu({ id: s.id, at }) : undefined}
+      reorder={isOwn && i !== undefined ? { onPointerDown: reorder.onPointerDown(i), placeholder: reorder.drag?.from === i } : undefined}
     >
       <button
         className={`tile-play ${isPlaying(s) ? 'playing' : ''}`}
@@ -414,8 +430,8 @@ export function SoundsPane() {
   return (
     <div className="asset-panel">
       <div className="asset-selector">
-        <div className="asset-list">
-          {own.map((s, i) => tile(s, i + 1, true))}
+        <div className="asset-list" ref={reorder.containerRef}>
+          {reorder.order(own.length).map((i, shown) => tile(own[i], i, true, shown))}
           {compiled.length > 0 && (
             <div className="compiled-heading">
               <SparkIcon size={13} /> Compiled

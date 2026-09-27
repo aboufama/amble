@@ -424,3 +424,23 @@ export const SettingsIcon = (p: P) => (
     />
   </svg>
 );
+// ---- Rotation styles (direction popover)
+export const AllAroundIcon = (p: P) => (
+  <svg {...base(p)} strokeWidth={2.4}>
+    <path d="M19 12a7 7 0 1 1-2.1-5" />
+    <path d="M17.5 2.8v4.6h-4.6" />
+  </svg>
+);
+export const DontRotateIcon = (p: P) => (
+  <svg {...base(p)} strokeWidth={2.4}>
+    <circle cx="12" cy="12" r="8" />
+    <path d="M6.4 17.6L17.6 6.4" />
+  </svg>
+);
+/** A pencil (the Edit menu). */
+export const PencilIcon = (p: P) => (
+  <svg {...base(p)} strokeWidth={2.2}>
+    <path d="M15.2 4.3l4.5 4.5L9 19.5l-5.2.7.7-5.2z" />
+    <path d="M13 6.5l4.5 4.5" />
+  </svg>
+);

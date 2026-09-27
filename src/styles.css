@@ -184,7 +184,12 @@ select {
   background: var(--ui-black-transparent);
 }
 
-.menubar-item.file-menu {
+.menubar-menus {
+  display: flex;
+  align-self: stretch;
+}
+
+.menubar-item.menubar-dropdown {
   position: relative;
   padding: 0;
 }
@@ -238,6 +243,12 @@ select {
 
 .menubar-menu button:hover {
   background: var(--ui-black-transparent);
+}
+
+.menubar-menu button:disabled {
+  background: none;
+  opacity: 0.5;
+  cursor: default;
 }
 
 .menubar-divider {
@@ -775,25 +786,29 @@ select {
   height: 182px;
 }
 
-.stage-shell.is-fullscreen {
-  width: 100%;
-  height: 100%;
-  border: none;
-  border-radius: 0;
+/* Full screen fills the page: the stage header on a gray bar, the stage as large as fits. */
+.stage-panel.full-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 450;
+  align-items: center;
   background: var(--ui-white);
 }
 
-.stage-shell.is-fullscreen .stage-frame {
-  inset: 3px;
-  width: auto;
-  height: auto;
+.stage-panel.full-screen .stage-header {
+  align-self: stretch;
+  padding: 8px;
+  background: #e8edf1;
 }
 
-.exit-fullscreen {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 3;
+.stage-panel.full-screen .stage-size-toggle {
+  display: none;
+}
+
+.stage-panel.full-screen .stage-shell {
+  margin-top: 3px;
+  border: none;
+  border-radius: 0;
 }
 
 .stage-frame,
@@ -1278,6 +1293,85 @@ select {
   display: flex;
 }
 
+.direction-field {
+  position: relative;
+}
+
+/* Scratch's direction popover: a dial and the three rotation styles. */
+.direction-popover {
+  position: absolute;
+  right: -12px;
+  bottom: calc(100% + 14px);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--ui-black-transparent);
+  border-radius: 8px;
+  background: var(--ui-white);
+  box-shadow: 0 0 8px 1px var(--ui-black-transparent);
+}
+
+.direction-popover::after {
+  content: '';
+  position: absolute;
+  right: 37px;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  border-right: 1px solid var(--ui-black-transparent);
+  border-bottom: 1px solid var(--ui-black-transparent);
+  background: var(--ui-white);
+  transform: rotate(45deg);
+}
+
+.direction-dial {
+  display: block;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.dial-face {
+  fill: var(--ui-secondary);
+  stroke: var(--ui-black-transparent);
+  stroke-width: 1;
+}
+
+.dial-tick {
+  stroke: hsla(225, 15%, 40%, 0.35);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.dial-gauge {
+  fill: var(--looks-transparent);
+  stroke: var(--looks-secondary);
+  stroke-width: 1;
+}
+
+.dial-handle circle {
+  fill: var(--looks-secondary);
+  stroke: var(--ui-white);
+  stroke-width: 2;
+}
+
+.dial-handle path {
+  fill: var(--ui-white);
+}
+
+.rotation-styles button {
+  width: 40px;
+  padding: 0;
+  color: var(--text-primary);
+}
+
+.rotation-styles button[aria-pressed='true'] {
+  color: var(--looks-secondary);
+}
+
 .compiled-note {
   display: flex;
   align-items: center;
@@ -1465,6 +1559,48 @@ select {
 
 .delete-button:active {
   background: var(--data-primary);
+}
+
+/* Dragging a tile to reorder: its picture follows the pointer, its place shows a shadow. */
+.drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  min-width: 50px;
+  min-height: 50px;
+  max-width: 80px;
+  max-height: 80px;
+  padding: 4px;
+  border: 2px solid var(--looks-secondary);
+  border-radius: 8px;
+  background: var(--ui-white);
+  box-shadow: 5px 5px 5px var(--ui-black-transparent);
+  pointer-events: none;
+}
+
+.drag-ghost .thumb,
+.drag-ghost svg {
+  max-width: 64px;
+  max-height: 64px;
+}
+
+body.reordering,
+body.reordering * {
+  cursor: grabbing !important;
+}
+
+.sprite-tile.placeholder,
+.asset-tile.placeholder {
+  border-color: transparent;
+  background: var(--ui-black-transparent);
+  box-shadow: none;
+}
+
+.placeholder > * {
+  visibility: hidden;
 }
 
 /* "Are you sure you want to delete this sprite?" */
