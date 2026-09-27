@@ -524,16 +524,58 @@ function SpriteInfo({ sprite }: { sprite: SpriteTarget }) {
   );
 }
 
+/**
+ * With the stage selected, Scratch keeps the sprite fields in place but disabled. Amble's
+ * last row holds the game's description instead of a sprite's.
+ */
 function StageInfo() {
   const notes = useStore((s) => s.project.notes);
   const update = useStore((s) => s.update);
+  const blank = (label: string, placeholder = '', width?: number) => (
+    <label className="info-group">
+      <span className={`info-label ${['Size', 'Direction'].includes(label) ? 'secondary' : ''}`}>{label}</span>
+      <input className={`info-input ${label === 'Sprite' ? 'name' : 'small'}`} style={width ? { width } : undefined} placeholder={placeholder} aria-label={label} disabled />
+    </label>
+  );
   return (
     <div className="sprite-info stage-info">
-      <label className="info-row info-notes">
-        <span className="info-label">Game</span>
+      <div className="info-row info-disabled">
+        {blank('Sprite', 'Name')}
+        <div className="info-group">
+          <span className="info-icon">
+            <HorizontalArrowsIcon size={18} />
+          </span>
+          <span className="info-label">x</span>
+          <input className="info-input small" placeholder="x" aria-label="x" disabled />
+        </div>
+        <div className="info-group">
+          <span className="info-icon">
+            <VerticalArrowsIcon size={18} />
+          </span>
+          <span className="info-label">y</span>
+          <input className="info-input small" placeholder="y" aria-label="y" disabled />
+        </div>
+      </div>
+      <div className="info-row info-disabled">
+        <div className="info-group">
+          <span className="info-label secondary">Show</span>
+          <div className="show-toggle" role="group" aria-label="Show">
+            <button disabled aria-label="Show">
+              <EyeIcon size={18} />
+            </button>
+            <button disabled aria-label="Hide">
+              <EyeOffIcon size={18} />
+            </button>
+          </div>
+        </div>
+        {blank('Size', '', 64)}
+        {blank('Direction', '', 64)}
+      </div>
+      <label className="info-row info-about info-notes">
+        <span className="info-label secondary">Game</span>
         <textarea
           className="info-input notes"
-          rows={3}
+          rows={2}
           value={notes}
           placeholder="Describe your game (optional, the AI reads this first). For example: a cozy platformer where a fox collects acorns before winter."
           onChange={(e) => update((p) => void (p.notes = e.target.value))}

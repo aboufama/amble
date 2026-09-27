@@ -1313,12 +1313,32 @@ select {
 .info-input.notes {
   flex: 1;
   height: auto;
-  min-height: 56px;
-  padding: 8px 12px;
+  min-height: 44px;
+  padding: 7px 12px;
   border-radius: 16px;
   font-weight: normal;
   line-height: 1.4;
   resize: none;
+}
+
+/* The stage has no sprite fields: Scratch shows them empty and disabled. */
+.info-input:disabled {
+  border-color: var(--ui-black-transparent);
+  background: rgba(239, 239, 239, 0.3);
+  box-shadow: none;
+  cursor: default;
+}
+
+.info-input:disabled::placeholder {
+  color: #757575;
+}
+
+.show-toggle button:disabled {
+  cursor: default;
+}
+
+.show-toggle button:disabled svg {
+  filter: grayscale(100%) opacity(0.5);
 }
 
 .show-toggle {
