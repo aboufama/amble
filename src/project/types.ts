@@ -145,6 +145,12 @@ export interface CompiledGame {
   assets: CompiledAsset[];
   /** The compiled words, reused by later compiles (missing in games compiled before them). */
   pieces?: CompiledPiece[];
+  /** The brief the words were last written to fit (a new one sends them to be looked at again). */
+  brief?: string;
+  /** The art style the compiled art was made in (a new one makes it again). */
+  style?: string;
+  /** Words written before that this compile rewrote to fit the change ("Sprite: block"). */
+  revised?: string[];
 }
 
 export interface Project {

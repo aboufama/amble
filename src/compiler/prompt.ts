@@ -6,13 +6,13 @@ import type { CompiledGame, CompiledPiece, CostumeAsset, Project, SoundAsset, Sp
 // System prompt: writing the pieces (the parts of blocks written in the author's own words)
 // -----------------------------------------------------------------------------
 
-const INTRO = `You are the compiler inside Amble, a block-based game maker for kids. Amble compiles most blocks itself. Some blocks hold the author's own words: do [...], do [...] for (1) seconds, rule: [...], always: [...], never: [...], physics: [...], camera: [...], particles: [...], a condition or a value written in words, and the text of win the game / game over. You turn each of those into a small piece of JavaScript: the body of one method on the sprite's class, which Amble calls from the compiled scripts.
+const INTRO = `You are the compiler inside Amble, a block-based game maker for kids. Amble compiles most blocks itself. Some blocks hold the author's own words: do [...], do [...] for (1) seconds, rule: [...], always: [...], never: [...], physics: [...], camera: [...], particles: [...], art style: [...], a condition or a value written in words, and the text of win the game / game over. You turn each of those into a small piece of JavaScript: the body of one method on the sprite's class, which Amble calls from the compiled scripts.
 
 # Reading the program
 - The project has a Stage and sprites (characters). Each has scripts: a trigger ("when ⚑ clicked", "when [space ▾] key pressed", "when I touch (Star)"...) and the blocks under it, run in order. Indented blocks are inside a loop or an if.
 - Notation: [words] are the author's own words; "text" is exact text typed into a slot; (10) is a number; [name ▾] is a menu choice (an exact name); (Fox) is a character; <...> is a condition.
 - Standalone lines hold for the whole game: the brief (game, made for, art style, you win when, you lose when), rules and checks.
-- The pieces you write are marked like ⟨p3⟩ after their block. Amble compiles every other block itself: read them to know what already happens (movement, gravity, scores...) and don't do it twice.
+- The pieces to write are marked like ⟨p3⟩ after their block; pieces already written are marked like ⟨e2⟩ and their code is shown. Amble compiles every other block itself: read them to know what already happens (movement, gravity, scores...) and don't do it twice.
 - Read the words like a thoughtful game designer: pick concrete numbers that feel good, stay faithful to what the author wrote, and fit the brief (who it's made for, the art style). When something is ambiguous, choose the most fun reading and say so in warnings.
 
 # Pieces
@@ -24,8 +24,13 @@ Reply with the BODY of each piece's method only (no signature, no braces around 
 - message: body of \`piece()\` that returns the text for the end-of-game banner ("" for none).
 - behavior: body of \`*piece()\`, started for the sprite and for each copy of it when the game starts. It runs in the background all game, usually \`for (;;) { ...; yield; }\`.
 - rule: body of \`*piece()\`, started once when the game starts. Make the rule true for the whole game: set things up, then watch in a \`for (;;) { ...; yield; }\` loop if needed.
-Pieces of one sprite share its fields (this.something), and every piece can use the game's variables and the other characters. Reuse the names in "Code already written" for that sprite. Give any field you add a starting value before using it (e.g. \`this.speed ??= 200\`).
-Only the engine API below: no imports, DOM, network, timers or async.`;
+- art style: a rule for the look of the whole game, in that style: set up the world when the game starts (in 3D the sky, ground, light, fog and scenery built from shapes, like trees or rocks; in 2D the background and decorations) and give the sprites' 3D models and shapes matching materials and colors. Keep the author's own costumes and backdrops as they are; new art is made in this style anyway.
+Pieces of one sprite share its fields (this.something). Reuse the names in the code already written for that sprite. Give any field you add a starting value before using it (e.g. \`this.speed ??= 200\`).
+Only the engine API below: no imports, DOM, network, timers or async.
+
+# Words reach the whole game
+A piece is a method of the sprite (or the stage) whose block holds it, but words can be about anything in the game: do what they mean wherever it applies. this.game.find("Name"), findAll("Name") and sprites give you any character (its position, looks, physics, fields and methods), this.game.stage the stage, and this.game.world, camera, physics, input and vars the rest. A rule about how the player moves changes the player, even when the rule sits on another sprite. When words disagree with blocks elsewhere, the words are the author's latest wish: make them win while the game runs (e.g. \`const p = this.game.find("Amble"); p.walkWith("WASD", 250);\`).
+The pieces already written can change too. When what you write (or a new brief) means one of them must work differently, rewrite it: put it in "pieces" with its id (e.g. "e2") and its whole new body. Leave out the ones that stay the same (don't copy them back).`;
 
 const COMMON_API = `# Amble engine API
 Each sprite is \`class <ClassName> extends Sprite { ... }\`; the stage is \`class <ClassName> extends Stage { ... }\`. You never construct them: the engine creates one instance per sprite at its editor position/size/costume/visibility, plus any clones. Use the class names given in the project. Prefer start() over constructors (if you write a constructor it must be \`constructor(...a) { super(...a); ... }\`).
@@ -207,14 +212,19 @@ export interface PieceTask {
 export interface PiecesPromptInput {
   project: Project;
   plans: TargetPlan[];
+  /** Pieces to write. */
   tasks: PieceTask[];
-  /** Pieces that are already written, by key (shown for consistency). */
+  /** Pieces already written that the reply may rewrite ("e1"...). */
+  revisable?: PieceTask[];
+  /** Pieces that are already written, by key (their code is shown). */
   written: ReadonlyMap<string, CompiledPiece>;
   /** "Fix": problems from the last run. */
   problems?: string[];
+  /** The brief the written pieces were made for, when it changed since. */
+  briefBefore?: string;
 }
 
-function describeTarget(t: Target, plan: TargetPlan, input: PiecesPromptInput, ids: ReadonlyMap<string, string>): string {
+function describeTarget(t: Target, plan: TargetPlan, input: PiecesPromptInput, ids: ReadonlyMap<string, string>, marks: ReadonlyMap<string, string>): string {
   const lines: string[] = [];
   const mode = input.project.mode;
   lines.push(t.kind === 'stage' ? `## Stage (class ${plan.className})` : `## Sprite "${t.name}" (class ${plan.className})`);
@@ -232,15 +242,15 @@ function describeTarget(t: Target, plan: TargetPlan, input: PiecesPromptInput, i
   const { text } = serializeBlocks(t.blocks, {
     mark: (b) => {
       const key = b.id ? plan.markers.get(b.id) : undefined;
-      const id = key ? ids.get(key) : undefined;
+      const id = key ? marks.get(key) : undefined;
       return id ? `⟨${id}⟩` : undefined;
     },
   });
   lines.push(text ? `Program:\n${text.split('\n').map((l) => '  ' + l).join('\n')}` : 'Program: (none)');
   const written = plan.pieces.filter((p) => !ids.has(p.key) && input.written.has(p.key));
   if (written.length) {
-    lines.push('Code already written for this target\'s words (keep using its names):');
-    for (const p of written) lines.push(`### ${p.block}\n\`\`\`js\n${input.written.get(p.key)!.code}\n\`\`\``);
+    lines.push('Pieces already written for this target\'s words (keep using their names):');
+    for (const p of written) lines.push(`### ${marks.get(p.key) ?? 'written'}: ${p.block}\n\`\`\`js\n${input.written.get(p.key)!.code}\n\`\`\``);
   }
   return lines.join('\n');
 }
@@ -265,7 +275,9 @@ function describeCompiled(compiled: CompiledGame | null): string {
 /** The compile request's text: the whole project for context, then the pieces to write. */
 export function piecesUserPrompt(input: PiecesPromptInput): string {
   const { project, plans, tasks } = input;
+  const revisable = input.revisable ?? [];
   const ids = new Map(tasks.map((t) => [t.request.key, t.id]));
+  const marks = new Map([...tasks, ...revisable].map((t) => [t.request.key, t.id]));
   const parts: string[] = [];
   parts.push(`Game title: ${project.title || 'Untitled'}`);
   parts.push(project.mode === '3d' ? 'World: 3D' : 'World: 2D (480 x 360 stage)');
@@ -277,17 +289,31 @@ export function piecesUserPrompt(input: PiecesPromptInput): string {
   const byId = new Map(plans.map((p) => [p.targetId, p]));
   for (const t of [project.stage, ...project.sprites]) {
     const plan = byId.get(t.id);
-    if (plan) parts.push(describeTarget(t, plan, input, ids));
+    if (plan) parts.push(describeTarget(t, plan, input, ids, marks));
   }
   const compiled = describeCompiled(project.compiled);
   if (compiled) parts.push(compiled);
   if (input.problems?.length) parts.push(['## The last run had these problems (fix them in the pieces below)', ...input.problems.map((p) => `- ${p}`)].join('\n'));
-  parts.push(
-    [
-      '## Write these pieces',
-      ...tasks.map(({ id, request: r }) => `- ${id}: ${r.kind}${r.kind === 'action' || r.kind === 'timed' ? `, repeats: ${r.inLoop ? 'yes' : 'no'}` : ''}, in "${r.targetName}" (${r.script}): ${r.block}`),
-    ].join('\n'),
-  );
+  if (input.briefBefore !== undefined) {
+    const before = input.briefBefore.trim() ? input.briefBefore.split('\n').map((l) => `- ${l}`) : ['- (none)'];
+    parts.push(['## The brief changed', 'The pieces already written were made for this brief:', ...before, 'Rewrite the ones that should change to fit the brief above.'].join('\n'));
+  }
+  if (tasks.length) {
+    parts.push(
+      [
+        '## Write these pieces',
+        ...tasks.map(({ id, request: r }) => `- ${id}: ${r.kind}${r.kind === 'action' || r.kind === 'timed' ? `, repeats: ${r.inLoop ? 'yes' : 'no'}` : ''}, in "${r.targetName}" (${r.script}): ${r.block}`),
+      ].join('\n'),
+    );
+  }
+  if (revisable.length) {
+    parts.push(
+      [
+        '## Pieces already written',
+        `${revisable.map((t) => t.id).join(', ')} (their code is above). They work as they are: rewrite one only when ${tasks.length ? 'the pieces you write' : 'the new brief'} mean${tasks.length ? '' : 's'} it must change, with its id and its whole new body. Leave the rest out of your reply.`,
+      ].join('\n'),
+    );
+  }
   return parts.join('\n\n');
 }
 

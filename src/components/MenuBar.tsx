@@ -7,7 +7,7 @@ import { EXAMPLES, blankProject } from '../project/examples';
 import { blankBackdrop } from '../project/defaults';
 import type { Project, WorldMode } from '../project/types';
 import { CHATGPT_MODEL_NAME } from '../compiler/openai';
-import { signInWithChatGpt } from '../actions';
+import { compile, signInWithChatGpt } from '../actions';
 import { confirmUser } from '../prompt';
 import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
 
@@ -52,6 +52,7 @@ export function MenuBar() {
   const restore = useStore((s) => s.restore);
   const setRestore = useStore((s) => s.setRestore);
   const compiledCount = useStore((s) => s.project.compiled?.code.length ?? 0);
+  const compiling = useStore((s) => s.compile.status === 'running');
   const [open, setOpen] = useState<'file' | 'edit' | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const signedIn = useChatGpt && codex?.auth === 'chatgpt';
@@ -183,6 +184,14 @@ export function MenuBar() {
                     })}
                   >
                     Show compiled code
+                  </button>
+                  <button
+                    role="menuitem"
+                    disabled={compiling}
+                    title="Every block in your own words is written again and the compiled art is made again, so it can come out different"
+                    onClick={act(() => void compile(undefined, { fresh: true }))}
+                  >
+                    Compile everything again
                   </button>
                 </div>
               </div>

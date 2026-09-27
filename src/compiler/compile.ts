@@ -26,7 +26,7 @@ export interface CompileOptions {
   onProgress?(p: CompileProgress): void;
   /** "Fix": problems from the last run. The pieces of the sprites they mention are written again. */
   fixProblems?: string[];
-  /** Write every piece again (and drop compiled characters). */
+  /** Start over: write every piece again, and remake compiled characters and art. */
   fresh?: boolean;
   /**
    * Compile without a compile request: exact blocks as usual, and words that aren't compiled
@@ -65,14 +65,36 @@ function piecesInUse(plans: TargetPlan[]): PieceRequest[] {
   return [...seen.values()];
 }
 
+/** The brief (game, made for, art style): everything the words are written to fit. */
+function briefOf(plans: TargetPlan[]): string {
+  return plans.flatMap((p) => p.brief).join('\n');
+}
+
+/** The art style, which the compiler's own art is made in. */
+function styleOf(plans: TargetPlan[]): string {
+  return plans
+    .flatMap((p) => p.brief)
+    .filter((line) => line.startsWith('art style:'))
+    .join('\n');
+}
+
+/** The brief changed since the last compile (games compiled before briefs were kept don't know). */
+function briefChanged(previous: CompiledGame | null, plans: TargetPlan[]): boolean {
+  return previous?.brief !== undefined && previous.brief !== briefOf(plans);
+}
+
 /**
- * Does compiling need a compile request? Only new or changed words do. Otherwise compiling is
- * instant and works offline (no key or sign-in needed).
+ * Does compiling need a compile request? New or changed words do, and so does a new brief (the
+ * words already written may need to change to fit it). Otherwise compiling is instant and works
+ * offline (no key or sign-in needed).
  */
 export function compileNeedsRequest(project: Project): boolean {
-  if (project.compiled && !project.compiled.pieces) return piecesInUse(planProject(project)).length > 0;
+  const plans = planProject(project);
+  const inUse = piecesInUse(plans);
+  if (project.compiled && !project.compiled.pieces) return inUse.length > 0;
   const known = new Set((project.compiled?.pieces ?? []).map((p) => p.key));
-  return piecesInUse(planProject(project)).some((r) => !known.has(r.key));
+  if (inUse.some((r) => !known.has(r.key))) return true;
+  return inUse.length > 0 && briefChanged(project.compiled, plans);
 }
 
 /** The targets that problems mention ("Amble (when ⚑ clicked): ..."); all of them when none match. */
@@ -99,21 +121,29 @@ async function requireTransport(settings: AiSettings): Promise<Transport> {
 interface Written {
   code: Map<string, string>;
   reply: PiecesReply;
+  /** Pieces written before that this request rewrote (their blocks, as "Sprite: block"). */
+  revised: string[];
 }
 
-/** One compile request for the new pieces (and a second one only for pieces that didn't check out). */
+/**
+ * One compile request for the new pieces (and a second one only for pieces that didn't check
+ * out). The request shows the whole program and every piece already written: any of those can
+ * come back rewritten, when the new words (or a new brief) mean they must change too.
+ */
 async function writePieces(
   project: Project,
   plans: TargetPlan[],
   tasks: PieceTask[],
+  revisable: PieceTask[],
   written: ReadonlyMap<string, CompiledPiece>,
   transport: Transport,
   settings: AiSettings,
   opts: CompileOptions,
   warnings: string[],
+  briefBefore?: string,
 ): Promise<Written> {
   const system = piecesSystemPrompt(project.mode);
-  const user = piecesUserPrompt({ project, plans, tasks, written, problems: opts.fixProblems });
+  const user = piecesUserPrompt({ project, plans, tasks, revisable, written, problems: opts.fixProblems, briefBefore });
   const ask = (prompt: string) =>
     chatJson<PiecesReply>(transport, {
       model: settings.model,
@@ -132,8 +162,9 @@ async function writePieces(
     });
 
   const code = new Map<string, string>();
+  const byIdOf = (reply: PiecesReply) => new Map((reply.pieces ?? []).map((p) => [String(p.id).trim(), String(p.code ?? '')]));
   const check = (reply: PiecesReply, which: PieceTask[]): Array<{ task: PieceTask; error: string }> => {
-    const byId = new Map((reply.pieces ?? []).map((p) => [String(p.id).trim(), String(p.code ?? '')]));
+    const byId = byIdOf(reply);
     const failed: Array<{ task: PieceTask; error: string }> = [];
     for (const task of which) {
       const raw = byId.get(task.id);
@@ -150,6 +181,17 @@ async function writePieces(
 
   const reply = await ask(user);
   opts.onProgress?.({ stage: 'checking', message: 'Checking the code' });
+  // Rewrites of pieces written before (left out, or empty: they stay as they are).
+  const revised: string[] = [];
+  const replied = byIdOf(reply);
+  for (const r of revisable) {
+    const raw = replied.get(r.id);
+    if (raw === undefined || !raw.trim()) continue;
+    const checked = checkPiece(r.request.kind, raw);
+    if ('error' in checked || checked.code === written.get(r.request.key)?.code) continue;
+    code.set(r.request.key, checked.code);
+    revised.push(`${r.request.targetName}: ${r.request.block}`);
+  }
   let failed = check(reply, tasks);
   if (failed.length) {
     opts.onProgress?.({ stage: 'repairing', message: `Fixing ${failed.length} block${failed.length > 1 ? 's' : ''}` });
@@ -159,20 +201,36 @@ async function writePieces(
     reply.warnings = [...(reply.warnings ?? []), ...(second.warnings ?? [])];
   }
   for (const f of failed) warnings.push(`${f.task.request.targetName}: couldn't compile "${f.task.request.block}" (${f.error}). It does nothing for now.`);
-  return { code, reply };
+  return { code, reply, revised };
 }
 
 function assetGroup(kind: string): 'image' | 'model' | 'sound' {
   return kind === 'sound' ? 'sound' : kind === 'model' ? 'model' : 'image';
 }
 
-/** Earlier compiled assets stay (cached pieces may use them). New requests become jobs. */
+/** The size a compiled asset was asked for (pixels for images, meters for models). */
+function assetSize(a: CompiledAsset): { width: number; height: number } {
+  if (a.kind === 'image') return { width: Math.round(a.width / (a.resolution || 1)), height: Math.round(a.height / (a.resolution || 1)) };
+  if (a.kind === 'model') {
+    const parts = a.recipe?.parts ?? [];
+    const width = Math.max(0, ...parts.map((p) => Math.abs(p.position[0]) * 2 + p.size[0]));
+    const height = Math.max(0, ...parts.map((p) => p.position[1] + p.size[1] / 2));
+    return { width: Math.round(width * 100) / 100, height: Math.round(height * 100) / 100 };
+  }
+  return { width: 0, height: 0 };
+}
+
+/**
+ * Earlier compiled assets stay (cached pieces may use them), unless the art style changed: then
+ * the compiler's own art is made again in the new style. New requests become jobs.
+ */
 function planAssets(
   project: Project,
   requests: AssetRequest[],
   sprites: CompiledSprite[],
   previous: CompiledAsset[],
   warnings: string[],
+  restyle: boolean,
 ): { kept: CompiledAsset[]; jobs: AssetJob[] } {
   const mode: WorldMode = project.mode;
   const owners = new Map<string, { id: string; name: string; user: Project['stage'] | Project['sprites'][number] | null }>();
@@ -208,6 +266,18 @@ function planAssets(
     if (old && (a.reuse || old.request === description)) continue;
     replaced.add(key);
     jobs.push({ targetId: owner.id, targetName: owner.name, kind: a.kind, name, description, width: Number(a.width) || 0, height: Number(a.height) || 0 });
+  }
+  if (restyle) {
+    for (const p of previous) {
+      const owner = owners.get(p.targetId);
+      if (p.kind === 'sound' || !owner) continue;
+      const group = assetGroup(p.kind === 'image' ? 'costume' : p.kind);
+      const key = `${p.targetId}|${group}|${p.name}`;
+      if (replaced.has(key)) continue;
+      replaced.add(key);
+      const kind = p.kind === 'model' ? 'model' : p.targetId === project.stage.id ? 'backdrop' : 'costume';
+      jobs.push({ targetId: owner.id, targetName: owner.name, kind, name: p.name, description: p.request, ...assetSize(p) });
+    }
   }
 
   const kept = previous
@@ -261,9 +331,11 @@ async function runJobs(jobs: AssetJob[], project: Project, transport: Transport,
 }
 
 /**
- * Compiles the project. Amble compiles every block itself; only words that are new (or, with
- * Fix, the words of the sprites that had problems) go out in one compile request. Everything
- * else is reused from the last compile, so unchanged blocks give exactly the same game.
+ * Compiles the project. Amble compiles every block itself; words that are new (or, with Fix, the
+ * words of the sprites that had problems) go out in one compile request, which sees the whole
+ * program and may also rewrite words written before, anywhere in the game, when the change calls
+ * for it (so does a new brief). With nothing new, the last compile's code is reused as it is;
+ * `fresh` starts over and writes everything again.
  */
 export async function compileProject(project: Project, options: CompileOptions): Promise<CompiledGame> {
   let opts = options;
@@ -275,26 +347,36 @@ export async function compileProject(project: Project, options: CompileOptions):
   const warnings: string[] = plans.flatMap((p) => p.warnings);
   const cache = new Map<string, CompiledPiece>(fresh ? [] : (previous?.pieces ?? []).map((p) => [p.key, p]));
   const inUse = piecesInUse(plans);
+  const brief = briefOf(plans);
+  const style = styleOf(plans);
+  const newBrief = !fresh && briefChanged(previous, plans);
 
   const redo = opts.fixProblems?.length ? targetsInProblems(plans, opts.fixProblems) : null;
   const tasks: PieceTask[] = [];
   for (const r of inUse) {
     if (!cache.has(r.key) || redo?.has(r.targetName)) tasks.push({ id: `p${tasks.length + 1}`, request: r });
   }
+  // Every other piece is shown with its code, and may come back rewritten: words anywhere can
+  // change how the whole game works, not just their own sprite.
+  const asked = new Set(tasks.map((t) => t.request.key));
+  const revisable: PieceTask[] = inUse.filter((r) => !asked.has(r.key)).map((r, i) => ({ id: `e${i + 1}`, request: r }));
+  const request = tasks.length > 0 || (newBrief && revisable.length > 0);
 
   let transport: Transport | null = null;
   let settings = opts.settings;
   let reply: PiecesReply | null = null;
+  let revised: string[] = [];
   const code = new Map<string, string>([...cache].map(([k, p]) => [k, p.code]));
-  if (tasks.length && opts.offline) {
+  if (request && opts.offline) {
     const words = tasks.filter((t) => !cache.has(t.request.key)).length;
     if (words) warnings.push(`${words} block${words > 1 ? 's' : ''} in your own words ${words > 1 ? "aren't" : "isn't"} compiled yet, so ${words > 1 ? 'they do' : 'it does'} nothing for now. Sign in with ChatGPT or add an OpenAI API key in Settings, then press Compile.`);
-  } else if (tasks.length) {
+  } else if (request) {
     transport = await requireTransport(opts.settings);
     settings = effectiveSettings(opts.settings, transport);
     opts = { ...opts, settings };
-    const result = await writePieces(project, plans, tasks, cache, transport, settings, opts, warnings);
+    const result = await writePieces(project, plans, tasks, revisable, cache, transport, settings, opts, warnings, newBrief ? previous!.brief : undefined);
     reply = result.reply;
+    revised = result.revised;
     for (const [k, c] of result.code) code.set(k, c);
     for (const w of reply.warnings ?? []) warnings.push(String(w));
   }
@@ -336,7 +418,9 @@ export async function compileProject(project: Project, options: CompileOptions):
     spriteSource.set(sprite.id, String(s.code ?? ''));
   }
 
-  const { kept, jobs } = planAssets(project, reply?.assets ?? [], sprites, fresh ? [] : (previous?.assets ?? []), warnings);
+  // A new art style remakes the compiler's own art (not without an account: the old art stays until then).
+  const restyle = !fresh && !opts.offline && previous?.style !== undefined && previous.style !== style;
+  const { kept, jobs } = planAssets(project, reply?.assets ?? [], sprites, fresh ? [] : (previous?.assets ?? []), warnings, restyle);
   let made: CompiledAsset[] = [];
   if (jobs.length && opts.offline && !transport) {
     made = jobs.map((j) => placeholderAsset(j, project.mode));
@@ -392,5 +476,9 @@ export async function compileProject(project: Project, options: CompileOptions):
     sprites,
     assets: [...kept, ...made],
     pieces,
+    // What the words and the art were last made to fit (kept as it was when that had to wait).
+    brief: request && opts.offline && previous?.brief !== undefined ? previous.brief : brief,
+    style: opts.offline && previous?.style !== undefined ? previous.style : style,
+    revised,
   };
 }

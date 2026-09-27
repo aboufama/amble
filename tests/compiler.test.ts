@@ -238,11 +238,13 @@ describe('pieces (blocks in the author\'s own words)', () => {
   it('finds the words in the examples, once each', () => {
     const star = plans(starCatcher()).flatMap((plan) => plan.pieces.map((r) => [r.targetName, r.kind, r.words, r.inLoop]));
     expect(star).toEqual([
+      ['Stage', 'rule', 'a cute night sky with glowing yellow stars', false],
       ['Amble', 'action', 'a small burst of yellow sparkles', false],
       ['Star', 'behavior', 'twinkle and spin slowly as I fall', false],
     ]);
     const coins = plans(coinHills()).flatMap((plan) => plan.pieces.map((r) => [r.targetName, r.kind, r.words]));
     expect(coins).toEqual([
+      ['Stage', 'rule', 'bright, friendly low-poly'],
       ['Stage', 'action', 'build a few rolling green hills, some low-poly trees and rocks around the edges'],
       ['Coin', 'behavior', 'spin and bob gently up and down'],
     ]);
@@ -260,8 +262,29 @@ describe('pieces (blocks in the author\'s own words)', () => {
     // Other words, or the same words somewhere else, are another piece.
     const c = starCatcher();
     top(c.sprites[1])[2].fields!.RULE = 'twinkle fast';
-    expect(keys(c)[0]).toBe(keys(a)[0]);
-    expect(keys(c)[1]).not.toBe(keys(a)[1]);
+    expect(keys(c)[1]).toBe(keys(a)[1]);
+    expect(keys(c)[2]).not.toBe(keys(a)[2]);
+  });
+
+  it('turns the art style into a rule for the look of the whole game', () => {
+    const [stage] = plans(starCatcher());
+    expect(stage.brief).toContain('art style: [a cute night sky with glowing yellow stars]');
+    const style = stage.pieces[0];
+    expect([style.kind, style.block]).toEqual(['rule', 'art style: [a cute night sky with glowing yellow stars]']);
+    expect(stage.render(new Map())).toContain(`this._script("${style.method}", false, "art style: [a cute night sky with glowing yellow stars]");`);
+  });
+
+  it('says when an if with words is checked only once', () => {
+    const p = newProject('3d');
+    const ifWords = (words: string) => block('fl_if', { COND: block('cd_words', { TEXT: words }) }, [block('ga_do', { ACTION: 'turn into a big snake' })]);
+    p.sprites[0].blocks = workspace(
+      [block('ev_start'), ifWords('killed 5 enemies')],
+      [block('ev_start'), block('co_forever', {}, [ifWords('touching lava')])],
+      [block('ev_key', { KEY: 'space' }), ifWords('has fireballs left')],
+    );
+    expect(plans(p)[1].warnings).toEqual([
+      'Amble: "if <[killed 5 enemies]> then" is checked only once, when "when ⚑ clicked" runs. To keep checking it, put it inside "forever", or start a script with "when <[killed 5 enemies]>".',
+    ]);
   });
 
   it('marks pieces that run every frame', () => {
@@ -372,6 +395,26 @@ function fakeServer(replies: Array<(prompt: string) => object>) {
 const settings = { ...DEFAULT_SETTINGS, apiKey: 'sk-test', model: 'gpt-test' };
 const reply = (pieces: Record<string, string>) => () => ({ pieces: Object.entries(pieces).map(([id, code]) => ({ id, code })), sprites: [], assets: [], warnings: [] });
 const idsIn = (prompt: string) => [...prompt.matchAll(/^- (p\d+): /gm)].map((m) => m[1]);
+/** A reply with code for each piece the request asks for, picked by something in its line ("particles:"...), plus pieces by id. */
+const replyTo =
+  (byLine: Record<string, string>, byId: Record<string, string> = {}, more: Partial<{ sprites: object[]; assets: object[] }> = {}) =>
+  (prompt: string) => ({
+    pieces: [
+      ...[...prompt.matchAll(/^- (p\d+): (.*)$/gm)].flatMap(([, id, line]) => {
+        const code = Object.entries(byLine).find(([k]) => line.includes(k))?.[1];
+        return code === undefined ? [] : [{ id, code }];
+      }),
+      ...Object.entries(byId).map(([id, code]) => ({ id, code })),
+    ],
+    sprites: more.sprites ?? [],
+    assets: more.assets ?? [],
+    warnings: [],
+  });
+const STYLE = 'this.game.background = "#141a3a";';
+const SPARKLES = 'this.game.effects.burst({ x: this.x, y: this.y, color: "#ffd84d", count: 12 });';
+const TWINKLE = 'for (;;) {\n  this.turn(2);\n  yield;\n}';
+/** Star Catcher's three pieces: its art style, Amble's sparkles and the stars' twinkle. */
+const starReply = (over: Record<string, string> = {}, byId: Record<string, string> = {}) => replyTo({ 'art style:': STYLE, 'particles:': SPARKLES, 'always:': TWINKLE, ...over }, byId);
 
 describe('compileProject', () => {
   afterEach(() => {
@@ -393,7 +436,7 @@ describe('compileProject', () => {
   });
 
   it('sends only the new words, once, and reuses them after', async () => {
-    const server = fakeServer([reply({ p1: 'this.game.effects.burst({ x: this.x, y: this.y, color: "#ffd84d", count: 12 });', p2: 'for (;;) {\n  this.turn(2);\n  yield;\n}' })]);
+    const server = fakeServer([starReply()]);
     const p = starCatcher();
     expect(compileNeedsRequest(p)).toBe(true);
     const first = await compileProject(p, { settings });
@@ -403,15 +446,21 @@ describe('compileProject', () => {
     expect(call.body.response_format.json_schema?.name).toBe('amble_pieces');
     expect(call.body.messages[0].content).toContain('# 2D world');
     const prompt = call.body.messages[1].content;
-    expect(idsIn(prompt)).toEqual(['p1', 'p2']);
-    expect(prompt).toContain('particles: [a small burst of yellow sparkles] ⟨p1⟩');
-    expect(prompt).toContain('- p2: behavior, in "Star" (always: [twinkle and spin slowly as I fall]): always: [twinkle and spin slowly as I fall]');
+    expect(idsIn(prompt)).toEqual(['p1', 'p2', 'p3']);
+    expect(prompt).toContain('- p1: rule, in "Stage" (art style: [a cute night sky with glowing yellow stars]): art style: [a cute night sky with glowing yellow stars]');
+    expect(prompt).toContain('particles: [a small burst of yellow sparkles] ⟨p2⟩');
+    expect(prompt).toContain('- p3: behavior, in "Star" (always: [twinkle and spin slowly as I fall]): always: [twinkle and spin slowly as I fall]');
+    // Nothing was written before, so there's nothing to rewrite.
+    expect(prompt).not.toContain('## Pieces already written');
     expect(first.warnings).toEqual([]);
     expect(first.pieces?.map((x) => [x.target, x.kind])).toEqual([
+      ['Stage', 'rule'],
       ['Amble', 'action'],
       ['Star', 'behavior'],
     ]);
     expect(first.code.find((c) => c.targetName === 'Star')!.source).toContain('this.turn(2);');
+    expect(first.code.find((c) => c.targetName === 'Stage')!.source).toContain(STYLE);
+    expect(first.revised).toEqual([]);
 
     // Compiled: nothing new to send.
     const compiled = { ...p, compiled: first };
@@ -428,9 +477,9 @@ describe('compileProject', () => {
     expect(server.calls).toHaveLength(1);
   });
 
-  it('sends one changed sentence alone, with the code already written for context', async () => {
+  it('sends one changed sentence, with the code already written for context', async () => {
     const p = starCatcher();
-    const server = fakeServer([reply({ p1: 'this.turn(5);', p2: 'for (;;) { this.turn(2); yield; }' }), reply({ p1: 'for (;;) { this.size = 100 + 10 * Math.sin(this.game.time * 8); yield; }' })]);
+    const server = fakeServer([starReply({ 'particles:': 'this.turn(5);' }), replyTo({ 'always:': 'for (;;) { this.size = 100 + 10 * Math.sin(this.game.time * 8); yield; }' })]);
     const first = await compileProject(p, { settings });
     const changed = { ...p, compiled: first };
     top(changed.sprites[1])[2].fields!.RULE = 'pulse bigger and smaller';
@@ -440,11 +489,13 @@ describe('compileProject', () => {
     const prompt = server.calls[1].body.messages[1].content;
     expect(idsIn(prompt)).toEqual(['p1']);
     expect(prompt).toContain('always: [pulse bigger and smaller] ⟨p1⟩');
-    // The sparkles were written before: shown, not asked for again.
-    expect(prompt).toContain('Code already written for this target\'s words');
-    expect(prompt).toContain('this.turn(5);');
+    // The art style and the sparkles were written before: shown with their code, open to a rewrite.
+    expect(prompt).toContain('particles: [a small burst of yellow sparkles] ⟨e2⟩');
+    expect(prompt).toContain('### e2: particles: [a small burst of yellow sparkles]\n```js\nthis.turn(5);\n```');
+    expect(prompt).toContain('## Pieces already written\ne1, e2 (their code is above).');
     const amble = (g: typeof first) => g.code.find((c) => c.targetName === 'Amble')!.source;
     expect(amble(second)).toBe(amble(first));
+    expect(second.revised).toEqual([]);
     expect(second.code.find((c) => c.targetName === 'Star')!.source).toContain('Math.sin(this.game.time * 8)');
     // Undoing the edit compiles instantly: the old code is still there.
     top(changed.sprites[1])[2].fields!.RULE = 'twinkle and spin slowly as I fall';
@@ -452,27 +503,27 @@ describe('compileProject', () => {
   });
 
   it('asks again only for code that did not check out', async () => {
-    const server = fakeServer([reply({ p1: 'this.turn(', p2: 'for (;;) { yield; }' }), reply({ p1: 'this.turn(15);' })]);
+    const server = fakeServer([starReply({ 'particles:': 'this.turn(' }), reply({ p2: 'this.turn(15);' })]);
     const game = await compileProject(starCatcher(), { settings });
     expect(server.calls).toHaveLength(2);
     const retry = server.calls[1].body.messages[1].content;
-    expect(retry).toContain("## Your previous code for these pieces didn't work\n- p1: ");
-    expect(retry).toContain('Reply again with only these pieces: p1');
+    expect(retry).toContain("## Your previous code for these pieces didn't work\n- p2: ");
+    expect(retry).toContain('Reply again with only these pieces: p2');
     expect(game.warnings).toEqual([]);
     expect(game.code.find((c) => c.targetName === 'Amble')!.source).toContain('this.turn(15);');
   });
 
   it('leaves a piece doing nothing, with a warning, when it never checks out', async () => {
-    fakeServer([reply({ p1: 'this.turn(', p2: 'for (;;) { yield; }' }), reply({ p1: 'still (broken' })]);
+    fakeServer([starReply({ 'particles:': 'this.turn(' }), reply({ p2: 'still (broken' })]);
     const game = await compileProject(starCatcher(), { settings });
     expect(game.warnings).toHaveLength(1);
     expect(game.warnings[0]).toMatch(/^Amble: couldn't compile "particles: \[a small burst of yellow sparkles\]" \(.+\)\. It does nothing for now\.$/);
     expect(game.code.map((c) => c.targetName)).toEqual(['Stage', 'Amble', 'Star']);
-    expect(game.pieces?.map((x) => x.target)).toEqual(['Star']);
+    expect(game.pieces?.map((x) => x.target)).toEqual(['Stage', 'Star']);
   });
 
   it('writes the pieces of the sprites with problems again when fixing', async () => {
-    const server = fakeServer([reply({ p1: 'this.turn(5);', p2: 'for (;;) { yield; }' }), reply({ p1: 'for (;;) { this.turn(3); yield; }' })]);
+    const server = fakeServer([starReply(), replyTo({ 'always:': 'for (;;) { this.turn(3); yield; }' })]);
     const p = starCatcher();
     const first = await compileProject(p, { settings });
     await compileProject({ ...p, compiled: first }, { settings, fixProblems: ['Star (always): this.spin is not a function'] });
@@ -498,7 +549,7 @@ describe('compileProject', () => {
     );
     const game = await compileProject(starCatcher(), { settings: DEFAULT_SETTINGS, offline: true });
     expect(game.warnings).toEqual([
-      "2 blocks in your own words aren't compiled yet, so they do nothing for now. Sign in with ChatGPT or add an OpenAI API key in Settings, then press Compile.",
+      "3 blocks in your own words aren't compiled yet, so they do nothing for now. Sign in with ChatGPT or add an OpenAI API key in Settings, then press Compile.",
     ]);
     expect(game.code.map((c) => c.targetName)).toEqual(['Stage', 'Amble', 'Star']);
     expect(game.pieces).toEqual([]);
@@ -506,12 +557,105 @@ describe('compileProject', () => {
   });
 
   it('starts over for games compiled before pieces existed', async () => {
-    const server = fakeServer([reply({ p1: 'this.turn(5);', p2: 'for (;;) { yield; }' })]);
+    const server = fakeServer([starReply()]);
     const p = starCatcher();
     const old = { createdAt: 0, model: 'm', mode: '2d' as const, inputHash: 'x', summary: '', howToPlay: '', warnings: [], code: [], sprites: [], assets: [] };
     expect(compileNeedsRequest({ ...p, compiled: old })).toBe(true);
     await compileProject({ ...p, compiled: old }, { settings });
-    expect(idsIn(server.calls[0].body.messages[1].content)).toEqual(['p1', 'p2']);
+    expect(idsIn(server.calls[0].body.messages[1].content)).toEqual(['p1', 'p2', 'p3']);
+  });
+
+  it('lets new words in one sprite rewrite the words of another', async () => {
+    const p = starCatcher();
+    const wasd = 'const player = this.game.find("Amble");\nplayer.walkWith("WASD", 250);';
+    const pink = 'this.game.effects.burst({ x: this.x, y: this.y, color: "#ff4fd8", count: 30 });';
+    const server = fakeServer([
+      starReply(),
+      // The new rule, a rewrite of Amble's sparkles, the art style sent back unchanged, and a broken rewrite of the twinkle.
+      replyTo({ 'rule:': wasd }, { e1: STYLE, e2: pink, e3: 'this.turn(' }),
+    ]);
+    const first = await compileProject(p, { settings });
+    const changed = { ...p, compiled: first };
+    top(changed.sprites[1]).push(block('ga_rule', { RULE: 'the player moves with wasd, and every star caught bursts in pink' }));
+    expect(compileNeedsRequest(changed)).toBe(true);
+    const second = await compileProject(changed, { settings });
+    const prompt = server.calls[1].body.messages[1].content;
+    expect(idsIn(prompt)).toEqual(['p1']);
+    expect(prompt).toContain('- p1: rule, in "Star"');
+    expect(prompt).toContain('## Pieces already written\ne1, e2, e3 (their code is above). They work as they are: rewrite one only when the pieces you write mean it must change');
+    // Words reach the whole game.
+    expect(server.calls[1].body.messages[0].content).toContain('# Words reach the whole game');
+    const source = (g: typeof first, name: string) => g.code.find((c) => c.targetName === name)!.source;
+    expect(source(second, 'Star')).toContain('player.walkWith("WASD", 250);');
+    expect(source(second, 'Amble')).toContain('color: "#ff4fd8"');
+    expect(source(second, 'Amble')).not.toContain('color: "#ffd84d"');
+    // A rewrite that doesn't check out leaves the old code.
+    expect(source(second, 'Star')).toContain('this.turn(2);');
+    expect(second.revised).toEqual(['Amble: particles: [a small burst of yellow sparkles]']);
+    // The rewrite stays, with nothing new to send.
+    const third = await compileProject({ ...changed, compiled: second }, { settings });
+    expect(server.calls).toHaveLength(2);
+    expect(source(third, 'Amble')).toBe(source(second, 'Amble'));
+  });
+
+  it('sends the words written before to be looked at again when the brief changes', async () => {
+    const p = starCatcher();
+    const server = fakeServer([starReply(), replyTo({}, { e3: 'for (;;) { this.turn(8); yield; }' })]);
+    const first = await compileProject(p, { settings });
+    expect(first.brief).toContain('made for: [kids who are 6 to 10]');
+    const changed = { ...p, compiled: first };
+    top(changed.stage)[1].fields!.WHO = 'grown-ups who like a challenge';
+    expect(compileNeedsRequest(changed)).toBe(true);
+    const second = await compileProject(changed, { settings });
+    const prompt = server.calls[1].body.messages[1].content;
+    expect(idsIn(prompt)).toEqual([]);
+    expect(prompt).not.toContain('## Write these pieces');
+    expect(prompt).toContain('## The brief changed\nThe pieces already written were made for this brief:\n- game: [catch the falling stars before they reach the grass]\n- made for: [kids who are 6 to 10]');
+    expect(prompt).toContain('rewrite one only when the new brief means it must change');
+    expect(second.brief).toContain('made for: [grown-ups who like a challenge]');
+    expect(second.code.find((c) => c.targetName === 'Star')!.source).toContain('this.turn(8);');
+    expect(second.revised).toEqual(['Star: always: [twinkle and spin slowly as I fall]']);
+    expect(compileNeedsRequest({ ...changed, compiled: second })).toBe(false);
+  });
+
+  it('makes the compiled art again in a new art style', async () => {
+    const p = starCatcher();
+    const svg = (fill: string) => () => ({ svg: `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><circle cx="30" cy="30" r="26" fill="${fill}"/></svg>` });
+    const moon = { name: 'Moon', description: 'a sleepy moon', x: 170, y: 130, z: 0, size: 100, direction: 0, visible: true, code: 'class Moon extends Sprite {}' };
+    const art = { target: 'Moon', kind: 'costume', name: 'moon', description: 'a smiling crescent moon', width: 60, height: 60, reuse: false };
+    const server = fakeServer([
+      replyTo({ 'art style:': STYLE, 'particles:': SPARKLES, 'always:': TWINKLE }, {}, { sprites: [moon], assets: [art] }),
+      svg('#fff3b0'),
+      replyTo({ 'art style:': 'this.game.background = "#000000";' }),
+      svg('#9ad0ff'),
+    ]);
+    const first = await compileProject(p, { settings });
+    expect(first.style).toBe('art style: [a cute night sky with glowing yellow stars]');
+    expect(first.assets.map((a) => a.name)).toEqual(['moon']);
+    const changed = { ...p, compiled: first };
+    top(changed.stage)[2].fields!.STYLE = 'pale blue watercolor';
+    const second = await compileProject(changed, { settings });
+    expect(server.calls).toHaveLength(4);
+    // The moon is drawn again, in the new style, from the same description.
+    const redraw = server.calls[3].body.messages[1].content;
+    expect(redraw).toContain('a smiling crescent moon');
+    expect(redraw).toContain('art style: [pale blue watercolor]');
+    expect(second.style).toBe('art style: [pale blue watercolor]');
+    expect(second.assets.map((a) => [a.name, a.request])).toEqual([['moon', 'a smiling crescent moon']]);
+    expect(second.assets[0].kind === 'image' && atob(second.assets[0].dataUrl.split(',')[1])).toContain('#9ad0ff');
+  });
+
+  it('starts over when asked: every piece written again, and the art made again', async () => {
+    const p = starCatcher();
+    const server = fakeServer([starReply(), starReply({ 'always:': 'for (;;) { this.turn(-3); yield; }' })]);
+    const first = await compileProject(p, { settings });
+    const compiled = { ...p, compiled: first };
+    expect(compileNeedsRequest(compiled)).toBe(false);
+    const again = await compileProject(compiled, { settings, fresh: true });
+    const prompt = server.calls[1].body.messages[1].content;
+    expect(idsIn(prompt)).toEqual(['p1', 'p2', 'p3']);
+    expect(prompt).not.toContain('## Pieces already written');
+    expect(again.code.find((c) => c.targetName === 'Star')!.source).toContain('this.turn(-3);');
   });
 });
 
@@ -596,7 +740,7 @@ describe('misc', () => {
 
   it('builds a run package with compiled code, sprites and assets', async () => {
     const p = starCatcher();
-    fakeServer([reply({ p1: 'this.turn(5);', p2: 'for (;;) { yield; }' })]);
+    fakeServer([starReply({ 'particles:': 'this.turn(5);' })]);
     p.compiled = await compileProject(p, { settings });
     vi.unstubAllGlobals();
     p.compiled.sprites.push({ id: 'c1', name: 'Moon', description: 'a moon', x: 10, y: 20, z: 0, size: 100, direction: 0, visible: true, rotationStyle: 'all around' });

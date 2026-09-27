@@ -205,7 +205,7 @@ export const BLOCKS: BlockSpec[] = [
   // ---- Brief: what you're making, for whom, and what "done" means
   { type: 'br_game', category: 'brief', shape: 'rule', label: 'game: {WHAT}', inputs: { WHAT: text('Amble collects stars and dodges spikes') }, tooltip: 'Say what the game is, in a sentence. A clear goal makes everything else fit together.' },
   { type: 'br_audience', category: 'brief', shape: 'rule', label: 'made for: {WHO}', inputs: { WHO: text('kids who are new to games') }, tooltip: 'Who will play it. This decides how hard, fast and wordy the game is.' },
-  { type: 'br_style', category: 'brief', shape: 'rule', label: 'art style: {STYLE}', inputs: { STYLE: text('bright cartoon with thick outlines') }, groupEnd: true, tooltip: 'How new art should look, so everything matches.' },
+  { type: 'br_style', category: 'brief', shape: 'rule', label: 'art style: {STYLE}', inputs: { STYLE: text('bright cartoon with thick outlines') }, groupEnd: true, tooltip: 'How the game looks. The world is set up in this style, and new art is made to match.' },
   { type: 'br_win', category: 'brief', shape: 'rule', label: 'you win when {COND}', inputs: { COND: cond }, tooltip: 'The goal. The game is won the moment this becomes true.' },
   { type: 'br_lose', category: 'brief', shape: 'rule', label: 'you lose when {COND}', inputs: { COND: cond }, tooltip: 'The game is over the moment this becomes true.' },
 

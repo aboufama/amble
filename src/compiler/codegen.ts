@@ -5,7 +5,9 @@
  * exact blocks become direct engine calls, so they compile instantly and the same way every
  * time. Blocks written in the author's own words become "pieces": small methods whose code comes
  * from the compile request. A piece is identified by its content (the words, the block, the
- * sprite, whether it repeats), so words that didn't change keep exactly the same code.
+ * sprite, whether it repeats), so words that didn't change keep their code from one compile to
+ * the next, unless a compile rewrites them to fit other changes (words anywhere can change how
+ * the whole game works, so a compile request sees every piece and may revise any of them).
  */
 import { BLOCK_BY_TYPE, type CharacterSpecial } from '../blocks/spec';
 import { hashString } from '../project/ids';
@@ -132,6 +134,8 @@ class TargetCompiler {
   private loopDepth = 0;
   private repeating = false;
   private script = '';
+  /** The type of the hat the current script starts with. */
+  private hatType = '';
 
   constructor(
     private readonly project: Project,
@@ -175,6 +179,7 @@ class TargetCompiler {
   private hat(b: JsonBlock): void {
     const label = blockText(b);
     this.script = label;
+    this.hatType = b.type;
     if (b.type === 'pr_define') {
       const name = oneLine(b.fields?.NAME);
       const method = this.skills.get(name);
@@ -401,8 +406,10 @@ class TargetCompiler {
       case 'co_forever':
         return [pad + 'for (;;) {', ...this.loop(b, depth), pad + '}'];
       case 'fl_if':
+        this.checkedOnce(b);
         return [pad + `if (${this.condition(b, 'COND')}) {`, ...this.chain(b.inputs?.SUBSTACK?.block, depth + 1), pad + '}'];
       case 'fl_if_else':
+        this.checkedOnce(b);
         return [
           pad + `if (${this.condition(b, 'COND')}) {`,
           ...this.chain(b.inputs?.SUBSTACK?.block, depth + 1),
@@ -485,9 +492,15 @@ class TargetCompiler {
     switch (b.type) {
       case 'br_game':
       case 'br_audience':
-      case 'br_style':
         this.brief.push(label);
         return;
+      case 'br_style': {
+        // The look of the whole game: set up once, when the game starts (and a guide for new art).
+        this.brief.push(label);
+        const method = this.piece(b, 'rule', 'STYLE');
+        this.starts.push(`this._script(${lit(method)}, false, ${lit(label)});`);
+        return;
+      }
       case 'br_win':
       case 'br_lose': {
         const cond = this.condition(b, 'COND');
@@ -566,6 +579,24 @@ class TargetCompiler {
         this.warn(`"${blockText(b)}": pick someone to touch.`);
         return 'false';
     }
+  }
+
+  /**
+   * "if <words>" right in a script that runs once (the start, or a new copy) is checked just that
+   * once, like in Scratch. Words there usually describe something to wait for ("killed 5
+   * enemies"), so say how to keep checking it.
+   */
+  private checkedOnce(b: JsonBlock): void {
+    if (this.loopDepth > 0 || this.repeating || (this.hatType !== 'ev_start' && this.hatType !== 'ev_created')) return;
+    const words = (v: JsonBlock | undefined): JsonBlock | undefined => {
+      if (!v || isDisabled(v)) return undefined;
+      if (v.type === 'cd_words') return v;
+      return words(inputBlock(v, 'A')) ?? words(inputBlock(v, 'B'));
+    };
+    const cond = words(inputBlock(b, 'COND'));
+    if (!cond) return;
+    const text = blockText(cond);
+    this.warn(`"if <${text}> then" is checked only once, when "${this.script}" runs. To keep checking it, put it inside "forever", or start a script with "when <${text}>".`);
   }
 
   /** A condition slot (empty slots are false). */

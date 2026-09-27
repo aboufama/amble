@@ -25,8 +25,10 @@ export function StagePanel() {
   const setStageSize = useStore((s) => s.setStageSize);
   const [fullscreen, setFullscreen] = useState(false);
   const problems = useProblemCount();
-  // Exact blocks compile instantly when the game starts; only new words wait for Compile.
+  // Exact blocks compile instantly when the game starts; only new words (or a new brief) wait for Compile.
   const dirty = useMemo(() => needsCompile(project) && compileNeedsRequest(project), [project]);
+  // Nothing changed since the last compile: the button starts over instead.
+  const upToDate = useMemo(() => Boolean(project.compiled) && !needsCompile(project), [project]);
 
   useEffect(() => {
     const store = useStore.getState;
@@ -123,18 +125,18 @@ export function StagePanel() {
           ) : (
             <button
               className={`compile-btn ${dirty ? 'dirty' : ''}`}
-              aria-label="Compile"
-              onClick={() => void compile()}
+              aria-label={upToDate ? 'Recompile' : 'Compile'}
+              onClick={() => void compile(undefined, { fresh: upToDate })}
               title={
                 dirty
-                  ? 'Some blocks in your own words are new: compile them'
-                  : project.compiled?.model
-                    ? `Compile again (last compiled with ${project.compiled.model})`
+                  ? 'Some blocks in your own words (or the brief) are new: compile them'
+                  : upToDate
+                    ? `Compile everything again, from scratch: every block in your own words is written again and the compiled art is made again, so it can come out different${project.compiled?.model ? ` (last compiled with ${project.compiled.model})` : ''}`
                     : 'Compile the game'
               }
             >
               <HammerIcon size={16} />
-              <span className="compile-label">Compile{dirty && project.compiled ? ' •' : ''}</span>
+              <span className="compile-label">{upToDate ? 'Recompile' : `Compile${dirty && project.compiled ? ' •' : ''}`}</span>
             </button>
           )}
           {problems.count > 0 && (

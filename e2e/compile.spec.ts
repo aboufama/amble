@@ -143,7 +143,7 @@ test('words are compiled once, in one request, and reused after', async ({ page 
   await page.goto('/');
   await openExample(page, 'Star Catcher (2D)');
 
-  // Two blocks are written in words: Compile is marked.
+  // Three blocks are written in words (the art style too): Compile is marked.
   await expect(page.locator('.compile-btn')).toHaveClass(/dirty/);
   await page.getByRole('button', { name: 'Compile' }).click();
   const frame = await gameFrame(page);
@@ -163,9 +163,14 @@ test('words are compiled once, in one request, and reused after', async ({ page 
   await page.waitForTimeout(500);
   expect(calls).toEqual(['amble_pieces', 'svg_art']);
 
-  // The compiled code is there to read.
-  await page.getByRole('button', { name: 'Compile' }).hover();
-  await expect(page.getByRole('button', { name: 'Compile' })).toHaveAttribute('title', /last compiled with gpt-5/);
+  // With nothing new, the button starts over: every block in words is written again, and the art made again.
+  await page.getByRole('button', { name: 'Recompile' }).hover();
+  await expect(page.getByRole('button', { name: 'Recompile' })).toHaveAttribute('title', /from scratch.*last compiled with gpt-5/);
+  await page.getByRole('button', { name: 'Recompile' }).click();
+  await expect.poll(() => calls.length, { timeout: 30_000 }).toBe(4);
+  expect(calls).toEqual(['amble_pieces', 'svg_art', 'amble_pieces', 'svg_art']);
+  // The new game plays (in a new player frame).
+  await expect.poll(async () => (await game(await gameFrame(page)).catch(() => ({ state: '' }))).state, { timeout: 30_000 }).toBe('running');
 
   // The compiler's character shows up as a compiled sprite, with its art.
   await expect(page.locator('.sprite-tile.compiled', { hasText: 'Moon' })).toBeVisible();
@@ -224,7 +229,7 @@ test('without an account the flag still plays; words wait', async ({ page }) => 
   expect((await game(frame)).twinkles).toBe(0);
   expect(calls).toEqual([]);
   await page.locator('.problems-btn').click();
-  await expect(page.getByRole('dialog', { name: 'Problems' })).toContainText("2 blocks in your own words aren't compiled yet");
+  await expect(page.getByRole('dialog', { name: 'Problems' })).toContainText("3 blocks in your own words aren't compiled yet");
 });
 
 test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', async ({ page }) => {

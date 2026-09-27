@@ -88,23 +88,29 @@ export function needsCompile(project: Project): boolean {
 }
 
 /**
- * Compiles the blocks into the game and starts it. Exact blocks compile instantly; only words
- * that are new (or, with `fixProblems`, the words of sprites that had problems) are sent in a
- * compile request.
+ * Compiles the blocks into the game and starts it. Exact blocks compile instantly; words that
+ * are new (or, with `fixProblems`, the words of sprites that had problems) are sent in a compile
+ * request, which may also rewrite other words to fit. `fresh` starts over: every word is written
+ * again and the compiled art is made again, so it can come out different.
  */
-export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean } = {}): Promise<void> {
+export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean; fresh?: boolean } = {}): Promise<void> {
   if (controller) return;
   const store = useStore.getState();
   const project = store.project;
   controller = new AbortController();
   // Instant compiles don't show progress: the game just starts.
-  const instant = !fixProblems?.length && !compileNeedsRequest(project);
+  const instant = !fixProblems?.length && !opts.fresh && !compileNeedsRequest(project);
   store.setCompile({ status: instant ? 'idle' : 'running', progress: instant ? null : { stage: 'preparing', message: 'Reading your blocks' }, error: null });
   const done = (compiled: CompiledGame) => {
     useStore.getState().update((p) => {
       p.compiled = compiled;
     });
     useStore.getState().setCompile({ status: 'done', progress: null });
+    const revised = compiled.revised ?? [];
+    if (revised.length) {
+      const n = revised.length;
+      useStore.getState().notify(`To fit the change, the compiler also rewrote ${n} block${n > 1 ? 's' : ''} written before: ${revised.slice(0, 3).join('; ')}${n > 3 ? '…' : ''}`);
+    }
     runGame();
   };
   try {
@@ -113,6 +119,7 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
         settings: store.settings,
         signal: controller.signal,
         fixProblems,
+        fresh: opts.fresh,
         onProgress: instant ? undefined : (progress) => useStore.getState().setCompile({ progress }),
       }),
     );

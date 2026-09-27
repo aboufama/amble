@@ -28,13 +28,13 @@ export const PIECES_SCHEMA = {
   properties: {
     pieces: {
       type: 'array',
-      description: 'One entry per piece you were asked to write.',
+      description: 'One entry per piece you were asked to write, plus any piece already written that you rewrite.',
       items: {
         type: 'object',
         additionalProperties: false,
         required: ['id', 'code'],
         properties: {
-          id: str('The piece id, e.g. "p1".'),
+          id: str('The piece id, e.g. "p1" (or "e2" to rewrite a piece already written).'),
           code: str('JavaScript: the body of the piece method only (no signature, no braces around it).'),
         },
       },
