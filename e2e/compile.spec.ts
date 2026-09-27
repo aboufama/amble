@@ -157,7 +157,8 @@ test('compiles blocks with the AI and plays the game', async ({ page }) => {
 
   // The compiler's sprite shows up as a compiled sprite.
   await expect(page.locator('.sprite-tile.compiled', { hasText: 'Coin' })).toBeVisible();
-  await expect(page.locator('.how-to-play')).toContainText('Grab the coin');
+  // The compiler's summary and "how to play" are not shown anywhere.
+  await expect(page.getByText('Grab the coin')).toHaveCount(0);
 
   // Walk right into the coin.
   await page.keyboard.down('ArrowRight');
@@ -165,9 +166,14 @@ test('compiles blocks with the AI and plays the game', async ({ page }) => {
   await page.keyboard.up('ArrowRight');
 
   // The wait() in a normal method was auto-fixed (the method became a generator).
-  await page.getByRole('tab', { name: /Problems/ }).click();
-  await expect(page.locator('.problem.warning').first()).toBeVisible();
-  await expect(page.locator('.problems')).toContainText('Made onKeyDown() a generator');
+  // It's listed in the problems dialog, opened from the warning button next to Compile.
+  await page.locator('.problems-btn').click();
+  const problems = page.getByRole('dialog', { name: 'Problems' });
+  await expect(problems.locator('.problem.warning').first()).toBeVisible();
+  await expect(problems.locator('.problems')).toContainText('Made onKeyDown() a generator');
+  await problems.getByRole('tab', { name: 'Code' }).click();
+  await expect(page.getByRole('dialog', { name: 'Compiled Code' }).locator('.code-view')).toContainText('class');
+  await page.keyboard.press('Escape');
 
   // The compiled art is listed under the Coin's costumes.
   await page.locator('.sprite-tile.compiled', { hasText: 'Coin' }).click();
@@ -207,7 +213,7 @@ test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', 
     { model: 'gpt-6-astra', reasoningEffort: 'low', kind: 'svg' },
   ]);
   expect(direct).toEqual([]);
-  await expect(page.getByText(/Built with GPT-6 Astra Light \(ChatGPT\)/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Compile' })).toHaveAttribute('title', /last built with GPT-6 Astra Light \(ChatGPT\)/);
 
   // Signing out goes back to the API key settings.
   await page.locator('.menu-btn.account').click();

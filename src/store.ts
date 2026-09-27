@@ -52,9 +52,10 @@ export interface EditorState {
   run: { state: RunState; errors: PlayerError[]; logs: LogEntry[] };
   dialog: null | 'settings' | 'new' | 'about';
   prompt: PromptRequest | null;
+  /** The tab shown in the problems dialog ('game' is an old name for 'problems'). */
   outputTab: OutputTab;
-  /** The output panel under the stage can be folded down to its tabs. */
-  outputOpen: boolean;
+  /** The problems dialog (problems, console, compiled code) is open. */
+  problemsOpen: boolean;
   /** The Sounds tab's Record Sound dialog is open. */
   recording: boolean;
   /** Edit > Restore: puts back the last deleted sprite, costume, backdrop or sound. */
@@ -78,7 +79,7 @@ export interface EditorState {
   setDialog(dialog: EditorState['dialog']): void;
   setPrompt(prompt: PromptRequest | null): void;
   setOutputTab(tab: OutputTab): void;
-  setOutputOpen(open: boolean): void;
+  setProblemsOpen(open: boolean): void;
   setRestore(restore: EditorState['restore']): void;
   setRecording(open: boolean): void;
   notify(message: string, tone?: 'info' | 'error'): void;
@@ -103,8 +104,7 @@ export const useStore = create<EditorState>()(
     dialog: null,
     prompt: null,
     outputTab: 'game',
-    // The output starts folded (the sprite list keeps its room); compiling or a problem opens it.
-    outputOpen: false,
+    problemsOpen: false,
     restore: null,
     recording: false,
     toast: null,
@@ -187,11 +187,10 @@ export const useStore = create<EditorState>()(
     setOutputTab: (tab) =>
       set((s) => {
         s.outputTab = tab;
-        s.outputOpen = true;
       }),
-    setOutputOpen: (open) =>
+    setProblemsOpen: (open) =>
       set((s) => {
-        s.outputOpen = open;
+        s.problemsOpen = open;
       }),
     setRestore: (restore) =>
       set((s) => {

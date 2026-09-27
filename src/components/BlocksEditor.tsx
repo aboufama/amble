@@ -352,7 +352,13 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
             <p>{compiledSprite.sprite.description || 'The AI added this sprite because your game needed it.'}</p>
             <p className="muted small">It has no blocks; its behavior is in the generated code. Keep it to make it yours and add blocks.</p>
             <div className="row">
-              <button className="btn" onClick={() => useStore.getState().setOutputTab('code')}>
+              <button
+                className="btn"
+                onClick={() => {
+                  useStore.getState().setOutputTab('code');
+                  useStore.getState().setProblemsOpen(true);
+                }}
+              >
                 <CodeIcon size={15} /> View code
               </button>
               <button className="btn primary" onClick={() => keepCompiledSprite(compiledSprite.sprite.id)}>

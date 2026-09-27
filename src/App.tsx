@@ -6,7 +6,7 @@ import { BlocksEditor } from './components/BlocksEditor';
 import { CostumesPane } from './components/CostumesPane';
 import { SoundsPane } from './components/SoundsPane';
 import { StagePanel } from './components/StagePanel';
-import { OutputPanel } from './components/OutputPanel';
+import { ProblemsDialog } from './components/ProblemsDialog';
 import { SpritePane } from './components/SpritePane';
 import { PromptDialog, SettingsDialog, Toast } from './components/Dialogs';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -87,15 +87,13 @@ export function App() {
           <ErrorBoundary label="stage">
             <StagePanel />
           </ErrorBoundary>
-          <ErrorBoundary label="output panel">
-            <OutputPanel />
-          </ErrorBoundary>
           <ErrorBoundary label="sprite list">
             <SpritePane />
           </ErrorBoundary>
         </section>
       </main>
       {dialog === 'settings' && <SettingsDialog />}
+      <ProblemsDialog />
       <PromptDialog />
       <Toast />
     </div>

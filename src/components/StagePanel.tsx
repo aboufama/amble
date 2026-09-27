@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { PlayerHost } from '../player/host';
 import { cancelCompile, compile, moveSpriteFromStage, needsCompile, previewProject, registerPlayer, startGame, stopGame } from '../actions';
 import { useStore } from '../store';
-import { ExpandIcon, FlagIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, SparkIcon, StopIcon, XIcon } from './icons';
+import { ExpandIcon, FlagIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, SparkIcon, StopIcon, WarningIcon, XIcon } from './icons';
+import { useProblemCount } from './ProblemsDialog';
 
 function isEditable(el: EventTarget | null): boolean {
   const node = el as HTMLElement | null;
@@ -22,6 +23,7 @@ export function StagePanel() {
   const stageSize = useStore((s) => s.stageSize);
   const setStageSize = useStore((s) => s.setStageSize);
   const [fullscreen, setFullscreen] = useState(false);
+  const problems = useProblemCount();
   const dirty = needsCompile(project);
 
   useEffect(() => {
@@ -121,10 +123,27 @@ export function StagePanel() {
               className={`compile-btn ${dirty ? 'dirty' : ''}`}
               aria-label="Compile"
               onClick={() => void compile()}
-              title={dirty ? 'Your blocks changed since the last build' : 'Build the game again'}
+              title={
+                dirty ? 'Your blocks changed since the last build' : project.compiled ? `Build the game again (last built with ${project.compiled.model})` : 'Build the game'
+              }
             >
               <SparkIcon size={16} />
               <span className="compile-label">Compile{dirty && project.compiled ? ' •' : ''}</span>
+            </button>
+          )}
+          {problems.count > 0 && (
+            <button
+              className={`problems-btn ${problems.errors ? 'has-errors' : ''}`}
+              title="Problems"
+              aria-label={`${problems.count} ${problems.count === 1 ? 'problem' : 'problems'}`}
+              onClick={() => {
+                const s = useStore.getState();
+                s.setOutputTab('problems');
+                s.setProblemsOpen(true);
+              }}
+            >
+              <WarningIcon size={16} />
+              {problems.count}
             </button>
           )}
           <span className="mode-badge" title="World type">

@@ -444,3 +444,11 @@ export const PencilIcon = (p: P) => (
     <path d="M13 6.5l4.5 4.5" />
   </svg>
 );
+/** A warning triangle (the problems button next to Compile). */
+export const WarningIcon = (p: P) => (
+  <svg {...base(p)} stroke="none">
+    <path d="M10.3 3.9c.8-1.3 2.6-1.3 3.4 0l7.9 13.6c.8 1.3-.2 3-1.7 3H4.1c-1.5 0-2.5-1.7-1.7-3z" fill="currentColor" />
+    <path d="M12 9v4.6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
+    <circle cx="12" cy="16.9" r="1.3" fill="#fff" />
+  </svg>
+);

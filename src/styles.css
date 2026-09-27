@@ -445,9 +445,8 @@ select {
   width: calc(242px + 16px);
 }
 
-/* Like Scratch, narrow windows get a slightly smaller "normal" stage (408 x 306); so do short
-   ones, which also need room for the sprite list. */
-@media (max-width: 1095px), (max-height: 759px) {
+/* Like Scratch, narrow windows get a slightly smaller "normal" stage (408 x 306). */
+@media (max-width: 1095px) {
   .gui-body.stage-large .stage-and-target {
     width: calc(410px + 16px);
   }
@@ -957,92 +956,78 @@ select {
   line-height: 1.4;
 }
 
-/* ---------- Output (under the stage) ---------- */
+/* ---------- Problems (the warning button next to Compile, and its dialog) ---------- */
 
-/* Under the stage; it gives up its room first, so the sprite list always keeps some. */
-.output-panel {
-  flex: 0 1 auto;
-  min-height: 36px;
-  max-height: 172px;
-  display: flex;
-  flex-direction: column;
-  margin-top: 8px;
-  border: 1px solid var(--ui-black-transparent);
-  border-radius: 8px;
-  background: var(--ui-white);
-  overflow: hidden;
-}
-
-.output-panel.collapsed {
-  flex: none;
-}
-
-.output-header {
-  display: flex;
-  align-items: center;
-  flex: none;
-  height: 34px;
-  padding: 0 4px 0 8px;
-  border-bottom: 1px solid var(--ui-black-transparent);
-}
-
-.output-panel.collapsed .output-header {
-  border-bottom: none;
-}
-
-.output-tabs {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-
-.output-tab {
+.problems-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 26px;
+  height: 32px;
+  margin-left: 8px;
   padding: 0 10px;
-  border: none;
-  border-radius: 13px;
-  background: none;
-  color: var(--text-primary-transparent);
-  font-size: 11.5px;
+  border: 1px solid var(--data-primary);
+  border-radius: 4px;
+  background: #fff0df;
+  color: #b85c00;
+  font-size: 12px;
   font-weight: bold;
-  white-space: nowrap;
   cursor: pointer;
 }
 
-.output-tab:hover {
+.problems-btn svg {
+  color: var(--data-primary);
+}
+
+.problems-btn:hover {
+  box-shadow: 0 0 0 2px rgba(255, 140, 26, 0.25);
+}
+
+.problems-modal .modal-body {
+  padding: 12px 24px 24px;
+}
+
+.info-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ui-black-transparent);
+}
+
+.info-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 14px;
+  background: none;
+  color: var(--text-primary-transparent);
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.info-tab:hover {
   background: var(--ui-secondary);
   color: var(--text-primary);
 }
 
-.output-tab.active {
+.info-tab.active {
   background: var(--looks-light-transparent);
   color: var(--looks-secondary);
 }
 
-.output-toggle {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 4px;
-  background: none;
-  color: var(--text-primary-transparent);
-  cursor: pointer;
-  transition: transform 0.15s;
+.info-body {
+  max-height: min(56vh, 460px);
+  overflow: auto;
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
-.output-toggle:hover {
-  background: var(--ui-secondary);
-}
-
-.output-toggle[aria-expanded='false'] {
-  transform: rotate(180deg);
+.info-body p {
+  margin: 0 0 8px;
 }
 
 .count {
@@ -1059,37 +1044,6 @@ select {
 .count.bad {
   background: var(--data-primary);
   color: var(--ui-white);
-}
-
-.output-body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 10px 12px;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.output-body p {
-  margin: 0 0 8px;
-}
-
-.how-to-play {
-  margin-bottom: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--extensions-primary);
-  border-radius: 8px;
-  background: #e5f8f2;
-}
-
-.how-to-play b {
-  display: block;
-  margin-bottom: 2px;
-  color: var(--extensions-tertiary);
-}
-
-.how-to-play p {
-  margin: 0;
 }
 
 .problem {
@@ -1934,17 +1888,13 @@ body.reordering * {
   display: none;
 }
 
+.gui-body.stage-small .problems-btn {
+  margin-left: 4px;
+  padding: 0 6px;
+}
+
 .gui-body.stage-small .compile-btn {
   padding: 0 9px;
-}
-
-.gui-body.stage-small .output-header {
-  padding: 0 2px 0 4px;
-}
-
-.gui-body.stage-small .output-tab {
-  padding: 0 5px;
-  font-size: 11px;
 }
 
 .gui-body.stage-small .sprite-info .info-row:first-child {
