@@ -96,8 +96,8 @@ export const useStore = create<EditorState>()(
     dialog: null,
     prompt: null,
     outputTab: 'game',
-    // Short windows start with the output folded, leaving room for the sprite list.
-    outputOpen: typeof window === 'undefined' || window.innerHeight >= 800,
+    // The output starts folded (the sprite list keeps its room); compiling or a problem opens it.
+    outputOpen: false,
     restore: null,
     recording: false,
     toast: null,

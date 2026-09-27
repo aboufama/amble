@@ -445,8 +445,9 @@ select {
   width: calc(242px + 16px);
 }
 
-/* Like Scratch, narrow windows get a slightly smaller "normal" stage (408 x 306). */
-@media (max-width: 1095px) {
+/* Like Scratch, narrow windows get a slightly smaller "normal" stage (408 x 306); so do short
+   ones, which also need room for the sprite list. */
+@media (max-width: 1095px), (max-height: 759px) {
   .gui-body.stage-large .stage-and-target {
     width: calc(410px + 16px);
   }
@@ -454,6 +455,19 @@ select {
   .gui-body.stage-large .stage-shell {
     width: 410px;
     height: 308px;
+  }
+
+  .gui-body.stage-large .sprite-info .info-input.name {
+    width: 104px;
+  }
+
+  .gui-body.stage-large .sprite-info .info-input.wide {
+    width: 52px;
+  }
+
+  .gui-body.stage-large .sprite-info .info-icon {
+    width: 28px;
+    padding: 5px;
   }
 }
 
@@ -945,9 +959,11 @@ select {
 
 /* ---------- Output (under the stage) ---------- */
 
+/* Under the stage; it gives up its room first, so the sprite list always keeps some. */
 .output-panel {
-  flex: 0 1 172px;
+  flex: 0 1 auto;
   min-height: 36px;
+  max-height: 172px;
   display: flex;
   flex-direction: column;
   margin-top: 8px;
@@ -1189,7 +1205,7 @@ select {
 .target-pane {
   flex: 1 1 0;
   display: flex;
-  min-height: 180px;
+  min-height: 230px;
   padding-top: 8px;
 }
 
@@ -1219,6 +1235,7 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  column-gap: 6px;
 }
 
 .info-row + .info-row {
@@ -1286,6 +1303,10 @@ select {
   padding: 0 8px;
   text-align: center;
   text-overflow: clip;
+}
+
+.info-input.small.wide {
+  width: 64px;
 }
 
 .info-about {
@@ -1444,7 +1465,8 @@ select {
 .sprite-grid {
   display: flex;
   flex-wrap: wrap;
-  padding: 4px 4px 8px;
+  /* Room to scroll the last row above the floating add button. */
+  padding: 4px 4px 60px;
 }
 
 /* Sprite, costume and sound tiles (Scratch's sprite-selector-item). */

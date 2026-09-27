@@ -319,7 +319,7 @@ function NumberField({
   value,
   onChange,
   step = 1,
-  width,
+  wide,
   secondary,
   onFocus,
 }: {
@@ -328,7 +328,8 @@ function NumberField({
   value: number;
   onChange(v: number): void;
   step?: number;
-  width?: number;
+  /** Size and Direction get Scratch's wider (4rem) field. */
+  wide?: boolean;
   /** Scratch writes Size and Direction in plain text, Sprite, x and y in bold. */
   secondary?: boolean;
   onFocus?: () => void;
@@ -339,8 +340,7 @@ function NumberField({
       {icon && <span className="info-icon">{icon}</span>}
       <span className={`info-label ${secondary ? 'secondary' : ''}`}>{label}</span>
       <input
-        className="info-input small"
-        style={width ? { width } : undefined}
+        className={`info-input small ${wide ? 'wide' : ''}`}
         inputMode="decimal"
         aria-label={label}
         onFocus={onFocus}
@@ -443,7 +443,7 @@ function DirectionField({ sprite, set }: { sprite: SpriteTarget; set(fn: (s: Spr
   const point = (d: number) => set((t) => (t.direction = directionToAngle(d)));
   return (
     <div className="direction-field" ref={ref}>
-      <NumberField label="Direction" secondary value={direction} onChange={point} step={15} width={64} onFocus={() => setOpen(true)} />
+      <NumberField label="Direction" secondary value={direction} onChange={point} step={15} wide onFocus={() => setOpen(true)} />
       {open && (
         <div className="direction-popover" role="dialog" aria-label="Direction">
           <DirectionDial direction={direction} onChange={point} />
@@ -504,9 +504,9 @@ function SpriteInfo({ sprite }: { sprite: SpriteTarget }) {
             </button>
           </div>
         </div>
-        <NumberField label="Size" secondary value={sprite.size} onChange={(v) => set((t) => (t.size = Math.max(1, v)))} step={10} width={64} />
+        <NumberField label="Size" secondary value={sprite.size} onChange={(v) => set((t) => (t.size = Math.max(1, v)))} step={10} wide />
         {three ? (
-          <NumberField label="Heading" secondary value={sprite.direction} onChange={(v) => set((t) => (t.direction = v))} step={15} width={64} />
+          <NumberField label="Heading" secondary value={sprite.direction} onChange={(v) => set((t) => (t.direction = v))} step={15} wide />
         ) : (
           <DirectionField sprite={sprite} set={set} />
         )}
@@ -531,10 +531,10 @@ function SpriteInfo({ sprite }: { sprite: SpriteTarget }) {
 function StageInfo() {
   const notes = useStore((s) => s.project.notes);
   const update = useStore((s) => s.update);
-  const blank = (label: string, placeholder = '', width?: number) => (
+  const blank = (label: string, placeholder = '', wide = false) => (
     <label className="info-group">
       <span className={`info-label ${['Size', 'Direction'].includes(label) ? 'secondary' : ''}`}>{label}</span>
-      <input className={`info-input ${label === 'Sprite' ? 'name' : 'small'}`} style={width ? { width } : undefined} placeholder={placeholder} aria-label={label} disabled />
+      <input className={`info-input ${label === 'Sprite' ? 'name' : 'small'} ${wide ? 'wide' : ''}`} placeholder={placeholder} aria-label={label} disabled />
     </label>
   );
   return (
@@ -568,8 +568,8 @@ function StageInfo() {
             </button>
           </div>
         </div>
-        {blank('Size', '', 64)}
-        {blank('Direction', '', 64)}
+        {blank('Size', '', true)}
+        {blank('Direction', '', true)}
       </div>
       <label className="info-row info-about info-notes">
         <span className="info-label secondary">Game</span>
