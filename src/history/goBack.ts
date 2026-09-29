@@ -31,8 +31,8 @@ export async function goBack(deps: HistoryDeps, world: World, to: StepId): Promi
   if (!target) throw new GoBackError('unknown-step', `No step ${to} in this world.`);
   if (foldedSteps(world.steps).has(to)) throw new GoBackError('folded', `Step ${to} is folded.`);
   const store = deps.store();
-  const snap = await store.steps.get(to);
-  if (!snap) throw new GoBackError('missing', `Step ${to} has no snapshot.`);
+  const snap = store ? await store.steps.get(to) : null;
+  if (!snap || !store) throw new GoBackError('missing', `Step ${to} has no snapshot.`);
   const now = deps.now();
   const restored = restoreWorld(world, snap);
 

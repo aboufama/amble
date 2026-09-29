@@ -153,6 +153,18 @@ describe('goBack', () => {
   });
 });
 
+describe('without a store', () => {
+  it('only appends steps (worlds built before the app has one), and cannot go back', async () => {
+    const bare = createHistory({ store: () => null, now: () => 5, newId: () => 's_bare000001' });
+    const world = sampleWorld();
+    const next = await bare.record(world, { kind: 'import', by: 'student', text: 'You opened Moon King.amble.' });
+    expect(next.steps.at(-1)).toEqual({ id: 's_bare000001', at: 5, by: 'student', kind: 'import', text: 'You opened Moon King.amble.' });
+    expect(next.head).toBe('s_bare000001');
+    await expect(bare.goBack(next, world.head)).rejects.toMatchObject({ reason: 'missing' });
+    expect(await bare.diff(next, next.head)).toEqual({ files: [], drawings: [], dials: [] });
+  });
+});
+
 describe('diff', () => {
   it('shows the code, drawing and dial changes of a step', async () => {
     const world = await open();

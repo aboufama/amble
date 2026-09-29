@@ -11,7 +11,8 @@ import { newlyFolded } from './prune';
 import { changedDials, onlyDialsDiffer, snapshotOf } from './snapshot';
 
 export interface HistoryDeps {
-  store(): Store;
+  /** Where snapshots live; null when there is no store yet (then steps are only appended to the world). */
+  store(): Store | null;
   now(): number;
   newId(): StepId;
 }
@@ -56,8 +57,8 @@ async function mergeDialBurst(deps: HistoryDeps, world: World, input: StepInput)
   const now = deps.now();
   if (now - head.at > DIAL_MERGE_MS) return null;
   const parent = parentOf(world, head.id);
-  if (!parent) return null;
   const store = deps.store();
+  if (!parent || !store) return null;
   const [headSnap, parentSnap] = await Promise.all([store.steps.get(head.id), store.steps.get(parent.id)]);
   if (!headSnap || !parentSnap) return null;
   const now1 = changedDials(headSnap.dials, world.dials);
@@ -79,6 +80,7 @@ export async function record(deps: HistoryDeps, world: World, input: StepInput):
   const store = deps.store();
   const id = deps.newId();
   const at = deps.now();
+  if (!store) return { ...world, steps: [...world.steps, summaryOf(id, at, input, undefined)], head: id, updatedAt: at };
   const head = headOf(world);
   const [snap, headSnap] = await Promise.all([snapshotOf(world, id, (a) => store.art.get(a)), head ? store.steps.get(head.id) : Promise.resolve(null)]);
   const lines = CODE_KINDS.has(input.kind) && headSnap ? linesWritten(headSnap.code, world.code) : undefined;
@@ -95,8 +97,8 @@ export async function record(deps: HistoryDeps, world: World, input: StepInput):
  */
 export async function ensureHead(deps: HistoryDeps, world: World): Promise<StepSnapshot | null> {
   const head = headOf(world);
-  if (!head) return null;
   const store = deps.store();
+  if (!head || !store) return null;
   const existing = await store.steps.get(head.id);
   if (existing) return existing;
   const snap = await snapshotOf(world, head.id, (a) => store.art.get(a));

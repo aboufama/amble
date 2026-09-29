@@ -30,8 +30,8 @@ export interface HistoryApi {
 }
 
 export interface HistoryOptions {
-  /** The store (default: the app's, read at call time). */
-  store?: () => Store;
+  /** The store (default: the app's, read at call time; without one, steps are only appended). */
+  store?: () => Store | null;
   now?: () => number;
   newId?: () => StepId;
 }
@@ -53,9 +53,18 @@ function dialDefaults(snap: StepSnapshot): Record<string, number> {
   }
 }
 
+/** The app's store, or null before the services exist (tests that build worlds without an app). */
+function appStore(): Store | null {
+  try {
+    return getServices().store;
+  } catch {
+    return null;
+  }
+}
+
 export function createHistory(o: HistoryOptions = {}): HistoryApi {
   const deps: HistoryDeps = {
-    store: o.store ?? (() => getServices().store),
+    store: o.store ?? appStore,
     now: o.now ?? (() => Date.now()),
     newId: o.newId ?? (() => uid('s_')),
   };
@@ -64,6 +73,7 @@ export function createHistory(o: HistoryOptions = {}): HistoryApi {
     goBack: (world, to) => goBack(deps, world, to),
     async diff(world, stepId) {
       const store = deps.store();
+      if (!store) return { files: [], drawings: [], dials: [] };
       const parent = parentOf(world, stepId);
       const [after, before] = await Promise.all([store.steps.get(stepId), parent ? store.steps.get(parent.id) : Promise.resolve(null)]);
       if (!after) return { files: [], drawings: [], dials: [] };
