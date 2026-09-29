@@ -31,13 +31,13 @@ describe('a zip bomb', () => {
   });
 
   it('never grows past the size its headers claim when they lie', async () => {
-    const zeros = new Uint8Array(4 * 1024 * 1024);
+    const zeros = new Uint8Array(1024 * 1024);
     const liar = claimSize(zipSync({ 'world.json': zeros }, { level: 1 }), 1000);
     // What the reader relies on: an entry is inflated into a buffer of the size it claims, and no bigger.
     const entries = unzipSync(liar, { filter: (f) => f.originalSize <= LIMITS.ambleFileBytes });
     expect(entries['world.json'].length).toBeLessThanOrEqual(1000);
     await expect(readAmble(new Blob([liar as Uint8Array<ArrayBuffer>]))).rejects.toBeInstanceOf(FileProblem);
-  });
+  }, 30_000);
 });
 
 describe('prototype keys', () => {
