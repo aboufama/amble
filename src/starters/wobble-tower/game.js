@@ -8,7 +8,7 @@ class Game extends Amble.Scene {
   static art = {
     wobbles: { kind: 'character', rig: 'blob', role: 'hero', w: 58, h: 64, facing: 'viewer', name: 'Wobbles', ask: 'Draw Wobbles, a wobbly jelly', about: 'Rides every crate to the top of the tower.', pronoun: 'them', priority: 1 },
     dummy: { kind: 'character', rig: 'biped', role: 'npc', w: 44, h: 88, facing: 'viewer', name: 'Stickman', ask: 'Draw a stickman builder', about: 'Three of them watch your tower, and fly apart when things hit them.', pronoun: 'him', priority: 2 },
-    crate: { kind: 'prop', rig: 'object', role: 'prop', shape: 'box', w: 44, h: 44, name: 'Crate', ask: 'Draw a crate to stack', about: 'Every block in the tower is one of these.', priority: 3 },
+    crate: { kind: 'prop', rig: 'object', role: 'prop', shape: 'box', w: 44, h: 44, name: 'Crate', ask: 'Draw a crate to stack', about: 'Every block in the tower is one of these.', priority: 3, required: true },
     ball: { kind: 'prop', role: 'prop', shape: 'ellipse', w: 40, h: 40, name: 'Ball', ask: 'Draw a bouncy ball', about: 'Press R and a hundred of them fall.', priority: 4 },
     city: { kind: 'background', role: 'background', w: 960, h: 540, name: 'City at night', ask: 'Draw the city behind the tower', required: false, priority: 5 },
     boulder: { kind: 'prop', role: 'prop', shape: 'ellipse', w: 92, h: 92, name: 'Boulder', ask: 'Draw a boulder for the wrecking ball', spare: true },
@@ -111,7 +111,8 @@ class Game extends Amble.Scene {
     const standY = HOOK_Y - this.size / 2 - 33;
     this.carry?.setPosition(x, HOOK_Y);
     this.rope.setPosition(x, 0).setDisplaySize(3, HOOK_Y - this.size / 2);
-    if (this.controls.pressed('jump')) this.drop();
+    // The key press that starts the game doesn't count as a drop.
+    if (this.controls.pressed('jump') && this.clock > 300) this.drop();
     if (this.riding) this.wobbles.setPosition(x, standY);
     if (!this.riding && !this.hopFrom && this.carry && this.clock - this.landedAt > 1300) this.hop();
     if (this.hopFrom) {
