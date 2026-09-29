@@ -90,3 +90,30 @@ export function routeTitleKey(route: Route): MessageKey {
 export function hasGame(route: Route): boolean {
   return route.name === 'world' || route.name === 'code' || route.name === 'handin';
 }
+
+/**
+ * Which screen a route shows, as a stable key: a screen keeps its state across small route changes (a
+ * settings section, the Hand in sheet over its world), and toasts belong to one.
+ */
+export function screenKeyOf(route: Route): string {
+  switch (route.name) {
+    case 'world':
+      return `world:${route.id}`;
+    case 'handin':
+      return `world:${route.worldId}`;
+    case 'draw':
+      return `draw:${route.worldId}:${route.key}`;
+    case 'drawFree':
+      return `draw:${route.artId}`;
+    case 'bones':
+      return `bones:${route.worldId}:${route.key}`;
+    case 'bonesFree':
+      return `bones:${route.artId}`;
+    case 'code':
+      return `code:${route.worldId}`;
+    case 'trail':
+      return 'trail';
+    default:
+      return route.name;
+  }
+}

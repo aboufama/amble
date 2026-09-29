@@ -4,14 +4,14 @@
  * and saves them through `onPrefsChange`. Settings writes them with `setPref`.
  */
 import { BUILD } from '../app/env';
-import { mergeValid, PREFS_FIELDS } from '../model/guards';
+import { isRecord, mergeValid, PREFS_FIELDS, themeOf } from '../model/guards';
 import type { Prefs } from '../model/types';
 import { getState, setState } from './store';
 
 /** School builds start quiet: UI sounds off and games muted (25 Chromebooks in one room). */
 export function defaultPrefs(school: boolean = BUILD.school): Prefs {
   return {
-    theme: 'night',
+    theme: 'original',
     reduceMotion: 'system',
     textScale: 1,
     extraSpacing: false,
@@ -37,9 +37,18 @@ export function initialPrefs(): Prefs {
   return defaultPrefs();
 }
 
+/**
+ * Stored prefs from earlier builds: their Night and Day themes are both the Original colours now (the
+ * student who chose High contrast keeps it).
+ */
+function migrate(stored: unknown): unknown {
+  if (isRecord(stored) && (stored.theme === 'night' || stored.theme === 'day')) return { ...stored, theme: 'original' };
+  return stored;
+}
+
 /** Stored prefs (possibly from an older Amble) over the defaults; invalid fields are ignored. */
 export function readPrefs(stored: unknown): Prefs {
-  return mergeValid(defaultPrefs(), stored, PREFS_FIELDS);
+  return mergeValid(defaultPrefs(), migrate(stored), PREFS_FIELDS);
 }
 
 type PrefsListener = (prefs: Prefs) => void;
@@ -51,8 +60,10 @@ export function onPrefsChange(fn: PrefsListener | null): void {
 }
 
 export function setPrefs(patch: Partial<Prefs>): void {
+  // A theme written by older code (or a test hook) as 'night' or 'day' means the Original colours.
+  const next = 'theme' in patch ? { ...patch, theme: themeOf(patch.theme) } : patch;
   setState((s) => {
-    Object.assign(s.prefs, patch);
+    Object.assign(s.prefs, next);
   });
   persist?.(getState().prefs);
 }

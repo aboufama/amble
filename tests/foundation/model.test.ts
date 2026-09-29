@@ -121,11 +121,21 @@ describe('model guards', () => {
 
   it('merges stored prefs over the defaults, dropping invalid fields', () => {
     const base = samplePrefs();
-    const merged = G.mergeValid(base, { theme: 'day', textScale: 7, uiSounds: 'loud', unknown: 1 }, G.PREFS_FIELDS);
-    expect(merged.theme).toBe('day');
+    const merged = G.mergeValid(base, { theme: 'contrast', textScale: 7, uiSounds: 'loud', unknown: 1 }, G.PREFS_FIELDS);
+    expect(merged.theme).toBe('contrast');
     expect(merged.textScale).toBe(base.textScale);
     expect(merged.uiSounds).toBe(base.uiSounds);
     expect('unknown' in merged).toBe(false);
+  });
+
+  it('has two themes, Original and High contrast; the retired ones read as Original', () => {
+    expect(G.THEME_NAMES).toEqual(['original', 'contrast']);
+    for (const retired of ['night', 'day']) {
+      expect(G.PREFS_FIELDS.theme(retired)).toBe(false);
+      expect(G.themeOf(retired)).toBe('original');
+    }
+    expect(G.themeOf('contrast')).toBe('contrast');
+    expect(G.themeOf(undefined)).toBe('original');
   });
 
   it('has one guard per settings key', () => {

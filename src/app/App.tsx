@@ -14,7 +14,7 @@ import { SkipLink } from './frame/SkipLink';
 import { ToastRegion } from './frame/ToastRegion';
 import { PlayerLayer } from './player/PlayerLayer';
 import { navigate, useRoute } from './router';
-import { routeTitleKey, type Route, type RouteOf } from './routes';
+import { routeTitleKey, screenKeyOf, type Route, type RouteOf } from './routes';
 
 /** The screen groups (§8.3): each loads as its own chunk, owned by its module. */
 export const SCREEN_GROUPS = {
@@ -103,30 +103,6 @@ function RouteSwitch({ route }: { route: Route }) {
   }
 }
 
-/** A stable key per screen, so a screen keeps its state across small route changes (a settings section). */
-function screenKey(route: Route): string {
-  switch (route.name) {
-    case 'world':
-      return `world:${route.id}`;
-    case 'handin':
-      return `world:${route.worldId}`;
-    case 'draw':
-      return `draw:${route.worldId}:${route.key}`;
-    case 'drawFree':
-      return `draw:${route.artId}`;
-    case 'bones':
-      return `bones:${route.worldId}:${route.key}`;
-    case 'bonesFree':
-      return `bones:${route.artId}`;
-    case 'code':
-      return `code:${route.worldId}`;
-    case 'trail':
-      return 'trail';
-    default:
-      return route.name;
-  }
-}
-
 /** The screen key the page last showed (module scope, so StrictMode's second effect run changes nothing). */
 let shownKey: string | null = null;
 
@@ -164,7 +140,7 @@ function useFocusOnRouteChange(key: string): void {
 
 export function App() {
   const route = useRoute();
-  const key = screenKey(route);
+  const key = screenKeyOf(route);
   useFocusOnRouteChange(key);
   useEffect(() => {
     const title = t(routeTitleKey(route));

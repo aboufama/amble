@@ -14,7 +14,7 @@ function luminance(css: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-for (const theme of ['night', 'contrast'] as const) {
+for (const theme of ['original', 'contrast'] as const) {
   test(`pages print dark words on white paper (${theme} theme)`, async ({ page }) => {
     await openAmble(page, { clean: true, prefs: { theme } });
     for (const name of ['parents', 'poster', 'privacy'] as const) {

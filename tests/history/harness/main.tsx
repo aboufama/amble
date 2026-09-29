@@ -3,7 +3,7 @@
  * stand-in world view, over a world with fifteen seeded steps (drawings with stickers, dials, twists,
  * student code, AI changes with the student's words, an automatic fix). Open it on the dev server:
  *   http://localhost:5209/tests/history/harness/index.html
- *   (?many=1: 75 steps, ?compact=1, ?theme=day, ?motion=reduced, ?nogame=1: no game in the world view)
+ *   (?many=1: 75 steps, ?compact=1, ?theme=contrast, ?motion=reduced, ?nogame=1: no game in the world view)
  * `window.__harness` exposes the world id and the services for e2e tests.
  */
 import { StrictMode, useRef } from 'react';
@@ -256,7 +256,7 @@ const css = `
 async function boot(): Promise<void> {
   const services = await createServices();
   setServices(services);
-  if (params.get('theme') === 'day') setPrefs({ theme: 'day' });
+  if (params.get('theme') === 'contrast') setPrefs({ theme: 'contrast' });
   if (params.get('motion') === 'reduced') setPrefs({ reduceMotion: 'on' });
   applyHtmlPrefs(getState().prefs);
   watchLayout();

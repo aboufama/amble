@@ -1,6 +1,6 @@
 /**
- * A drawing as a sticker (§1.1, §3.4): the student's art with its baked cream die-cut edge (the sticker
- * PNG already has the edge; this adds the lift). Drawings are the only characters in Amble's UI.
+ * A drawing as a sticker (§1.1, §3.4): the student's art with its baked die-cut edge, shown flat, as
+ * Scratch shows a costume (no shadow, no tilt). Drawings are the only characters in Amble's UI.
  */
 import { cx } from '../cx';
 

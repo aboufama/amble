@@ -80,7 +80,9 @@ test.describe('app shell', () => {
     await expect(page.getByTestId('live-polite')).toHaveAttribute('aria-live', 'polite');
     await expect(page.getByTestId('live-assertive')).toHaveAttribute('aria-live', 'assertive');
     await expect(page.getByTestId('player-layer')).toHaveCount(1);
-    await expect(page.getByTestId('ai-chip')).toContainText('AI helper');
+    // The top bar is Scratch's menu bar, and never shows the AI's state.
+    await expect(page.getByTestId('ai-chip')).toHaveCount(0);
+    await expect(page.getByRole('banner')).not.toContainText('AI');
     await page.keyboard.press('Tab');
     const skip = page.getByRole('link', { name: 'Skip to main content' });
     await expect(skip).toBeFocused();
@@ -129,20 +131,20 @@ test.describe('app shell', () => {
   });
 
   test('prefs apply to the page', async ({ page }) => {
-    await openAmble(page, { prefs: { theme: 'day', textScale: 1.3, reduceMotion: 'on' } });
+    await openAmble(page, { prefs: { theme: 'contrast', textScale: 1.3, reduceMotion: 'on' } });
     const html = page.locator('html');
-    await expect(html).toHaveAttribute('data-theme', 'day');
+    await expect(html).toHaveAttribute('data-theme', 'contrast');
     await expect(html).toHaveAttribute('data-text', '1.3');
     await expect(html).toHaveAttribute('data-motion', 'reduced');
     await expect(html).toHaveAttribute('data-layout', 'full');
     // Saved to the store, so a reload keeps them.
     await page.waitForFunction(async () => {
       const prefs = await (window as unknown as { __amble: { store: { settings: { get(k: string): Promise<{ theme?: string } | null> } } } }).__amble.store.settings.get('prefs');
-      return prefs?.theme === 'day';
+      return prefs?.theme === 'contrast';
     });
     await page.reload();
     await waitForApp(page);
-    await expect(html).toHaveAttribute('data-theme', 'day');
+    await expect(html).toHaveAttribute('data-theme', 'contrast');
   });
 
   test('a starter world reaches its first frame at the world slot', async ({ page }) => {

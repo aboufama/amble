@@ -1,8 +1,9 @@
 /*
- * High contrast (Settings → Colours, as in Scratch): a full token swap. Every surface turns black with
- * white edges, a yellow accent and a 4 px focus ring, and no halos. Drawing surfaces (--sheet) stay white
- * so ink shows. Games are unaffected by themes. The stored 'night' and 'day' values from earlier builds
- * both mean the Original colours in tokens.css.
+ * High contrast (Settings → Reading → Colours, as in Scratch): a full token swap to black, white and
+ * yellow. Every surface turns black with white edges and words, the accent (primary buttons, links, the
+ * focus ring) is yellow with black words, the focus ring is 4 px, and nothing casts a shadow. Drawing
+ * surfaces (--sheet) stay white so ink shows. Games are unaffected by themes. The stored 'night' and 'day'
+ * values of earlier builds read as the Original colours in tokens.css.
  */
 :root[data-theme='contrast'] {
   color-scheme: dark;
@@ -11,6 +12,7 @@
   --bg-deep: #000000;
   --surface-top: #000000;
   --surface-bottom: #000000;
+  --surface: #000000;
   --surface-raised: #000000;
   --well: #000000;
   --line: #ffffff;
@@ -48,43 +50,70 @@
   --pencil-ink: #ffff00;
   --note: #000000;
   --sheet: #ffffff;
+  --on-sheet: #000000;
+  --on-sheet-2: #000000;
   --glow-lantern: 0 0 0 2px #ffff00;
   --glow-firefly: 0 0 0 2px #ffffff;
   --veil: rgba(0, 0, 0, 0.7);
   --scrim: rgba(0, 0, 0, 0.8);
+  --dash: #ffffff;
   --focus-ring: #ffff00;
   --focus-gap: #000000;
   --focus-width: 4px;
   --lift: none;
   --lift-sm: none;
   --lift-paper: none;
-  --tape-lemon: transparent;
-  --tape-lime: transparent;
 }
 
-/* High contrast: a 2 px edge on every control; role colours only as underlines plus words. */
-:root[data-theme='contrast'] :is(.btn, .chip, .field__input, .segmented, .toggle__switch, .slider__range, .tag, .panel, .paper, .dialog, .menu, .popover, .toast) {
+/* High contrast: a 2 px white edge on every control and surface; role colours only as underlines plus words. */
+:root[data-theme='contrast'] :is(.btn, .chip, .tag, .keycap, .field__input, .segmented, .tabs__tab, .toggle__switch, .panel, .paper, .sticky-note, .dialog, .menu, .popover, .tooltip, .toast) {
   border: 2px solid var(--line-control);
 }
 
-:root[data-theme='contrast'] .grain::after,
-:root[data-theme='contrast'] .tape {
-  display: none;
+:root[data-theme='contrast'] .tag--role {
+  border-bottom: 3px solid var(--tint, var(--line-control));
+}
+
+/* Hover shows as an underline: no greys on black. */
+:root[data-theme='contrast'] :is(.btn, .chip--button, .menu__item, .tabs__tab, .segmented__option):hover:not(:disabled) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Primary buttons stay yellow with black words: on hover, and on the (black) top bar too. */
+:root[data-theme='contrast'] .btn--lantern:hover:not(:disabled),
+:root[data-theme='contrast'] :is(.on-brand, .topbar) .btn--lantern {
+  color: var(--on-accent);
+  background: var(--accent);
+}
+
+:root[data-theme='contrast'] :is(.on-brand, .topbar) .btn[aria-pressed='true'] {
+  color: var(--on-accent);
+  background: var(--change);
+}
+
+:root[data-theme='contrast'] ::selection {
+  color: var(--on-accent);
+  background: var(--accent);
 }
 
 /* The operating system's forced colours (Windows High Contrast): let system colours through. */
 @media (forced-colors: active) {
   .btn,
   .chip,
+  .tag,
+  .keycap,
   .field__input,
   .segmented__option,
+  .tabs__tab,
   .toggle__switch,
-  .tag,
   .panel,
   .paper,
+  .sticky-note,
   .dialog,
   .menu,
   .popover,
+  .tooltip,
   .toast {
     border: 1px solid CanvasText;
     forced-color-adjust: auto;

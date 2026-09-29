@@ -91,10 +91,11 @@ test('Help & letters opens every page, and Present hides names', async ({ page }
   await expect(help.getByText('No. Amble has no server.', { exact: false })).toBeVisible();
 
   await gotoRoute(page, '#/teacher/present');
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'day');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'original');
+  await expect(page.locator('html')).toHaveAttribute('data-present', 'on');
   await expect(page.getByRole('switch', { name: 'Show names' })).not.toBeChecked();
   await page.getByRole('link', { name: 'Back to the gallery' }).click();
-  await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'day');
+  await expect(page.locator('html')).not.toHaveAttribute('data-present', 'on');
 });
 
 test('Present shows the world as big as the projector allows', async ({ page }) => {

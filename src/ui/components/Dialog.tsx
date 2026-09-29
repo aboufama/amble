@@ -2,12 +2,43 @@
  * Dialog (§3.4, §2.16): the native `<dialog>` with `showModal()`, so focus is trapped and only the top
  * dialog handles Esc. Focus returns to where it was when the dialog closes. Never `alert`, `confirm` or
  * `prompt`: use this, or `askUser`/`confirmUser`/`alertUser` from src/ui/dialogs.ts.
+ *
+ * One look for every dialog and sheet, as in Scratch: a white card with 8 px corners on the blue scrim,
+ * with a round close button.
  */
-import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { t } from '../../i18n';
 import { notifyLayers } from '../a11y';
 import { cx } from '../cx';
 import { IconButton } from './Button';
+
+/**
+ * Whether a dialog's content scrolls. A scrolling region must take keyboard focus (so the arrows scroll
+ * it) when it may hold nothing focusable, such as a long diff.
+ */
+function useScrolls(el: RefObject<HTMLElement | null>, active: boolean): boolean {
+  const [scrolls, setScrolls] = useState(false);
+  useEffect(() => {
+    const box = el.current;
+    if (!active || !box || typeof ResizeObserver === 'undefined') return;
+    const check = () => setScrolls(box.scrollHeight > box.clientHeight + 1);
+    const sizes = new ResizeObserver(check);
+    const watch = () => {
+      sizes.disconnect();
+      sizes.observe(box);
+      for (const child of box.children) sizes.observe(child);
+      check();
+    };
+    const content = typeof MutationObserver === 'undefined' ? null : new MutationObserver(watch);
+    content?.observe(box, { childList: true });
+    watch();
+    return () => {
+      sizes.disconnect();
+      content?.disconnect();
+    };
+  }, [el, active]);
+  return scrolls;
+}
 
 export type CloseReason = 'escape' | 'close' | 'backdrop';
 
@@ -21,7 +52,7 @@ export interface DialogProps {
   /** Buttons, right-aligned at the bottom. */
   actions?: ReactNode;
   size?: 'sm' | 'md' | 'lg';
-  /** 'paper' for cards that are the student's (the AI explainer, the crisis card). */
+  /** Retired: every dialog has the same neutral look now. Accepted from older callers and ignored. */
   tone?: 'night' | 'paper';
   /** A close button in the corner (default true). */
   closeButton?: boolean;
@@ -41,7 +72,6 @@ export function Dialog({
   children,
   actions,
   size = 'md',
-  tone = 'night',
   closeButton = true,
   dismissOnBackdrop = false,
   initialFocus,
@@ -49,10 +79,12 @@ export function Dialog({
   variant = 'dialog',
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const returnTo = useRef<HTMLElement | null>(null);
   const close = useRef(onClose);
   close.current = onClose;
+  const scrolls = useScrolls(content, open);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -101,7 +133,7 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      className={cx('dialog', `dialog--${size}`, `dialog--${tone}`, `dialog--${variant}`, tone === 'paper' && 'on-paper', className)}
+      className={cx('dialog', `dialog--${size}`, `dialog--${variant}`, className)}
       aria-labelledby={titleId}
       onClick={(e) => {
         if (dismissOnBackdrop && e.target === ref.current) close.current('backdrop');
@@ -115,7 +147,15 @@ export function Dialog({
             </h2>
             {closeButton && <IconButton icon="close" label={t('common.close')} size={38} tooltip={false} className="dialog__close" onClick={() => close.current('close')} />}
           </div>
-          <div className="dialog__content">{children}</div>
+          <div
+            ref={content}
+            className="dialog__content"
+            tabIndex={scrolls ? 0 : undefined}
+            role={scrolls ? 'region' : undefined}
+            aria-labelledby={scrolls ? titleId : undefined}
+          >
+            {children}
+          </div>
           {actions && <div className="dialog__actions">{actions}</div>}
         </div>
       )}
