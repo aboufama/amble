@@ -34,6 +34,8 @@ import { createLink } from './link';
 import { loadArt, loadFonts, loadSounds, runFiles, runStart } from './load';
 import { hideErrorPanel, hideSoundChip, showSoundChip } from './overlay';
 import { editorHandler, type EditorShell } from './editor';
+// The World screen's Change mode and friends register their handler (step 5 of the protocol).
+import '../editor';
 import { currentGame, patchPhaser, renderOnly, retire, stepFrame } from './patches';
 import { runRobot, type RobotRecorder } from './robot';
 import { readStandalone, showPlayCard } from './standalone';
