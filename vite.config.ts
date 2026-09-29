@@ -116,6 +116,8 @@ export default defineConfig(({ mode }) => {
     test: {
       include: ['tests/**/*.test.ts', 'server/**/*.test.ts'],
       environment: 'node',
+      // CSS reaches tests as text (`?raw`), so the token and style checks read the real stylesheets.
+      css: { include: [/\.css/] },
     },
   };
 });

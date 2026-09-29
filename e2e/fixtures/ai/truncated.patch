@@ -1,0 +1,44 @@
+@@amble-patch 1
+@@summary I built a boss fight on the moon: run, jump, dash and blast the Moon King.
+@@play Arrow keys to run, Space to jump twice, X to shoot. Beat all three phases.
+@@next Make the Moon King stomp|Add a second boss|Give the hero a shield
+@@safety ok
+@@file game.js replace
+// The Moon King: run, double-jump, dash and blast a giant boss through three phases.
+class Game extends Amble.Scene {
+  static config = { title: 'The Moon King', subtitle: 'Run, jump, dash and blast!', physics: 'arcade', gravity: 1500, background: '#151843' };
+  static art = {
+    hero: { kind: 'character', rig: 'biped', role: 'hero', w: 40, h: 64, facing: 'right', name: 'Pip', ask: 'Draw your hero', about: 'Your hero. Runs, jumps and shoots.', pronoun: 'them', priority: 1, required: true },
+    moonKing: { kind: 'character', rig: 'blob', role: 'boss', w: 200, h: 180, facing: 'left', name: 'The Moon King', ask: 'Draw the Moon King, a giant grumpy boss', about: 'A huge boss with three phases.', pronoun: 'him', priority: 2, required: true },
+    grumble: { kind: 'character', rig: 'blob', role: 'enemy', w: 46, h: 40, facing: 'left', name: 'Grumble', ask: 'Draw a Grumble, a little moon rock', about: 'Grumbles chase you in phase 2.', pronoun: 'them', priority: 3, required: true },
+    star: { kind: 'item', role: 'item', w: 28, h: 28, name: 'Star shard', ask: 'Draw a star shard', about: 'It makes your shots bigger.', pronoun: 'it', priority: 4, required: false },
+    ground: { kind: 'terrain', role: 'terrain', w: 32, h: 32, name: 'Ground', ask: 'Draw the moon ground', about: 'Made by the game until you draw it.', pronoun: 'it', priority: 8, required: false },
+    ledge: { kind: 'terrain', role: 'terrain', w: 32, h: 16, name: 'Ledge', ask: 'Draw a floating ledge', about: 'Made by the game until you draw it.', pronoun: 'it', priority: 8, required: false },
+    shot: { kind: 'projectile', role: 'projectile', w: 26, h: 10, name: 'Star shot', ask: 'Draw your shot', about: 'What you shoot.', pronoun: 'it', priority: 6, required: false },
+    orb: { kind: 'projectile', role: 'enemyShot', w: 18, h: 18, name: 'Moon orb', ask: 'Draw a moon orb', about: 'What the Moon King throws.', pronoun: 'it', priority: 7, required: false },
+  };
+  static dials = {
+    jump: { label: 'Jump height', value: 720, min: 400, max: 1100, step: 20, live: true, words: 'hop bounce float', for: 'hero' },
+    bossHp: { label: 'Moon King health', value: 150, min: 50, max: 400, step: 10, live: false, words: 'boss health life', for: 'moonKing' },
+    orbSpeed: { label: 'Orb speed', value: 240, min: 120, max: 420, step: 10, live: true, words: 'bullets fast slow', for: 'moonKing' },
+  };
+
+  create() {
+    this.parallax([{ draw: 'stars', factor: 0.02, speed: 8 }, { draw: 'hills', color: '#2a2e6e', factor: 0.25, y: 380, height: 160 }]);
+    this.level([
+      '', '', '', '', '', '', '',
+      '            ======            ',
+      '', '', '',
+      '   ======            ======   ',
+      '', '', '',
+      '##############################',
+      '##############################',
+    ], { tile: 32, legend: { '#': 'ground', '=': { key: 'ledge', oneWay: true, height: 16 } } });
+
+    this.player = this.spawnHero(140, 420, 'hero', { hp: 5 })
+      .platformer({ speed: 330, jump: () => this.dial.jump, jumps: 2, dash: true })
+      .shooter({ key: 'shot', every: 110, aim: '8way', speed: 980 });
+    this.ui.hearts(this.player);
+
+    this.boss = this.spawnEnemy(720, 190, 'moonKing', { boss: true, hp: this.dial.bossHp });
+    this.boss.lookAt(this.player);
