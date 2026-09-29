@@ -147,9 +147,17 @@ canvas {
   --focus-gap: #000000;
 }
 
-main:focus-visible,
 [tabindex='-1']:focus-visible {
   outline-offset: -3px;
+}
+
+/*
+ * Landmarks take focus only so that it moves there (a route change focuses the new screen's main, the skip
+ * link and F6 too): they are not controls, so they draw no ring; what is inside them shows its own focus.
+ */
+:is(main, header, aside, [role='main'], [role='banner'], [role='complementary'], [data-region='cast'])[tabindex='-1']:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 /* ---------- type styles ---------- */
