@@ -1,4 +1,4 @@
-import { get } from 'idb-keyval';
+import { del, get } from 'idb-keyval';
 import type { LegacyProject } from './types';
 
 /** The old editor autosaved its one project under this key, in idb-keyval's default store. */
@@ -149,6 +149,29 @@ async function readOldStore(key: string): Promise<unknown> {
     if (!databases.some((db) => db.name === LEGACY_DATABASE)) return undefined;
   }
   return get(key);
+}
+
+/**
+ * Forgets the old editor's autosave, for "Delete everything Amble keeps on this Chromebook": after it, the
+ * next student on a shared Chromebook is not offered the last one's old drawings. Only its one key goes,
+ * never the database, which idb-keyval shares with anything else on this origin; and where the browser
+ * can list its databases, a missing one is not created. `remove` replaces the IndexedDB delete in tests.
+ */
+export async function forgetLegacyAutosave(remove: (key: string) => Promise<void> = removeFromOldStore): Promise<void> {
+  try {
+    await remove(LEGACY_AUTOSAVE_KEY);
+  } catch {
+    // Storage blocked or no old store: nothing is kept there.
+  }
+}
+
+async function removeFromOldStore(key: string): Promise<void> {
+  if (typeof indexedDB === 'undefined') return;
+  if (typeof indexedDB.databases === 'function') {
+    const databases = await indexedDB.databases();
+    if (!databases.some((db) => db.name === LEGACY_DATABASE)) return;
+  }
+  await del(key);
 }
 
 /**
