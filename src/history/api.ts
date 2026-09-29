@@ -1,10 +1,17 @@
 /**
- * Footsteps (§2.9, §4.5, §8.4; M9 owns). FOUNDATION-STUB: `record` and `goBack` append a StepSummary and
- * move `head` but store no snapshot; `diff` is empty; `attribute` credits every changed file to `by`.
+ * Footsteps (§2.9, §4.5, §8.4; M9): one append-only timeline per world. `record` snapshots the world and
+ * appends a step (merging dial bursts), `goBack` restores a snapshot and appends a step, `diff` says what
+ * a step changed, and `attribute` keeps each code line's author (starter, AI, student or teacher).
  */
-import { t } from '../i18n';
+import { getServices } from '../app/services';
+import { extractManifest, sourceFilesOf } from '../cores/ai';
 import { uid } from '../model/ids';
-import type { Author, CodeFile, StepDiff, StepId, StepInput, World } from '../model/types';
+import type { Author, CodeFile, StepDiff, StepId, StepInput, StepSnapshot, World } from '../model/types';
+import type { Store } from '../store/api';
+import { stepDiff } from './diff';
+import { goBack } from './goBack';
+import { attribute } from './provenance';
+import { ensureHead, parentOf, record, type HistoryDeps } from './record';
 
 export interface HistoryApi {
   /** Snapshots the world (code, cast, art versions, sounds, dials, twists), appends a step, merges dial bursts; returns the new world. */
@@ -13,33 +20,65 @@ export interface HistoryApi {
   goBack(world: World, to: StepId): Promise<World>;
   /** Per-file unified diff + drawing changes. */
   diff(world: World, step: StepId): Promise<StepDiff>;
-  /** Provenance runs (Myers line diff). */
+  /** Provenance runs (Myers line diff); teacher locks travel with their lines. */
   attribute(prev: CodeFile[], next: CodeFile[], by: Author): CodeFile[];
+  /**
+   * An addition to the spec's interface: gives the step a world is at a snapshot if it has none (worlds are
+   * born with a first step but no snapshot). Call it when a world opens; it is cheap when there is one.
+   */
+  ensureHead(world: World): Promise<void>;
 }
 
-function lineCount(source: string): number {
-  return source === '' ? 0 : source.split('\n').length;
+export interface HistoryOptions {
+  /** The store (default: the app's, read at call time). */
+  store?: () => Store;
+  now?: () => number;
+  newId?: () => StepId;
 }
 
-function append(world: World, step: StepInput): World {
-  const id = uid('s_');
-  const summary = { id, at: Date.now(), ...step };
-  return { ...world, steps: [...world.steps, summary], head: id, updatedAt: summary.at };
+/** The dial defaults a snapshot's code declares (`static dials`), for dials the student never moved. */
+function dialDefaults(snap: StepSnapshot): Record<string, number> {
+  try {
+    const dials = extractManifest(sourceFilesOf(snap.code)).statics.dials;
+    const out: Record<string, number> = {};
+    if (dials && typeof dials === 'object') {
+      for (const [key, spec] of Object.entries(dials as Record<string, unknown>)) {
+        const value = (spec as { value?: unknown } | null)?.value;
+        if (typeof value === 'number') out[key] = value;
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }
 
-export function createHistoryStub(): HistoryApi {
+export function createHistory(o: HistoryOptions = {}): HistoryApi {
+  const deps: HistoryDeps = {
+    store: o.store ?? (() => getServices().store),
+    now: o.now ?? (() => Date.now()),
+    newId: o.newId ?? (() => uid('s_')),
+  };
   return {
-    record: async (world, step) => append(world, step),
-    goBack: async (world, to) => {
-      const target = world.steps.find((s) => s.id === to);
-      return append(world, { kind: 'goback', by: 'student', text: target ? t('common.wentBack', { step: target.text }) : t('common.wentBackStep') });
+    record: (world, step) => record(deps, world, step),
+    goBack: (world, to) => goBack(deps, world, to),
+    async diff(world, stepId) {
+      const store = deps.store();
+      const parent = parentOf(world, stepId);
+      const [after, before] = await Promise.all([store.steps.get(stepId), parent ? store.steps.get(parent.id) : Promise.resolve(null)]);
+      if (!after) return { files: [], drawings: [], dials: [] };
+      const defaults = before ? { ...dialDefaults(before), ...dialDefaults(after) } : {};
+      return stepDiff(before, after, defaults);
     },
-    diff: async () => ({ files: [], drawings: [], dials: [] }),
-    attribute: (prev, next, by) =>
-      next.map((file) => {
-        const before = prev.find((p) => p.path === file.path);
-        if (before && before.source === file.source) return { ...file, authors: before.authors };
-        return { ...file, authors: lineCount(file.source) ? [[by, lineCount(file.source)]] : [] };
-      }),
+    attribute,
+    async ensureHead(world) {
+      await ensureHead(deps, world);
+    },
   };
 }
+
+/**
+ * services.ts (FOUNDATION) builds the history with this name; it is the real history now, reading the
+ * app's store at call time. INTEGRATION can switch the call to `createHistory()`.
+ */
+export const createHistoryStub = createHistory;

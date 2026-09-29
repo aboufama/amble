@@ -1,0 +1,853 @@
+/*
+ * Look inside (§2.12): the code panel on the left, the running world (520x293) and help on the right.
+ * Code colours are tokens mapped per theme here, so the editor follows Night, Day and High contrast.
+ */
+
+.code-screen {
+  --code-bg: var(--well);
+  --code-text: var(--text);
+  --code-punct: var(--text-2);
+  --code-comment: var(--text-2);
+  --code-keyword: var(--change);
+  --code-atom: var(--change);
+  --code-number: var(--accent);
+  --code-string: var(--alive);
+  --code-class: var(--paper-3);
+  --code-call: var(--text);
+  --code-def: var(--text);
+  --code-prop: var(--text);
+  --code-gutter-text: var(--text-2);
+  --code-selection: color-mix(in srgb, var(--accent) 24%, transparent);
+  --code-selection-match: color-mix(in srgb, var(--accent) 12%, transparent);
+  --code-active-line: color-mix(in srgb, var(--text) 4%, transparent);
+  --code-bracket: color-mix(in srgb, var(--alive) 16%, transparent);
+  --code-search: color-mix(in srgb, var(--accent) 30%, transparent);
+  --code-student: var(--accent);
+}
+
+:root[data-theme='day'] .code-screen {
+  --code-bg: var(--surface-raised);
+  --code-number: var(--accent-border);
+  --code-class: var(--ink-2);
+  --code-student: var(--accent-border);
+  --code-selection: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.code-screen .screen__main {
+  display: flex;
+  padding: 6px 0 20px 20px;
+  overflow: hidden;
+}
+
+.code-screen .screen__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 560px;
+  padding: 6px 20px 20px;
+  overflow: hidden;
+  border: 0;
+  background: none;
+}
+
+:root[data-layout='touch'] .code-screen .screen__aside {
+  width: 516px;
+  padding: 6px 16px 16px;
+}
+
+:root[data-layout='touch'] .code-screen .screen__main {
+  padding: 6px 0 16px 16px;
+}
+
+:root[data-layout='small'] .code-screen .screen__aside {
+  width: 400px;
+  padding: 6px 14px 14px;
+}
+
+:root[data-layout='small'] .code-screen .screen__main {
+  padding: 6px 0 14px 14px;
+}
+
+:root[data-layout='portrait'] .code-screen .screen__aside {
+  width: auto;
+  padding: 0 16px 16px;
+}
+
+:root[data-layout='portrait'] .code-screen .screen__main {
+  min-height: 70vh;
+  padding: 6px 16px 14px;
+}
+
+/* ---------------------------------------------------------------- the world, still running */
+
+.code-world {
+  position: relative;
+  flex: none;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-world);
+  background: radial-gradient(ellipse at 50% 35%, var(--bg-lift), var(--bg-deep) 75%);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent),
+    0 0 26px color-mix(in srgb, var(--accent) 14%, transparent);
+  overflow: hidden;
+}
+
+.code-world__idle {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+}
+
+.code-world__title {
+  font: var(--type-heading);
+  color: var(--text-2);
+}
+
+/* ---------------------------------------------------------------- the code panel */
+
+.code-main {
+  --line-control: var(--line-control-panel);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent),
+    var(--lift);
+  overflow: hidden;
+}
+
+.code-main__header {
+  padding: 14px 18px 2px;
+  font: 600 1rem/1.4 var(--font-ui);
+  color: var(--text);
+}
+
+.code-main__bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: 8px 14px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.code-main__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--s2);
+  padding-bottom: 8px;
+}
+
+.code-tabs {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.code-tab {
+  position: relative;
+  top: 1px;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px 12px 0 0;
+  font: 500 0.875rem/1 var(--font-code);
+  color: var(--text-2);
+  background: transparent;
+  cursor: pointer;
+}
+
+.code-tab:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+.code-tab--on {
+  color: var(--text);
+  background: var(--code-bg);
+  box-shadow:
+    inset 0 2px 0 var(--accent),
+    inset 1px 0 0 var(--line),
+    inset -1px 0 0 var(--line);
+}
+
+.code-tab:focus-visible {
+  outline-offset: -3px;
+}
+
+.code-tab__edited {
+  display: inline-flex;
+  color: var(--code-student);
+}
+
+.code-main__editor {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--code-bg);
+}
+
+.code-main__editor .cm-editor {
+  height: 100%;
+}
+
+.code-main__editor:has(.cm-focused) {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.code-main__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  font: var(--type-label);
+  color: var(--text-2);
+}
+
+/* ---------------------------------------------------------------- run bar */
+
+.run-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: 52px;
+  padding: 4px 14px 4px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-bottom);
+}
+
+.run-bar__status {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font: var(--type-label);
+}
+
+.run-bar__icon {
+  flex: none;
+}
+
+.run-bar--alive .run-bar__icon {
+  color: var(--alive);
+}
+
+.run-bar--accent .run-bar__icon {
+  color: var(--code-student);
+}
+
+.run-bar--warn .run-bar__icon {
+  color: var(--warn);
+}
+
+.run-bar__text {
+  min-width: 0;
+}
+
+.run-bar__show {
+  flex: none;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.run-bar__keys,
+.run-bar__draft {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.run-bar__draft {
+  flex: 0 1 auto;
+  color: var(--text);
+}
+
+.run-bar__draft .icon {
+  color: var(--ai);
+}
+
+/* ---------------------------------------------------------------- empty and missing */
+
+.code-empty {
+  display: grid;
+  flex: 1;
+  place-content: center;
+  justify-items: center;
+  gap: var(--s3);
+  padding: var(--s8);
+  text-align: center;
+}
+
+.code-empty__title {
+  font: var(--display-m);
+}
+
+.code-empty__body {
+  max-width: 34ch;
+  font: var(--type-body);
+  color: var(--text-2);
+}
+
+/* ---------------------------------------------------------------- help */
+
+.panel.code-help {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px 16px 10px;
+}
+
+.code-help__scroll {
+  flex: 1;
+  min-height: 0;
+  margin-right: -8px;
+  padding-right: 8px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.code-help__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font: var(--type-heading);
+}
+
+.code-help__title + * + .code-help__title,
+.code-help__title:not(:first-child) {
+  margin-top: 14px;
+}
+
+.code-help__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--r-chip);
+  font: 700 0.75rem/1 var(--font-ui);
+  color: var(--on-accent);
+  background: var(--accent);
+}
+
+.code-help__count--error {
+  color: var(--bg-deep);
+  background: var(--warn);
+}
+
+.code-help__none,
+.code-help__hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: var(--type-body);
+  color: var(--text-2);
+}
+
+.code-help__none .icon {
+  color: var(--alive);
+}
+
+.code-help__problems {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 6px 6px 4px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.problem__jump {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: 8px;
+  min-height: var(--target);
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 10px;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  cursor: pointer;
+}
+
+.problem__jump:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.problem__icon {
+  grid-row: span 2;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.problem--error .problem__icon {
+  color: var(--warn);
+}
+
+.problem__where {
+  font: var(--type-caps);
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.problem__text {
+  font: 400 0.9375rem/1.4 var(--font-ui);
+}
+
+.problem__text code {
+  padding: 0 4px;
+  border-radius: 4px;
+  font: var(--type-code-diff);
+  font-variant-ligatures: none;
+  background: var(--code-bg);
+}
+
+.problem__fix {
+  flex: none;
+  align-self: center;
+}
+
+.code-help__cursor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.code-help__doc {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--code-bg);
+  box-shadow: inset 3px 0 0 var(--change);
+}
+
+.code-help__doc code {
+  display: block;
+  font: var(--type-code-diff);
+  font-variant-ligatures: none;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.code-help__doc p {
+  margin-top: 4px;
+  font: var(--type-body);
+  color: var(--text-2);
+}
+
+.code-help__art {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: var(--type-label);
+}
+
+.code-help__art-chip {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--code-bg);
+}
+
+.code-help__art-chip img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.code-help__art-chip--bones {
+  background: color-mix(in srgb, var(--tint, var(--tint-prop)) 45%, transparent);
+  box-shadow: inset 0 0 0 2px var(--dash-halo);
+  outline: 2px dashed var(--dash);
+  outline-offset: -4px;
+}
+
+.code-help__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.code-help__line b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.code-help__line--locked .icon {
+  flex: none;
+  color: var(--text);
+}
+
+.code-help__swatch {
+  display: inline-block;
+  flex: none;
+  width: 4px;
+  height: 16px;
+  margin-top: 1px;
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line-control);
+}
+
+.code-help__swatch--ai {
+  background: var(--ai);
+  box-shadow: none;
+}
+
+.code-help__swatch--student {
+  background: var(--code-student);
+  box-shadow: none;
+}
+
+.code-help__swatch--teacher {
+  background: var(--change);
+  box-shadow: none;
+}
+
+.code-help__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.code-help__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------------------------------------------------------------- inside CodeMirror */
+
+.code-screen .cm-prov-gutter .cm-gutterElement {
+  padding: 0;
+}
+
+.cm-prov {
+  width: 3px;
+  height: 100%;
+  margin: 0 5px 0 3px;
+  border-radius: 2px;
+}
+
+.cm-prov--ai {
+  background: var(--ai);
+}
+
+.cm-prov--student {
+  background: var(--code-student);
+}
+
+.cm-prov--teacher {
+  background: var(--change);
+}
+
+.code-screen .cm-prov-gutter {
+  min-width: 11px;
+}
+
+.code-screen .cm-lock-gutter .cm-gutterElement {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.cm-lock {
+  width: 16px;
+  height: 100%;
+  color: var(--text-2);
+}
+
+.cm-lock--first {
+  display: grid;
+  place-items: center;
+  color: var(--text);
+}
+
+.cm-locked-line {
+  background: color-mix(in srgb, var(--paper-line) 14%, transparent);
+}
+
+.cm-locked-note {
+  padding: 6px 10px;
+  font: var(--type-chip);
+  color: var(--ink);
+  background: var(--note);
+}
+
+.code-screen .cm-lint-marker {
+  width: 12px;
+  height: 12px;
+  margin: 5px 1px 0;
+  background-image: none;
+  content: none;
+}
+
+.code-screen .cm-lint-marker-error {
+  border-radius: 50%;
+  background: var(--warn);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 30%, transparent);
+}
+
+.code-screen .cm-lint-marker-warning {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  background: var(--accent);
+}
+
+.code-screen .cm-kid-message code {
+  padding: 0 4px;
+  border-radius: 4px;
+  font: var(--type-code-diff);
+  font-variant-ligatures: none;
+  background: var(--well);
+}
+
+.cm-kit-doc {
+  max-width: 360px;
+  padding: 8px 12px;
+}
+
+.cm-kit-doc__sig {
+  display: block;
+  font: var(--type-code-diff);
+  font-variant-ligatures: none;
+  overflow-wrap: anywhere;
+}
+
+.cm-kit-doc__line {
+  margin-top: 4px;
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.cm-art-chip {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: -3px;
+  margin-right: 3px;
+}
+
+.cm-art-chip--drawn img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+/* A just-bones key: the glyph, opening to "Draw it" under the pointer. */
+.cm-art-chip--bones {
+  gap: 3px;
+  height: 18px;
+  padding: 0 1px;
+  border: 0;
+  border-radius: var(--r-chip);
+  font: 700 0.6875rem/1 var(--font-ui);
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+
+.cm-art-chip__label {
+  display: none;
+}
+
+.cm-art-chip--bones:hover,
+.cm-art-chip--bones:focus-visible {
+  padding: 0 7px 0 2px;
+  background: var(--paper);
+}
+
+.cm-art-chip--bones:hover .cm-art-chip__label,
+.cm-art-chip--bones:focus-visible .cm-art-chip__label {
+  display: inline;
+}
+
+.cm-art-glyph__fill {
+  fill: var(--tint, var(--tint-prop));
+  fill-opacity: 0.8;
+}
+
+.cm-art-glyph__edge {
+  fill: none;
+  stroke: var(--dash);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 1.6;
+}
+
+:root[data-theme='day'] .cm-art-glyph__edge,
+.cm-art-chip--bones:hover .cm-art-glyph__edge {
+  stroke: var(--ink);
+}
+
+.cm-art-glyph__joint {
+  fill: var(--bones);
+  stroke: var(--ink);
+  stroke-width: 0.6;
+}
+
+.cm-art-peek {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  font: var(--type-chip);
+}
+
+.cm-art-peek img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+
+.cm-explain {
+  max-width: 620px;
+  margin: 6px 16px 10px 12px;
+  padding: 10px 14px 12px;
+  border-radius: 12px;
+  font: var(--type-body);
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: inset 4px 0 0 var(--change);
+  white-space: normal;
+}
+
+.cm-explain--ai,
+.cm-explain--waiting {
+  background: color-mix(in srgb, var(--ai) 13%, var(--code-bg));
+  box-shadow: inset 4px 0 0 var(--ai);
+}
+
+.cm-explain--problem {
+  box-shadow: inset 4px 0 0 var(--warn);
+}
+
+.cm-explain__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cm-explain__label {
+  font: var(--type-caps);
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.cm-explain--ai .cm-explain__label,
+.cm-explain--waiting .cm-explain__label {
+  color: var(--ai);
+}
+
+.cm-explain__close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: -6px -8px -6px 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--text-2);
+  background: none;
+  cursor: pointer;
+}
+
+.cm-explain__close:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.cm-explain__text {
+  margin-top: 4px;
+}
+
+.cm-explain--waiting .cm-explain__text {
+  color: var(--text-2);
+  animation: explain-breathe 1.6s var(--ease-soft) infinite alternate;
+}
+
+@keyframes explain-breathe {
+  to {
+    opacity: 0.55;
+  }
+}
+
+:root[data-motion='reduced'] .cm-explain--waiting .cm-explain__text {
+  animation: none;
+}
+
+.cm-explain__lines,
+.cm-explain__docs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cm-explain__docs li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cm-explain__docs code {
+  font: var(--type-code-diff);
+  font-variant-ligatures: none;
+  overflow-wrap: anywhere;
+}
+
+.cm-explain__docs span {
+  font: var(--type-meta);
+  color: var(--text-2);
+}
