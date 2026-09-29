@@ -66,7 +66,39 @@ interface SmallBar {
   fill: Phaser.GameObjects.Rectangle;
 }
 
-type Bar = BossBar | Hearts | SmallBar;
+/** A labelled gauge for any number (fuel, ammo, heat), stacked at the top left under the hearts. */
+interface MeterBar {
+  kind: 'meter';
+  label: string;
+  /** Read every frame: the number the game gave last, or its function. */
+  read: () => number;
+  max: number;
+  /** Where the game put it; null stacks it with the other meters. */
+  at: Point | null;
+  w: number;
+  shown: number;
+  frame: Phaser.GameObjects.Rectangle;
+  fill: Phaser.GameObjects.Rectangle;
+  shine: Phaser.GameObjects.Rectangle;
+  text: Phaser.GameObjects.Text;
+  /** 'full', 'low' (a quarter or less) or 'empty', for the text mirror. */
+  level: 'full' | 'mid' | 'low' | 'empty';
+  handle: Meter;
+}
+
+/** What `ui.meter()` returns. */
+export interface Meter {
+  value: number;
+  max: number;
+  set(value: number | (() => number), max?: number): Meter;
+  remove(): void;
+}
+
+type Bar = BossBar | Hearts | SmallBar | MeterBar;
+
+const METER_W = 150;
+const METER_H = 12;
+const METER_ROW = 26;
 
 export class Ui {
   readonly s: Phaser.Scene;
@@ -210,6 +242,7 @@ export class Ui {
     const icons = Array.from({ length: Math.min(12, obj.maxHp || 3) }, (_, i) => this.s.add.image(26 + i * 30, 28, 'amble-fx', 'heart').setScale(1.15).setDepth(7000));
     const bar: Hearts = { kind: 'hearts', obj, icons, last: obj.hp };
     this.bars.push(bar);
+    this.layoutMeters();
     env().post({ type: 'event', event: { kind: 'lives', value: obj.hp, max: obj.maxHp } });
     return bar;
   }
@@ -222,6 +255,106 @@ export class Ui {
     const bar: SmallBar = { kind: 'small', obj, w, bg, fill };
     this.bars.push(bar);
     return bar;
+  }
+
+  /**
+   * A labelled gauge for any number: `ui.meter('FUEL', this.fuel, 100)`. Calling it again with the same label
+   * updates that meter (every frame is fine); `value` may also be a function the meter reads every frame.
+   * Meters stack at the top left, under the hearts, unless `{ x, y }` places one.
+   */
+  meter(label: unknown, value: unknown, max: unknown = 100, o: { color?: unknown; x?: number; y?: number; width?: number } = {}): Meter {
+    const name = String(label ?? '').slice(0, 24);
+    const old = this.bars.find((b): b is MeterBar => b.kind === 'meter' && b.label === name && b.frame.active);
+    if (old) return old.handle.set(value as number | (() => number), max as number);
+    const w = Number.isFinite(o.width) && (o.width as number) > 0 ? Math.min(600, o.width as number) : METER_W;
+    const at = Number.isFinite(o.x) && Number.isFinite(o.y) ? { x: o.x as number, y: o.y as number } : null;
+    const text = this.s.add.text(0, 0, name.toUpperCase(), textStyle(16, '#ffffff', 5)).setOrigin(0, 0.5).setDepth(7004);
+    const frame = this.s.add.rectangle(0, 0, w + 6, METER_H + 6, 0x1d1233).setOrigin(0, 0.5).setDepth(7001);
+    const fill = this.s.add.rectangle(0, 0, w, METER_H, colorInt(o.color ?? 0xffd23f)).setOrigin(0, 0.5).setDepth(7002);
+    const shine = this.s.add.rectangle(0, 0, w, METER_H * 0.3, 0xffffff, 0.3).setOrigin(0, 0.5).setDepth(7003);
+    let last = 0;
+    const bar: MeterBar = {
+      kind: 'meter', label: name, read: () => last, max: 100, at, w, shown: -1, frame, fill, shine, text, level: 'full',
+      handle: {
+        get value() {
+          return last;
+        },
+        get max() {
+          return bar.max;
+        },
+        set: (v, m) => {
+          if (typeof v === 'function') bar.read = () => Number(v());
+          else {
+            const n = Number(v);
+            // A NaN (a number the game never set) keeps the meter where it was.
+            if (Number.isFinite(n)) last = n;
+            bar.read = () => last;
+          }
+          const mx = Number(m);
+          if (m !== undefined && Number.isFinite(mx) && mx > 0) bar.max = mx;
+          return bar.handle;
+        },
+        remove: () => {
+          const i = this.bars.indexOf(bar);
+          if (i >= 0) this.bars.splice(i, 1);
+          for (const g of [frame, fill, shine, text]) g.destroy();
+          this.layoutMeters();
+        },
+      },
+    };
+    bar.handle.set(value as number | (() => number), max as number);
+    this.bars.push(bar);
+    this.layoutMeters();
+    this.tickMeter(bar);
+    this.mirror(`${name}: ${Math.round(this.meterValue(bar))} of ${Math.round(bar.max)}`);
+    return bar.handle;
+  }
+
+  private meterValue(b: MeterBar): number {
+    let v: number;
+    try {
+      v = b.read();
+    } catch {
+      v = NaN;
+    }
+    return Number.isFinite(v) ? v : b.shown >= 0 ? b.shown * b.max : 0;
+  }
+
+  /**
+   * Stacked meters sit under the hearts (when there are hearts) in the order they were made, their bars lined
+   * up after the longest label; a meter the game placed keeps its bar right after its own label.
+   */
+  private layoutMeters(): void {
+    const meters = this.bars.filter((b): b is MeterBar => b.kind === 'meter');
+    const top = this.bars.some((b) => b.kind === 'hearts') ? 62 : 26;
+    const column = Math.max(46, ...meters.filter((b) => !b.at).map((b) => b.text.width)) + 10;
+    let row = 0;
+    for (const b of meters) {
+      const x = b.at?.x ?? 20;
+      const y = b.at?.y ?? top + METER_ROW * row++;
+      b.text.setPosition(x, y);
+      const bx = x + (b.at ? Math.max(46, b.text.width) + 10 : column);
+      b.frame.setPosition(bx - 3, y);
+      b.fill.setPosition(bx, y);
+      b.shine.setPosition(bx, y - METER_H * 0.2);
+    }
+  }
+
+  private tickMeter(b: MeterBar): void {
+    const ratio = util.clamp(this.meterValue(b) / b.max, 0, 1);
+    b.shown = b.shown < 0 ? ratio : util.lerp(b.shown, ratio, 0.3);
+    if (Math.abs(b.shown - ratio) < 0.002) b.shown = ratio;
+    b.fill.width = b.w * b.shown;
+    b.shine.width = b.w * b.shown;
+    // A quarter or less pulses (steady with reduced motion); the text mirror hears when it runs low or out.
+    const low = ratio <= 0.25;
+    b.fill.setAlpha(low && ratio > 0 && !env().prefs.reducedMotion ? 0.6 + 0.4 * Math.abs(Math.sin(env().now() / 160)) : 1);
+    const level = ratio <= 0 ? 'empty' : low ? 'low' : ratio >= 1 ? 'full' : 'mid';
+    if (level !== b.level) {
+      if (level === 'empty') this.mirror(`${b.label}: empty`);
+      else if (level === 'low' && b.level !== 'empty') this.mirror(`${b.label}: low`);
+      b.level = level;
+    }
   }
 
   /** A speech bubble over something (kept on screen). */
@@ -363,6 +496,10 @@ export class Ui {
   tick(): void {
     const cam = this.k.scene.cameras.main;
     for (const b of this.bars) {
+      if (b.kind === 'meter') {
+        this.tickMeter(b);
+        continue;
+      }
       const o = b.obj;
       if (b.kind === 'hearts') {
         if (o.hp !== b.last) {

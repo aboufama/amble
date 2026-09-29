@@ -322,6 +322,8 @@ declare namespace Amble {
 
   // ---------------------------------------------------------------- the HUD (its own scene: never shaken, zoomed or slowed)
   interface Health { hp: number; maxHp: number; alive: boolean; active: boolean }
+  /** A HUD gauge (ui.meter): set it again, or take it off the HUD. */
+  interface Meter { readonly value: number; readonly max: number; set(value: number | (() => number), max?: number): Meter; remove(): void }
   interface Ui {
     text(x: number, y: number, str: string, o?: { size?: number; color?: Color; stroke?: number; originX?: number; originY?: number }): Phaser.GameObjects.Text;
     /** A big centre title: "PHASE 2!". */
@@ -336,6 +338,12 @@ declare namespace Amble {
     bossBar(obj: Health, name?: string, o?: { color?: Color; width?: number; height?: number; y?: number }): object;
     /** A small bar that floats over something. */
     bar(obj: Health & Point & { displayHeight?: number }, o?: { width?: number; color?: Color }): object;
+    /**
+     * A labelled gauge for any number (fuel, ammo, heat, oxygen), stacked at the top left under the hearts:
+     * `this.ui.meter('FUEL', this.fuel, 100)`. Call it again with the same label to update it (every frame is
+     * fine), or pass a function it reads every frame: `this.ui.meter('HEAT', () => this.heat, 10)`.
+     */
+    meter(label: string, value: number | (() => number), max?: number, o?: { color?: Color; x?: number; y?: number; width?: number }): Meter;
     /** A speech bubble, kept on screen. */
     say(obj: Point, str: string, ms?: number): void;
     /** Space or a tap moves on. */
