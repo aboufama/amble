@@ -37,6 +37,8 @@ const MOVES = [
 ] as const;
 
 const TRY_MS = 5000;
+/** How long after the world moves into the preview's slot it is stepped once to fit it. */
+const SETTLE_MS = 150;
 
 /** The bones each preview export gets (one worker call per drawing, shared by both views). */
 function useRigged(ctrl: DeskController, s: DeskState): { art: DeskArt | null; rigged: PreviewRig | null } {
@@ -195,23 +197,29 @@ function WorldView({ ctrl, setup, player, store, art, rigged, brought }: { ctrl:
   useEffect(() => {
     if (!world) return;
     let live = true;
-    // Paused only once a game is up: a game paused while it loads never shows its first frame.
-    if (worldLoaded(player, world.id)) {
+    // Paused only once a game is up (a game paused while it loads never shows its first frame). Once the
+    // game's frame has moved into the small slot, one step lets the paused game fit itself to it.
+    let settle = 0;
+    const pauseSoon = () => {
       player.pause();
       setReady(true);
-    } else {
+      settle = window.setTimeout(() => {
+        if (live) player.step(1);
+      }, SETTLE_MS);
+    };
+    if (worldLoaded(player, world.id)) pauseSoon();
+    else {
       void (async () => {
         const init = await toInitMessage(world, { mode: 'play', prefs: playerPrefsFrom(getState().prefs) });
         await player.load(init);
-        if (!live) return;
-        player.pause();
-        setReady(true);
+        if (live) pauseSoon();
       })().catch((err: unknown) => {
         if (!isSupersededLoad(err)) console.warn('The world preview could not start:', err);
       });
     }
     return () => {
       live = false;
+      clearTimeout(settle);
       clearTimeout(tryTimer.current);
       // The world gets its saved drawing back unless Bring to life swapped the new one in.
       if (swapped.current && !brought())
@@ -221,6 +229,22 @@ function WorldView({ ctrl, setup, player, store, art, rigged, brought }: { ctrl:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player, world]);
   usePlayerSlot('desk-preview', slot);
+
+  // The slot changes size (a window resize, the touch layout): one step refits the paused game.
+  useEffect(() => {
+    const el = slot.current;
+    if (!el || !ready) return;
+    let timer = 0;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(timer);
+      timer = window.setTimeout(() => player.step(1), SETTLE_MS);
+    });
+    ro.observe(el);
+    return () => {
+      clearTimeout(timer);
+      ro.disconnect();
+    };
+  }, [player, ready]);
 
   // Each new drawing goes into the world; one frame shows it.
   useEffect(() => {

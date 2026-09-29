@@ -1261,7 +1261,7 @@ body:has(.screen.desk) .toast-region {
 
 .preview__stage {
   position: relative;
-  height: 128px;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: 12px;
   background:
