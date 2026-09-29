@@ -9,7 +9,7 @@
  * starter), and the open world is updated if it is the same one.
  */
 import { getServices } from '../app/services';
-import { navigate } from '../app/router';
+import { currentRouteNow, navigate } from '../app/router';
 import type { ArtNeed } from '../cores/play';
 import { t } from '../i18n';
 import type {
@@ -28,7 +28,7 @@ import type {
 } from '../model/types';
 import { announce, showToast } from './app';
 import { markSeen } from './prefs';
-import { applyAccepted, setDial, setTwist } from './session';
+import { applyAccepted, isLoaded, loadGame, patchSession, refreshCast, setDial, setTwist } from './session';
 import { getState, setState } from './store';
 
 export interface SteerRecord {
@@ -288,6 +288,15 @@ async function applyBuild(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 
     setState((s) => {
       s.session.manifest = outcome.manifest;
     });
+    // "Build it first, draw later": the student is waiting in the world's Warm-up, so the built game (or the
+    // ladder's) takes its place now. On the Desk, the preview card loads the build itself.
+    const route = currentRouteNow();
+    const open = getState().session.world;
+    if (open && route.name === 'world' && route.id === worldId && !isLoaded(open)) {
+      patchSession({ request: null });
+      refreshCast();
+      void loadGame(open);
+    }
   }
 }
 

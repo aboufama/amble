@@ -83,6 +83,37 @@ test('an idea becomes a plan card, and Build it first opens the world in its War
   await expect.poll(() => log.tasks('build').length, { timeout: 15_000 }).toBe(1);
 });
 
+test('when the build lands while the student waits in the Warm-up, the built game replaces it on screen', async ({ page }) => {
+  test.setTimeout(300_000);
+  await openWithAi(page, { plan: 'plan-snail.json', patches: ['build-moon-king.patch'] });
+  // What the visible player is asked to run from here on (the first line of each game.js).
+  await page.evaluate(() => {
+    const w = window as unknown as { __amble: { services: { player: { load(i: unknown): Promise<unknown> } } }; __loads: string[] };
+    const p = w.__amble.services.player;
+    const load = p.load.bind(p);
+    w.__loads = [];
+    p.load = (init: unknown) => {
+      const game = (init as { files: Array<{ name: string; source: string }> }).files.find((f) => f.name === 'game.js');
+      w.__loads.push(game?.source.split('\n')[0] ?? '');
+      return load(init);
+    };
+  });
+  await sendIdea(page);
+  await expect(page.getByTestId('plan-card')).toBeVisible();
+  await page.getByTestId('plan-build').click();
+  await expect(page).toHaveURL(/#\/w\/w_[A-Za-z0-9_-]+$/);
+  const { id } = await worldOf(page);
+  const loads = () => page.evaluate(() => (window as unknown as { __loads: string[] }).__loads);
+  await expect.poll(loads, { timeout: 60_000 }).toContainEqual(expect.stringContaining('Warm-up'));
+  // The build is robot-tested and accepted in the background...
+  await expect
+    .poll(async () => (await page.evaluate((w) => (window as unknown as { __amble: AmbleLike }).__amble.store.worlds.get(w), id))?.code.map((f) => f.source.split('\n')[0]).join(' | '), { timeout: 240_000 })
+    .toContain('MOON KING');
+  // ...and the student, still on the world, now plays it instead of the Warm-up.
+  await expect.poll(async () => (await loads()).at(-1), { timeout: 60_000 }).toContain('MOON KING');
+  await expect(page).toHaveURL(new RegExp(`#/w/${id}$`));
+});
+
 test('Draw the hero while I build opens the Desk on the hero', async ({ page }) => {
   const log = await openWithAi(page, { plan: 'plan-snail.json' });
   await sendIdea(page);
