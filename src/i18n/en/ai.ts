@@ -210,7 +210,8 @@ export const ai = {
   // ---------------------------------------------------------------- What Amble sends (#/sent)
   sentTitle: 'What Amble sends',
   sentIntro: 'Every time Amble asks the AI helper something, it shows up here, exactly as it was sent. It stays on this Chromebook.',
-  sentNever: 'Never sent: your name, your drawings, your recordings, your Footsteps or your class code.',
+  sentNever: 'Never sent: your name, your recordings, your Footsteps, or your drawings (at most an outline of one, if your school allows it and you say OK).',
+  sentHeaders: "Your class code, or a key a grown-up typed, goes in a header with each request. This list doesn't keep headers.",
   sentEmpty: 'Nothing has been sent yet.',
   sentLoadFailed: "Amble couldn't read the list right now.",
   sentShow: 'Show exactly',
