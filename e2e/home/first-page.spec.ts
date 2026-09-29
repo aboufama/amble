@@ -13,21 +13,26 @@ type Amble = {
   getState(): { library: { characters: Array<{ id: string; name: string; rig: string }> } };
 };
 
-/** A little person: head, body, arms and legs, drawn with the pen like a hand would. */
+/**
+ * A little person with the big pen: head, body, arms out and legs apart, drawn with the pen like a hand
+ * would (bold enough that its bones are found every time).
+ */
 async function drawPerson(page: Page, board: Locator): Promise<void> {
+  await page.getByTestId('pen-size').click();
+  await expect(page.getByTestId('pen-size')).toHaveAccessibleName(/big/i);
   const box = await board.boundingBox();
   if (!box) throw new Error('The paper is not on screen.');
   const cx = box.width * 0.45;
-  const cy = box.height * 0.5;
+  const cy = box.height * 0.48;
   const strokes = [
-    ellipse(cx, cy - 120, 42, 40, -90, 370),
-    ellipse(cx, cy - 5, 58, 78, -90, 370),
-    line(cx - 30, cy + 62, cx - 44, cy + 170, 4),
-    line(cx + 30, cy + 62, cx + 44, cy + 170, -4),
-    line(cx - 54, cy - 30, cx - 130, cy + 20, 6),
-    line(cx + 54, cy - 30, cx + 130, cy + 20, -6),
+    ellipse(cx, cy - 122, 40, 38, -90, 370),
+    ellipse(cx, cy - 5, 56, 76, -90, 370),
+    line(cx - 26, cy + 66, cx - 58, cy + 178, 3),
+    line(cx + 26, cy + 66, cx + 58, cy + 178, -3),
+    line(cx - 52, cy - 36, cx - 140, cy + 4, 5),
+    line(cx + 52, cy - 36, cx + 140, cy + 4, -5),
   ];
-  for (const [i, path] of strokes.entries()) await stroke(page, board, humanStroke(path, { seed: i + 1, speed: 900 }), { pointer: 'pen' });
+  for (const [i, path] of strokes.entries()) await stroke(page, board, humanStroke(path, { seed: i + 1, speed: 900, p0: 0.5, p1: 0.9 }), { pointer: 'pen' });
 }
 
 test('a first doodle comes alive, gets a kind and a name, and walks into Boss fight', async ({ page }) => {
