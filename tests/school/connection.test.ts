@@ -40,6 +40,23 @@ describe('testing an AI address', () => {
     expect(entry.bytesSent).toBe(new TextEncoder().encode(String(calls[0].init.body)).length);
   });
 
+  it('logs every request it sent, when a proxy makes it try again', async () => {
+    const calls: Array<{ init: RequestInit }> = [];
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      calls.push({ init });
+      if (calls.length === 1) return reply(400, { error: { message: "Unsupported parameter: 'max_completion_tokens'", param: 'max_completion_tokens' } });
+      return reply(200, OK);
+    });
+    const store = new MemoryStore();
+    const result = await testEndpoint(SPEC, { store, timeoutMs: 5000 });
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveLength(2);
+    // The store lists the newest first.
+    const entries = (await store.ailog.list()).reverse();
+    expect(entries.map((e) => e.body)).toEqual(calls.map((c) => c.init.body));
+    expect(entries.map((e) => e.status)).toEqual(['failed', 'ok']);
+  });
+
   it('names a wrong class code, with the status', async () => {
     vi.stubGlobal('fetch', async () => reply(401, { error: { message: 'bad code' } }));
     const store = new MemoryStore();

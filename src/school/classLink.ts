@@ -114,6 +114,27 @@ export function semesterEnd(now: Date = new Date()): string {
   return isoDate(y + 1, 0, 31);
 }
 
+/** Why students could not use a link, as the Teacher desk words it. */
+export type LinkProblem = 'key' | 'unreadable' | 'long';
+
+/**
+ * Why a link would fail on a student's Chromebook, checked with the reader those Chromebooks run: `key`
+ * (something in it looks like a provider key, so it is never made), `unreadable` (students would be told
+ * the link is damaged, e.g. a class code with letters a header can't carry), `long`; null when it works.
+ */
+export function linkProblem(link: ClassLinkV1, now: Date = new Date()): LinkProblem | null {
+  let encoded: string;
+  try {
+    encoded = encodeClassLinkV1(link);
+  } catch {
+    return 'key';
+  }
+  if (encoded.length > MAX_PAYLOAD) return 'long';
+  const read = parseClassLink(`#class=${encoded}`, now);
+  if (!read || read.ok || read.reason === 'expired') return null;
+  return read.reason === 'unsafe' ? 'key' : 'unreadable';
+}
+
 /** The payload is small enough for a link (and a QR code a class can scan). */
 export function payloadFits(link: ClassLinkV1): boolean {
   try {

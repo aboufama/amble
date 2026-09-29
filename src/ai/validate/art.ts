@@ -22,6 +22,11 @@ export const SHAPES = ['box', 'ellipse', 'capsule', 'diamond', 'star', 'heart', 
 export const ART_LIMITS = { keys: 16, dials: 8, minSize: 8, maxSize: 1200, ask: 80, name: 40, label: 24 } as const;
 
 const ART_KEY = /^[a-z][A-Za-z0-9]{0,23}$/;
+/**
+ * Names every JavaScript object already has: a cast member keyed by one would shadow it in the world's cast,
+ * and a world file refuses `constructor` and `prototype` keys, so the saved world could not be opened again.
+ */
+const OBJECT_NAMES = new Set(['constructor', 'prototype', 'toString', 'toLocaleString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable']);
 
 /** What models write instead of the kit's words. */
 const ENUM_SYNONYMS: Record<string, Record<string, string>> = {
@@ -157,6 +162,8 @@ function removeField(ctx: FileContext, obj: ObjectExpression, p: Property): void
 function checkArtEntry(ctx: FileContext, e: Entry): void {
   if (!ART_KEY.test(e.key)) {
     ctx.add('error', 'art-manifest', e.prop, `Art key \`${e.key}\` must be a short camelCase word (letters and digits, starting with a lower-case letter).`, { name: e.key });
+  } else if (OBJECT_NAMES.has(e.key)) {
+    ctx.add('error', 'art-manifest', e.prop, `Art key \`${e.key}\` is a name JavaScript objects already use: pick another word for this picture.`, { name: e.key });
   }
   const obj = e.obj;
   if (!obj) {
@@ -232,6 +239,7 @@ function checkArtEntry(ctx: FileContext, e: Entry): void {
 
 function checkDialEntry(ctx: FileContext, e: Entry, artKeys: ReadonlySet<string>): void {
   if (!/^[A-Za-z_$][\w$]*$/.test(e.key)) ctx.add('error', 'dials-manifest', e.prop, `Dial \`${e.key}\` must be a plain name (it is read as this.dials.${e.key}).`, { name: e.key });
+  else if (OBJECT_NAMES.has(e.key) || e.key === '__proto__') ctx.add('error', 'dials-manifest', e.prop, `Dial \`${e.key}\` is a name JavaScript objects already use: pick another word for this dial.`, { name: e.key });
   const obj = e.obj;
   if (!obj) {
     ctx.add('error', 'dials-manifest', e.prop, `Dial \`${e.key}\` must be an object like \`{ label: 'Jump power', value: 720, min: 400, max: 1100 }\`.`, { name: e.key });

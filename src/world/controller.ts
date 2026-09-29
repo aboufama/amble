@@ -8,6 +8,7 @@
  */
 import { getServices } from '../app/services';
 import type { FromPlayer, GameEvent, GameState, WorldObject } from '../cores/play';
+import { keepGameStorage } from '../model/gameStorage';
 import type { CastKey, WorldId } from '../model/types';
 import {
   addProblem,
@@ -176,8 +177,10 @@ export class WorldController {
     this.on('event', (m) => this.onEvent(m.event));
     this.on('stats', (m) => this.onStats(m.stats.fps, m.stats.state));
     this.on('storage', (m) => {
+      // Game code decides what it saves, so the world keeps only what fits its budget (§4.8).
+      const kept = keepGameStorage(m.data);
       updateWorld((w) => {
-        w.gameStorage = m.data;
+        w.gameStorage = kept;
       }, { touch: false });
     });
     this.on('escape', () => this.hooks.onEscape());

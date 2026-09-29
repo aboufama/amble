@@ -90,10 +90,13 @@ export function district(v: unknown): DistrictInfo | undefined {
   return name ? { name, privacyUrl: httpsUrl(o.privacyUrl) ?? '', contact: str(o.contact) ?? '' } : undefined;
 }
 
-/** A class code: short and printable. It may look random, but it must not be a provider key. */
+/**
+ * A class code: short and printable (spaces inside are fine: "MAPLE 7Q2K" is a valid header value). It may
+ * look random, but it must not be a provider key.
+ */
 export function code(v: unknown): string | undefined {
-  const t = str(v, 64);
-  if (!t || !/^[\x21-\x7e]+$/.test(t)) return undefined;
+  const t = str(v, 80);
+  if (!t || !/^[\x21-\x7e](?:[\x20-\x7e]*[\x21-\x7e])?$/.test(t)) return undefined;
   return looksLikeProviderKey(t) ? undefined : t;
 }
 

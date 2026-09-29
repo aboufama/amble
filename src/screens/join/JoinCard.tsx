@@ -17,12 +17,37 @@ export function joinBody(link: Pick<ClassLinkV1, 'ai' | 'mode'>): string {
   return link.mode === 'explain' ? t('school.joinBodyExplain') : t('school.joinBody');
 }
 
+/**
+ * Where the student's words will go once the class's AI helper is on: the host of the link's AI address.
+ * The class and district names come from the link itself, so the card also names the address the words
+ * go to, and a link that points somewhere else looks different (§5.14: in the public build a class link
+ * is the whole AI configuration).
+ */
+export function joinHost(link: Pick<ClassLinkV1, 'ai' | 'mode'>): string | null {
+  if (!link.ai || link.mode === 'off') return null;
+  try {
+    return new URL(link.ai.baseUrl).host || null;
+  } catch {
+    return null;
+  }
+}
+
+function JoinHost({ link }: { link: Pick<ClassLinkV1, 'ai' | 'mode'> }) {
+  const host = joinHost(link);
+  return host ? (
+    <p className="join-card__from" data-testid="join-host">
+      {t('school.joinHost', { host })}
+    </p>
+  ) : null;
+}
+
 /** The card's words and buttons, for the dialog and the teacher's preview (where the buttons are inert). */
 export function JoinCardBody({ link }: { link: Pick<ClassLinkV1, 'cls' | 'ai' | 'mode'> }) {
   return (
     <div className="join-preview" inert>
       <p className="join-preview__title">{t('school.joinTitle', { cls: link.cls || t('school.staff_classNameExample') })}</p>
       <p className="join-preview__text">{joinBody(link)}</p>
+      <JoinHost link={link} />
       <div className="join-preview__actions">
         <span className="btn btn--lantern btn--h44">
           <span className="btn__label">{t('school.join')}</span>
@@ -91,6 +116,7 @@ export function JoinCard() {
         }
       >
         <p className="dialog__text">{joinBody(link)}</p>
+        <JoinHost link={link} />
       </Dialog>
     );
   }
@@ -114,6 +140,7 @@ export function JoinCard() {
       }
     >
       <p className="dialog__text">{joinBody(link)}</p>
+      <JoinHost link={link} />
       {link.district && <p className="join-card__from">{t('school.joinFrom', { district: link.district })}</p>}
     </Dialog>
   );

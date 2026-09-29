@@ -1,12 +1,15 @@
 /**
  * Settings → Storage (§2.15, §4.3): how much space Amble uses, Keep my worlds safe (persistent storage),
  * Save all my worlds (M6's one zip of .amble files), Lost and found, and Delete everything Amble keeps on
- * this Chromebook (typed confirmation). Old Amble's data and files saved to Drive are never touched.
+ * this Chromebook (typed confirmation). Files saved to Drive are never touched. The old editor's autosave
+ * goes too (its drawings are drawings Amble keeps here, and the wipe forgets it was already offered, so
+ * the next student would be offered them), but only its own key.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from '../../app/Link';
 import { useServices } from '../../app/services';
 import { t } from '../../i18n';
+import { forgetLegacyAutosave } from '../../legacy/reader';
 import { flushTeacherData } from '../../school/teacherData';
 import { announce, showToast } from '../../state/app';
 import { upkeepOf, type Store } from '../../store';
@@ -57,6 +60,8 @@ export async function deleteEverything(store: Store, reload: () => void = () => 
     }
   }
   if (!wiped) await deleteDatabase();
+  // The old editor's autosave too: its drawings are this Chromebook's as much as the new ones.
+  await forgetLegacyAutosave();
   clearKeys(() => localStorage);
   clearKeys(() => sessionStorage);
   try {

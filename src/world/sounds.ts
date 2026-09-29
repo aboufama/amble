@@ -20,11 +20,14 @@ const IMPLIED: Array<[RegExp, string[]]> = [
 
 const NAMED = /\b(?:sfx|sound\.play|playSound)\(\s*['"]([a-zA-Z][\w-]{0,23})['"]/g;
 
+/** Names every object already has: a world keyed by one could not be saved to a file that opens again. */
+const OBJECT_NAMES = new Set(['constructor', 'prototype', 'toString', 'toLocaleString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable']);
+
 /** The sounds a world's game plays, in a steady order: named ones first, then the kit's. */
 export function soundsUsed(code: readonly CodeFile[], overrides: Readonly<Record<string, SoundPiece>> = {}): string[] {
   const out = new Set<string>();
   const text = code.map((f) => f.source).join('\n');
-  for (const m of text.matchAll(NAMED)) out.add(m[1]);
+  for (const m of text.matchAll(NAMED)) if (!OBJECT_NAMES.has(m[1])) out.add(m[1]);
   for (const [re, names] of IMPLIED) if (re.test(text)) for (const n of names) out.add(n);
   for (const name of Object.keys(overrides)) out.add(name);
   return [...out].slice(0, 32);

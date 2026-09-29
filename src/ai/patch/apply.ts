@@ -4,7 +4,7 @@
  * the caller can ask the model to send that one file whole ("resend with replace"); the other
  * files' changes still apply.
  */
-import { ENTRY_FILE, isSafeGamePath, type GameFile } from '../gameFiles';
+import { ENTRY_FILE, isSafeGamePath, normalizeGamePath, type GameFile } from '../gameFiles';
 import { applyEdits, type EditFailureReason } from './edits';
 import type { Edit, FileOp } from './types';
 
@@ -39,10 +39,14 @@ export function applyPatch(files: readonly GameFile[], ops: readonly FileOp[], o
   const warnings: string[] = [];
   let fuzzyEdits = 0;
 
-  for (const op of ops) {
+  for (const given of ops) {
+    // A name the world doesn't have yet becomes one it can keep ("bossFight.js" -> "boss-fight.js").
+    const path = current.has(given.path) || isSafeGamePath(given.path) ? given.path : (normalizeGamePath(given.path) ?? given.path);
+    const op: FileOp = path === given.path ? given : { ...given, path };
+    if (path !== given.path) warnings.push(`${given.path} is called ${path}: file names are lowercase letters, digits and -.`);
     if (failed.has(op.path)) continue;
     if (!isSafeGamePath(op.path)) {
-      failures.push({ path: op.path, reason: 'bad-path', message: `"${op.path}" is not a valid file name: use letters, digits, - and _, ending in .js.` });
+      failures.push({ path: op.path, reason: 'bad-path', message: `"${op.path}" is not a valid file name: use lowercase letters, digits and -, starting with a letter, ending in .js.` });
       failed.add(op.path);
       continue;
     }
