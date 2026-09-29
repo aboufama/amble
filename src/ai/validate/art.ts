@@ -239,6 +239,7 @@ function checkArtEntry(ctx: FileContext, e: Entry): void {
 
 function checkDialEntry(ctx: FileContext, e: Entry, artKeys: ReadonlySet<string>): void {
   if (!/^[A-Za-z_$][\w$]*$/.test(e.key)) ctx.add('error', 'dials-manifest', e.prop, `Dial \`${e.key}\` must be a plain name (it is read as this.dials.${e.key}).`, { name: e.key });
+  else if (OBJECT_NAMES.has(e.key) || e.key === '__proto__') ctx.add('error', 'dials-manifest', e.prop, `Dial \`${e.key}\` is a name JavaScript objects already use: pick another word for this dial.`, { name: e.key });
   const obj = e.obj;
   if (!obj) {
     ctx.add('error', 'dials-manifest', e.prop, `Dial \`${e.key}\` must be an object like \`{ label: 'Jump power', value: 720, min: 400, max: 1100 }\`.`, { name: e.key });

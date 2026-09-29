@@ -11,6 +11,7 @@ import { collectWorld, packAmble, readAmble } from '../../src/files/amble';
 import { CODE_PATH_RE } from '../../src/model/ids';
 import type { CodeFile } from '../../src/model/types';
 import { MemoryStore } from '../../src/store/memory';
+import { soundsUsed } from '../../src/world/sounds';
 import { seedWorld } from '../files/fixtures';
 import { PROBE_MANIFEST } from './fixtures/probeManifest';
 
@@ -80,5 +81,20 @@ describe('art keys the game declares', () => {
     const world = { ...seed.world, cast: { ...seed.world.cast, constructor: { key: 'constructor', art: null, madeBy: null, extra: null, laterUntil: 0 } } };
     await store.commit({ worlds: [world] });
     await expect(readAmble(await packAmble(await collectWorld(store, world, 'world')))).rejects.toMatchObject({ kind: 'damaged' });
+  });
+});
+
+describe('dial and sound names from the code', () => {
+  it('never borrow a name every object already has either', () => {
+    const dials = (key: string) =>
+      `class Game extends Amble.Scene {\n  static dials = { ${key}: { label: 'Jump power', value: 720, min: 400, max: 1100 } };\n  create() {}\n}\n`;
+    for (const key of ['constructor', 'prototype', '__proto__', 'valueOf']) {
+      const v = validateGame([{ path: 'game.js', content: dials(key) }], { manifest: PROBE_MANIFEST });
+      expect(v.errors.some((i) => i.rule === 'dials-manifest' && i.message.includes(key)), key).toBe(true);
+    }
+    const code: CodeFile[] = [{ path: 'game.js', source: "this.sfx('constructor'); this.sfx('boing'); this.sfx('toString');", authors: [], locked: [] }];
+    expect(soundsUsed(code)).toContain('boing');
+    expect(soundsUsed(code)).not.toContain('constructor');
+    expect(soundsUsed(code)).not.toContain('toString');
   });
 });
