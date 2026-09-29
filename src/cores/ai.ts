@@ -8,7 +8,8 @@
  * vite.config.ts imports `assertNoKeyInEnv` from src/ai/config/secrets.ts directly: this barrel (like the
  * core's index) reads `import.meta.env` and browser APIs.
  */
-import { checkStudentText, findPii, looksLikeProviderKey, mergeLayers, readClassLink, type AiErrorKind, type ClassLink } from '../ai';
+import { checkStudentText, findPii, looksLikeProviderKey, mergeLayers, readClassLink, validateClassLink, type AiErrorKind, type ClassLink } from '../ai';
+import { isClassLinkV1 } from '../model/guards';
 import type { AiMode, AiStatus, Assignment, ClassLinkV1, CodeFile, Level, SafetyVerdict } from '../model/types';
 import type { SourceFile } from './aiCode';
 
@@ -258,19 +259,28 @@ function readSpecPayload(v: Record<string, unknown>, now: Date): ClassLinkParse 
   }
   const exp = typeof v.exp === 'string' ? v.exp : null;
   if (isExpiredOn(exp, now)) return { ok: false, reason: 'expired' };
-  return {
-    ok: true,
-    link: {
-      v: 1,
-      cls: v.cls.slice(0, 40),
-      district: typeof v.district === 'string' ? v.district.slice(0, 60) : null,
-      ai,
-      mode: AI_MODES.includes(v.mode as AiMode) ? (v.mode as AiMode) : 'on',
-      level: LEVELS.includes(v.level as Level) ? (v.level as Level) : 'middle',
-      exp,
-      asg: typeof v.asg === 'object' && v.asg !== null ? (v.asg as Assignment) : null,
-    },
+  const link: ClassLinkV1 = {
+    v: 1,
+    cls: v.cls.slice(0, 40),
+    district: typeof v.district === 'string' ? v.district.slice(0, 60) : null,
+    ai,
+    mode: AI_MODES.includes(v.mode as AiMode) ? (v.mode as AiMode) : 'on',
+    level: LEVELS.includes(v.level as Level) ? (v.level as Level) : 'middle',
+    exp,
+    asg: typeof v.asg === 'object' && v.asg !== null ? (v.asg as Assignment) : null,
   };
+  // The link comes from outside (a chat, a poster): every part must have the §4.2 shape, the assignment too.
+  if (!isClassLinkV1(link)) return { ok: false, reason: 'damaged' };
+  // And the AI core must keep it whole: its own checks refuse a key hidden in the address, and drop a
+  // header or class code it can't send, which would leave the class joined with an AI helper that fails.
+  const core = classLinkToCore(link);
+  if (core && link.ai) {
+    const checked = validateClassLink(core);
+    if (!checked.ok) return { ok: false, reason: /key|secret|token|https|safe/i.test(checked.error) ? 'unsafe' : 'damaged' };
+    const auth = link.ai.auth;
+    if (auth.type === 'class-code' && (checked.link.code !== auth.code || (checked.link.header ?? 'X-Amble-Class') !== auth.header)) return { ok: false, reason: 'damaged' };
+  }
+  return { ok: true, link };
 }
 
 /** The core's class link as the app's `ClassLinkV1`. */
