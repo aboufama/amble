@@ -783,6 +783,8 @@ export const school = {
   staff_linkCopyByHand: "Couldn't copy. The link is selected: press Ctrl+C.",
   staff_needName: "Add your class's name to make the link.",
   staff_linkTooLong: "The link is too long. Shorten the assignment's instructions.",
+  staff_keyInLink: "A key can't go in a class link: anyone with the link could use it. Use a class code from your district's AI proxy.",
+  staff_codeUnreadable: "Students' Chromebooks can't send this class code. Use letters, numbers, spaces and - only.",
   staff_worksUntilLabel: 'Works until',
   staff_changeCodeHint: '· change the code any time to switch it off',
   staff_worksAlways: '· pick a date, or change the code to switch it off',

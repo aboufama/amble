@@ -10,7 +10,7 @@ import { useServices } from '../../app/services';
 import { t } from '../../i18n';
 import type { AiMode, ClassLinkV1, Level } from '../../model/types';
 import { fitsInLink } from '../../school/assignment';
-import { capLink, classLinkHref, DEFAULT_CLASS_HEADER, DEFAULT_MODEL, payloadFits, shortHref } from '../../school/classLink';
+import { capLink, classLinkHref, DEFAULT_CLASS_HEADER, DEFAULT_MODEL, linkProblem, shortHref } from '../../school/classLink';
 import { qrScannable } from '../../school/qr';
 import { setReadyTick, updateTeacherData, useReadyTicks, useTeacherData, type ReadyItem } from '../../school/teacherData';
 import { formatSeconds, hostOf, testEndpoint, type TestResult } from '../../school/testConnection';
@@ -125,14 +125,15 @@ export function ClassLinkTab() {
 
   const nameMissing = !link.cls.trim();
   const addressBad = addressText.trim() !== '' && !validAddress(addressText.trim());
-  const fits = payloadFits(link);
+  // Checked with the reader students' Chromebooks run, so a link offered here is one they can join.
+  const problem = linkProblem(link);
   let href = '';
   try {
     href = classLinkHref(link);
   } catch {
     href = '';
   }
-  const ready = !nameMissing && !addressBad && fits && href !== '';
+  const ready = !nameMissing && !addressBad && problem === null && href !== '';
   const scannable = ready && qrScannable(href);
 
   // The live test: when the address or the class code changes (after a pause in typing).
@@ -414,7 +415,17 @@ export function ClassLinkTab() {
               </div>
             </div>
           ) : (
-            <p className="linkcard__wait">{nameMissing ? t('school.staff_needName') : addressBad ? t('school.staff_addressHttps') : t('school.staff_linkTooLong')}</p>
+            <p className="linkcard__wait">
+              {nameMissing
+                ? t('school.staff_needName')
+                : addressBad
+                  ? t('school.staff_addressHttps')
+                  : problem === 'key'
+                    ? t('school.staff_keyInLink')
+                    : problem === 'unreadable'
+                      ? t('school.staff_codeUnreadable')
+                      : t('school.staff_linkTooLong')}
+            </p>
           )}
           <div className="linkcard__exp">
             <SchoolIcon name="clock" size={16} />

@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { classLinkToCore, loadClassLink, parseClassLink, resolveAiConfig, saveClassLink } from '../../src/cores/ai';
-import { readIntake, toBase64Url } from '../../src/school/classLink';
+import { linkProblem, readIntake, toBase64Url } from '../../src/school/classLink';
 import { joinHost } from '../../src/screens/join/JoinCard';
 import { sampleAssignment, sampleClassLink } from '../foundation/samples';
 
@@ -95,5 +95,21 @@ describe('the Join card', () => {
     expect(joinHost(sampleClassLink({ ai: { baseUrl: 'https://ai.sau99.org:8443/v1', model: 'm', auth: { type: 'none' } } }))).toBe('ai.sau99.org:8443');
     expect(joinHost(sampleClassLink({ mode: 'off' }))).toBeNull();
     expect(joinHost(sampleClassLink({ ai: null }))).toBeNull();
+  });
+});
+
+describe('the Teacher desk', () => {
+  const withCode = (code: string) => sampleClassLink({ ai: { baseUrl: 'https://ai.test/v1', model: 'm', auth: { type: 'class-code', header: 'X-Amble-Class', code } } });
+
+  it('only offers a link students can join, and says why not', () => {
+    expect(linkProblem(withCode('TEST-1234'), NOW)).toBeNull();
+    expect(linkProblem(withCode('MAPLE 7Q2K'), NOW)).toBeNull();
+    expect(linkProblem(sampleClassLink({ asg: sampleAssignment() }), NOW)).toBeNull();
+    // A provider key pasted as the class code: the link is never made, and the teacher is told why.
+    expect(linkProblem(withCode('sk-proj-abcdefghijklmnopqrstuvwxyz0123456789'), NOW)).toBe('key');
+    // Letters a header can't carry: students would only see "damaged".
+    expect(linkProblem(withCode('Érable 7'), NOW)).toBe('unreadable');
+    const goals = Array.from({ length: 24 }, (_, i) => ({ id: `g_${i}`, label: `A long teacher goal number ${i} that goes on and on for a while`, kind: 'teacher' as const }));
+    expect(linkProblem(sampleClassLink({ asg: sampleAssignment({ goals }) }), NOW)).toBe('long');
   });
 });
