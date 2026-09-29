@@ -33,7 +33,7 @@ import type { ArtId, WorldMeta } from '../../model/types';
 import { announce } from '../../state/app';
 import { refreshLibrary } from '../../state/library';
 import { setPrefs } from '../../state/prefs';
-import { setComeAlive } from '../../state/session';
+import { openWorld, setComeAlive } from '../../state/session';
 import { useStore } from '../../state/store';
 import { useReducedMotion } from '../../ui/a11y';
 import { Button } from '../../ui/components';
@@ -239,8 +239,19 @@ function TrailScene({ still, lit }: SceneProps) {
   const openSign = (e: MouseEvent<HTMLAnchorElement>, route: Route, el: HTMLAnchorElement) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
-    if (route.name === 'world') transitionName(el.querySelector<HTMLElement>('.sign__frame'), 'world-view');
-    navigate(route);
+    if (route.name !== 'world') {
+      navigate(route);
+      return;
+    }
+    // The sign morphs into the world view (§2.2): the world is opened first, so the world screen shows its
+    // view straight away instead of a loading picture that has nothing to morph into.
+    const frame = el.querySelector<HTMLElement>('.sign__frame');
+    void openWorld(route.id)
+      .catch(() => null)
+      .then(() => {
+        transitionName(frame, 'world-view');
+        navigate(route);
+      });
   };
 
   const playFirst = () => {
