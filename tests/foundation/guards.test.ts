@@ -134,8 +134,9 @@ describe('source guards', () => {
   });
 
   it('keeps stub markers greppable', () => {
-    // Every FOUNDATION stub says so; INTEGRATION greps for these two markers.
-    const stubs = FILES.filter((f) => f.text.includes('FOUNDATION-STUB'));
-    expect(stubs.length).toBeGreaterThan(10);
+    // Modules replace the FOUNDATION stubs one by one, so the count falls to zero; what must hold is
+    // that any code still throwing NotBuiltYet says so with the marker INTEGRATION greps for.
+    const throwing = FILES.filter((f) => /new NotBuiltYet\(/.test(f.text) && !f.path.endsWith('model/notBuilt.ts'));
+    for (const f of throwing) expect(f.text, f.path).toContain('FOUNDATION-STUB');
   });
 });
