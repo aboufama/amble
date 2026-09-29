@@ -43,7 +43,9 @@ test('a game about a real person is refused on the device, with two kind alterna
   await page.getByRole('button', { name: 'Make up a character with a funny name' }).click();
   await expect(page.getByTestId('ai-field')).toHaveValue('Make up a character with a funny name');
   expect(ai.requests).toHaveLength(0);
-  await expect.poll(async () => (await stepTexts(page, id)).at(-1)).toBe('refused: request');
+  // Footsteps keep the category, never the words (§5.13).
+  await expect.poll(async () => (await stepTexts(page, id)).at(-1)).toBe('refused: real-person');
+  expect((await stepTexts(page, id)).join('\n')).not.toContain('Mr Smith');
 });
 
 test('personal info: Remove it, and Send anyway above elementary', async ({ page }) => {
@@ -87,7 +89,8 @@ test("the model's refusal shows the refusal card; a toned-down change shows the 
   await ask(page, 'make the fight really gross');
   expect(await outcomeOf(page, id)).toBe('refused');
   await expect(page.getByTestId('ai-refusal')).toContainText("Amble can't make that one. How about one of these?");
-  await expect.poll(async () => (await stepTexts(page, id)).at(-1)).toBe('refused: request');
+  // The AI helper said no without naming a category.
+  await expect.poll(async () => (await stepTexts(page, id)).at(-1)).toBe('refused: flagged');
 
   await ask(page, 'let me stomp on the minions');
   await expect.poll(() => ai.tasks('change').length).toBe(2);

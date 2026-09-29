@@ -175,7 +175,7 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
     }
     if (v.kind === 'refuse') {
       setLocalRefusal({ note: refusalNote(v.category), alternatives: alternativesFor(v.category, level) });
-      void noteLocalRefusal(world, 'request');
+      void noteLocalRefusal(world, v.category);
       announce(t('ai.refusedTitle'));
       return;
     }

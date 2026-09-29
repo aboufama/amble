@@ -292,7 +292,9 @@ export type AiOutcome =
   | { kind: 'accepted'; files: CodeFile[]; manifest: GameManifest; summary: string; play: string; next: string[];
       safety: SafetyNote; repairs: 0 | 1 | 2; tested: boolean; handEditsTouched: boolean; newArt: CastKey[] }
   | { kind: 'fallback'; files: CodeFile[]; manifest: GameManifest; message: string }   // build only: plan mapped onto the starter (§5.9)
-  | { kind: 'refused'; note: string; alternatives: string[] }
+  // `category` is what Footsteps keeps (§5.13): a safety category such as 'real-person', or 'flagged' when the
+  // AI service said no without one. Never the student's words.
+  | { kind: 'refused'; note: string; alternatives: string[]; category?: string }
   | { kind: 'crisis' }
   | { kind: 'failed'; reason: 'validation' | 'runtime' | 'truncated' | 'mismatch' | 'shape' | 'transport' | 'safety'; message: string; details: string[] }
   | { kind: 'unavailable'; status: AiStatus; message: string }

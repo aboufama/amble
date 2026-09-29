@@ -298,15 +298,18 @@ async function ladderCastOf(world: World, plan: PlanReply, files: World['code'])
   return ladderCast(world, mapping, resting);
 }
 
-/** A refusal is kept as a category and a time only, never the words (§5.13). */
-async function recordRefusal(worldId: WorldId, category: 'request' | 'support'): Promise<void> {
+/**
+ * A refusal is kept as a category and a time only, never the words (§5.13): `support` for a crisis, else the
+ * safety category ('real-person', 'personal-info'...), or 'flagged' when the AI service said no without one.
+ */
+async function recordRefusal(worldId: WorldId, category: string): Promise<void> {
   const world = await currentWorld(worldId);
   if (!world) return;
   await commitWorld(world, { kind: 'refused', by: 'ai', text: category === 'support' ? t('ai.stepRefusedSupport') : t('ai.stepRefused', { category }) });
 }
 
 /** A refusal or crisis the Ask card caught on the device (nothing was sent): a footstep, never the words. */
-export function noteLocalRefusal(world: World, category: 'request' | 'support'): Promise<void> {
+export function noteLocalRefusal(world: World, category: string): Promise<void> {
   return recordRefusal(world.id, category).catch((err: unknown) => console.error(err));
 }
 
@@ -317,7 +320,7 @@ async function settle(world: World, task: AiJobView['task'], words: string, outc
       else await applyChange(world.id, outcome, task, words);
     } else if (outcome.kind === 'fallback') await applyBuild(world.id, outcome, words);
     else if (outcome.kind === 'crisis') await recordRefusal(world.id, 'support');
-    else if (outcome.kind === 'refused') await recordRefusal(world.id, 'request');
+    else if (outcome.kind === 'refused') await recordRefusal(world.id, outcome.category ?? 'flagged');
   } catch (err) {
     console.error(err);
   }
