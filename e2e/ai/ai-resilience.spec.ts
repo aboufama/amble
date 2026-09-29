@@ -6,10 +6,10 @@
  */
 import { expect, openAmble, test } from '../helpers/app';
 import { mockAi } from '../helpers/mockAi';
-import { ask, askState, mountHarness, openStarterWorld, outcomeOf, pauseGame, skipExplainer, storedWorld } from './harness';
+import { ask, askState, mountHarness, openFixtureWorld, outcomeOf, pauseGame, skipExplainer, storedWorld } from './harness';
 
 async function ready(page: import('@playwright/test').Page): Promise<string> {
-  const id = await openStarterWorld(page);
+  const id = await openFixtureWorld(page);
   await mountHarness(page);
   await skipExplainer(page);
   return id;

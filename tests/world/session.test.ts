@@ -8,7 +8,7 @@ import { setServices, type Services } from '../../src/app/services';
 import { EMPTY_MANIFEST, type ArtNeed, type GameManifest } from '../../src/cores/play';
 import { createHistory } from '../../src/history/api';
 import type { AiOutcome, World } from '../../src/model/types';
-import { createStarterStub } from '../../src/starters/api';
+import { createStarterCatalog } from '../../src/starters/api';
 import { MemoryStore } from '../../src/store/memory';
 import {
   applyAccepted,
@@ -79,7 +79,7 @@ beforeEach(async () => {
   closeWorld();
   player = fakePlayer();
   store = new MemoryStore();
-  setServices({ store, player, history: createHistory(), starters: createStarterStub() } as unknown as Services);
+  setServices({ store, player, history: createHistory(), starters: createStarterCatalog() } as unknown as Services);
   world = sampleWorld({ id: 'w_session0001', cast: {}, dials: {}, twists: [] });
   await store.commit({ worlds: [world] });
   await openWorld(world.id);

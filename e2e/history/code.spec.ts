@@ -5,19 +5,20 @@
  */
 import type { Page } from '@playwright/test';
 import { expect, gotoRoute, openAmble, test, waitForApp } from '../helpers/app';
+import { openFixtureWorld } from '../helpers/fixtureWorld';
 
 interface Hook {
   store: { worlds: { get(id: string): Promise<{ code: Array<{ source: string; authors: Array<[string, number]>; locked: Array<[number, number]> }>; steps: Array<{ text: string; kind: string }> } | null> } };
   services: { player: { load(init: unknown): Promise<unknown>; pause(): void } };
 }
 
-/** Opens the starter world and waits for its game's first frame (the student sees it play first). */
+/** Opens a world playing the fixture boss game and waits for its first frame (the student sees it play first). */
 async function openWorld(page: Page): Promise<string> {
   await openAmble(page);
-  await gotoRoute(page, '#/starter/moon-king');
+  const id = await openFixtureWorld(page);
   await expect(page).toHaveURL(/#\/w\/[A-Za-z0-9_-]+$/);
   await expect(page.getByTestId('player-layer')).toHaveAttribute('data-first-frame', /\d/, { timeout: 60_000 });
-  return new URL(page.url()).hash.replace('#/w/', '');
+  return id;
 }
 
 async function openCode(page: Page): Promise<string> {

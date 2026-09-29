@@ -19,10 +19,10 @@ test('a request, brought to life, is hot-swapped into the running world', async 
   test.setTimeout(120_000);
   const world = await openWorld(page);
   // The world's game is running before the Desk opens: this game, created once.
-  const before = await readGame(await gameFrame(page), (g) => ({ created: g.createCount, boss: !!g.find('boss')?.drawn }));
+  const before = await readGame(await gameFrame(page), (g) => ({ created: g.createCount, boss: !!g.find('moonKing')?.drawn }));
   expect(before.boss).toBe(false);
 
-  await openDesk(page, `#/w/${world}/draw/boss`);
+  await openDesk(page, `#/w/${world}/draw/moonKing`);
   // From here on, count what the Desk asks of the player.
   await page.evaluate(() => {
     const w = window as unknown as { __amble: Amble; __swaps: Array<{ key: string; rig: boolean }>; __loads: number };
@@ -57,14 +57,14 @@ test('a request, brought to life, is hot-swapped into the running world', async 
     return { swaps: x.__swaps, loads: x.__loads };
   });
   // The drawing went into the running game with its bones; the Desk never started a new game.
-  expect(seen.swaps.filter((s) => s.key === 'boss').pop()).toEqual({ key: 'boss', rig: true });
+  expect(seen.swaps.filter((s) => s.key === 'moonKing').pop()).toEqual({ key: 'moonKing', rig: true });
   expect(seen.loads).toBe(0);
 
   // One commit put the drawing and the world's slot in the store.
   const saved = await page.evaluate(async (id) => {
     const a = (window as unknown as { __amble: Amble }).__amble;
     const wld = await a.store.worlds.get(id);
-    const slot = wld?.cast.boss;
+    const slot = wld?.cast.moonKing;
     const rec = slot?.art ? await a.store.art.get(slot.art) : null;
     const flat = rec?.export ? await a.store.blobs.get(rec.export.flat) : null;
     const sticker = rec?.export ? await a.store.blobs.get(rec.export.sticker) : null;
@@ -79,15 +79,15 @@ test('a request, brought to life, is hot-swapped into the running world', async 
   // The world shows again, still the same game (not restarted), now with the drawing.
   await expect(page.getByTestId('screen-world')).toBeVisible();
   const frame = await gameFrame(page);
-  await expect.poll(() => readGame(frame, (g) => !!g.find('boss')?.drawn), { timeout: 20_000 }).toBe(true);
+  await expect.poll(() => readGame(frame, (g) => !!g.find('moonKing')?.drawn), { timeout: 20_000 }).toBe(true);
   expect(await readGame(frame, (g) => g.createCount)).toBe(before.created);
 });
 
 test('an empty sheet says to draw first', async ({ page }) => {
   await openAmble(page);
   const world = await openStarterWorld(page);
-  await openDesk(page, `#/w/${world}/draw/minion`);
+  await openDesk(page, `#/w/${world}/draw/grumble`);
   await page.getByTestId('bring-to-life').click();
   await expect(page.getByText('Draw something first!')).toBeVisible();
-  expect(page.url()).toContain('/draw/minion');
+  expect(page.url()).toContain('/draw/grumble');
 });

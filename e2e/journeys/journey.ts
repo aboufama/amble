@@ -325,6 +325,36 @@ function stepWord(step: string): string {
   return STEP_WORDS[step] ?? step;
 }
 
+// ------------------------------------------------------------------ AI changes
+
+export const JUMP_SUMMARY = 'Now your hero can jump three times in the air.';
+
+/** An AMBLE PATCH written against a world's own game.js: the hero's platformer gets a third jump. */
+export function jumpPatch(gameSource: string, summary = JUMP_SUMMARY): string {
+  const line = gameSource.split('\n').find((l) => l.includes('.platformer(') && l.includes('jumps: 2'));
+  if (!line) throw new Error('No platformer line with jumps: 2 in this game.');
+  return [
+    '@@amble-patch 1',
+    `@@summary ${summary}`,
+    '@@play Press jump three times to fly higher.',
+    '@@next Make the jumps higher|Add a dash in the air',
+    '@@safety ok',
+    '@@file game.js edit',
+    '@@find',
+    line,
+    '@@replace',
+    line.replace('jumps: 2', 'jumps: 3'),
+    '@@done',
+    '@@end',
+    '',
+  ].join('\n');
+}
+
+/** The open world's game.js. */
+export async function gameSource(page: Page): Promise<string> {
+  return (await world(page))?.code.find((f) => f.path === 'game.js')?.source ?? '';
+}
+
 // ------------------------------------------------------------------ Footsteps and requests
 
 /** The Footsteps panel's steps, newest first. */

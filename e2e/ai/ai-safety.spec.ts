@@ -5,12 +5,12 @@
  */
 import { expect, openAmble, test } from '../helpers/app';
 import { aiFixture, mockAi } from '../helpers/mockAi';
-import { ask, askState, mountHarness, openStarterWorld, outcomeOf, skipExplainer, stepTexts } from './harness';
+import { ask, askState, mountHarness, openFixtureWorld, outcomeOf, skipExplainer, stepTexts } from './harness';
 
 test('crisis words: the crisis card, nothing sent, only "refused: support" recorded', async ({ page }) => {
   const ai = await mockAi(page, { patches: [] });
   await openAmble(page, { ai: 'mock', clean: true });
-  const id = await openStarterWorld(page);
+  const id = await openFixtureWorld(page);
   await mountHarness(page);
   await skipExplainer(page);
 
@@ -31,7 +31,7 @@ test('crisis words: the crisis card, nothing sent, only "refused: support" recor
 test('a game about a real person is refused on the device, with two kind alternatives', async ({ page }) => {
   const ai = await mockAi(page, { patches: [] });
   await openAmble(page, { ai: 'mock', clean: true });
-  const id = await openStarterWorld(page);
+  const id = await openFixtureWorld(page);
   await mountHarness(page);
   await skipExplainer(page);
 
@@ -49,7 +49,7 @@ test('a game about a real person is refused on the device, with two kind alterna
 test('personal info: Remove it, and Send anyway above elementary', async ({ page }) => {
   await mockAi(page, { patches: [] });
   await openAmble(page, { ai: 'mock', clean: true });
-  await openStarterWorld(page);
+  await openFixtureWorld(page);
   await mountHarness(page);
   await skipExplainer(page);
 
@@ -65,7 +65,7 @@ test('personal info: Remove it, and Send anyway above elementary', async ({ page
 test('personal info at elementary: no Send anyway, and Ask waits until it is removed', async ({ page }) => {
   await mockAi(page, { patches: [] });
   await openAmble(page, { ai: 'mock', clean: true, classLink: { level: 'elementary' } });
-  await openStarterWorld(page);
+  await openFixtureWorld(page);
   await mountHarness(page);
   await skipExplainer(page);
 
@@ -80,7 +80,7 @@ test("the model's refusal shows the refusal card; a toned-down change shows the 
   const toned = aiFixture('change-stomp.patch').replace('@@safety ok', '@@safety toned-down: the minions bounce off instead of getting hurt.');
   const ai = await mockAi(page, { patches: ['refused.patch', { text: toned }] });
   await openAmble(page, { ai: 'mock', clean: true });
-  const id = await openStarterWorld(page);
+  const id = await openFixtureWorld(page);
   await mountHarness(page);
   await skipExplainer(page);
 

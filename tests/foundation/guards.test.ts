@@ -134,8 +134,8 @@ describe('source guards', () => {
   });
 
   it('has no stubs left', () => {
-    // Every module has landed: nothing may throw or catch "not built yet" any more.
-    const stubbed = FILES.filter((f) => /\bNotBuiltYet\b/.test(f.text)).map((f) => f.path);
+    // Every module has landed: no stand-in, and nothing that throws or catches "not built yet".
+    const stubbed = FILES.filter((f) => /\bNotBuiltYet\b|FOUNDATION-STUB/.test(f.text)).map((f) => f.path);
     expect(stubbed).toEqual([]);
   });
 });

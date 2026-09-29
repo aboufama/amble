@@ -7,7 +7,7 @@ import { createFiles, type FilesApi } from '../files/api';
 import { createHistory, type HistoryApi } from '../history/api';
 import { createAppAi, type AiService } from '../pipeline/api';
 import { createSchool, type SchoolApi } from '../school/api';
-import { createStarterStub, type StarterCatalog } from '../starters/api';
+import { createStarterCatalog, type StarterCatalog } from '../starters/api';
 import type { Store } from '../store/api';
 import { openStore } from '../store';
 import { PlayerHostImpl, type PlayerHost } from './player/host';
@@ -37,7 +37,7 @@ export async function createServices(o: Partial<Services> = {}): Promise<Service
     files: o.files ?? createFiles(),
     ai: o.ai ?? createAppAi(),
     history: o.history ?? createHistory(),
-    starters: o.starters ?? createStarterStub(),
+    starters: o.starters ?? createStarterCatalog(),
     school: o.school ?? createSchool(store),
     player: o.player ?? new PlayerHostImpl(),
   };

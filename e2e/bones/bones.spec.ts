@@ -238,9 +238,9 @@ test('a free drawing returns to the Trail on Done; undrawn and missing drawings 
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page).toHaveURL(/#\/trail$/);
 
-  await gotoRoute(page, `#/w/${worldId}/bones/boss`);
+  await gotoRoute(page, `#/w/${worldId}/bones/moonKing`);
   await expect(page.getByRole('heading', { name: /only bones so far/ })).toBeVisible();
-  await expect(page.getByRole('link', { name: /^Draw / })).toHaveAttribute('href', `#/w/${worldId}/draw/boss`);
+  await expect(page.getByRole('link', { name: /^Draw / })).toHaveAttribute('href', `#/w/${worldId}/draw/moonKing`);
 
   await gotoRoute(page, '#/bones/a_test000001');
   await expect(page.getByTestId('screen-bones')).toBeVisible();
