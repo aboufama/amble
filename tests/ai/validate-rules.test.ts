@@ -281,7 +281,8 @@ describe('game shape and size', () => {
       ...Array.from({ length: 11 }, (_, i) => ({ path: `f${i}.js`, content: '' })),
     ];
     const r = validateGame(files, { manifest: KIT });
-    expect(r.errors.filter((e) => e.rule === 'bad-path').map((e) => e.file)).toEqual(['../escape.js']);
+    // A world keeps only names of the §4.2 form: a folder or a capital letter can't be saved in its file.
+    expect(r.errors.filter((e) => e.rule === 'bad-path').map((e) => e.file)).toEqual(['../escape.js', 'Levels/one.js']);
     expect(r.errors.filter((e) => e.rule === 'size').map((e) => e.message)).toEqual([expect.stringMatching(/at most 12 files/), expect.stringMatching(/game\.js is 45 KB/)]);
   });
 });

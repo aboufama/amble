@@ -139,7 +139,7 @@ function sizeIssues(files: readonly GameFile[], limits: Limits, entry: string): 
   for (const f of files) {
     const bytes = byteLength(f.content);
     total += bytes;
-    if (!isSafeGamePath(f.path)) out.push(issue('bad-path', f.path, `\`${f.path}\` is not a valid file name: use letters, digits, - and _, one folder at most, ending in .js.`, f.path));
+    if (!isSafeGamePath(f.path)) out.push(issue('bad-path', f.path, `\`${f.path}\` is not a valid file name: use lowercase letters, digits and -, starting with a letter, at most 24 characters, ending in .js.`, f.path));
     if (bytes > limits.maxFileBytes) out.push(issue('size', f.path, `${f.path} is ${Math.round(bytes / 1000)} KB; keep each file under ${Math.round(limits.maxFileBytes / 1000)} KB (split it).`, `${f.path} is too long`));
     const count = f.content.split('\n').length;
     if (limits.maxFileLines && count > limits.maxFileLines) out.push(issue('size', f.path, `${f.path} has ${count} lines; keep each file under ${limits.maxFileLines} lines (move parts into another file).`, `${f.path} is too long`));
