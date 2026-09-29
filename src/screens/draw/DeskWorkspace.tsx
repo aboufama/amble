@@ -273,7 +273,11 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
       brought.current = true;
       saving.broughtToLife(res.record);
       ctrl.surface.markSaved();
-      const from = hostRef.current?.getBoundingClientRect() ?? new DOMRect();
+      // The sticker flies from where the drawing is on the sheet.
+      const [bx, by, bw, bh] = exported.box;
+      const a = ctrl.surface.docToClient(bx, by);
+      const b = ctrl.surface.docToClient(bx + bw, by + bh);
+      const from = new DOMRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
       setComeAlive({ key: r.key, artId: res.record.id, sticker: res.sticker, from });
       announce(t('draw.cameAlive', { name }));
       if (res.onePiece) showToast(t('draw.noLimbs', { name }));

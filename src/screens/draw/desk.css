@@ -250,6 +250,8 @@
   user-select: none;
   -webkit-user-select: none;
   outline: none;
+  /* The World's lift card morphs into the sheet (§2.17); the opening sheet carries the name first. */
+  view-transition-name: desk-sheet;
 }
 
 .desk__sheet:focus-visible {
@@ -1454,25 +1456,33 @@ body:has(.screen.desk) .toast-region {
   text-align: center;
 }
 
-/* ---------- opening ---------- */
-.desk--loading {
+/* ---------- opening: a sheet where the paper will be (the World's lift card morphs into it) ---------- */
+.screen.desk--loading {
   display: grid;
-  place-items: center;
+  grid-template-columns: 110px minmax(0, 1fr) 306px;
+  grid-template-rows: var(--topbar) minmax(0, 1fr);
+  grid-template-areas:
+    '. . .'
+    '. area .';
 }
 
 .desk__loading {
+  grid-area: area;
   display: grid;
+  place-content: center;
   justify-items: center;
   gap: var(--s4);
+  min-height: 0;
+  padding-bottom: 56px;
 }
 
 .desk__loading-sheet {
-  width: min(56vh, 520px);
+  width: min(calc(100vh - 220px), 580px);
   aspect-ratio: 1;
   border-radius: var(--r-paper);
-  background: var(--paper);
+  background: color-mix(in srgb, var(--paper) 16%, transparent);
   box-shadow: var(--lift-paper);
-  opacity: 0.16;
+  view-transition-name: desk-sheet;
 }
 
 .desk__loading-text {
