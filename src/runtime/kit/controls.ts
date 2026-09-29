@@ -20,6 +20,12 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   pause: ['P', 'ESC'],
 };
 
+/**
+ * The kit's own pointer listeners on a scene (the tap latch below). They are no sign that the game reads
+ * the pointer: the ghost loop still lifts a tapped stand-in to the Desk in such a game (editor/play.ts).
+ */
+export const KIT_POINTER_LISTENERS = new WeakSet<object>();
+
 /** Standard gamepad mapping: A jump, X fire, B dash, Y action, Start pause. */
 const PAD: Partial<Record<Action, number[]>> = { jump: [0], fire: [2, 7], dash: [1, 5], action: [3], pause: [9] };
 
@@ -60,6 +66,7 @@ export class Controls {
     const onPointer = () => {
       this.pointerLatch = true;
     };
+    KIT_POINTER_LISTENERS.add(onPointer);
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, onPointer);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => scene.input.off(Phaser.Input.Events.POINTER_DOWN, onPointer));
   }
