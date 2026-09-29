@@ -30,11 +30,24 @@ async function commitWorld(world: World, extra: { art?: ArtRecord[]; blobs?: Blo
   return world;
 }
 
-/** A world type with the student's hero drawn and everything else as just bones ("Give Blorp a world"). */
+/**
+ * A world type with the student's hero drawn and everything else as just bones ("Give Blorp a world"). The
+ * hero keeps the name the student gave it, everywhere the world names it (the Cast, the Desk, Footsteps).
+ */
 export async function openSeed(seed: StarterId, hero: ArtId | null): Promise<World> {
-  const { starters } = getServices();
-  const { world, art, blobs } = await starters.open(seed, hero ? { withArt: false, hero } : { withArt: false });
+  const { world, art, blobs } = await seedWorld(seed, hero);
   return commitWorld(world, { art, blobs });
+}
+
+/** A world type opened with the student's hero (if any) drawn and called by its name; not saved yet. */
+async function seedWorld(seed: StarterId, hero: ArtId | null): Promise<{ world: World; art: ArtRecord[]; blobs: Blob[] }> {
+  const { starters, store } = getServices();
+  const opened = await starters.open(seed, hero ? { withArt: false, hero } : { withArt: false });
+  const name = hero ? ((await store.art.get(hero))?.name ?? '').trim() : '';
+  if (!name) return opened;
+  // The code tools load only here, never with the first screen.
+  const { renameMembers } = await import('../pipeline/ladder');
+  return { ...opened, world: { ...opened.world, code: renameMembers(opened.world.code, { [starters.info(seed).heroKey]: name }) } };
 }
 
 /** The hero's cast key in a plan: the first member (the plan puts the hero first). */
@@ -99,11 +112,14 @@ export function startBuild(world: World, plan: PlanReply): void {
   void startBuildJob(world, plan).catch((err: unknown) => console.warn('The build stopped:', err));
 }
 
-/** An assignment's world: its starter as a seed (draw first), carrying the assignment. */
-export async function createAssignmentWorld(asg: Assignment): Promise<{ world: World; heroKey: CastKey }> {
+/**
+ * An assignment's world: its starter as a seed, carrying the assignment. The Trail's note starts it with
+ * nothing drawn (draw first); the First page's "From your teacher" card starts it with the hero just drawn.
+ */
+export async function createAssignmentWorld(asg: Assignment, hero: ArtId | null = null): Promise<{ world: World; heroKey: CastKey }> {
   const { starters } = getServices();
   const seed = asg.starter ?? 'moon-king';
-  const { world, art, blobs } = await starters.open(seed, { withArt: false });
+  const { world, art, blobs } = await seedWorld(seed, hero);
   const title = asg.title.slice(0, TITLE_MAX) || world.title;
   const step = startStep(title, Date.now());
   const made: World = {

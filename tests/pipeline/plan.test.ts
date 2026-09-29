@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyPatch, parsePatch } from '../../src/cores/ai';
 import { FIXTURE_GAME } from '../../src/starters/fixtureGame';
-import { ladderCast, ladderDialLabels, ladderFiles, ladderMapping } from '../../src/pipeline/ladder';
+import { ladderCast, ladderDialLabels, ladderFiles, ladderMapping, renameMembers } from '../../src/pipeline/ladder';
 import { readStatics } from '../../src/pipeline/manifest';
 import { flaggedPlanStrings, normalizePlan, planUserMessage, toKey, type PlanWire } from '../../src/pipeline/plan';
 import { progressPercent } from '../../src/pipeline/progress';
@@ -114,6 +114,18 @@ describe('the ladder', () => {
     // Terrain and shots have no declared role in the fixture: their kind gives it.
     const ground = { ...PLAN_SNAIL, cast: [...PLAN_SNAIL.cast, { ...PLAN_SNAIL.cast[3], key: 'saltFloor', role: 'terrain' as const, kind: 'terrain' as const, mapsTo: '' }] };
     expect(ladderMapping(ground, readStatics(starter).art).mapping.saltFloor).toBe('ground');
+  });
+
+  it("renames members in static art only, keeping every line, and quotes the student's name safely", () => {
+    const named = renameMembers(starter, { hero: "Blorp's 'pal' \\o/", nobody: 'Ghost' });
+    expect(readStatics(named).art.hero.name).toBe("Blorp's 'pal' \\o/");
+    expect(readStatics(named).art.boss.name).toBe(readStatics(starter).art.boss.name);
+    expect(named[0].source.split('\n')).toHaveLength(starter[0].source.split('\n').length);
+    expect(named[0].authors).toEqual(starter[0].authors);
+    // Blank names and broken code leave the files as they are.
+    expect(renameMembers(starter, { hero: '  ' })[0]).toBe(starter[0]);
+    const broken = [code('game.js', 'class Game extends Amble.Scene { static art = {')];
+    expect(renameMembers(broken, { hero: 'Blorp' })[0]).toBe(broken[0]);
   });
 
   it('relabels starter dials by key, else by what they measure', () => {

@@ -15,7 +15,7 @@ import { createArtSurface, newArtDoc, type ArtSurface } from '../../cores/art';
 import { rigWorker, setFacing as setRigFacing, type CharacterKind, type RigData } from '../../cores/rig';
 import { bringToLife } from '../../draw/api';
 import { t } from '../../i18n';
-import { openSeed } from '../../home/createWorld';
+import { createAssignmentWorld, openSeed } from '../../home/createWorld';
 import { renderPose, type PoseImage } from '../../home/seedThumbs';
 import type { ArtRecord, Facing, StarterId } from '../../model/types';
 import { announce, showToast } from '../../state/app';
@@ -79,7 +79,9 @@ export function FirstPage() {
   const firstCard = useRef<HTMLButtonElement | null>(null);
   const lifeButton = useRef<HTMLButtonElement>(null);
 
+  const rootRef = useRef<HTMLDivElement>(null);
   const [entered, setEntered] = useState(false);
+  const [landed, setLanded] = useState(false);
   const [ready, setReady] = useState(false);
   const [inked, setInked] = useState(0);
   const [canUndo, setCanUndo] = useState(false);
@@ -166,6 +168,10 @@ export function FirstPage() {
     };
     let warmed = false;
     const firstTouch = () => {
+      // A pen on the paper while it still slides in: it lands at once (before the stroke reads where the
+      // paper is), so the line stays under the pen instead of bending with the paper.
+      rootRef.current?.classList.add('first--landed');
+      setLanded(true);
       setTouched(true);
       // Start the rig worker while the student draws, so Bring it to life never waits for it to load.
       if (!warmed) {
@@ -247,13 +253,18 @@ export function FirstPage() {
 
   // ------------------------------------------------------------ Bring it to life
   const canBring = phase === 'drawing' && ready && inked >= INK_MIN;
+  /**
+   * Why the button still waits: nothing drawn yet, or a drawing too small or thin to wake (a thin stick
+   * figure). The ink share is counted a moment after each stroke, so a stroke to undo counts as drawn too.
+   */
+  const notEnoughInk = (drawn: boolean) => showToast(t(drawn ? 'home.moreInk' : 'home.noInkYet'));
 
   const bring = async () => {
     const s = surfaceRef.current;
     const host = boardRef.current;
     if (!s || !host || phase !== 'drawing') return;
     if (s.inked() < INK_MIN) {
-      showToast(t('home.noInkYet'));
+      notEnoughInk(s.inked() > 0);
       return;
     }
     setPhase('rigging');
@@ -410,7 +421,8 @@ export function FirstPage() {
     if (!alive || busySeed) return;
     setBusySeed(seed);
     try {
-      const world = await openSeed(seed, alive.record.id);
+      // The "From your teacher" card starts the assignment itself (Hand in, its goals), with this hero.
+      const world = assignment?.starter === seed ? (await createAssignmentWorld(assignment, alive.record.id)).world : await openSeed(seed, alive.record.id);
       // The creature flies from the paper into its place in the running world (M2 plays the flight).
       const exp = alive.record.export;
       const from = stageRef.current?.box() ?? null;
@@ -439,7 +451,7 @@ export function FirstPage() {
   const paperStyle = { ['--ground-line' as string]: `${GROUND_LINE * 100}%` } as CSSProperties;
 
   return (
-    <div className={cx('first', entered && 'first--entered', reduced && 'first--still')} data-testid="screen-first" data-phase={phase} data-awake={awake || undefined}>
+    <div ref={rootRef} className={cx('first', entered && 'first--entered', reduced && 'first--still', landed && 'first--landed')} data-testid="screen-first" data-phase={phase} data-awake={awake || undefined}>
       <NightSky decor={false} />
       <BottomPath lit={entered} />
       <HomeHeader />
@@ -508,7 +520,7 @@ export function FirstPage() {
                   className={cx('first__life-button', canBring && 'first__life-button--ready')}
                   aria-disabled={!canBring || undefined}
                   busy={phase === 'rigging'}
-                  onClick={() => (canBring ? void bring() : phase === 'drawing' && showToast(t('home.noInkYet')))}
+                  onClick={() => (canBring ? void bring() : phase === 'drawing' && notEnoughInk(inked > 0 || canUndo))}
                   data-testid="bring-to-life"
                 >
                   {phase === 'rigging' ? t('home.findingBones') : t('home.bringItToLife')}

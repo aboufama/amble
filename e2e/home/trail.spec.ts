@@ -126,3 +126,28 @@ test('Put away sends a world to Lost and found, and Bring it back restores it', 
   const kept = await page.evaluate(async () => (await (window as unknown as { __amble: { store: StoreLike } }).__amble.store.worlds.list()).map((w) => w.putAwayAt));
   expect(kept).toEqual([null, null, null]);
 });
+
+test("a returning student's Trail opens on their own worlds, even when they are read after the first paint", async ({ page }) => {
+  const [moss] = await makeWorlds(page, WORLDS.slice(0, 1));
+  await gotoRoute(page, '#/trail');
+  const scroller = page.locator('.trail__scroller');
+  await expect(page.locator(`[data-testid="trail-sign"][data-world="${moss}"]`)).toBeVisible();
+  // As on a fresh load: the Trail paints before the worlds are read from storage, then they arrive.
+  await page.evaluate(() =>
+    (window as unknown as { __amble: { setState(fn: (s: { library: { loaded: boolean; worlds: unknown[]; characters: unknown[] } }) => void): void } }).__amble.setState((s) => {
+      s.library.loaded = false;
+      s.library.worlds = [];
+      s.library.characters = [];
+    }),
+  );
+  await page.waitForTimeout(400);
+  await expect(page.locator('.trail-copy')).toBeHidden();
+  await page.evaluate(async () => {
+    const { refreshLibrary } = await import(/* @vite-ignore */ `${location.origin}/src/state/library.ts`);
+    await refreshLibrary((window as unknown as { __amble: { store: StoreLike } }).__amble.store);
+  });
+  const sign = page.locator(`[data-testid="trail-sign"][data-world="${moss}"]`);
+  await expect(sign).toBeInViewport();
+  expect(await scroller.evaluate((el) => el.scrollLeft)).toBe(0);
+  await expect(page.locator('.trail-copy')).toBeVisible();
+});

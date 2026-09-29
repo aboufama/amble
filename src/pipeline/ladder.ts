@@ -95,6 +95,33 @@ export function ladderDialLabels(plan: PlanReply, starterDials: readonly string[
   return labels;
 }
 
+/**
+ * The files with these members' names written into `static art` (keys, lines and authors kept): a world
+ * type opened for the student's own hero calls the hero by the name the student gave it ("Give Blorp a
+ * world": Blorp is the hero, not the starter's Pip).
+ */
+export function renameMembers(files: readonly CodeFile[], names: Readonly<Record<CastKey, string>>): CodeFile[] {
+  return files.map((f): CodeFile => {
+    if (f.path !== 'game.js') return f;
+    let ast: Program;
+    try {
+      ast = parse(f.source, { ecmaVersion: 'latest', sourceType: 'script' });
+    } catch {
+      return f;
+    }
+    const game = ast.body.find((n: Node): n is ClassDeclaration => n.type === 'ClassDeclaration' && (n as ClassDeclaration).id?.name === 'Game');
+    const art = game ? objectField(game, 'art') : null;
+    if (!art) return f;
+    const ms = new MagicString(f.source);
+    for (const p of art.properties) {
+      if (p.type !== 'Property' || p.value.type !== 'ObjectExpression') continue;
+      const name = names[keyOf(p)]?.trim();
+      if (name) setField(ms, p.value, 'name', quote(name));
+    }
+    return ms.hasChanged() ? { ...f, source: ms.toString() } : f;
+  });
+}
+
 /** The starter's files with the plan written into its statics. */
 export function ladderFiles(plan: PlanReply, starterFiles: readonly CodeFile[]): LadderResult {
   const statics = readStatics(starterFiles);

@@ -48,6 +48,42 @@ test.describe('the world in Play', () => {
     const creates = await readGame(frame, (g) => g.createCount);
     await page.getByTestId('world-restart').click();
     await expect.poll(() => readGame(frame, (g) => g.createCount)).toBeGreaterThan(creates);
+    // The click gave the keys back to the game: Space starts it again, it does not press Restart again.
+    await expect(page.getByTestId('world-slot')).toBeFocused();
+    const restarted = await readGame(frame, (g) => g.createCount);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(1500);
+    expect(await readGame(frame, (g) => g.createCount)).toBe(restarted);
+  });
+
+  test('after a click on Play the arrows go to the game, not the Play | Change switch', async ({ page }) => {
+    await openWorld(page);
+    await page.getByRole('radio', { name: 'Change' }).click();
+    await expect.poll(() => session(page, (s) => s.mode)).toBe('change');
+    const play = page.getByRole('radio', { name: 'Play' });
+    await play.click();
+    await expect.poll(() => session(page, (s) => s.mode)).toBe('play');
+    // Under the pointer, the chosen option keeps its ink on paper.
+    const ink = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ink').trim());
+    const inkRgb = await page.evaluate((c) => {
+      const el = document.createElement('span');
+      el.style.color = c;
+      document.body.append(el);
+      const rgb = getComputedStyle(el).color;
+      el.remove();
+      return rgb;
+    }, ink);
+    expect(await play.evaluate((el) => getComputedStyle(el).color)).toBe(inkRgb);
+    // The keys went back to the game: → is the hero's, it no longer flips the switch back to Change.
+    await expect(page.getByTestId('world-slot')).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await expect(play).toHaveAttribute('aria-checked', 'true');
+    expect(await session(page, (s) => s.mode)).toBe('play');
+    // A keyboard press on Play keeps focus on the switch (the arrows are the group's there).
+    await page.getByRole('radio', { name: 'Play' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(play).toBeFocused();
   });
 
   test('renames the world inline and keeps the name', async ({ page }) => {

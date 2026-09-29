@@ -122,3 +122,92 @@ test('"Or play one first." opens a starter, and leaving it untouched keeps the F
   await expect(page.getByTestId('screen-first')).toBeVisible();
   await expect.poll(() => page.evaluate(async () => (await (window as unknown as { __amble: { store: { worlds: { list(): Promise<unknown[]> } } } }).__amble.store.worlds.list()).length)).toBe(0);
 });
+
+test('with a class assignment, the "From your teacher" card starts that assignment with the new hero', async ({ page }) => {
+  test.setTimeout(240_000);
+  await mockAi(page);
+  const asg = {
+    id: 'as_boss',
+    title: 'Boss Battle Week',
+    text: 'Make a boss fight. Draw your own hero and a giant boss.',
+    starter: 'moon-king',
+    require: ['hero', 'moonKing'],
+    goals: [{ id: 'g1', label: 'Hero drawn by the student', kind: 'auto', check: { type: 'drawn', key: 'hero' } }],
+    ai: 'on',
+    level: null,
+    due: 'Friday',
+    locked: {},
+  };
+  await openAmble(page, { ai: 'mock', clean: true, classLink: { asg } });
+  const first = page.getByTestId('screen-first');
+  await expect(page.getByTestId('first-column')).toContainText('Boss Battle Week');
+  const board = page.getByTestId('first-board');
+  await expect(board.locator('canvas').first()).toBeVisible();
+  await drawPerson(page, board);
+  await page.getByTestId('bring-to-life').click();
+  await expect(first).toHaveAttribute('data-awake', 'true', { timeout: 90_000 });
+  const doodle = await page.evaluate(() => (window as unknown as { __amble: Amble }).__amble.getState().library.characters[0]);
+
+  const card = page.getByTestId('first-column').getByRole('button', { name: new RegExp(`^Boss fight with ${doodle.name}`) });
+  await expect(card).toContainText(/from your teacher/i);
+  await card.click();
+  await expect(page).toHaveURL(/#\/w\/w_[A-Za-z0-9_-]+$/, { timeout: 60_000 });
+  // It is the assignment's world: Hand in in the top bar, the assignment's goals, and the new hero in it.
+  await expect(page.getByTestId('handin-button')).toBeVisible({ timeout: 30_000 });
+  const world = await page.evaluate(() => (window as unknown as { __amble: { getState(): { session: { world: { title: string; assignment: { id: string } | null; cast: Record<string, { art: string | null }> } } } } }).__amble.getState().session.world);
+  expect(world.assignment?.id).toBe('as_boss');
+  expect(world.title).toBe('Boss Battle Week');
+  expect(world.cast.hero.art).toBe(doodle.id);
+});
+
+test('the waiting Bring it to life says what it needs: a drawing, then a bigger or bolder one', async ({ page }) => {
+  await openAmble(page, { clean: true });
+  const board = page.getByTestId('first-board');
+  await expect(board.locator('canvas').first()).toBeVisible();
+  const bring = page.getByTestId('bring-to-life');
+  const toasts = page.getByTestId('toasts');
+  // Nothing drawn yet.
+  await bring.click({ force: true });
+  await expect(toasts).toContainText('Draw something first!');
+  // A small thin line: something is drawn, but not enough to wake.
+  await page.getByTestId('pen-size').click();
+  await page.getByTestId('pen-size').click();
+  await expect(page.getByTestId('pen-size')).toHaveAccessibleName(/small/i);
+  const box = (await board.boundingBox())!;
+  await stroke(page, board, humanStroke(line(box.width * 0.4, box.height * 0.5, box.width * 0.55, box.height * 0.5)), { pointer: 'pen' });
+  await expect(page.getByTestId('pen-undo')).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(bring).toHaveAttribute('aria-disabled', 'true');
+  await bring.click({ force: true });
+  await expect(toasts).toContainText('Keep going! Make it a bit bigger or bolder.');
+});
+
+test('a pen on the paper while it slides in lands it at once, so the line stays under the pen', async ({ page }) => {
+  await openAmble(page, { clean: true });
+  const first = page.getByTestId('screen-first');
+  await expect(first).toHaveClass(/first--entered/);
+  // Hold the entrance where it is, as if the student were quicker than the paper.
+  const sliding = await page.evaluate(() => {
+    const anims = document.querySelector('.first__paper-cell')?.getAnimations() ?? [];
+    anims.forEach((a) => a.pause());
+    return anims.length;
+  });
+  test.skip(sliding === 0, 'the paper had already landed on this machine');
+  const board = page.getByTestId('first-board');
+  const box = (await board.boundingBox())!;
+  await stroke(page, board, humanStroke(line(box.width * 0.2, box.height * 0.4, box.width * 0.8, box.height * 0.4), { wobble: 0, tremor: 0, jitter: 0 }), { pointer: 'pen' });
+  // The paper landed on the pen-down, so nothing moved it under the stroke.
+  expect(await page.evaluate(() => document.querySelector('.first__paper-cell')?.getAnimations().length)).toBe(0);
+  const ink = await board.locator('canvas').first().evaluate((c: HTMLCanvasElement) => {
+    const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+    let top = Infinity;
+    let bottom = -1;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 200 || d[i] + d[i + 1] + d[i + 2] > 200) continue;
+      const y = Math.floor(i / 4 / c.width);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+    }
+    return { rows: bottom - top + 1, scale: c.height / c.getBoundingClientRect().height };
+  });
+  expect(ink.rows / ink.scale, 'a straight line, not a hook').toBeLessThan(24);
+});
