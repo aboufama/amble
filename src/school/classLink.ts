@@ -7,7 +7,8 @@
  * Reading is the AI barrel's `parseClassLink` (https only, nothing key-like, expiry); this file makes links
  * (Teacher desk), caps them to the district's ceiling, and decides between Join and Switch.
  */
-import { loadClassLink, looksLikeProviderKey, parseClassLink, type AiConfig } from '../cores/ai';
+import { classLinkFromCore, classLinkToCore, loadClassLink, looksLikeProviderKey, parseClassLink, validateClassLink, type AiConfig, type ClassLink } from '../cores/ai';
+import { isClassLinkV1 } from '../model/guards';
 import type { AiMode, ClassLinkIntake, ClassLinkV1, Level } from '../model/types';
 import { lowerLevel, lowerMode } from '../state/config';
 
@@ -68,8 +69,58 @@ export function shortHref(href: string, total = 58): string {
   return payload.length > keep ? `${head}${payload.slice(0, keep)}…` : `${head}${payload}`;
 }
 
+type KeyValue = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+
+/**
+ * The app's own copy of the joined class in localStorage, beside the AI core's (`saveClassLink`): the core's
+ * format has no place for the assignment, and a class without an AI address has no core copy at all. When
+ * the main copy (the store's `settings.classLink`) is lost, boot rebuilds it from these two.
+ */
+const CLASS_COPY_KEY = 'amble:class-link:app';
+
+/** Keeps (or, with null, forgets) the app's copy of the joined class. */
+export function saveClassCopy(link: ClassLinkV1 | null, storage: KeyValue | null): void {
+  if (link) storage?.setItem(CLASS_COPY_KEY, JSON.stringify(link));
+  else storage?.removeItem(CLASS_COPY_KEY);
+}
+
+/** The app's copy of the joined class, when it is one. */
+export function loadClassCopy(storage: KeyValue | null): ClassLinkV1 | null {
+  try {
+    const raw: unknown = JSON.parse(storage?.getItem(CLASS_COPY_KEY) ?? 'null');
+    return isClassLinkV1(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The link in the AI core's format, as the core checks and stores it: null for a class with no AI part, undefined when the core would refuse it. */
+function coreForm(link: ClassLinkV1): ClassLink | null | undefined {
+  const core = classLinkToCore(link);
+  if (!core) return null;
+  const checked = validateClassLink(core);
+  return checked.ok ? checked.link : undefined;
+}
+
+/**
+ * The joined class, rebuilt from the copies in localStorage: the app's own copy when it is the class the AI
+ * core has (so its assignment comes back), else the core's copy converted (which has no assignment). Null
+ * when neither is there.
+ */
+export function restoredClassLink(core: ClassLink | null, copy: ClassLinkV1 | null): ClassLinkV1 | null {
+  const mine = copy ? coreForm(copy) : undefined;
+  if (copy && mine !== undefined) {
+    // No core copy: the app's copy is the whole class (a class with no AI part never has one).
+    if (!core) return copy;
+    // The two are saved together; when they disagree the core's wins (it is what the AI helper uses).
+    const theirs = validateClassLink(core);
+    if (mine && theirs.ok && JSON.stringify(mine) === JSON.stringify(theirs.link)) return copy;
+  }
+  return core ? classLinkFromCore(core) : null;
+}
+
 /** The name of the class this Chromebook is in, from the slice or (at boot, before the store answers) the core's copy. */
-export function currentClassName(fromSlice: ClassLinkV1 | null, local: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null): string | null {
+export function currentClassName(fromSlice: ClassLinkV1 | null, local: KeyValue | null): string | null {
   if (fromSlice) return fromSlice.cls;
   try {
     return loadClassLink(local)?.name ?? null;

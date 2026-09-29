@@ -535,6 +535,7 @@ const isClassAi = obj<NonNullable<M.ClassLinkV1['ai']>>({
     obj<Extract<NonNullable<M.ClassLinkV1['ai']>['auth'], { type: 'class-code' }>>({ type: lit('class-code'), header: str(60, 1), code: str(80, 1) }),
     obj<Extract<NonNullable<M.ClassLinkV1['ai']>['auth'], { type: 'none' }>>({ type: lit('none') }),
   ),
+  header: opt(str(64, 1)),
   visionAllowed: opt(isBool),
   moderation: opt(oneOf(['endpoint', 'provider', 'local-only'])),
   lock: opt(arr(oneOf(['ai', 'content', 'vision']), 3)),

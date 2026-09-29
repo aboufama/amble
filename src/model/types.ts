@@ -211,6 +211,7 @@ export interface ClassLinkV1 {
     model: string; fastModel?: string; visionModel?: string;
     caps?: string;                              // "json_schema,stream,reasoning,vision,moderation"
     auth: { type: 'class-code'; header: string; code: string } | { type: 'none' };
+    header?: string;                            // a flat link's class-code header when it carries no code
     // District policy a link in the AI core's flat format may carry (§5.14); kept when a student joins.
     visionAllowed?: boolean;                    // an outline of a drawing may go to the AI (Magic bones)
     moderation?: 'endpoint' | 'provider' | 'local-only';
