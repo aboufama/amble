@@ -1,8 +1,8 @@
 /**
  * The running game's frame, across the player and the kit: a game torn down mid-run leaves no page error
  * (its closed audio stays quiet), a robot test in the spare holds the frozen-game watchdog and leaves the
- * visible game running, the title card's keys never count as the game's controls, and a heal right after
- * a hit leaves the heart full.
+ * visible game running, the title card's keys never count as the game's controls, a heal right after
+ * a hit leaves the heart full, a level restart keeps its level, and a shake's camera kick keeps the game's turn.
  */
 import type { Frame, Page } from '@playwright/test';
 import { expect, gotoRoute, openAmble, test } from '../helpers/app';
@@ -158,7 +158,33 @@ test('a level restart keeps the level setLevel chose, and playing again after a 
   }
 }
 `;
-  const errors = await page.evaluate(async (source) => {
+  expect(await robotErrors(page, LEVELS)).toContainEqual(expect.stringContaining('levels 1 2 1'));
+});
+
+test("a big shake kicks the camera and eases back to the game's own turn, so a flipped screen stays flipped", async ({ page }) => {
+  test.setTimeout(150_000);
+  await openWorld(page);
+  // The game turns the screen upside down, then a big shake (0.014 and up) kicks the camera. The game reports
+  // whether the kick moved the camera, and where the camera came to rest.
+  const FLIPPED = `class Game extends Amble.Scene {
+  static config = { physics: 'none' };
+  create() {
+    const cam = this.cameras.main;
+    cam.setRotation(Math.PI);
+    this.after(50, () => {
+      this.fx.shake(0.02, 180);
+      const kicked = Math.abs(cam.rotation - Math.PI) > 0.001;
+      this.after(900, () => { throw new Error('camera ' + kicked + ' ' + cam.rotation.toFixed(2)); });
+    });
+  }
+}
+`;
+  expect(await robotErrors(page, FLIPPED)).toContainEqual(expect.stringContaining('camera true 3.14'));
+});
+
+/** Runs `source` as the open world's game in a robot test (no autopilot) and returns the errors it reported. */
+async function robotErrors(page: Page, source: string): Promise<string[]> {
+  return page.evaluate(async (source) => {
     type Amble = { getState(): { session: { world: object | null }; prefs: unknown }; services: { player: { robot(init: unknown): Promise<{ raw: { errors: Array<{ message: string }> } }> } } };
     const a = (window as unknown as { __amble: Amble }).__amble;
     const initUrl = '/src/world/init.ts';
@@ -169,6 +195,5 @@ test('a level restart keeps the level setLevel chose, and playing again after a 
     const init = await toInitMessage(world, { mode: 'robot', prefs: { ...playerPrefsFrom(a.getState().prefs), muted: true }, robot: { gameMs: 3000, seed: 1, bot: 'none' }, autostart: true });
     const r = await a.services.player.robot(init);
     return r.raw.errors.map((e) => e.message);
-  }, LEVELS);
-  expect(errors).toContainEqual(expect.stringContaining('levels 1 2 1'));
-});
+  }, source);
+}

@@ -134,6 +134,8 @@ export class Fx {
   private desatT = 0;
   private vignetteFx: Phaser.FX.Vignette | null = null;
   private bloomFx: Phaser.FX.Bloom | null = null;
+  /** The running camera kick, and the rotation it eases back to (the game's own: a flipped screen stays flipped). */
+  private kick: { tween: Phaser.Tweens.Tween; base: number } | null = null;
 
   constructor(private readonly k: Kit) {}
 
@@ -235,8 +237,12 @@ export class Fx {
     const remaining = se.isRunning ? se.intensity.x * (1 - se.progress) : 0;
     if (i >= remaining) cam.shake(ms, i, true);
     if (intensity >= 0.014 && !env().prefs.reducedMotion) {
-      cam.setRotation(util.pick([-1, 1]) * Math.min(0.03, intensity * 1.2));
-      this.s.tweens.add({ targets: cam, rotation: 0, duration: ms * 1.4, ease: 'Sine.easeOut' });
+      // The kick tilts the camera from wherever the game turned it and eases back there, never to 0.
+      // (Phaser's camera has a rotation accessor its typings leave out.)
+      const base = this.kick?.tween.isPlaying() ? this.kick.base : (cam as unknown as { rotation: number }).rotation;
+      this.kick?.tween.stop();
+      cam.setRotation(base + util.pick([-1, 1]) * Math.min(0.03, intensity * 1.2));
+      this.kick = { base, tween: this.s.tweens.add({ targets: cam, rotation: base, duration: ms * 1.4, ease: 'Sine.easeOut' }) };
     }
   }
 
