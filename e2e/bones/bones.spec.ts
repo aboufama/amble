@@ -317,3 +317,64 @@ test('no page scroll, and the key controls show, at every layout size', async ({
     await gotoRoute(page, '#/settings');
   }
 });
+
+/** The AI helper, stood in for in the page: ready, with vision allowed, answering joint hints. */
+async function fakeVisionHelper(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    type Win = { __hints: Array<{ type: string; size: number; kind: string }>; __amble: { services: { ai: Record<string, unknown> }; setState(fn: (s: { config: { ai: unknown } }) => void): void } };
+    const w = window as unknown as Win;
+    w.__hints = [];
+    w.__amble.services.ai.status = () => 'ready';
+    w.__amble.services.ai.rigHints = async (outline: Blob, kind: string) => {
+      w.__hints.push({ type: outline.type, size: outline.size, kind });
+      return { armL2: [48, 150], armR2: [168, 150] };
+    };
+    w.__amble.setState((s) => {
+      s.config.ai = { enabled: true, visionAllowed: true, visionModel: 'vision-1' };
+    });
+  });
+}
+
+const hintCalls = (page: Page) => page.evaluate(() => (window as unknown as { __hints: Array<{ type: string; size: number; kind: string }> }).__hints);
+
+test('Magic bones asks once per drawing before the AI helper sees an outline, and is one undo step', async ({ page }) => {
+  const { artId } = await seedDrawing(page, { sample: 'hero', name: 'Pip' });
+  await fakeVisionHelper(page);
+  await openBones(page, `#/bones/${artId}`);
+  await page.getByRole('button', { name: 'Magic bones' }).click();
+  const ask = page.getByRole('dialog', { name: 'Ask the AI helper?' });
+  await expect(ask).toContainText("Amble can send a plain outline of your drawing (no colours) to your school's AI to help find the joints. OK?");
+  await ask.getByRole('button', { name: 'Send the outline' }).click();
+  await expect(page.getByTestId('bones-status')).toHaveText('The AI helped find these bones');
+  await expect(page.locator('.bones-local')).toContainText('The AI helper saw only a plain outline of this drawing, with your OK.');
+  const calls = await hintCalls(page);
+  expect(calls).toHaveLength(1);
+  expect(calls[0]).toMatchObject({ type: 'image/png', kind: 'biped' });
+  expect(calls[0].size).toBeGreaterThan(100);
+  await savedRig(page, artId, (a) => a.rigData?.made === 'ai' && a.rigInfo?.made === 'ai');
+  const consent = await page.evaluate(async () => (window as unknown as { __amble: { store: { settings: { get(k: string): Promise<Record<string, number> | null> } } } }).__amble.store.settings.get('consent'));
+  expect(Object.keys(consent ?? {})).toEqual([artId]);
+
+  // the second time for this drawing, no question
+  await page.getByRole('button', { name: 'Magic bones' }).click();
+  await expect.poll(async () => (await hintCalls(page)).length).toBe(2);
+  await expect(page.getByRole('dialog', { name: 'Ask the AI helper?' })).toHaveCount(0);
+  await expect(page.getByTestId('bones-status')).toHaveText('The AI helped find these bones');
+  // each press is one step: Undo goes back to before the second press, then before the first
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByTestId('bones-status')).toHaveText('The AI helped find these bones');
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByTestId('bones-status')).toHaveText(/^Amble found \d+ bones/);
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled();
+});
+
+test('"Just do it here" keeps the drawing on the Chromebook', async ({ page }) => {
+  const { artId } = await seedDrawing(page, { sample: 'hero', name: 'Pip' });
+  await fakeVisionHelper(page);
+  await openBones(page, `#/bones/${artId}`);
+  await page.getByRole('button', { name: 'Magic bones' }).click();
+  await page.getByRole('dialog', { name: 'Ask the AI helper?' }).getByRole('button', { name: 'Just do it here' }).click();
+  await expect(page.getByTestId('bones-status')).toContainText(/Amble found \d+ bones/);
+  expect(await hintCalls(page)).toHaveLength(0);
+  await expect(page.locator('.bones-local')).toContainText('your drawing is never sent anywhere to do it.');
+});

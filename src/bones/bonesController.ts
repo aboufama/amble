@@ -422,18 +422,25 @@ export class BonesController {
     }
   }
 
-  private commitReply(r: Pick<RigReply, 'rig' | 'confidence' | 'issues' | 'notes'>, made: RigMade, replace = false): void {
+  /** Makes a worker's reply the newest step; false when it changed nothing (no step was added). */
+  private commitReply(r: Pick<RigReply, 'rig' | 'confidence' | 'issues' | 'notes'>, made: RigMade, replace = false): boolean {
     if (!this.stack) {
       this.stack = createStack(stepOf(r, made));
       this.openedRig ??= JSON.stringify(r.rig);
       this.refresh({ needsKind: false, failed: false });
       this.scheduleBind(0);
       this.scheduleSave();
-      return;
+      return false;
     }
     const prev = this.stack.present.rig;
+    // the same bones again (Magic bones on bones it made) is not a step of its own
+    if (!replace && JSON.stringify(r.rig) === JSON.stringify(prev)) {
+      this.refresh();
+      return false;
+    }
     this.stack = commit(this.stack, stepOf(r, made), { replace });
     this.changed(prev);
+    return true;
   }
 
   /**
@@ -463,7 +470,7 @@ export class BonesController {
         : await rigWorker.autoRig(src.rig, { kind, lane: 'bones-fit' });
       if (this.disposed) return;
       this.set({ busy: null });
-      this.commitReply(local, 'auto');
+      const stepped = this.commitReply(local, 'auto');
       if (!send) return;
       this.set({ busy: 'asking' });
       const hints = await this.askHints(local.rig.kind);
@@ -476,7 +483,8 @@ export class BonesController {
       const helped = await rigWorker.magicBones(src.rig, local.rig, { hints, lane: 'bones-fit' });
       if (this.disposed) return;
       this.set({ busy: null, aiHelped: true });
-      this.commitReply(helped, 'ai', true);
+      // with the local bones' step: one press of Magic bones is one step to undo
+      this.commitReply(helped, 'ai', stepped);
     } catch (err) {
       if (isSuperseded(err)) return;
       console.warn('Magic bones failed:', err);
