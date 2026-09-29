@@ -157,7 +157,7 @@ export class History {
 
   /**
    * Undoes the last step; resolves to it (or null). Steps run one at a time. All or nothing: what has to
-   * come back first (packed tiles from the worker, packed frames) is fetched before anything changes, so
+   * come back first (packed tiles from the worker, packed frames) is gathered before anything changes, so
    * when that fails the pixels are untouched, the step stays where it was and the promise rejects.
    */
   undo(): Promise<HistoryEntry | null> {
@@ -168,7 +168,7 @@ export class History {
       this.bytes -= e.bytes;
       let src: Map<TileSnap, TileData>;
       try {
-        src = await this.fetch(e, 'before');
+        src = await this.gather(e, 'before');
       } catch (err) {
         this.putBack(this.undoStack, at, e);
         throw err;
@@ -195,7 +195,7 @@ export class History {
       this.bytes -= e.bytes;
       let src: Map<TileSnap, TileData>;
       try {
-        src = await this.fetch(e, 'after');
+        src = await this.gather(e, 'after');
       } catch (err) {
         this.putBack(this.redoStack, at, e);
         throw err;
@@ -225,7 +225,7 @@ export class History {
    * unpacked: the only waiting an undo or redo does. Raw tiles are taken as they are now, so packing that
    * finishes meanwhile changes nothing.
    */
-  private async fetch(e: HistoryEntry, which: 'before' | 'after'): Promise<Map<TileSnap, TileData>> {
+  private async gather(e: HistoryEntry, which: 'before' | 'after'): Promise<Map<TileSnap, TileData>> {
     const out = new Map<TileSnap, TileData>();
     for (const s of e.steps) {
       if (!('pixels' in s)) continue;
@@ -243,8 +243,8 @@ export class History {
     return out;
   }
 
-  /** Writes one side of a pixel change back (synchronously, from what `fetch` got). */
-  private apply(p: PixelChange, which: 'before' | 'after', fetched: Map<TileSnap, TileData>): void {
+  /** Writes one side of a pixel change back (synchronously, from what `gather` got). */
+  private apply(p: PixelChange, which: 'before' | 'after', got: Map<TileSnap, TileData>): void {
     const b = this.board;
     if (!b.layer(p.layer) || b.frameIndex(p.frame) < 0) return;
     const W = b.W;
@@ -253,8 +253,8 @@ export class History {
     for (const t of p.tiles) {
       const r = { x0: t.x, y0: t.y, x1: t.x + t.w, y1: t.y + t.h };
       if (which === 'before' && t.after === undefined) t.after = !data || isZero(data, W, r) ? null : copyOut(data, W, r);
-      if (!fetched.has(t)) continue;
-      const src = fetched.get(t) as Uint8ClampedArray | null;
+      if (!got.has(t)) continue;
+      const src = got.get(t) as Uint8ClampedArray | null;
       if (!data) {
         if (!src) continue;
         data = b.pixels(p.frame, p.layer, true);
