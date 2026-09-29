@@ -778,14 +778,31 @@
 }
 
 /* ---------- the right column ---------- */
+/*
+ * The column scrolls, and a scroller clips what it holds: the cards' and the idea box's shadows would end
+ * in hard edges cutting across the lit path. So the scroller reaches into the (transparent) gutters by
+ * --bleed on each side and pads its content back to where the grid put it.
+ */
 .first__col {
+  --bleed-l: 30px;
+  --bleed-r: 30px;
   grid-column: 6;
   grid-row: 2 / 5;
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  padding: 0 6px 20px 4px;
+  margin: 0 calc(-1 * var(--bleed-r)) 0 calc(-1 * var(--bleed-l));
+  padding: 0 calc(6px + var(--bleed-r)) 20px calc(4px + var(--bleed-l));
   scrollbar-width: thin;
+}
+
+:root[data-layout='tab'] .first__col {
+  --bleed-l: 24px;
+}
+
+:root[data-layout='small'] .first__col {
+  --bleed-l: 12px;
+  --bleed-r: 8px;
 }
 
 .first-col {
@@ -964,6 +981,7 @@
   grid-area: col;
   grid-column: 1 / -1;
   grid-row: auto;
+  margin: 0;
   padding: 24px 16px 140px;
   overflow: visible;
 }
