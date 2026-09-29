@@ -108,6 +108,13 @@ function MovesView({ ctrl, art, rigged, bones, still, hold }: { ctrl: DeskContro
     const p = preview.current;
     if (!p || !art || !rigged?.rig) return;
     void p.load(art.flat, rigged.rig, rigged.layers ?? undefined).then(() => {
+      // The way it is drawn, at once. A new puppet starts facing right, so a drawing that faces left
+      // turned with the paper flip after every update: a squeezed sliver for a frame.
+      const pup = p.puppet;
+      if (pup) {
+        pup.face(pup.rig.facing || 1);
+        pup.flip = 1;
+      }
       if (reduced && clipRef.current === 'idle') p.pose('idle', 0);
       else p.play(clipRef.current);
     }, () => undefined);

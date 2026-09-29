@@ -70,7 +70,13 @@ export function MovePreview({ bound, clip, tweak, name, reduced, hold, emptyText
   useEffect(() => {
     const p = preview.current;
     if (!p || !bound) return;
+    const flip = p.puppet?.flip;
     p.show(bound);
+    // New bones make a new puppet, which starts facing right: without this, a drawing that faces left
+    // (or one walked the other way) turned with the paper flip on every change, a squeezed sliver.
+    const pup = p.puppet;
+    if (pup && flip === undefined) pup.face(pup.rig.facing || 1);
+    if (pup) pup.flip = flip ?? 1;
     setShown((n) => n + 1);
     if (playing) p.play(clip, { amount, speed });
     else p.pose(clip, 0.35);
