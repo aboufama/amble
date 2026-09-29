@@ -1703,10 +1703,16 @@ class Surface implements ArtSurface {
     };
   }
 
+  /** The drawing's layers, pages and every cel's version: the same twice means nothing changed in between. */
+  private stateSig(): string {
+    let s = this.sigOf();
+    for (const [frame, layer, cel] of this.board.entries()) s += `|${frame}/${layer}:${cel.version}`;
+    return s;
+  }
+
   async toArtDoc(): Promise<ArtDoc> {
     if (this.sel.active) this.sel.commit();
     const b = this.board;
-    for (const f of b.frames) await b.ensureFrame(f.id);
     const encode = async (board: Board, frame: string, layer: string): Promise<import('./model').ArtCel | null> => {
       const d = board.pixels(frame, layer);
       if (!d) return null;
@@ -1715,7 +1721,15 @@ class Surface implements ArtSurface {
       return res.cel;
     };
     this.meta.version++;
-    return boardToArtDoc(b, this.meta, this.recording || this.ops.length ? this.ops : null, this.celCache, encode);
+    // The cels are encoded one worker round trip at a time while the student keeps drawing. A change in
+    // between (a stroke, a Merge down) would save a mix of before and after, and a merged layer's pixels
+    // nowhere: so the pass runs again until nothing changed during it (cheap: unchanged cels are cached).
+    for (let pass = 0; ; pass++) {
+      for (const f of b.frames) await b.ensureFrame(f.id);
+      const before = this.stateSig();
+      const doc = await boardToArtDoc(b, this.meta, this.recording || this.ops.length ? this.ops : null, this.celCache, encode);
+      if (this.stateSig() === before || pass >= 3) return doc;
+    }
   }
 
   isDirty(): boolean {

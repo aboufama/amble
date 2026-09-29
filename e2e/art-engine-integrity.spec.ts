@@ -145,6 +145,48 @@ test.describe('art engine integrity', () => {
     expect(r.open).toBe(0);
   });
 
+  test('a save that runs while a layer is merged down keeps every layer it lists', async ({ page }) => {
+    await open(page, 'w=2048&h=2048&layers=paint,paint,paint,lines');
+    const r = await page.evaluate(async () => {
+      const w = window as unknown as HarnessWindow;
+      const s = w.__art.surface as unknown as {
+        layers(): Array<{ id: string }>;
+        setActiveLayer(id: string): void;
+        setColor(c: string): void;
+        drawShape(o: { shape: string; points: Array<[number, number]>; filled?: boolean }): boolean;
+        toArtDoc(): Promise<{ layers: Array<{ id: string }>; cels: Array<{ layer: string }> }>;
+        mergeDown(id: string): Promise<void>;
+      };
+      // Four busy layers: saving each one is a real PNG encode in the worker.
+      const ids = s.layers().map((l) => l.id);
+      ids.forEach((id, i) => {
+        s.setActiveLayer(id);
+        s.setColor(['#e8423f', '#3d7bf2', '#3fbf5a', '#221c18'][i]);
+        for (let k = 0; k < 6; k++) s.drawShape({ shape: 'ellipse', points: [[100 + k * 300, 100 + i * 400], [400 + k * 300, 500 + i * 400]], filled: i < 3 });
+      });
+      const saving = s.toArtDoc();
+      // The student merges the blue layer down while the first layer is being encoded.
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      await s.mergeDown(ids[1]);
+      const doc = await saving;
+      const withCels = new Set(doc.cels.map((c) => c.layer));
+      // What was saved, opened again: the blue is on its own layer (saved before the merge) or on the one
+      // below (after it), but never nowhere.
+      const art = (await import(/* @vite-ignore */ `${location.origin}/src/art/engine/serialize.ts`)) as { artDocToBoard(d: unknown): Promise<{ W: number; pixels(f: string, l: string): Uint8ClampedArray | null; frames: Array<{ id: string }>; layers: Array<{ id: string }> }> };
+      const board = await art.artDocToBoard(doc);
+      const f = board.frames[0].id;
+      const blueAt = board.layers.filter((l) => {
+        const px = board.pixels(f, l.id);
+        const j = (700 * board.W + 250) * 4;
+        return !!px && px[j + 3] > 0 && px[j + 2] > 200 && px[j] < 100;
+      }).length;
+      return { missing: doc.layers.map((l) => l.id).filter((id) => !withCels.has(id)), blueAt };
+    });
+    // Every layer the saved drawing lists has its pixels with it, and nothing drawn is lost.
+    expect(r.missing).toEqual([]);
+    expect(r.blueAt).toBe(1);
+  });
+
   test('a flipbook asked to play twice at once leaves no timer running once stopped', async ({ page }) => {
     await open(page, 'w=256&h=256');
     const left = await page.evaluate(async () => {
