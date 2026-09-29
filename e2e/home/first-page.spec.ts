@@ -1,0 +1,109 @@
+/**
+ * The First page (§2.3): a clean profile opens on the paper, pen strokes enable Bring it to life, the
+ * doodle wakes up and keeps moving, the kind and name chips change it, and Boss fight opens a world with
+ * the doodle as its hero. Drawing and waking never talk to the AI, even with a class's AI on.
+ */
+import type { Locator, Page } from '@playwright/test';
+import { expect, openAmble, test } from '../helpers/app';
+import { mockAi } from '../helpers/mockAi';
+import { ellipse, humanStroke, line, stroke } from '../helpers/pen';
+
+type Amble = {
+  store: { worlds: { get(id: string): Promise<{ cast: Record<string, { art: string | null }>; origin: Record<string, unknown> } | null> } };
+  getState(): { library: { characters: Array<{ id: string; name: string; rig: string }> } };
+};
+
+/** A little person: head, body, arms and legs, drawn with the pen like a hand would. */
+async function drawPerson(page: Page, board: Locator): Promise<void> {
+  const box = await board.boundingBox();
+  if (!box) throw new Error('The paper is not on screen.');
+  const cx = box.width * 0.45;
+  const cy = box.height * 0.5;
+  const strokes = [
+    ellipse(cx, cy - 120, 42, 40, -90, 370),
+    ellipse(cx, cy - 5, 58, 78, -90, 370),
+    line(cx - 30, cy + 62, cx - 44, cy + 170, 4),
+    line(cx + 30, cy + 62, cx + 44, cy + 170, -4),
+    line(cx - 54, cy - 30, cx - 130, cy + 20, 6),
+    line(cx + 54, cy - 30, cx + 130, cy + 20, -6),
+  ];
+  for (const [i, path] of strokes.entries()) await stroke(page, board, humanStroke(path, { seed: i + 1, speed: 900 }), { pointer: 'pen' });
+}
+
+test('a first doodle comes alive, gets a kind and a name, and walks into Boss fight', async ({ page }) => {
+  const ai = await mockAi(page);
+  await openAmble(page, { ai: 'mock' });
+  await expect(page.getByTestId('screen-home')).toHaveAttribute('data-home', 'first');
+  const first = page.getByTestId('screen-first');
+  await expect(first.getByRole('heading', { name: 'Draw a creature.' })).toBeVisible();
+
+  // Everything from here on is drawing and waking: none of it may reach the AI.
+  const aiBefore = ai.requests.length;
+  const board = page.getByTestId('first-board');
+  await expect(board.locator('canvas').first()).toBeVisible();
+  const bring = page.getByTestId('bring-to-life');
+  await expect(bring).toHaveAttribute('aria-disabled', 'true');
+
+  await drawPerson(page, board);
+  await expect(bring).not.toHaveAttribute('aria-disabled', 'true');
+
+  const t0 = Date.now();
+  await bring.click();
+  await expect(first).toHaveAttribute('data-awake', 'true');
+  test.info().annotations.push({ type: 'alive', description: `awake ${Date.now() - t0} ms after the click` });
+
+  // The creature keeps moving: two frames of its canvas differ.
+  const canvas = page.getByTestId('alive-canvas');
+  await expect(canvas).toBeVisible();
+  const a = await canvas.screenshot();
+  await page.waitForTimeout(450);
+  const b = await canvas.screenshot();
+  expect(a.equals(b), 'the alive canvas changes between frames').toBe(false);
+
+  // It is on the shelf, as a blob until told otherwise.
+  const character = async () => page.evaluate(() => (window as unknown as { __amble: Amble }).__amble.getState().library.characters[0] ?? null);
+  await expect.poll(character).not.toBeNull();
+  const art = (await character())!;
+  expect(art.rig).toBe('blob');
+
+  // The kind chip: it's a Person.
+  const kindChip = page.getByTestId('kind-chip');
+  await kindChip.click();
+  await page.getByRole('radio', { name: /person/i }).click();
+  await expect(kindChip).toContainText('Person');
+  await expect.poll(async () => (await character())?.rig).toBe('biped');
+
+  // The name chip.
+  await page.getByTestId('name-chip').click();
+  const nameInput = page.getByTestId('name-input');
+  await nameInput.fill('Sir Hops');
+  await nameInput.press('Enter');
+  await expect(page.getByTestId('name-chip')).toContainText('Sir Hops');
+  await expect.poll(async () => (await character())?.name).toBe('Sir Hops');
+
+  // Boss fight, with Sir Hops as its hero.
+  await page.getByRole('button', { name: /^Boss fight with Sir Hops/ }).click();
+  await expect(page).toHaveURL(/#\/w\/w_[A-Za-z0-9_-]+$/);
+  await expect(page.getByTestId('screen-world')).toBeVisible();
+  const worldId = new URL(page.url()).hash.replace('#/w/', '');
+  const world = await page.evaluate((id) => (window as unknown as { __amble: Amble }).__amble.store.worlds.get(id), worldId);
+  expect(world?.cast.hero.art).toBe(art.id);
+  expect(world?.origin).toMatchObject({ kind: 'starter', starter: 'moon-king', withArt: false });
+
+  // Nothing went to the AI (a model list check is not a request with anything of the student's).
+  expect(ai.requests.slice(aiBefore).filter((r) => r.kind !== 'models').map((r) => `${r.method} ${r.path}`)).toEqual([]);
+});
+
+test('"Or play one first." opens a starter, and leaving it untouched keeps the First page', async ({ page }) => {
+  await openAmble(page);
+  await expect(page.getByTestId('screen-home')).toHaveAttribute('data-home', 'first');
+  const starters = page.getByTestId('first-column').getByRole('button', { name: /Play it\.$/ });
+  await expect(starters).toHaveCount(4);
+  await starters.first().click();
+  await expect(page).toHaveURL(/#\/w\/w_[A-Za-z0-9_-]+$/);
+  await expect(page.getByTestId('screen-world')).toBeVisible();
+  await page.goBack();
+  await expect(page.getByTestId('screen-home')).toHaveAttribute('data-home', 'first');
+  await expect(page.getByTestId('screen-first')).toBeVisible();
+  await expect.poll(() => page.evaluate(async () => (await (window as unknown as { __amble: { store: { worlds: { list(): Promise<unknown[]> } } } }).__amble.store.worlds.list()).length)).toBe(0);
+});

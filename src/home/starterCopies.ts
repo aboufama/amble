@@ -34,6 +34,31 @@ export function routeWorldId(route: Route): WorldId | null {
 
 const watched = new Set<WorldId>();
 let unsubscribe: (() => void) | null = null;
+// Copies the student just left, still being kept or discarded (Home waits for them before choosing).
+let leaving = 0;
+const settledWaiters = new Set<() => void>();
+
+function track(work: Promise<void>): void {
+  leaving++;
+  void work
+    .catch(() => undefined)
+    .finally(() => {
+      leaving--;
+      if (leaving) return;
+      for (const done of settledWaiters) done();
+      settledWaiters.clear();
+    });
+}
+
+/** Whether a starter copy the student just left is still being kept or discarded. */
+export function starterCopiesPending(): boolean {
+  return leaving > 0;
+}
+
+/** Resolves once every starter copy the student just left has been kept or discarded. */
+export function starterCopiesSettled(): Promise<void> {
+  return leaving ? new Promise((resolve) => settledWaiters.add(resolve)) : Promise.resolve();
+}
 
 async function discardIfUntouched(id: WorldId): Promise<void> {
   const { store } = getServices();
@@ -53,7 +78,7 @@ export function watchStarterCopy(id: WorldId): void {
     for (const w of [...watched]) {
       if (w === here) continue;
       watched.delete(w);
-      void discardIfUntouched(w).catch(() => undefined);
+      track(discardIfUntouched(w));
     }
     if (!watched.size && unsubscribe) {
       unsubscribe();

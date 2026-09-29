@@ -5,6 +5,7 @@
  */
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { useServices } from '../../app/services';
+import { starterCopiesPending, starterCopiesSettled } from '../../home/starterCopies';
 import { homeChoice, type HomeChoice } from '../../home/trailData';
 import { refreshLibrary } from '../../state/library';
 import { useStore } from '../../state/store';
@@ -20,7 +21,18 @@ export function Home() {
   const characters = useStore((s) => s.library.characters);
   const seen = useStore((s) => s.prefs.seen);
   const view = useStore((s) => s.prefs.trailView);
-  const live = homeChoice({ loaded, worlds, characters }, seen);
+  // A starter the student just played untouched is on its way out: choose once it is gone, so leaving it
+  // does not turn a first visit into the Trail.
+  const [copiesSettled, setCopiesSettled] = useState(() => !starterCopiesPending());
+  useEffect(() => {
+    if (copiesSettled) return;
+    let live = true;
+    void starterCopiesSettled().then(() => live && setCopiesSettled(true));
+    return () => {
+      live = false;
+    };
+  }, [copiesSettled]);
+  const live = copiesSettled ? homeChoice({ loaded, worlds, characters }, seen) : 'loading';
   // The choice holds for this visit: the First page must not turn into the Trail the moment its doodle
   // becomes the student's first drawing.
   const [latched, setLatched] = useState<HomeChoice | null>(null);
