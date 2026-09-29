@@ -511,6 +511,13 @@
 
 .plan-card__cta .btn--h58 {
   width: 100%;
+  padding-block: 8px;
+}
+
+.plan-card__cta .btn--h58 .btn__label {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .plan-card__cta .btn--h44 {

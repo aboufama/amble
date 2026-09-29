@@ -65,7 +65,7 @@ export function LampSpot({ x, cx: spot, feet, empty, breathing, character, give,
   const post = spot - 64;
   const style = { left: x, top: `calc(100% - 768px + ${feet - 262}px)`, ['--post' as string]: `${post - x}px`, ['--spot' as string]: `${spot - x}px` } as CSSProperties;
   return (
-    <li className={cx('trail-stop', 'lamp', breathing && 'lamp--breathing', lit && 'lamp--lit')} style={style} data-testid="lamp-spot">
+    <div className={cx('trail-stop', 'lamp', breathing && 'lamp--breathing', lit && 'lamp--lit')} style={style} data-testid="lamp-spot">
       <svg className="lamp__post" width="380" height="270" viewBox="0 0 380 270" aria-hidden="true" focusable="false">
         <defs>
           <linearGradient id="lamp-cone" x1="0" y1="0" x2="0" y2="1">
@@ -111,6 +111,6 @@ export function LampSpot({ x, cx: spot, feet, empty, breathing, character, give,
           <span className="btn__label">{t('home.giveNameWorld', { name: give.name })}</span>
         </Link>
       )}
-    </li>
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 /**
- * M1's starting point (FOUNDATION-STUB test; M1 replaces it): the screen chunks export the components
+ * Home's screens (M1): the screen chunks export the components
  * App.tsx loads by name, and Home's data (the library) loads from the store.
  */
 import { afterEach, describe, expect, it } from 'vitest';
@@ -11,7 +11,7 @@ import { getState, resetState } from '../../src/state/store';
 import { MemoryStore } from '../../src/store/memory';
 import { sampleArt, sampleWorld } from '../foundation/samples';
 
-describe('home (stub)', () => {
+describe('home screens', () => {
   afterEach(() => resetState());
 
   it('exports the screens App.tsx loads by name', () => {

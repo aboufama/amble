@@ -37,7 +37,7 @@ export function AssignmentNote({ assignment, left, top }: { assignment: Assignme
   };
   const draws = assignment.require.length ? assignment.require.map(keyWords).join(', ') : t('home.asgYourHero');
   return (
-    <li className="trail-stop assignment-note on-paper" style={{ left, top: `calc(100% - 768px + ${top}px)` }} data-testid="assignment-note">
+    <div className="trail-stop assignment-note on-paper" style={{ left, top: `calc(100% - 768px + ${top}px)` }} data-testid="assignment-note">
       <span className="assignment-note__string" aria-hidden="true" />
       <div className="assignment-note__paper">
         <p className="assignment-note__from">{t('home.fromTeacher')}</p>
@@ -54,6 +54,6 @@ export function AssignmentNote({ assignment, left, top }: { assignment: Assignme
           {assignment.due && <span className="assignment-note__due">{t('home.asgDue', { due: assignment.due })}</span>}
         </div>
       </div>
-    </li>
+    </div>
   );
 }

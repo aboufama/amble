@@ -172,7 +172,6 @@ export const home = {
   lostLede: 'Worlds you put away wait here for 30 days. Then they are gone.',
   lostEmpty: 'Nothing here. Worlds you put away wait here for 30 days.',
   daysLeft: '{n} days left',
-  oneDayLeft: '1 day left',
   lastDay: 'Last day',
   putAwayOn: 'Put away {date}',
 

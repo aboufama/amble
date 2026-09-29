@@ -205,7 +205,9 @@ export async function copyWorld(id: WorldId): Promise<World | null> {
   const world = await store.worlds.get(id);
   if (!world) return null;
   const now = Date.now();
-  const title = t('home.copyTitle', { title: world.title }).slice(0, TITLE_MAX);
+  // Shorten the old title, never the "(copy)" words, so a long title still reads as a copy.
+  const room = TITLE_MAX - t('home.copyTitle', { title: '' }).length;
+  const title = t('home.copyTitle', { title: world.title.slice(0, Math.max(1, room)).trimEnd() }).slice(0, TITLE_MAX);
   const step = startStep(title, now);
   const copy: World = {
     ...world,

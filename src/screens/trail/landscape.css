@@ -26,6 +26,19 @@
   display: none;
 }
 
+/* Narrow screens: the moon and the waiting constellation step right, clear of the hero copy. */
+@media (max-width: 1200px) {
+  .night-sky__decor {
+    background-position: calc(100% + 110px) 0;
+  }
+}
+
+@media (max-height: 720px) {
+  .bottom-path__lantern {
+    display: none;
+  }
+}
+
 /* ---------- hills (0.3x and 0.55x parallax) ---------- */
 .hills {
   position: absolute;

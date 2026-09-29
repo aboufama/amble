@@ -43,9 +43,10 @@
 }
 
 :root[data-layout='tab'] .first__main {
-  --paper-h: min(574px, calc(100vh - var(--header) - 26px - 64px));
+  --paper-h: min(574px, calc(100vh - var(--header) - 26px - 84px));
   --col-w: 430px;
   --gap-b: 36px;
+  --card-h: min(160px, calc((100vh - var(--header) - 26px - 250px) / 2));
 }
 
 :root[data-layout='touch'] .first__main {
@@ -62,16 +63,61 @@
 }
 
 :root[data-layout='small'] .first__main {
-  --pad-l: 14px;
-  --dock-w: 60px;
-  --gap-a: 12px;
+  --pad-l: 12px;
+  --dock-w: 58px;
+  --gap-a: 10px;
   --paper-w: 700px;
   --gap-b: 20px;
-  --col-w: min(400px, 36vw);
+  --col-w: min(400px, 37vw);
   --top: 14px;
-  --paper-h: calc(100vh - var(--header) - 14px - 56px);
-  --cap: 40px;
-  --card-h: 146px;
+  --paper-h: calc(100vh - var(--header) - 14px - 96px);
+  --dock-align: start;
+  --cap: 34px;
+  --cap-gap: 0px;
+  --card-h: min(146px, calc((100vh - var(--header) - 14px - 210px) / 2));
+}
+
+:root[data-layout='small'] .first__tape {
+  width: 84px;
+  height: 22px;
+}
+
+:root[data-layout='small'] .first__tape--lemon {
+  left: -18px;
+  top: 8px;
+  rotate: -28deg;
+}
+
+:root[data-layout='small'] .first__tape--lime {
+  right: -16px;
+  top: 6px;
+  rotate: 24deg;
+}
+
+:root[data-layout='small'] .first__title {
+  left: 32px;
+  top: 28px;
+  font-size: 2.125rem;
+}
+
+:root[data-layout='small'] .first__sub {
+  left: 34px;
+  top: 74px;
+  font-size: 1.0625rem;
+}
+
+:root[data-layout='small'] .first__hint {
+  left: 84px;
+  top: 128px;
+}
+
+:root[data-layout='small'] .first-col__title--give {
+  font-size: 1.75rem;
+}
+
+:root[data-layout='small'] .first-col__cards {
+  gap: 12px;
+  margin-top: 12px;
 }
 
 /* ---------- the entrance: the night fades in, the lanterns light, the paper slides up ---------- */
@@ -140,15 +186,18 @@
 /* ---------- the pen dock ---------- */
 .pen-dock {
   --line-control: var(--line-control-panel);
-  grid-area: dock;
-  align-self: end;
+  position: relative;
+  z-index: 2;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: var(--dock-align, center);
   justify-self: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: var(--cap-gap, 6px);
   width: var(--dock-w);
-  margin-bottom: 12px;
+  margin-top: var(--dock-top, 0px);
   padding: 12px 0 8px;
   border-radius: 32px;
   background: var(--surface);
@@ -172,8 +221,11 @@
 }
 
 .pen-dock__cap {
+  height: max(var(--cap), var(--target));
+}
+
+:root:not([data-layout='small']) .pen-dock__cap {
   height: var(--cap);
-  min-height: 40px;
 }
 
 .pen-dock__ink {
@@ -716,8 +768,8 @@
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  padding: 0 4px 20px;
-  scrollbar-width: none;
+  padding: 0 6px 20px 4px;
+  scrollbar-width: thin;
 }
 
 .first-col {
@@ -745,6 +797,32 @@
   margin-top: 10px;
   font: var(--type-body);
   color: var(--text-2);
+}
+
+@media (max-height: 700px) {
+  .first-col__lede {
+    margin-top: 6px;
+    font-size: 0.9375rem;
+    line-height: 1.35;
+  }
+
+  .first-col__idea {
+    margin-top: 14px;
+  }
+
+  .first-col .seed-card {
+    --thumb-h: calc(var(--card-h) - 64px);
+  }
+
+  .first-col--alive .seed-card {
+    --thumb-h: calc(var(--card-h) - 84px);
+  }
+}
+
+@media (max-height: 640px) {
+  .first-col__lede {
+    display: none;
+  }
 }
 
 .first-col__cards {
