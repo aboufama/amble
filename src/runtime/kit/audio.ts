@@ -127,7 +127,11 @@ export class Music {
   /** Starts a looping tune: 'boss' | 'adventure' | 'chase' | 'chill' | 'spooky' | 'chaos'. */
   play(style: string = 'adventure', o: { bpm?: number; root?: number } = {}): this {
     const name: MusicStyle = (MUSIC_STYLES as readonly string[]).includes(style) ? (style as MusicStyle) : 'adventure';
-    this.style = { ...MUSIC[name], ...(o.bpm ? { bpm: o.bpm } : {}), ...(o.root ? { root: o.root } : {}) };
+    // Game code picks these, so keep them musical: the scheduler below runs inside the game's frame, where a
+    // zero or endless tempo never moves on (a frozen game) and a negative one throws.
+    const bpm = typeof o.bpm === 'number' && Number.isFinite(o.bpm) && o.bpm > 0 ? Math.min(320, Math.max(30, o.bpm)) : 0;
+    const root = typeof o.root === 'number' && Number.isFinite(o.root) && o.root > 0 ? Math.min(96, Math.max(12, o.root)) : 0;
+    this.style = { ...MUSIC[name], ...(bpm ? { bpm } : {}), ...(root ? { root } : {}) };
     this.on = true;
     this.step = 0;
     this.next = 0;
