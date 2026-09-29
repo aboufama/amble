@@ -522,12 +522,17 @@
   stroke-width: 5.5px;
 }
 
+/* Still dashes that march while the "goes here" sign is pointed at or focused: a march never stops
+   repainting, and the Trail must cost nothing while it waits. */
 .lamp__ph-body {
   fill: color-mix(in srgb, var(--dash) 7%, transparent);
   stroke: var(--dash);
   stroke-width: 2.4px;
   stroke-dasharray: 7 6;
   stroke-linecap: round;
+}
+
+.trail:not(.trail--still) .lamp:has(.lamp__garden:is(:hover, :focus-visible)) .lamp__ph-body {
   animation: dash-march 1.3s linear infinite;
 }
 
@@ -692,23 +697,38 @@
   height: 100%;
 }
 
-.walker__sprite {
+.walker__frame {
   display: block;
   width: 100%;
   height: 100%;
-  background-repeat: no-repeat;
-  background-size: var(--strip-w) 100%;
   filter: drop-shadow(2.2px 0 0 var(--paper)) drop-shadow(-2.2px 0 0 var(--paper)) drop-shadow(0 2.2px 0 var(--paper)) drop-shadow(0 -2.2px 0 var(--paper))
     drop-shadow(0 6px 6px color-mix(in srgb, var(--bg-deep) 55%, transparent));
+}
+
+.walker__window {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* The whole strip, moved by a transform rather than background-position: the frames step on the
+   compositor, so a Trail full of walkers repaints nothing while it waits. */
+.walker__sprite {
+  display: block;
+  width: var(--strip-w);
+  height: 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
   animation: walk-cycle var(--step, 0.8s) steps(var(--frames, 8)) infinite;
 }
 
 @keyframes walk-cycle {
   from {
-    background-position-x: 0;
+    transform: translateX(0);
   }
   to {
-    background-position-x: calc(-1 * var(--strip-w));
+    transform: translateX(calc(-1 * var(--strip-w)));
   }
 }
 
@@ -755,9 +775,17 @@
 .trail__walkers--paused .walker__sprite,
 .trail__walkers--paused .walker__turn,
 .trail--still .lamp__ph-body,
-.trail--still .trail-ground__flies > g,
+.trail--still .trail-fly,
 .trail--still .lamp__glow {
   animation: none;
+}
+
+/* A hidden tab keeps its place: everything that loops holds still until the student is back (§3.6). */
+.trail--hidden .walker__sprite,
+.trail--hidden .walker__turn,
+.trail--hidden .trail-fly,
+.trail--hidden .lamp__glow {
+  animation-play-state: paused;
 }
 
 /* ---------- the nav cluster ---------- */

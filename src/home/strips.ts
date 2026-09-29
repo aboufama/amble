@@ -5,6 +5,7 @@
  * rig work at all.
  */
 import type { RigData } from '../cores/rig';
+import { hashRig } from '../cores/rigData';
 import type { BlobRef } from '../model/types';
 import type { Store } from '../store/api';
 
@@ -76,7 +77,7 @@ async function makeStrip(store: Store, src: StripSource, clip: StripClip, key: s
   if (!entry) {
     const flat = src.flat instanceof Blob ? src.flat : src.flat ? await store.blobs.get(src.flat) : null;
     if (!flat) return null;
-    const { rigWorker } = await import('../cores/rig');
+    const { rigWorker } = await import('../cores/rigWorker');
     const { meta, frames } = await rigWorker.strip({ image: flat }, src.rig, clip, { frames: STRIP_FRAMES, size: STRIP_SIZE, face: 1, packed: true, lane: `strip:${src.artHash}:${clip}` });
     const bmp = frames[0];
     if (!bmp) return null;
@@ -90,7 +91,6 @@ async function makeStrip(store: Store, src: StripSource, clip: StripClip, key: s
 
 /** A character's strip for a move (made once per page, then from the cache). Null when it cannot be made. */
 export async function stripFor(store: Store, src: StripSource, clip: StripClip): Promise<Strip | null> {
-  const { hashRig } = await import('../cores/rig');
   const key = stripKey(src.artHash, hashRig(src.rig), clip);
   let strip = made.get(key);
   if (!strip) {

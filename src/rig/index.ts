@@ -12,7 +12,7 @@ export { bindRig, bindScale, BIND_WORK_SIZE, defaultParts, type BindOptions } fr
 export { bakeBound, unbakeBound, isBake, BAKE_VERSION } from './bake';
 export {
   jointList, findJoint, moveJoint, moveBone, mirrorSides, addDynamic, removeBone, setRigid, setDynamic, setFacing, setAnchor,
-  setTweak, setKind, magicBones, rigForRedraw, hintsFromRig, spineAxis, sideOf, artSizeOf,
+  setTweak, setKind, magicBones, rigForRedraw, hintsFromRig, spineAxis, sideOf, artSizeOf, scaleRigTo,
   type Joint, type JointEnd, type Side, type WigglyOptions, type RefitOptions,
 } from './editing';
 export { templateFor, templateHints, ghostShapes, partSteps, type GhostShape, type PartStep } from './templates';

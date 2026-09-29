@@ -20,6 +20,7 @@ import {
   type ToPlayer,
   type WorldObject,
 } from '../../cores/play';
+import { withBake, withBakes } from './bake';
 
 export type SlotId = 'world' | 'desk-preview' | 'code' | 'gallery' | 'handin';
 
@@ -94,6 +95,48 @@ function deviceMemory(): number {
   return (typeof navigator === 'undefined' ? undefined : (navigator as { deviceMemory?: number }).deviceMemory) ?? 8;
 }
 
+/**
+ * Calls `onMove` once when `el` moves on screen (a layout shift, a scroll, a transform, the window resizing),
+ * with no work at all while it stays put: an IntersectionObserver whose root box is the element's own
+ * rect, so a move takes part of the element out of it. (Its ResizeObserver sees it change size.) Returns
+ * a function that stops watching.
+ */
+function watchMove(el: Element, onMove: () => void): () => void {
+  let io: IntersectionObserver | null = null;
+  const stop = () => {
+    io?.disconnect();
+    io = null;
+  };
+  const watch = (threshold: number) => {
+    stop();
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return;
+    const view = document.documentElement;
+    const inset = (px: number) => `${-Math.floor(px)}px`;
+    const rootMargin = [inset(r.top), inset(view.clientWidth - r.right), inset(view.clientHeight - r.bottom), inset(r.left)].join(' ');
+    let first = true;
+    io = new IntersectionObserver(
+      (entries) => {
+        const { intersectionRatio: ratio, boundingClientRect: b } = entries[entries.length - 1];
+        const moved = Math.abs(b.left - r.left) > 0.5 || Math.abs(b.top - r.top) > 0.5 || Math.abs(b.width - r.width) > 0.5 || Math.abs(b.height - r.height) > 0.5;
+        if (first && !moved) {
+          first = false;
+          // Clipped by a scroller or the window's edge, less than all of it is inside its own box: watch
+          // for a change from how much is.
+          if (ratio > 0 && Math.abs(ratio - threshold) > 1e-3) watch(ratio);
+          return;
+        }
+        stop();
+        onMove();
+      },
+      { root: document, rootMargin, threshold },
+    );
+    io.observe(el);
+  };
+  watch(1);
+  return stop;
+}
+
 export interface PlayerHostOptions {
   runtimeUrl?: string;
   /** Keep a warm spare (default: unless the device has under 4 GB). */
@@ -115,9 +158,15 @@ export class PlayerHostImpl implements PlayerHost {
   private observer: ResizeObserver | null = null;
   private raf = 0;
   private hotUntil = 0;
-  private nextCheck = 0;
+  /** Stops the move watch on a still slot (null while the frame loop runs). */
+  private stopWatching: (() => void) | null = null;
   private lastRect = '';
   private fullscreenEl: HTMLElement | null = null;
+  /** Bumped by each load: a load still waiting for its bakes when a newer one starts is superseded. */
+  private loads = 0;
+  /** The newest swap per art key (a swap waiting for its bake is dropped when a newer swap, a clear or a load comes). */
+  private readonly swaps = new Map<string, number>();
+  private swapSeq = 0;
 
   constructor(private readonly o: PlayerHostOptions = {}) {}
 
@@ -159,20 +208,27 @@ export class PlayerHostImpl implements PlayerHost {
 
   private heat(): void {
     this.hotUntil = performance.now() + 1000;
-    this.nextCheck = 0;
     this.startTracking();
   }
 
+  /**
+   * Follows the active slot every frame while it moves (until a second after its last change), then stops:
+   * a still slot costs no frames (§6.11 idle), and the observers wake the tracking when it moves again.
+   */
   private startTracking(): void {
     if (this.raf || typeof requestAnimationFrame === 'undefined') return;
+    this.stopWatching?.();
+    this.stopWatching = null;
     const tick = () => {
-      this.raf = 0;
-      const now = performance.now();
-      if (now >= this.nextCheck) {
-        this.place();
-        this.nextCheck = now < this.hotUntil ? 0 : now + 250;
+      // `raf` stays set while the tick runs, so a change `place()` finds heats the loop instead of forking it.
+      this.place();
+      if (this.slots.length && performance.now() < this.hotUntil) {
+        this.raf = requestAnimationFrame(tick);
+        return;
       }
-      if (this.slots.length) this.raf = requestAnimationFrame(tick);
+      this.raf = 0;
+      const el = this.activeSlot()?.el;
+      if (el?.isConnected && typeof IntersectionObserver !== 'undefined') this.stopWatching = watchMove(el, () => this.heat());
     };
     this.raf = requestAnimationFrame(tick);
   }
@@ -208,10 +264,14 @@ export class PlayerHostImpl implements PlayerHost {
   private async ensure(): Promise<Player> {
     if (this.player) return this.player;
     const container = await this.waitForLayer();
-    // The runtime's URL needs the page to resolve (virtual:amble-runtime), so it loads here, lazily.
-    const runtimeUrl = this.o.runtimeUrl ?? (await import('../../cores/playRuntime')).RUNTIME_URL;
+    // The runtime's URL needs the page to resolve (virtual:amble-runtime), so it loads here, lazily, and
+    // so does the Player itself: the Trail and the First page never start a game, so they never load it.
+    const [runtimeUrl, core] = await Promise.all([
+      this.o.runtimeUrl ?? import('../../cores/playRuntime').then((m) => m.RUNTIME_URL),
+      import('../../cores/player'),
+    ]);
     if (this.player) return this.player;
-    const player = new Player({
+    const player = new core.Player({
       container,
       runtimeUrl,
       title: this.title,
@@ -267,7 +327,13 @@ export class PlayerHostImpl implements PlayerHost {
   // ---------------------------------------------------------------- running games
 
   async load(init: InitMessage): Promise<GameManifest> {
-    const player = await this.ensure();
+    const load = ++this.loads;
+    // Swaps from before this load are already in its drawings (they were saved first).
+    this.swaps.clear();
+    // Drawings with bones go to the game bound (the rig worker binds while the player gets ready).
+    const [player, art] = await Promise.all([this.ensure(), withBakes(init.art)]);
+    if (load !== this.loads) throw new DOMException('A newer game replaced this one.', 'AbortError');
+    init = { ...init, art };
     this.prefs(init.prefs);
     this.userPaused = false;
     this.autoPaused = false;
@@ -292,7 +358,9 @@ export class PlayerHostImpl implements PlayerHost {
   }
 
   async robot(init: InitMessage): Promise<{ raw: RobotRaw; verdict: RobotVerdict }> {
-    const player = await this.ensure();
+    const [player, art] = await Promise.all([this.ensure(), withBakes(init.art)]);
+    // Kept with its bakes: promoting it shows the same game without binding again.
+    init = { ...init, art };
     this.lastRobot = init;
     const report = await player.robotTest(bundleOf(init), { gameMs: init.robot?.gameMs ?? 6000, seed: init.robot?.seed ?? 1, bot: init.robot?.bot ?? 'auto' });
     return verdictOf(report);
@@ -310,10 +378,19 @@ export class PlayerHostImpl implements PlayerHost {
   }
 
   swapArt(art: DrawnArt): void {
-    this.player?.swapArt(art);
+    const ticket = ++this.swapSeq;
+    this.swaps.set(art.key, ticket);
+    const send = (ready: DrawnArt) => {
+      if (this.swaps.get(art.key) !== ticket) return;
+      this.swaps.delete(art.key);
+      this.player?.swapArt(ready);
+    };
+    if (art.rig === undefined || art.rig === null || art.bake) send(art);
+    else void withBake(art).then(send);
   }
 
   clearArt(key: string): void {
+    this.swaps.delete(key);
     this.player?.clearArt(key);
   }
 

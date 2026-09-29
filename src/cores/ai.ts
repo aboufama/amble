@@ -8,21 +8,9 @@
  * vite.config.ts imports `assertNoKeyInEnv` from src/ai/config/secrets.ts directly: this barrel (like the
  * core's index) reads `import.meta.env` and browser APIs.
  */
-import {
-  checkStudentText,
-  findPii,
-  looksLikeProviderKey,
-  mergeLayers,
-  PatchParser,
-  readClassLink,
-  validateGame,
-  type AiErrorKind,
-  type ClassLink,
-  type GameFile,
-  type KitManifest,
-} from '../ai';
+import { checkStudentText, findPii, looksLikeProviderKey, mergeLayers, readClassLink, type AiErrorKind, type ClassLink } from '../ai';
 import type { AiMode, AiStatus, Assignment, ClassLinkV1, CodeFile, Level, SafetyVerdict } from '../model/types';
-import { KIT_API, type KitApi } from './play';
+import type { SourceFile } from './aiCode';
 
 /** 'real': the AI core has merged. */
 export const AI_CORE: 'stub' | 'real' = 'real';
@@ -174,15 +162,11 @@ export type {
 /** The core's own safety verdict (richer than the app's `SafetyVerdict` of §4.2; see `checkText`). */
 export type { SafetyVerdict as CoreSafetyVerdict } from '../ai';
 
-/** The validator's and applier's file shape (`{ path, content }`); the player's is `GameFile` in ./play. */
-export type SourceFile = GameFile;
-
 // ------------------------------------------------------------------ spec-named adapters
 
-/** `createPatchParser()`: the core's incremental AMBLE PATCH parser (`feed`, `snapshot`, `end`). */
-export function createPatchParser(): PatchParser {
-  return new PatchParser();
-}
+// The adapters that need the validator, the kit's API or the patch parser live in ./aiCode, so this
+// barrel (which loads with the app) never brings them into the first load.
+export { createPatchParser, extractManifest, kitManifest, type SourceFile, type StaticManifest } from './aiCode';
 
 /** The local floor filter (offline, instant) as the app's `SafetyVerdict` (§4.2). */
 export function checkText(text: string, level: Level): SafetyVerdict {
@@ -202,24 +186,6 @@ export function checkText(text: string, level: Level): SafetyVerdict {
 /** A world's code files for the validator and the applier. */
 export function sourceFilesOf(code: readonly CodeFile[]): SourceFile[] {
   return code.map((f) => ({ path: f.path, content: f.source }));
-}
-
-/** What the Game class declares, read without running it: its literal statics and its art keys. */
-export interface StaticManifest {
-  /** `config`, `art`, `dials`, `sounds`... as literal values (`DialSpec.for` included). */
-  statics: Record<string, unknown>;
-  art: { declared: string[]; used: string[]; missing: string[] };
-}
-
-/** `extractManifest`: the `statics` and `art` parts of `validateGame` (no auto-fixes). */
-export function extractManifest(files: readonly SourceFile[], manifest: KitManifest = kitManifest()): StaticManifest {
-  const r = validateGame([...files], { manifest, fix: false });
-  return { statics: r.statics, art: r.art };
-}
-
-/** The kit's API as the validator's manifest: the player core's `KIT_API` (scene, namespaces, actor methods, synonyms, reserved names). */
-export function kitManifest(api: KitApi = KIT_API): KitManifest {
-  return api;
 }
 
 // ------------------------------------------------------------------ class links

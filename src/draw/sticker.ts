@@ -6,6 +6,11 @@
 
 const CREAM = '#fdf8ec';
 const EDGE = 3;
+/**
+ * Small canvases drawn once and read back: on the CPU. A GPU canvas would wait for the GPU process to read
+ * it back, behind the running game and the Desk (well over a second of Bring to life on a busy GPU).
+ */
+const ON_CPU: CanvasRenderingContext2DSettings = { willReadFrequently: true };
 
 async function bitmapOf(src: Blob | ImageBitmap): Promise<ImageBitmap> {
   return src instanceof Blob ? createImageBitmap(src) : src;
@@ -14,7 +19,7 @@ async function bitmapOf(src: Blob | ImageBitmap): Promise<ImageBitmap> {
 /** The drawing's shape grown by `r` px, in one colour (a ring of offset copies, then filled). */
 function grown(img: CanvasImageSource, w: number, h: number, x: number, y: number, dw: number, dh: number, r: number, color: string): OffscreenCanvas {
   const c = new OffscreenCanvas(w, h);
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', ON_CPU);
   if (!ctx) return c;
   const steps = 16;
   for (let k = 0; k < steps; k++) {
@@ -38,7 +43,7 @@ export async function makeSticker(flat: Blob | ImageBitmap, size = 256): Promise
   const x = Math.round((size - dw) / 2);
   const y = Math.round((size - dh) / 2);
   const c = new OffscreenCanvas(size, size);
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', ON_CPU);
   if (!ctx) throw new Error('No 2D canvas for the sticker.');
   const edge = grown(img, size, size, x, y, dw, dh, EDGE, CREAM);
   ctx.save();

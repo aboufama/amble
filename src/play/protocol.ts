@@ -53,6 +53,12 @@ export interface DrawnArt {
   rig?: unknown;
   layers?: Record<string, ImageSource>;
   /**
+   * The editor's bind of `image` (with `layers`) to `rig`, as one buffer (the rig core's `bakeBound`), made
+   * in its rig worker with the rig scaled to the image (`scaleRigTo`). The game only unpacks it: binding
+   * is not part of the player's runtime (§6.3, §6.5).
+   */
+  bake?: ArrayBuffer;
+  /**
    * A flipbook that replaces one move (§7.12): the pages packed into `atlas`, where they sit in `json` (a
    * `FlipbookSheet`), the kit's move they replace ('attack', 'walk'...) and the pages per second (4-12).
    */
@@ -416,6 +422,11 @@ export const EMPTY_MANIFEST: GameManifest = { title: '', subtitle: '', physics: 
 /** Element ids inside an exported game page (see src/play/standalone.ts). */
 export const STANDALONE_RUNTIME_ID = 'amble-runtime';
 export const STANDALONE_DATA_ID = 'amble-standalone';
+/**
+ * In an exported page, the runtime leaves its start function here for the standalone script that follows
+ * it (src/runtime/standalone.ts: the ▶ Play card calls it inside the click).
+ */
+export const STANDALONE_START = '__ambleStartStandalone';
 
 /** The game inside an exported page, as JSON (binary data as base64, drawings as data URLs). */
 export interface StandaloneGame {
@@ -435,6 +446,8 @@ type Obj = Record<string, unknown>;
 const MAX_TEXT = 500;
 const MAX_KEY = 64;
 const MAX_LIST = 256;
+/** A rig bake (mesh, weights and the parts' atlas); a 1024 px drawing's is a few MB. */
+const MAX_BAKE_BYTES = 32 * 1024 * 1024;
 
 function isObj(v: unknown): v is Obj {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -868,6 +881,7 @@ function parseDrawnArt(v: unknown): DrawnArt | null {
   if (!key || !isImageSource(v.image)) return null;
   const out: DrawnArt = { key, image: v.image };
   if (v.rig !== undefined && v.rig !== null) out.rig = v.rig;
+  if (out.rig !== undefined && v.bake instanceof ArrayBuffer && v.bake.byteLength <= MAX_BAKE_BYTES) out.bake = v.bake;
   if (isObj(v.layers)) {
     const layers: Record<string, ImageSource> = {};
     for (const [name, img] of Object.entries(v.layers)) if (isImageSource(img)) layers[name] = img;

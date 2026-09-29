@@ -1032,6 +1032,12 @@
   stroke-width: 1.4;
 }
 
+/*
+ * The dashes stand still, and march while the student points at or focuses what holds the glyph (a cast
+ * card, a plan member). A dash march repaints the glyph every frame, and games share the editor's
+ * renderer: a cast line of just-bones members marching forever starved the game and its robot tests.
+ * In the game itself the stand-ins march (the kit steps pre-painted dash phases).
+ */
 .ph-glyph__dash {
   fill: none;
   stroke: var(--dash);
@@ -1040,6 +1046,9 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
+}
+
+:is(a, button, [role='button']):is(:hover, :focus-visible) .ph-glyph__dash {
   animation: dash-march 650ms linear infinite;
 }
 

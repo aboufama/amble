@@ -66,7 +66,13 @@ export function Walker({ id, name, strip, still, x, y, height, travel, duration,
         data-testid="walker"
       >
         <span className="walker__turn">
-          <span className="walker__sprite" style={{ backgroundImage: `url("${strip.url}")` }} />
+          {/* The strip slides behind a one-frame window (a transform, so the walk plays on the compositor
+              and the sticker edge is never repainted); the edge is drawn around the window. */}
+          <span className="walker__frame">
+            <span className="walker__window">
+              <span className="walker__sprite" style={{ backgroundImage: `url("${strip.url}")` }} />
+            </span>
+          </span>
         </span>
       </button>
     );

@@ -18,28 +18,9 @@
  *   the protocol; the runtime hands them to the handler M2 registers with `registerEditorHandler`
  *   (src/runtime/shell/editor.ts). Until then they are ignored and `snapshot` never answers.
  */
-import { buildStandaloneHtml, loadRuntimeText, type InitMessage } from '../play';
-
 export * from '../play';
+// Defined apart, so this barrel (which loads with the app) never brings the standalone builder with it.
+export { standalonePage } from './playStandalone';
 
 /** 'real' since the player core merged. */
 export const PLAYER_CORE: 'stub' | 'real' = 'real';
-
-/**
- * One HTML file that plays a world with no network (§6.2, M6's Share as a web page), from the same init
- * message a player gets: the runtime's text, the files, drawings with their rigs, sounds, fonts, dials
- * and twists, all inline.
- */
-export async function standalonePage(init: InitMessage, o: { title: string; runtimeUrl?: string }): Promise<string> {
-  const url = o.runtimeUrl ?? (await import('./playRuntime')).RUNTIME_URL;
-  return buildStandaloneHtml({
-    title: o.title,
-    runtime: await loadRuntimeText(url),
-    files: init.files,
-    images: init.art.map((a) => ({ key: a.key, image: a.image, rig: a.rig, layers: a.layers })),
-    sounds: init.sounds,
-    fonts: init.fonts,
-    dials: init.dials,
-    twists: init.twists,
-  });
-}

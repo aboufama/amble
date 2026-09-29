@@ -20,3 +20,6 @@ export interface RiggedCharacter {
 export interface RigBinding { key: string; rig: unknown; image: HTMLCanvasElement | ImageBitmap | HTMLImageElement; layers?: Record<string, HTMLCanvasElement | ImageBitmap> }
 
 export type RiggedFactory = (scene: Phaser.Scene, x: number, y: number, binding: RigBinding) => RiggedCharacter;
+
+/** Where the binder script (./binder.ts) leaves `bindRig` for the runtime: a separate script cannot import it. */
+export const BINDER_GLOBAL = '__ambleRigBinder';

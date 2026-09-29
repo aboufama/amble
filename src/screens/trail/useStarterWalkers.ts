@@ -7,7 +7,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { BUILD } from '../../app/env';
 import { useServices } from '../../app/services';
-import { parseRig, type RigData } from '../../cores/rig';
+import { parseRig } from '../../cores/rigData';
+import type { RigData } from '../../cores/rig';
 import { stripFor } from '../../home/strips';
 import { blobRefOf } from '../../model/ids';
 import type { ArtId, SeedId, StarterInfo } from '../../model/types';

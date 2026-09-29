@@ -25,9 +25,11 @@ export interface SidePanelProps {
   brought(): boolean;
   /** Opened to draw a move as a flipbook: the Flipbook comes into view. */
   flipFocus: boolean;
+  /** Bring to life is running: the preview holds still, so the drawing reaches the world sooner. */
+  bringing?: boolean;
 }
 
-export function SidePanel({ ctrl, s, setup, player, store, options, brought, flipFocus }: SidePanelProps) {
+export function SidePanel({ ctrl, s, setup, player, store, options, brought, flipFocus, bringing = false }: SidePanelProps) {
   return (
     <div className="side">
       <div className="side__scroll">
@@ -37,7 +39,7 @@ export function SidePanel({ ctrl, s, setup, player, store, options, brought, fli
         <LayersPanel ctrl={ctrl} s={s} />
         <FlipbookPanel ctrl={ctrl} s={s} focus={flipFocus} />
       </div>
-      <PreviewCard ctrl={ctrl} s={s} setup={setup} player={player} store={store} brought={brought} />
+      <PreviewCard ctrl={ctrl} s={s} setup={setup} player={player} store={store} brought={brought} bringing={bringing} />
     </div>
   );
 }

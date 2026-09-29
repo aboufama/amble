@@ -24,7 +24,8 @@ import type {
 } from '../model/types';
 import { setAiStatus } from '../state/ai';
 import { appEnv } from './env';
-import { createAiService, type AmbleAi } from './service';
+import { createLazyAi } from './lazy';
+import type { AmbleAi } from './service';
 
 export interface JobOptions {
   signal: AbortSignal;
@@ -54,11 +55,14 @@ export interface AiService {
   rigHints(outline: Blob, kind: CharacterKind, o: { signal: AbortSignal }): Promise<JointHints | null>;
 }
 
-export { createAiService, type AmbleAi };
+export type { AmbleAi };
 
-/** The app's AI helper, wired to the store (its status feeds the AI chip). */
+/**
+ * The app's AI helper, wired to the store (its status feeds the AI chip). The pipeline (prompts, patches,
+ * the validator, the transport) loads with its first job, so it is not part of the app's first load.
+ */
 export function createAppAi(): AmbleAi {
-  return createAiService(appEnv(setAiStatus));
+  return createLazyAi(appEnv(setAiStatus), () => import('./pipeline'));
 }
 
 /** The helper's richer interface, when the app's service is ours (it always is, outside tests). */

@@ -5,8 +5,6 @@
  * build/change/fix state machine with the robot test, and ends a failed build on the ladder.
  */
 import {
-  aiAvailable,
-  aiStatusOf,
   chatJson,
   chatText,
   checkOutputText,
@@ -15,18 +13,14 @@ import {
   modelFor,
   parsePatch,
   type AiConfig,
-  type AiError,
   type ChatStatus,
   type Transport,
 } from '../cores/ai';
 import type { CharacterKind, JointHints } from '../cores/rig';
-import type { AppServicesLike } from './env';
 import { t } from '../i18n';
 import type {
-  AiMode,
   AiOutcome,
   AiStatus,
-  ClassLinkV1,
   CodeFile,
   ExplainOutcome,
   GameManifest,
@@ -41,6 +35,7 @@ import type {
   WorldId,
 } from '../model/types';
 import type { AiService, JobOptions } from './api';
+import { createAiCore, statusMessage, type AiCore, type AiEnv } from './core';
 import { explainReplyOf, explainUserMessage, EXPLAIN_SCHEMA, type ExplainWire } from './explain';
 import { runCodeJob, type ChatCall, type ChatReply, type CodeJob, type JobResult } from './jobs';
 import { ladderFiles } from './ladder';
@@ -51,7 +46,7 @@ import { EXPLAIN_PROMPT } from './prompts/explain';
 import { PLAN_PROMPT } from './prompts/plan';
 import { RIG_PROMPT } from './prompts/rig';
 import { SYSTEM_PROMPT } from './prompts/system';
-import { buildJitter, JobLocks, pause } from './queue';
+import { buildJitter, pause } from './queue';
 import { dataUrlOf, hintsOf, rigUserText, RIG_SCHEMA, type RigWire } from './rigHints';
 import { playerRobot, fixErrorOf, type RobotRunner } from './robot';
 import { alternativesFor, refusalNote, screenGameText, screenWords, type WordsVerdict } from './safety';
@@ -59,30 +54,9 @@ import { steer as matchSteer } from './steer';
 import { authoredRanges, type CodeTask } from './userMessage';
 import { findBlock } from './blocks';
 
-/** What the service reads from the app: the resolved config, and the class's mode and level. */
-export interface AiEnvConfig {
-  ai: AiConfig | null;
-  aiMode: AiMode;
-  level: Level;
-  levelMax: Level;
-  classLink: ClassLinkV1 | null;
-  school: boolean;
-}
-
-export interface AiEnv {
-  config(): AiEnvConfig;
-  onConfig(fn: () => void): () => void;
-  /** The app's services (store, player, starters, history), or null before boot and in tests. */
-  services(): AppServicesLike | null;
-  transport(config: AiConfig): Transport | null;
-  /** Overrides the robot test (tests use a fake robot). */
-  robot?: (world: World) => RobotRunner | null;
-  random(): number;
-  online(): boolean;
-  onOnline(fn: () => void): () => void;
-  /** Mirrors the status into the app's store (the AI chip reads it). */
-  publish?(status: AiStatus): void;
-}
+// The light half (status, locks, level) lives in ./core, which the app creates at boot.
+export type { AiEnvConfig, AiEnv } from './core';
+export { statusMessage } from './core';
 
 /** Per-job limits (§5.1). */
 export const TASK_LIMITS: Record<CodeTask, { maxTokens: number; timeoutMs: number }> = {
@@ -95,11 +69,6 @@ export const TASK_LIMITS: Record<CodeTask, { maxTokens: number; timeoutMs: numbe
 export const PLAN_LIMITS = { maxTokens: 2_000, timeoutMs: 120_000 };
 export const EXPLAIN_LIMITS = { maxTokens: 1_500, timeoutMs: 90_000 };
 export const RIG_LIMITS = { maxTokens: 1_000, timeoutMs: 90_000 };
-/** A 429 that outlasted the retries clears itself after a minute. */
-const BUSY_CLEARS_MS = 60_000;
-
-const LEVELS: Level[] = ['elementary', 'middle', 'high'];
-const lowest = (...ls: Array<Level | null | undefined>): Level => LEVELS[Math.min(...ls.filter((l): l is Level => !!l).map((l) => LEVELS.indexOf(l)))] ?? 'middle';
 
 /** The helper as the app uses it: the spec's `AiService` plus what the AI cards need. */
 export interface AmbleAi extends AiService {
@@ -115,39 +84,6 @@ export interface AmbleAi extends AiService {
   lastRobot(world: WorldId): string | null;
   /** The district's name for the explainer ("SAU 99"), or null. */
   district(): string | null;
-}
-
-function baseStatus(c: AiEnvConfig): AiStatus {
-  const ai = c.ai;
-  if (!ai) return 'off';
-  if (ai.expired || ai.offReason === 'expired') return 'expired';
-  if (!aiAvailable(ai)) return 'off';
-  const mode: AiMode = c.classLink ? c.aiMode : c.aiMode === 'explain' ? 'explain' : 'on';
-  if (mode === 'off') return 'off';
-  return mode === 'explain' ? 'explain-only' : 'ready';
-}
-
-export function statusMessage(status: AiStatus, host: string): string {
-  switch (status) {
-    case 'off':
-      return t('ai.offTitle');
-    case 'offline':
-      return t('ai.offline');
-    case 'blocked':
-      return t('ai.blocked', { host });
-    case 'quota':
-      return t('ai.quota');
-    case 'expired':
-      return t('ai.expired');
-    case 'rejected':
-      return t('ai.rejected');
-    case 'busy':
-      return t('ai.busy');
-    case 'explain-only':
-      return t('ai.askExplainLabel');
-    case 'ready':
-      return '';
-  }
 }
 
 function patchSummary(text: string): string {
@@ -174,70 +110,18 @@ export function handEditFile(prev: readonly CodeFile[], next: readonly CodeFile[
   return null;
 }
 
-export function createAiService(env: AiEnv): AmbleAi {
-  const listeners = new Set<(s: AiStatus) => void>();
-  const locks = new JobLocks();
-  const robots = new Map<WorldId, string>();
+/**
+ * The full helper. The app builds it on the core it created at boot (`createAppAi` loads this module with
+ * the first job); tests build it alone.
+ */
+export function createAiService(env: AiEnv, core: AiCore = createAiCore(env)): AmbleAi {
+  const { locks, robots, compute, config, host, levelFor, noteError, noteSuccess } = core;
   const log: RequestLog = createRequestLog(() => env.services()?.store ?? null);
-  let sticky: AiStatus | null = null;
-  let stickyTimer: ReturnType<typeof setTimeout> | undefined;
   let jobs = 0;
 
-  const compute = (): AiStatus => {
-    const base = baseStatus(env.config());
-    if (base !== 'ready' && base !== 'explain-only') return base;
-    if (!env.online()) return 'offline';
-    return sticky ?? base;
-  };
-  let current = compute();
-  const publish = () => {
-    const next = compute();
-    if (next === current) return;
-    current = next;
-    env.publish?.(next);
-    for (const fn of listeners) fn(next);
-  };
-  env.publish?.(current);
-  env.onConfig(() => {
-    sticky = null;
-    publish();
-  });
-  env.onOnline(() => publish());
-
-  const setSticky = (s: AiStatus | null) => {
-    clearTimeout(stickyTimer);
-    sticky = s;
-    if (s === 'busy') stickyTimer = setTimeout(() => setSticky(null), BUSY_CLEARS_MS);
-    publish();
-  };
-
-  const config = () => env.config().ai;
-  const host = () => {
-    const c = config();
-    if (!c?.baseUrl) return t('ai.hostFallback');
-    try {
-      return c.baseUrl.startsWith('/') ? t('ai.hostFallback') : new URL(c.baseUrl).host;
-    } catch {
-      return t('ai.hostFallback');
-    }
-  };
-  const levelFor = (world: World | null): Level => {
-    const c = env.config();
-    return lowest(c.level, c.levelMax, world?.assignment?.level ?? null);
-  };
   const models = (c: AiConfig) => {
     const main = modelFor(c, 'main');
     return { main, fast: modelFor(c, 'fast') || main, vision: modelFor(c, 'vision') };
-  };
-
-  /** Records what a failed call means for the helper's status. */
-  const noteError = (err: AiError, tr: Transport): AiStatus | null => {
-    const s = aiStatusOf(err.kind, tr.auth === 'dev' ? 'none' : tr.auth);
-    if (s && s !== 'off') setSticky(s);
-    return s;
-  };
-  const noteSuccess = () => {
-    if (sticky) setSticky(null);
   };
 
   const unavailable = (status: AiStatus): Extract<AiOutcome, { kind: 'unavailable' }> => ({ kind: 'unavailable', status, message: statusMessage(status, host()) });
@@ -433,11 +317,8 @@ export function createAiService(env: AiEnv): AmbleAi {
   };
 
   const service: AmbleAi = {
-    status: () => current,
-    onStatus(fn) {
-      listeners.add(fn);
-      return () => listeners.delete(fn);
-    },
+    status: core.status,
+    onStatus: core.onStatus,
     checkText: (text: string, level: Level): SafetyVerdict => checkText(text, level),
     steer: (text: string, world: World, manifest: GameManifest): LocalSteer | null => matchSteer(text, world, manifest),
 
@@ -608,10 +489,10 @@ export function createAiService(env: AiEnv): AmbleAi {
 
     levelFor,
     host,
-    retry: () => setSticky(null),
+    retry: () => core.setSticky(null),
     busy: (world) => locks.isBusy(world),
     lastRobot: (world) => robots.get(world) ?? null,
-    district: () => config()?.district?.name ?? env.config().classLink?.district ?? null,
+    district: core.district,
   };
   return service;
 }

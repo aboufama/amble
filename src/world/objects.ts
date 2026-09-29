@@ -92,6 +92,16 @@ export function countsOf(items: readonly WorldObject[]): Record<CastKey, number>
   return out;
 }
 
+/** Whether two reports list the same things in the same places (every field of an object is a plain value). */
+export function sameObjects(a: readonly WorldObject[], b: readonly WorldObject[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((o, i) => {
+    const p = b[i];
+    const keys = Object.keys(o) as Array<keyof WorldObject>;
+    return keys.length === Object.keys(p).length && keys.every((k) => o[k] === p[k]);
+  });
+}
+
 /** Frame px → page px. */
 export function toPage(box: Box, frame: FrameRect): Box {
   return { x: frame.left + box.x, y: frame.top + box.y, w: box.w, h: box.h };

@@ -10,7 +10,7 @@ import { autoRig } from '../../src/rig/autorig';
 import { bindRig } from '../../src/rig/bind';
 import { clipsFor, resolveClip } from '../../src/rig/clips/library';
 import { addDynamic, mirrorSides, moveJoint } from '../../src/rig/editing';
-import { createRiggedMesh, type RiggedMesh } from '../../src/rig/phaser';
+import { createRiggedMesh, registerRigBinder, type RiggedMesh } from '../../src/rig/phaser';
 import { drawBones, restBonePoints } from '../../src/rig/render/bones';
 import { drawRigged } from '../../src/rig/render/canvas';
 import { renderContactSheet, sampleClip, unionBounds } from '../../src/rig/render/frames';
@@ -25,6 +25,9 @@ declare global {
     __rig?: Record<string, unknown>;
   }
 }
+
+// The harness hands the adapter bones without bakes, so it binds here (as a shared web page does).
+registerRigBinder(bindRig);
 
 const q = new URLSearchParams(location.search);
 const mode = q.get('mode') ?? 'menu';

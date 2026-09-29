@@ -1,7 +1,7 @@
 /** Change mode's tags, hit tests and landing spots from the runtime's objects reports (§2.7, §2.17). */
 import { describe, expect, it } from 'vitest';
 import type { WorldObject } from '../../src/cores/play';
-import { boxOfKey, countsOf, hitTest, placeTag, tagsOf, toPage } from '../../src/world/objects';
+import { boxOfKey, countsOf, hitTest, placeTag, sameObjects, tagsOf, toPage } from '../../src/world/objects';
 
 function obj(id: number, key: string | null, over: Partial<WorldObject> = {}): WorldObject {
   return { id, key, label: key ?? 'thing', role: 'enemy', group: null, x: 0, y: 0, w: 40, h: 40, drawn: false, count: 1, ...over };
@@ -51,5 +51,16 @@ describe('boxes and counts', () => {
     expect(placeTag({ x: 100, y: 200, w: 40, h: 40 }, 100, 30, frame)).toEqual({ x: 70, y: 162, below: false });
     expect(placeTag({ x: 850, y: 10, w: 20, h: 20 }, 100, 30, frame)).toEqual({ x: 774, y: 38, below: true });
     expect(placeTag({ x: 0, y: 300, w: 10, h: 10 }, 100, 30, frame).x).toBe(6);
+  });
+});
+
+describe('sameObjects', () => {
+  it("tells a frozen game's repeated report from one where something moved, changed or left", () => {
+    const again = report.map((o) => ({ ...o }));
+    expect(sameObjects(report, again)).toBe(true);
+    expect(sameObjects(report, again.map((o) => (o.id === 2 ? { ...o, x: o.x + 1 } : o)))).toBe(false);
+    expect(sameObjects(report, again.map((o) => (o.id === 4 ? { ...o, drawn: false } : o)))).toBe(false);
+    expect(sameObjects(report, again.slice(1))).toBe(false);
+    expect(sameObjects([], [])).toBe(true);
   });
 });

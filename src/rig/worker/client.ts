@@ -7,7 +7,7 @@
 import { unbakeBound } from '../bake';
 import type { BindOptions } from '../bind';
 import type { BoundRig, CharacterKind, RigData } from '../types';
-import { createRigCore, type RigCore } from './core';
+import type { RigCore } from './core';
 import type { AutoRigRequest, RefitRequest, RigReply, RigRequest, RigResponse, RigSource, StripMeta, WorkerAnswer, WorkerCall } from './protocol';
 
 export class RigWorkerError extends Error {
@@ -65,7 +65,8 @@ function spawn(): Worker | null {
 
 class Client implements RigWorkerApi {
   private worker: Worker | null;
-  private core: RigCore | null = null;
+  /** The rig core for running inline, loaded the first time there is no worker (the worker has its own). */
+  private core: Promise<RigCore> | null = null;
   private nextId = 1;
   private readonly calls = new Map<number, Job>();
   private busy = false;
@@ -112,10 +113,18 @@ class Client implements RigWorkerApi {
       this.worker.postMessage(call);
       return;
     }
-    this.core ??= createRigCore();
+    if (!this.core) {
+      const loading = import('./core').then((m) => m.createRigCore());
+      // A load that failed (offline before the files were cached) is tried again with the next job.
+      loading.catch(() => {
+        if (this.core === loading) this.core = null;
+      });
+      this.core = loading;
+    }
+    const core = this.core;
     // yield first, so an inline run never blocks the caller's frame
     setTimeout(() => {
-      this.core!.handle(job.request).then(
+      core.then((c) => c.handle(job.request)).then(
         (r) => {
           this.busy = false;
           job.resolve(r.response);

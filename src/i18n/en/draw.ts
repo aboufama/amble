@@ -416,4 +416,8 @@ export const draw = {
   color_coffee: 'Coffee',
   color_barkBrown: 'Bark brown',
   color_darkChocolate: 'Dark chocolate',
+  // The hidden timings card (`?perf=1`, §7.8), for checking a Chromebook.
+  staff_perfTitle: 'Desk timings',
+  staff_perfInput: 'Input to pixels: {p50} ms median, {p95} ms at p95 ({n} events)',
+  staff_perfWork: 'Work per frame: {p50} ms median, {p95} ms at p95. Pen-up: {commit} ms',
 } satisfies Strings;

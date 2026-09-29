@@ -6,6 +6,7 @@ import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
 import { ambleRuntime, playerBootHashes } from './vite/ambleRuntime.ts';
+import { LAZY_GROUPS, PURE_ON_LOAD } from './vite/chunks.ts';
 import { aiConnectSources, csp } from './vite/csp.ts';
 import { devOnlyGuard } from './vite/devOnlyGuard.ts';
 import { envGuard } from './vite/envGuard.ts';
@@ -122,6 +123,8 @@ export default defineConfig(({ mode }) => {
     ],
     build: {
       chunkSizeWarningLimit: 2500,
+      // The validator, the kit's API and the player in chunks of their own, out of the first load.
+      rolldownOptions: { treeshake: { moduleSideEffects: PURE_ON_LOAD }, output: { codeSplitting: { groups: LAZY_GROUPS } } },
     },
     test: {
       include: ['tests/**/*.test.ts', 'server/**/*.test.ts'],

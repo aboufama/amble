@@ -36,6 +36,7 @@ import { KindPicker } from '../bones/KindPicker';
 import { colorName } from './ColorPanel';
 import { DeskToast, PivotPin } from './DeskBits';
 import { GuideStrip } from './GuideStrip';
+import { PerfHud, perfHudWanted } from './PerfHud';
 import { PhotoImport } from './PhotoImport';
 import { RequestNote } from './RequestNote';
 import { SidePanel } from './SidePanel';
@@ -58,6 +59,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState<HTMLDivElement | null>(null);
+  const [perfHud] = useState(perfHudWanted);
   const [ctrl, setCtrl] = useState<DeskController | null>(null);
   const s = useDeskState(ctrl);
   const [name, setName] = useState(setup.record?.name ?? setup.request.name);
@@ -405,6 +407,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
           <RequestNote request={ctrl?.request ?? request} readAloudOn={prefs.readAloud} onToast={setToast} />
           {ctrl && s?.guides && <PivotPin ctrl={ctrl} pin={s.pin} name={name} stage={stage} />}
           <DeskToast text={toast} onDone={clearToast} />
+          {ctrl && perfHud && <PerfHud ctrl={ctrl} />}
           {!s?.ready && (
             <div className="desk__opening" aria-hidden="true">
               <span className="desk__spinner" />
@@ -414,7 +417,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
         {ctrl && s && <ViewBarSlot ctrl={ctrl} />}
       </main>
       <aside className="desk__side" aria-label={t('draw.openPanel')}>
-        {ctrl && s && <SidePanel ctrl={ctrl} s={s} setup={setup} player={player} store={store} options={!touch} brought={() => brought.current} flipFocus={!!flipIntent} />}
+        {ctrl && s && <SidePanel ctrl={ctrl} s={s} setup={setup} player={player} store={store} options={!touch} brought={() => brought.current} flipFocus={!!flipIntent} bringing={bringing} />}
       </aside>
       {ctrl && <TimeLapse open={watching} onClose={() => setWatching(false)} ctrl={ctrl} name={name} />}
       {ctrl && photo && <PhotoImport open={photo !== null} onClose={() => setPhoto(null)} ctrl={ctrl} mode={photo} onDone={setToast} />}

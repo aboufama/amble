@@ -473,6 +473,26 @@ export function artSizeOf(rig: RigData): [number, number] | null {
 }
 
 /**
+ * A rig fitted to the same drawing at another size (a 2x export, a downscaled texture). The player binds
+ * with this, so a bake made ahead of time (the editor's) must be made with it too.
+ */
+export function scaleRigTo(rig: RigData, w: number, h: number): RigData {
+  const size = artSizeOf(rig);
+  if (!size || (size[0] === w && size[1] === h)) return rig;
+  const kx = w / size[0], ky = h / size[1];
+  const r = cloneRig(rig);
+  for (const b of r.bones) {
+    b.x *= kx;
+    b.y *= ky;
+    b.x2 *= kx;
+    b.y2 *= ky;
+  }
+  r.anchor = [r.anchor[0] * kx, r.anchor[1] * ky];
+  if (r.skin?.cell) r.skin = { ...r.skin, cell: r.skin.cell * Math.sqrt(kx * ky) };
+  return r;
+}
+
+/**
  * Bones for a redrawn drawing that already had some. The same box (colouring in, small fixes) keeps
  * the bones as they are; a different box (exports are trimmed, so coordinates move) re-fits, keeping
  * joints placed by hand as hints, shifted with the drawing's feet.

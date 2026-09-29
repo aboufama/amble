@@ -103,7 +103,7 @@ export interface Pool {
   big?: boolean;
 }
 
-/** The ground the signs stand on, the lit path, pools of light under each stop, footprints, fireflies. */
+/** The ground the signs stand on, the lit path, pools of light under each stop, footprints (the fireflies over it are `Fireflies`). */
 export function TrailGround({ width, pools }: { width: number; pools: Pool[] }) {
   const shapes = useMemo(() => {
     const step = 40;
@@ -128,9 +128,7 @@ export function TrailGround({ width, pools }: { width: number; pools: Pool[] }) 
         steps.push([fx, pathTop(fx) + 12 + dy, -6 + (fx % 5)]);
       }
     }
-    const flies: Array<[number, number]> = [];
-    for (let x = 250, i = 0; x < width; x += 310, i++) flies.push([x + (i % 3) * 37, pathTop(x) - 60 - (i % 4) * 22]);
-    return { lower, bandFill, groundD, top: smoothPath(top), steps, flies };
+    return { lower, bandFill, groundD, top: smoothPath(top), steps };
   }, [width]);
 
   return (
@@ -173,15 +171,34 @@ export function TrailGround({ width, pools }: { width: number; pools: Pool[] }) 
           <ellipse key={i} cx={p.cx} cy={y} rx="120" ry="30" fill="url(#tg-pool)" />
         );
       })}
-      <g className="trail-ground__flies motion-loop">
-        {shapes.flies.map(([x, y], i) => (
-          <g key={i} style={{ animationDelay: `${(i % 5) * -0.9}s` } as CSSProperties}>
-            <circle className="trail-ground__fly-glow" cx={x} cy={y} r="6" />
-            <circle className="trail-ground__fly" cx={x} cy={y} r="1.8" />
-          </g>
-        ))}
-      </g>
     </svg>
+  );
+}
+
+/** A firefly's box: its 6 px glow and a pixel to spare for the edge's antialiasing. */
+const FLY_BOX = 14;
+
+/**
+ * The fireflies over the ground, each a box of its own rather than part of the ground's picture: the glow
+ * pulses on the compositor, so the ground is never repainted while the Trail waits (§3.6).
+ */
+export function Fireflies({ width }: { width: number }) {
+  const flies = useMemo(() => {
+    const out: Array<[number, number]> = [];
+    for (let x = 250, i = 0; x < width; x += 310, i++) out.push([x + (i % 3) * 37, pathTop(x) - 60 - (i % 4) * 22]);
+    return out;
+  }, [width]);
+  return (
+    <div className="trail-flies motion-loop" aria-hidden="true">
+      {flies.map(([x, y], i) => (
+        <span key={i} className="trail-fly" style={{ left: x - FLY_BOX / 2, top: `calc(100% - ${DESIGN_H - y + FLY_BOX / 2}px)`, animationDelay: `${(i % 5) * -0.9}s` } as CSSProperties}>
+          <svg width={FLY_BOX} height={FLY_BOX} viewBox={`${-FLY_BOX / 2} ${-FLY_BOX / 2} ${FLY_BOX} ${FLY_BOX}`}>
+            <circle className="trail-fly__glow" r="6" />
+            <circle className="trail-fly__dot" r="1.8" />
+          </svg>
+        </span>
+      ))}
+    </div>
   );
 }
 

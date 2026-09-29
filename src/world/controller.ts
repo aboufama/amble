@@ -22,7 +22,7 @@ import {
   updateWorld,
 } from '../state/session';
 import { getState } from '../state/store';
-import type { Box } from './objects';
+import { sameObjects, type Box } from './objects';
 import { pickRequest, triggerOf, type TagTrigger } from './requestPolicy';
 
 export const HEAVY_FPS = 20;
@@ -203,6 +203,9 @@ export class WorldController {
   private onObjects(items: WorldObject[]): void {
     for (const it of items) if (it.key) this.seen.add(it.key);
     const s = getState().session;
+    // Change mode streams the frozen game 4 times a second: when nothing moved there is nothing to redraw,
+    // so a world left in Change mode costs no renders.
+    if (s.mode === 'change' && sameObjects(s.objects, items)) return;
     patchSession({ objects: items });
     if (s.mode === 'change') {
       refreshCast();

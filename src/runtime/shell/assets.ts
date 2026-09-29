@@ -1,9 +1,11 @@
 /**
  * Student drawings as the runtime keeps them: decoded once (Blobs off the main thread with
  * createImageBitmap, data URLs with Image.decode; never premultiplyAlpha 'none', which broke colours in the
- * probe), with their rig data and part layers for the rigged factory.
+ * probe), with their rig data and part layers for the rigged factory. A drawing's bake (the editor's bind
+ * of it) is registered with the rig adapter against the decoded image, so every spawn of it just unpacks.
  */
 import { parseFlipbookSheet, type DrawnArt, type FlipbookSheet, type ImageSource } from '../../play/protocol';
+import { registerRigBake } from '../../rig/phaser';
 
 export type DrawnPixels = ImageBitmap | HTMLImageElement | HTMLCanvasElement;
 
@@ -49,6 +51,7 @@ export class DrawnStore {
 
   async decode(art: DrawnArt): Promise<DrawnImage> {
     const image = await decode(art.image);
+    if (art.bake) registerRigBake(image, art.bake);
     let layers: DrawnImage['layers'];
     if (art.layers) {
       layers = {};

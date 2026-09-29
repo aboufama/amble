@@ -2,7 +2,7 @@
  * Harness for the player core: runs the fixture games in the real sandboxed player, with buttons for the
  * live features, and `window.harness` for the Playwright checks (e2e/player.spec.ts).
  */
-import runtimeUrl from 'virtual:amble-runtime';
+import runtimeUrl, { standaloneUrl } from 'virtual:amble-runtime';
 import { buildStandaloneHtml, loadRuntimeText, Player, type DrawnArt, type GameBundle, type PlayerPrefs, type RobotReport } from '../../src/play/index';
 import { FIXTURES, type FixtureName } from '../../src/runtime/fixtures/index';
 import { KIT_API } from '../../src/play/kit/manifest';
@@ -119,7 +119,8 @@ function robot(name: FixtureName, options: { gameMs?: number; seed?: number; bot
 }
 
 async function exportPage(name: FixtureName, art: DrawnArt[] = []): Promise<string> {
-  const runtime = await loadRuntimeText(runtimeUrl);
+  // A shared page: the standalone script (Play card, binding drawings) follows the runtime, as in src/cores/play.ts.
+  const runtime = `${await loadRuntimeText(runtimeUrl)}\n;\n${await loadRuntimeText(standaloneUrl)}`;
   return buildStandaloneHtml({ title: `${name} (exported)`, runtime, files: bundleFor(name).files, images: art.map((a) => ({ key: a.key, image: a.image, rig: a.rig })) });
 }
 
