@@ -368,7 +368,9 @@ export class Character extends Phaser.GameObjects.Container implements ArtListen
     }
     const t = this.lookTarget;
     if (t && t.active !== false && (!b || Math.abs(b.velocity.x) < 12)) this.face(t.x - this.x);
-    this.visual.update(delta * this.animSpeed);
+    // `animSpeed` is game code's: a NaN there must not stop the picture's clock (bones, stand-in or pages) for good.
+    const ms = delta * this.animSpeed;
+    this.visual.update(Number.isFinite(ms) ? ms : 0);
     if (this.attached.length) this.placeAttached();
     const flip = grav && k.gravitySign < 0 ? -1 : 1;
     this.mount.setPosition(0, (this.spec.h / 2) * flip);

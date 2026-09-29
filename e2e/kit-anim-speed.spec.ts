@@ -49,3 +49,52 @@ test("a stand-in whose move speed was NaN for one frame shows again", async ({ p
   expect([s.scaleX, s.scaleY, s.x, s.y, ...s.parts].every((v) => Number.isFinite(v))).toBe(true);
   expect(Math.abs(s.scaleX)).toBeGreaterThan(0.5);
 });
+
+test('a drawing with flipbook pages keeps turning them after a frame with a NaN move speed', async ({ page }) => {
+  await page.goto('/dev/player/index.html');
+  await page.waitForFunction(() => !!(window as unknown as Win).harness);
+  const source = `class Game extends Amble.Scene {
+  static art = { hero: { kind: 'character', rig: 'biped', w: 40, h: 64, role: 'hero', name: 'Pip' } };
+  create() {
+    this.hero = this.spawnHero(300, 300, 'hero');
+    this.ticks = 0;
+  }
+  update() {
+    this.ticks++;
+    this.hero.animSpeed = this.ticks === 3 ? 0 / 0 : 1;
+  }
+}
+`;
+  await page.evaluate(async (src) => {
+    const blob = (w: number, h: number, paint: (g: CanvasRenderingContext2D) => void): Promise<Blob> => {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      paint(c.getContext('2d')!);
+      return new Promise((resolve) => c.toBlob((b) => resolve(b!), 'image/png'));
+    };
+    // A drawing without bones, and two pages for its Stand move.
+    const image = await blob(64, 96, (g) => g.fillRect(8, 8, 48, 88));
+    const atlas = await blob(128, 96, (g) => {
+      g.fillStyle = '#e8423f';
+      g.fillRect(8, 8, 48, 88);
+      g.fillStyle = '#3d7bf2';
+      g.fillRect(72, 8, 48, 88);
+    });
+    const json = JSON.stringify({ v: 1, w: 64, h: 96, anchor: [32, 96], frames: [0, 1].map((i) => ({ x: i * 64, y: 0, w: 64, h: 96, ox: 0, oy: 0, hold: 1 })) });
+    const player = (window as unknown as { harness: { player: { load(b: unknown): Promise<void> } } }).harness.player;
+    await player.load({ files: [{ name: 'game.js', source: src }], autostart: true, art: [{ key: 'hero', image, frames: { atlas, json, move: 'idle', fps: 8 } }] });
+  }, source);
+  const frame = await gameFrame(page);
+  type Hook = { __ambleGame: { find(k: string): { visual: { page: number } } | null; scene: { ticks: number } } };
+  const pageNow = (): Promise<number> => frame.evaluate(() => (window as unknown as Hook).__ambleGame.find('hero')!.visual.page);
+  const ticks = (): Promise<number> => frame.evaluate(() => (window as unknown as Hook).__ambleGame.scene.ticks);
+  await expect.poll(ticks, { timeout: 60_000 }).toBeGreaterThan(8);
+  // The two pages keep taking turns.
+  const seen = new Set<number>();
+  for (let i = 0; i < 16 && seen.size < 2; i++) {
+    seen.add(await pageNow());
+    await page.waitForTimeout(250);
+  }
+  expect([...seen].sort()).toEqual([0, 1]);
+});
