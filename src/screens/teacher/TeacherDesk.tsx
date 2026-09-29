@@ -1,7 +1,70 @@
-/** `#/teacher/<tab>` the Teacher desk (§2.14; M7 owns). FOUNDATION-STUB. */
-import { ScreenStub } from '../../app/frame/ScreenStub';
-import type { RouteOf } from '../../app/routes';
+/**
+ * `#/teacher/<tab>` the Teacher desk (§2.14): reached from **Teacher** on the Trail and the First page. No
+ * account and no password; nothing is uploaded. Top bar: the lamppost, **Teacher desk**, the tabs, **Present**
+ * and **◂ Back to Amble**.
+ */
+import { useEffect } from 'react';
+import { Link } from '../../app/Link';
+import type { RouteOf, TeacherTab } from '../../app/routes';
+import { useServices } from '../../app/services';
+import { t, type MessageKey } from '../../i18n';
+import { loadTeacherData } from '../../school/teacherData';
+import { Icon, Lamppost } from '../../ui/icons';
+import { cx } from '../../ui/cx';
+import { AssignmentsTab } from './AssignmentsTab';
+import { ClassLinkTab } from './ClassLinkTab';
+import { GalleryTab } from './GalleryTab';
+import { HelpTab } from './HelpTab';
+import { PresentMode } from './PresentMode';
+import { SchoolIcon, type SchoolIconName } from './SchoolIcon';
+import './teacher.css';
+
+const TABS: Array<{ id: Exclude<TeacherTab, 'present'>; label: MessageKey; icon: SchoolIconName }> = [
+  { id: 'link', label: 'school.staff_tabLink', icon: 'link' },
+  { id: 'assignments', label: 'school.staff_tabAssignments', icon: 'clipboard' },
+  { id: 'gallery', label: 'school.staff_tabGallery', icon: 'folder' },
+  { id: 'help', label: 'school.staff_tabHelp', icon: 'letter' },
+];
 
 export function TeacherDesk({ route }: { route: RouteOf<'teacher'> }) {
-  return <ScreenStub route={route} name="teacher" />;
+  const { store } = useServices();
+  useEffect(() => {
+    void loadTeacherData(store);
+  }, [store]);
+
+  if (route.tab === 'present') return <PresentMode />;
+
+  return (
+    <div className="screen teacher" data-testid="screen-teacher" data-tab={route.tab}>
+      <header className="teacher-top">
+        <span className="teacher-top__mark" aria-hidden="true">
+          <Lamppost height={30} />
+        </span>
+        <h1 className="teacher-top__title">{t('common.routeTeacher')}</h1>
+        <nav className="teacher-tabs" aria-label={t('common.routeTeacher')}>
+          {TABS.map((tab) => (
+            <Link key={tab.id} to={{ name: 'teacher', tab: tab.id }} className={cx('teacher-tabs__tab', route.tab === tab.id && 'teacher-tabs__tab--on')} aria-current={route.tab === tab.id ? 'page' : undefined}>
+              <SchoolIcon name={tab.icon} size={18} />
+              {t(tab.label)}
+            </Link>
+          ))}
+        </nav>
+        <span className="teacher-top__spacer" />
+        <Link to={{ name: 'teacher', tab: 'present' }} className="btn btn--ghost btn--h44 teacher-top__present">
+          <SchoolIcon name="present" size={20} />
+          <span className="btn__label">{t('school.staff_present')}</span>
+        </Link>
+        <Link to={{ name: 'trail', view: 'trail' }} className="btn btn--ghost btn--h44">
+          <Icon name="back" size={20} />
+          <span className="btn__label">{t('school.staff_backToAmble')}</span>
+        </Link>
+      </header>
+      <main id="main" tabIndex={-1} className="teacher__main">
+        {route.tab === 'link' && <ClassLinkTab />}
+        {route.tab === 'assignments' && <AssignmentsTab />}
+        {route.tab === 'gallery' && <GalleryTab />}
+        {route.tab === 'help' && <HelpTab />}
+      </main>
+    </div>
+  );
 }

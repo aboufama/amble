@@ -1,6 +1,7 @@
 /**
- * The `prefs` slice (M7 owns; FOUNDATION-STUB with working basics): the student's preferences (§4.2),
- * persisted in `settings.prefs`. main.tsx applies theme, motion and text size to `<html>` from here.
+ * The `prefs` slice (M7): the student's preferences (§4.2), persisted in `settings.prefs`. main.tsx applies
+ * theme, motion, text size, spacing and easy-read letters to `<html>` whenever they change (htmlPrefs.ts),
+ * and saves them through `onPrefsChange`. Settings writes them with `setPref`.
  */
 import { BUILD } from '../app/env';
 import { mergeValid, PREFS_FIELDS } from '../model/guards';
@@ -56,11 +57,22 @@ export function setPrefs(patch: Partial<Prefs>): void {
   persist?.(getState().prefs);
 }
 
+/** One preference (Settings). */
+export function setPref<K extends keyof Prefs>(key: K, value: Prefs[K]): void {
+  setPrefs({ [key]: value } as Partial<Prefs>);
+}
+
 /** Replaces all prefs without saving (boot). */
 export function loadPrefs(prefs: Prefs): void {
   setState((s) => {
     s.prefs = prefs;
   });
+}
+
+/** Back to the defaults for this build (after "Delete everything"). */
+export function resetPrefs(school: boolean = getState().config.school): void {
+  loadPrefs(defaultPrefs(school));
+  persist?.(getState().prefs);
 }
 
 /** Remembers that a one-time tip or card was shown. */

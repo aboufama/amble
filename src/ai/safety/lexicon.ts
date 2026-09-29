@@ -28,6 +28,8 @@ const CRISIS = [
   'no reason to live', 'nothing to live for', 'nobody would miss me', 'no one would miss me',
   'hurt myself', 'hurting myself', 'cut myself', 'cutting myself', 'harm myself', 'harming myself', 'starve myself', 'starving myself',
   'self harm', 'selfharm', 'suicide', 'suicidal', 'i hate myself', 'i hate my life',
+  'nobody would care if i died', 'no one would care if i died', 'nobody cares about me', 'no one cares about me',
+  'i want to disappear', 'i cant take it anymore', 'i dont want to be here anymore',
 ];
 
 const EXTREMISM = [
