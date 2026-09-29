@@ -1,3 +1,4 @@
+/// <reference types="phaser" />
 /**
  * `createRiggedMesh`: a student's drawing as a Phaser 3.90 game object that moves with its bones.
  *
@@ -10,7 +11,6 @@
  * Phaser is never imported: everything is made through the scene's own factories, so the adapter
  * works with whichever Phaser build the game runs.
  */
-import type Phaser from 'phaser';
 import { isBake, unbakeBound } from '../bake';
 import { bindRig } from '../bind';
 import { artSizeOf } from '../editing';

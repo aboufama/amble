@@ -1,8 +1,8 @@
+/// <reference types="phaser" />
 /**
  * The contract between the game kit and the rig module, declared on both sides (the kit's copy is
  * src/runtime/kit/rigged.ts): how a student's drawing with bones becomes a character in a game.
  */
-import type Phaser from 'phaser';
 
 export type ClipName = string;
 
