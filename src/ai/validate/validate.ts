@@ -10,6 +10,7 @@ import type { JsonValue } from '../json/schema';
 import { byteLength, ENTRY_FILE, isSafeGamePath } from '../gameFiles';
 import { keyName, lineOf, memberPath, parseScript, src, thisIsScene } from './ast';
 import { FileContext, type GameFacts } from './context';
+import { checkManifestStatics, checkDialReads, declaredDials } from './art';
 import { checkDials } from './dials';
 import { checkGlobals, collectDeclared } from './globals';
 import { normalizeManifest, type Api } from './manifest';
@@ -17,9 +18,18 @@ import { kidMessage } from './messages';
 import { runRules } from './rules';
 import { readStatics, staticFields } from './statics';
 import { visibleStrings } from './strings';
-import type { GameFile, Issue, ValidateOptions, ValidationResult } from './types';
+import type { GameFile, Issue, ValidateOptions, ValidationResult, WorldFacts } from './types';
+import { checkGraphicsArt, checkWorldArt, directiveLines, lockedLineIssues } from './world';
 
-const DEFAULT_LIMITS = { maxFiles: 12, maxFileBytes: 40_000, maxTotalBytes: 120_000 };
+const DEFAULT_LIMITS: Limits = { maxFiles: 12, maxFileBytes: 40_000, maxTotalBytes: 120_000 };
+
+interface Limits {
+  maxFiles: number;
+  maxFileBytes: number;
+  maxTotalBytes: number;
+  /** Lines per file (unchecked when absent). */
+  maxFileLines?: number;
+}
 
 interface Parsed {
   file: GameFile;
@@ -121,7 +131,7 @@ function checkGameClass(ctx: FileContext, isEntry: boolean): void {
   }
 }
 
-function sizeIssues(files: readonly GameFile[], limits: typeof DEFAULT_LIMITS, entry: string): Issue[] {
+function sizeIssues(files: readonly GameFile[], limits: Limits, entry: string): Issue[] {
   const out: Issue[] = [];
   const issue = (rule: 'size' | 'bad-path', file: string, message: string, name?: string): Issue => ({ rule, severity: 'error', file, line: 0, column: 0, message, kid: kidMessage(rule, { line: 0, name }) });
   if (files.length > limits.maxFiles) out.push(issue('size', entry, `A game has at most ${limits.maxFiles} files (this one has ${files.length}).`, `${files.length} files`));
@@ -131,8 +141,24 @@ function sizeIssues(files: readonly GameFile[], limits: typeof DEFAULT_LIMITS, e
     total += bytes;
     if (!isSafeGamePath(f.path)) out.push(issue('bad-path', f.path, `\`${f.path}\` is not a valid file name: use letters, digits, - and _, one folder at most, ending in .js.`, f.path));
     if (bytes > limits.maxFileBytes) out.push(issue('size', f.path, `${f.path} is ${Math.round(bytes / 1000)} KB; keep each file under ${Math.round(limits.maxFileBytes / 1000)} KB (split it).`, `${f.path} is too long`));
+    const count = f.content.split('\n').length;
+    if (limits.maxFileLines && count > limits.maxFileLines) out.push(issue('size', f.path, `${f.path} has ${count} lines; keep each file under ${limits.maxFileLines} lines (move parts into another file).`, `${f.path} is too long`));
   }
   if (total > limits.maxTotalBytes) out.push(issue('size', entry, `The game is ${Math.round(total / 1000)} KB; keep it under ${Math.round(limits.maxTotalBytes / 1000)} KB.`, `${Math.round(total / 1000)} KB`));
+  return out;
+}
+
+/** Stray `@@` lines and changed teacher-locked lines: checked on the raw text, parsed or not. */
+function worldIssues(files: readonly GameFile[], world: WorldFacts | undefined): Issue[] {
+  const out: Issue[] = [];
+  for (const f of files) {
+    for (const d of directiveLines(f)) {
+      out.push({ rule: 'patch-directive-in-code', severity: 'error', file: f.path, line: d.line, column: d.column, message: `Line ${d.line} starts with @@, which is not JavaScript: remove it.`, kid: kidMessage('patch-directive-in-code', { line: d.line }) });
+    }
+  }
+  for (const l of lockedLineIssues(files, world)) {
+    out.push({ rule: 'locked-lines', severity: 'error', file: l.path, line: l.line, column: 0, message: l.message, kid: kidMessage('locked-lines', { line: l.line }) });
+  }
   return out;
 }
 
@@ -145,10 +171,11 @@ interface Pass {
   art: ValidationResult['art'];
   statics: Record<string, JsonValue>;
   strings: ValidationResult['strings'];
+  renamed: ValidationResult['renamed'];
 }
 
-function runPass(files: readonly GameFile[], api: Api, entry: string, fix: boolean, limits: typeof DEFAULT_LIMITS): Pass {
-  const issues: Issue[] = sizeIssues(files, limits, entry);
+function runPass(files: readonly GameFile[], api: Api, entry: string, fix: boolean, limits: Limits, world?: WorldFacts): Pass {
+  const issues: Issue[] = [...sizeIssues(files, limits, entry), ...worldIssues(files, world)];
   const parsed: Parsed[] = [];
   let truncated = false;
   let syntaxErrors = 0;
@@ -176,6 +203,9 @@ function runPass(files: readonly GameFile[], api: Api, entry: string, fix: boole
     collectOwn(p, s, facts.own);
   }
 
+  const entryParsed = parsed.find((p) => p.file.path === entry);
+  const dialNames = declaredDials(entryParsed ? findGameClass(entryParsed.ast) : null, parsed.map((p) => p.ast));
+  const renamed: ValidationResult['renamed'] = [];
   let statics: Record<string, JsonValue> = {};
   const staticLines: Record<string, number> = {};
   const fixes: ValidationResult['fixes'] = [];
@@ -202,6 +232,12 @@ function runPass(files: readonly GameFile[], api: Api, entry: string, fix: boole
     runRules(ctx);
     checkDials(ctx);
     checkGlobals(ctx);
+    checkGraphicsArt(ctx);
+    checkDialReads(ctx, dialNames);
+    if (game) {
+      checkManifestStatics(ctx, game);
+      checkWorldArt(ctx, game, world, renamed);
+    }
     strings.push(...visibleStrings(p.file.path, p.ast, fileStatics, staticLines));
     issues.push(...ctx.issues);
     fixes.push(...ctx.fixes);
@@ -232,12 +268,13 @@ function runPass(files: readonly GameFile[], api: Api, entry: string, fix: boole
     art: { declared: [...facts.artDeclared], used: [...facts.artUsed], missing },
     statics,
     strings,
+    renamed,
   };
 }
 
 function result(p: Pass, fixes = p.fixes): ValidationResult {
   const errors = p.issues.filter((i) => i.severity === 'error');
-  return { ok: errors.length === 0, errors, warnings: p.issues.filter((i) => i.severity === 'warning'), fixes, files: p.files, truncated: p.truncated, art: p.art, statics: p.statics, strings: p.strings };
+  return { ok: errors.length === 0, errors, warnings: p.issues.filter((i) => i.severity === 'warning'), fixes, files: p.files, truncated: p.truncated, art: p.art, statics: p.statics, strings: p.strings, renamed: p.renamed };
 }
 
 /**
@@ -249,11 +286,12 @@ export function validateGame(files: readonly GameFile[], options: ValidateOption
   const entry = options.entry ?? ENTRY_FILE;
   const limits = { ...DEFAULT_LIMITS, ...options.limits };
   const fix = options.fix !== false;
-  const first = runPass(files, api, entry, fix, limits);
+  const world = options.world;
+  const first = runPass(files, api, entry, fix, limits, world);
   if (!fix || first.fixes.length === 0) return result(first);
-  const second = runPass(first.files, api, entry, false, limits);
+  const second = runPass(first.files, api, entry, false, limits, world);
   // A fix must never break the code; if one did, report the original problems unfixed.
-  if (second.syntaxErrors > first.syntaxErrors) return result(runPass(files, api, entry, false, limits), []);
+  if (second.syntaxErrors > first.syntaxErrors) return result(runPass(files, api, entry, false, limits, world), []);
   return result(second, first.fixes);
 }
 

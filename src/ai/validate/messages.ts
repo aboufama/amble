@@ -84,5 +84,23 @@ export function kidMessage(rule: RuleId, c: KidContext): string {
       return `The game is too big${c.name ? ` (${c.name})` : ''}. Try splitting it or making it smaller.`;
     case 'bad-path':
       return `${name} isn't a good file name. Use letters, numbers and dashes, ending in .js.`;
+    case 'art-manifest':
+      return `${l}the list of pictures (static art) has a problem with ${name}.${done}`;
+    case 'dials-manifest':
+      return `${l}the dial ${name} has a problem: check its lowest, highest and starting numbers.${done}`;
+    case 'unknown-dial':
+      return `${l}there is no dial called ${name}.${c.suggestion ? ` Did you mean "${c.suggestion}"?` : ''}${done}`;
+    case 'patch-directive-in-code':
+      return `${l}a line starts with @@, which isn't JavaScript.`;
+    case 'graphics-art':
+      return `${l}the code draws a character itself. In Amble you draw every character, so it needs to be a picture in static art.`;
+    case 'plan-keys':
+      return `${name} was missing from the list of pictures, so Amble added it.`;
+    case 'drawn-art-kept':
+      return `${name} is one of your drawings, so it has to stay in the game.${done}`;
+    case 'renamed-art':
+      return `${name} got a new name, so your drawing moved with it.`;
+    case 'locked-lines':
+      return `${l}your teacher locked these lines, so they can't change.`;
   }
 }

@@ -58,7 +58,16 @@ export type RuleId =
   | 'dial-thunk'
   | 'static-literal'
   | 'size'
-  | 'bad-path';
+  | 'bad-path'
+  | 'art-manifest'
+  | 'dials-manifest'
+  | 'unknown-dial'
+  | 'patch-directive-in-code'
+  | 'graphics-art'
+  | 'plan-keys'
+  | 'drawn-art-kept'
+  | 'renamed-art'
+  | 'locked-lines';
 
 export interface Issue {
   rule: RuleId;
@@ -90,13 +99,35 @@ export interface VisibleString {
   where: string;
 }
 
+/** An art spec as a literal (`{ kind: 'character', rig: 'blob', w: 40, ... }`). */
+export type ArtLiteral = Record<string, string | number | boolean>;
+
+/**
+ * What the validator knows about the world the code belongs to (§5.7's "manifest parameter"): the
+ * drawings that must keep their keys, the plan's keys, the teacher's locked lines. All optional.
+ */
+export interface WorldFacts {
+  /** Art keys the student has drawn: they must stay in `static art` (renaming or removing one loses the drawing). */
+  drawn?: readonly string[];
+  /** The previous version's `static art`, to re-declare a drawn key that vanished. */
+  previousArt?: Readonly<Record<string, ArtLiteral>>;
+  /** The plan's cast (a build): every key must be declared; missing ones get a minimal entry. */
+  planArt?: Readonly<Record<string, ArtLiteral>>;
+  /** Lines a teacher locked, per file, in the previous version (1-based, inclusive). */
+  locked?: Readonly<Record<string, ReadonlyArray<readonly [number, number]>>>;
+  /** The previous version's files (where the locked lines are read from). */
+  previous?: readonly GameFile[];
+}
+
 export interface ValidateOptions {
   manifest: KitManifest;
   /** Apply the safe auto-fixes (default true). The result's files carry them. */
   fix?: boolean;
   /** The entry file (default `game.js`). */
   entry?: string;
-  limits?: { maxFiles?: number; maxFileBytes?: number; maxTotalBytes?: number };
+  limits?: { maxFiles?: number; maxFileBytes?: number; maxTotalBytes?: number; maxFileLines?: number };
+  /** The world's drawings, plan and locks, for the rules that need them. */
+  world?: WorldFacts;
 }
 
 export interface ValidationResult {
@@ -114,4 +145,6 @@ export interface ValidationResult {
   statics: Record<string, unknown>;
   /** Text the game shows, for moderation. */
   strings: VisibleString[];
+  /** Drawn keys the new code renamed (one vanished, one appeared): the drawing moves to the new key. */
+  renamed: Array<{ from: string; to: string }>;
 }
