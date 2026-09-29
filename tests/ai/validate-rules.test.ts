@@ -4,6 +4,7 @@ import { instrument } from '../../src/ai/validate/instrument';
 import { peekStaticLiteral } from '../../src/ai/validate/statics';
 import type { KitManifest, ValidationResult } from '../../src/ai/validate/types';
 import { validateCode, validateGame } from '../../src/ai/validate/validate';
+import { kitManifest } from '../../src/cores/aiCode';
 import { KIT_API } from '../../src/play';
 import { FIXTURES } from '../../src/runtime/fixtures';
 import { PROBE_MANIFEST } from './fixtures/probeManifest';
@@ -253,6 +254,17 @@ describe('names', () => {
     // Load order decides which one is "again": helpers alphabetically, then game.js.
     const inGame = validateGame([{ path: 'a.js', content: 'const SPEED = 1;\n' }, { path: 'game.js', content: `const SPEED = 2;\n${game('')}` }], { manifest: KIT });
     expect(inGame.errors.map((e) => [e.rule, e.file])).toEqual([['duplicate-declaration', 'game.js']]);
+  });
+
+  it('flags storing things in names the kit or Phaser already use on the scene, but not in the kit setters', () => {
+    const body = ['this.level = 1;', 'this.time = 0;', 'this.portal = null;', 'this.hero = null;', 'this.score = 5;', 'this.timeScale = 0.5;', 'this.stage = 2;'].map((l) => `    ${l}`).join('\n');
+    const r = validateCode(game(body), { manifest: kitManifest(), fix: false });
+    expect(r.errors.map((e) => [e.rule, e.line])).toEqual([['kit-overwrite', 3], ['kit-overwrite', 4], ['kit-overwrite', 5]]);
+    expect(r.errors[0].message).toBe('`this.level` is already a kit method; storing something else in it breaks the kit. Pick another name for yours, like this.myLevel.');
+    expect(r.errors[1].message).toBe('`this.time` is already part of the Phaser scene; storing something else in it breaks the game. Pick another name for yours, like this.myTime.');
+    // A class field is the same thing.
+    const field = validateCode('class Game extends Amble.Scene {\n  platform = null;\n  create() {}\n}\n', { manifest: kitManifest(), fix: false });
+    expect(field.errors.map((e) => [e.rule, e.line])).toEqual([['kit-overwrite', 2]]);
   });
 
   it('only lets game.js declare the Game class', () => {
