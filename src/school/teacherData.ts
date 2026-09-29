@@ -2,6 +2,9 @@
  * The Teacher desk's own data on this device (§2.14): the assignments made here, the class link being
  * built, and the gallery notes (checks and feedback by file hash). Stored in `settings.teacher`; nothing is
  * uploaded. The "Ready for tomorrow?" ticks live in localStorage (they are a to-do list, not work).
+ *
+ * The desk shows at once, before the saved data has been read: an edit made meanwhile goes on top of the saved
+ * data when it arrives, and nothing is written until it has (a partial copy would replace the saved one).
  */
 import { useSyncExternalStore } from 'react';
 import { isTeacherData } from '../model/guards';
@@ -12,6 +15,10 @@ const EMPTY: TeacherData = { assignments: [], link: null, notes: {} };
 
 let data: TeacherData = EMPTY;
 let loading: Promise<void> | null = null;
+/** The saved data has been read (or could not be): saving may write it. */
+let loaded = false;
+/** Edits made before the saved data was read, to replay on top of it. */
+let early: Array<(d: TeacherData) => TeacherData> = [];
 let store: Pick<Store, 'settings'> | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 const listeners = new Set<() => void>();
@@ -29,16 +36,25 @@ function subscribe(fn: () => void): () => void {
 export function loadTeacherData(from: Pick<Store, 'settings'>): Promise<void> {
   if (loading && store === from) return loading;
   store = from;
-  loading = from.settings
+  loaded = false;
+  const read = from.settings
     .get('teacher')
     .then((stored) => {
+      if (read !== loading) return;
       if (stored && isTeacherData(stored)) {
-        data = stored;
+        // Edits made while it was read go on top of what was saved.
+        data = early.reduce((d, fn) => fn(d), stored);
         emit();
       }
     })
-    .catch(() => undefined);
-  return loading;
+    .catch(() => undefined)
+    .finally(() => {
+      if (read !== loading) return;
+      loaded = true;
+      early = [];
+    });
+  loading = read;
+  return read;
 }
 
 export function teacherData(): TeacherData {
@@ -51,24 +67,31 @@ export function useTeacherData(): TeacherData {
 
 /** Changes the data and saves it (debounced, and at once when the page hides). */
 export function updateTeacherData(fn: (d: TeacherData) => TeacherData): void {
+  if (loading && !loaded) early.push(fn);
   data = fn(data);
   emit();
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(flushTeacherData, 400);
+  saveTimer = setTimeout(() => void flushTeacherData(), 400);
 }
 
-export function flushTeacherData(): Promise<void> {
+/** Saves now (the page hides, Storage settings), once the saved data has been read. */
+export async function flushTeacherData(): Promise<void> {
   clearTimeout(saveTimer);
   saveTimer = undefined;
-  return store ? store.settings.put('teacher', data).catch(() => undefined) : Promise.resolve();
+  if (loading && !loaded) await loading;
+  if (store) await store.settings.put('teacher', data).catch(() => undefined);
 }
 
 if (typeof window !== 'undefined') window.addEventListener('pagehide', () => void flushTeacherData());
 
 /** Tests. */
 export function resetTeacherData(): void {
+  clearTimeout(saveTimer);
+  saveTimer = undefined;
   data = EMPTY;
   loading = null;
+  loaded = false;
+  early = [];
   store = null;
   emit();
 }

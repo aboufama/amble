@@ -31,7 +31,8 @@ import type {
 import { seeChange } from '../screens/footsteps/seeChange';
 import { announce, dismissToast, showToast } from './app';
 import { markSeen } from './prefs';
-import { adoptWorld, applyAccepted, loadGame, patchSession, refreshCast, setDial, setTwist } from './session';
+import { adoptWorld, applyAcceptedChange, loadGame, patchSession, refreshCast, setDial, setTwist } from './session';
+import { writeWorld } from '../store/worldWrites';
 import { getState, setState } from './store';
 
 export interface SteerRecord {
@@ -88,8 +89,11 @@ export interface AiSlice {
   /** The world an explain request is running for. */
   explaining: WorldId | null;
   explain: ExplainNote | null;
-  /** What the last accepted change touched: its files, and a file whose student-written lines it rewrote. */
-  changed: { worldId: WorldId; files: string[]; handFile: string | null } | null;
+  /**
+   * What the last accepted change touched: its files, a file whose student-written lines it rewrote, and the
+   * files it left out because the student changed the same lines while it worked.
+   */
+  changed: { worldId: WorldId; files: string[]; handFile: string | null; leftOut: string[] } | null;
 }
 
 export function initialAi(): AiSlice {
@@ -172,6 +176,8 @@ function begin(world: World, task: AiJobView['task'], request: string): AbortCon
     s.ai.job = view;
     s.ai.streamedArt = [];
     if (s.ai.wait?.worldId === world.id) s.ai.wait = null;
+    // What the last change touched belongs to that change only.
+    if (s.ai.changed?.worldId === world.id) s.ai.changed = null;
   });
   return own;
 }
@@ -220,7 +226,8 @@ async function currentWorld(id: WorldId): Promise<World | null> {
 
 /**
  * Writes a new version of a world: a footstep and one commit; when it is the open world, what `keep` copies
- * (and the footstep) goes into the session, whose own newer edits stay.
+ * (and the footstep) goes into the session, whose own newer edits stay. Callers read the world and commit it
+ * inside `writeWorld`, so Bring to life writing the same stored world never drops their change (or theirs it).
  */
 async function commitWorld(next: World, step: StepInput, keep: (w: Draft<World>, committed: World) => void = () => undefined): Promise<World> {
   const { store, history } = getServices();
@@ -240,9 +247,14 @@ function stepFor(outcome: Extract<AiOutcome, { kind: 'accepted' }>, task: AiJobV
   return { kind: 'ask', by: 'ai', text: outcome.summary || t('ai.changedPlain'), request: words, files, tested: outcome.tested, handEdits: outcome.handEditsTouched };
 }
 
-/** The files an accepted outcome changed (for See the change). */
-function changedFiles(before: World, outcome: Extract<AiOutcome, { kind: 'accepted' }>): string[] {
-  return outcome.files.filter((f) => before.code.find((b) => b.path === f.path)?.source !== f.source).map((f) => f.path);
+/**
+ * Says which files a change left out because the student changed the same lines meanwhile: "You changed
+ * game.js while the AI helper was working, so its change to that file was left out. Ask again to try once more."
+ */
+export function leftOutText(files: readonly string[]): string {
+  if (files.length === 1) return t('ai.leftOut', { file: files[0] });
+  if (files.length === 2) return t('ai.leftOutTwo', { a: files[0], b: files[1] });
+  return t('ai.leftOutMany', { n: files.length });
 }
 
 /** The "Amble changed your world" toast on screen, if any (it goes once its change is being shown). */
@@ -255,12 +267,17 @@ export function dismissChangeToast(): void {
 }
 
 /**
- * "Amble changed your world: …" [See the change] (§2.8 Done). See the change opens the same sheet as the
- * footstep's link (§2.9: the summary, the student's words and the diff), back in the world if the student
- * has moved on; Look inside only when there is no step to show.
+ * "Amble changed your world: …" [See the change] (§2.8 Done), or, when none of it could go in, why. See the
+ * change opens the same sheet as the footstep's link (§2.9: the summary, the student's words and the diff),
+ * back in the world if the student has moved on; Look inside only when there is no step to show.
  */
-function doneToast(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, files: string[], stepId: StepId | null): void {
+function doneToast(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, files: string[], leftOut: string[], stepId: StepId | null): void {
   if (getState().session.world?.id !== worldId) return;
+  if (leftOut.length) announce(leftOutText(leftOut));
+  if (!files.length && leftOut.length) {
+    showToast(leftOutText(leftOut), { kind: 'ai' });
+    return;
+  }
   const text = outcome.summary ? t('ai.changed', { summary: outcome.summary }) : t('ai.changedPlain');
   const run = () => {
     if (!stepId) {
@@ -275,39 +292,58 @@ function doneToast(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accept
   changeToast = showToast(text, { kind: 'ai', action: { label: t('ai.seeChange'), run } });
 }
 
-/** Applies an accepted change or fix: the session's `applyAccepted` (M2), else a direct commit. */
-async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, task: AiJobView['task'], words: string): Promise<void> {
-  const before = await currentWorld(worldId);
-  if (!before) return;
-  const files = changedFiles(before, outcome);
-  // The pipeline's code tools (acorn and friends) are loaded by now: this outcome came from them.
-  const handFile = outcome.handEditsTouched ? (await import('../pipeline/service')).handEditFile(before.code, outcome.files) : null;
-  setState((s) => {
-    s.ai.changed = { worldId, files, handFile };
-  });
+/**
+ * Applies an accepted change or fix: the session's `applyAccepted` (M2), else a direct commit. `base` is the
+ * code the job started from: code the student ran in Look inside while it worked stays (a three-way merge),
+ * and a file both changed in the same lines keeps the student's version.
+ */
+async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, task: AiJobView['task'], words: string, base: World['code']): Promise<void> {
+  const noteChanged = (files: string[], handFile: string | null, leftOut: string[]) =>
+    setState((s) => {
+      s.ai.changed = { worldId, files, handFile, leftOut };
+    });
   if (getState().session.world?.id === worldId) {
-    const recorded = await applyAccepted(outcome);
-    doneToast(worldId, outcome, files, recorded.steps.at(-1)?.id ?? null);
+    const r = await applyAcceptedChange(outcome, { base });
+    noteChanged(r.files, r.handFile, r.leftOut);
+    doneToast(worldId, outcome, r.files, r.leftOut, r.files.length ? (r.world.steps.at(-1)?.id ?? null) : null);
     return;
   }
-  const recorded = await commitWorld({ ...before, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, task, words), keepCode);
-  if (getState().session.world?.id === worldId) {
+  // The pipeline's code tools (acorn and friends) are loaded by now: this outcome came from them.
+  const { rebaseChange } = await import('../pipeline/rebase');
+  let stepId: StepId | null = null;
+  const r = await writeWorld(worldId, async () => {
+    const before = await currentWorld(worldId);
+    if (!before) return null;
+    const rebased = rebaseChange(outcome, { base, world: before, attribute: getServices().history.attribute });
+    noteChanged(rebased.files, rebased.handFile, rebased.leftOut);
+    if (rebased.files.length || !rebased.leftOut.length) {
+      const step = { ...stepFor(outcome, task, words), files: rebased.files, ...(task === 'change' ? { handEdits: Boolean(rebased.handFile) } : {}) };
+      const recorded = await commitWorld({ ...before, code: rebased.code, updatedAt: Date.now() }, step, keepCode);
+      stepId = recorded.steps.at(-1)?.id ?? null;
+    }
+    return rebased;
+  });
+  if (!r) return;
+  if (r.files.length && getState().session.world?.id === worldId) {
     setState((s) => {
-      s.session.manifest = outcome.manifest;
+      s.session.manifest = r.manifest;
       s.session.newVersion = { summary: outcome.summary, ready: true };
     });
     void getServices().player.promote().catch(() => undefined);
   }
-  doneToast(worldId, outcome, files, recorded.steps.at(-1)?.id ?? null);
+  doneToast(worldId, outcome, r.files, r.leftOut, stepId);
 }
 
 /** A build's result, written to the stored world (the student may be drawing on the Desk). */
 async function applyBuild(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' | 'fallback' }>, words: string): Promise<void> {
-  const world = await currentWorld(worldId);
-  if (!world) return;
-  if (outcome.kind === 'accepted') {
-    await commitWorld({ ...world, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, 'build', words), keepCode);
-  } else {
+  // Bring to life may be writing the same stored world (Draw while it builds): the two take turns.
+  const written = await writeWorld(worldId, async () => {
+    const world = await currentWorld(worldId);
+    if (!world) return false;
+    if (outcome.kind === 'accepted') {
+      await commitWorld({ ...world, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, 'build', words), keepCode);
+      return true;
+    }
     const plan = world.plan;
     const cast = plan ? await ladderCastOf(world, plan, outcome.files) : world.cast;
     const starter = world.origin.kind === 'plan' ? world.origin.starter : null;
@@ -321,7 +357,9 @@ async function applyBuild(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 
         w.title = c.title;
       },
     );
-  }
+    return true;
+  });
+  if (!written) return;
   const s = getState();
   const open = s.session.world;
   if (open?.id !== worldId) return;
@@ -352,9 +390,11 @@ async function ladderCastOf(world: World, plan: PlanReply, files: World['code'])
  * safety category ('real-person', 'personal-info'...), or 'flagged' when the AI service said no without one.
  */
 async function recordRefusal(worldId: WorldId, category: string): Promise<void> {
-  const world = await currentWorld(worldId);
-  if (!world) return;
-  await commitWorld(world, { kind: 'refused', by: 'ai', text: category === 'support' ? t('ai.stepRefusedSupport') : t('ai.stepRefused', { category }) });
+  await writeWorld(worldId, async () => {
+    const world = await currentWorld(worldId);
+    if (!world) return;
+    await commitWorld(world, { kind: 'refused', by: 'ai', text: category === 'support' ? t('ai.stepRefusedSupport') : t('ai.stepRefused', { category }) });
+  });
 }
 
 /** A refusal or crisis the Ask card caught on the device (nothing was sent): a footstep, never the words. */
@@ -366,7 +406,7 @@ async function settle(world: World, task: AiJobView['task'], words: string, outc
   try {
     if (outcome.kind === 'accepted') {
       if (task === 'build') await applyBuild(world.id, outcome, words);
-      else await applyChange(world.id, outcome, task, words);
+      else await applyChange(world.id, outcome, task, words, world.code);
     } else if (outcome.kind === 'fallback') await applyBuild(world.id, outcome, words);
     else if (outcome.kind === 'crisis') await recordRefusal(world.id, 'support');
     else if (outcome.kind === 'refused') await recordRefusal(world.id, outcome.category ?? 'flagged');
@@ -503,14 +543,18 @@ export function stopExplain(): void {
 
 /** Go back (§2.8): the change rewrote the student's own lines, and they want their version back. */
 export async function goBackBefore(worldId: WorldId): Promise<void> {
-  const world = await currentWorld(worldId);
-  if (!world || world.steps.length < 2) return;
-  const { store, history } = getServices();
-  const at = world.steps.findIndex((s) => s.id === world.head);
-  const to = world.steps[(at < 0 ? world.steps.length : at) - 1];
-  if (!to) return;
-  const back = await history.goBack(world, to.id);
-  await store.commit({ worlds: [back] });
+  const back = await writeWorld(worldId, async () => {
+    const world = await currentWorld(worldId);
+    if (!world || world.steps.length < 2) return null;
+    const { store, history } = getServices();
+    const at = world.steps.findIndex((s) => s.id === world.head);
+    const to = world.steps[(at < 0 ? world.steps.length : at) - 1];
+    if (!to) return null;
+    const next = await history.goBack(world, to.id);
+    await store.commit({ worlds: [next] });
+    return next;
+  });
+  if (!back) return;
   // The world goes back, and so does the game playing it.
   if (adoptWorld(back)) void loadGame(back, { autostart: true });
   setState((s) => {

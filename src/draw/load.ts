@@ -11,7 +11,7 @@ import type { ArtId, ArtRecord, BlobRef, CastKey, CastMember, PartLayers, World,
 import type { Store } from '../store/api';
 import { measureWorld } from '../store/quota';
 import { boardFor, freeBoard, type BoardSpec } from './boards';
-import { artIdFor, blankDoc, openDrawing } from './drafts';
+import { artIdFor, blankDoc, DamagedDrawing, openDrawing, type Opened } from './drafts';
 import { worldColors } from './palette';
 import { bonesLayout, rigFacing, type BonesStep } from './parts';
 import { freeRequest, hasBones, resolveRequest, type DeskRequest } from './request';
@@ -25,6 +25,11 @@ export interface DeskSetup {
   record: ArtRecord | null;
   /** The draft was newer than the saved drawing (restored after a crash or a closed lid). */
   restored: boolean;
+  /**
+   * The saved drawing's file can't be read: the sheet starts blank (or with the new drawing of it so far), the
+   * Desk says so, and it keeps drafts only; the record, and the drawing the game plays, stay until Bring to life.
+   */
+  damaged: boolean;
   mode: 'bones' | 'free';
   parts: Record<string, PartLayers>;
   steps: BonesStep[];
@@ -89,6 +94,23 @@ function partsOfDoc(doc: ArtDoc, record: ArtRecord | null): Record<string, PartL
   return out;
 }
 
+/**
+ * The drawing to open: its newest version, or a damaged record (its file can't be read) to draw again on a blank
+ * sheet, or nothing (a new drawing).
+ */
+async function open(store: Store, artId: ArtId): Promise<{ opened: Opened | null; damaged: ArtRecord | null }> {
+  try {
+    const opened = await openDrawing(store, artId);
+    return { opened, damaged: opened?.damaged ? opened.record : null };
+  } catch (err) {
+    if (err instanceof DamagedDrawing) {
+      console.warn(err.message);
+      return { opened: null, damaged: err.record };
+    }
+    return { opened: null, damaged: null };
+  }
+}
+
 /** Everything the Desk needs for a cast member of a world. */
 export async function loadRequestDesk(store: Store, worldId: WorldId, key: CastKey, cast: readonly CastMember[]): Promise<DeskLoad> {
   const world = await store.worlds.get(worldId).catch(() => null);
@@ -96,26 +118,30 @@ export async function loadRequestDesk(store: Store, worldId: WorldId, key: CastK
   const request = resolveRequest(world, key, cast);
   if (!request) return { ok: false, reason: 'notFound', worldId };
   const artId = world.cast[key]?.art ?? (await artIdFor(worldId, key));
-  const opened = await openDrawing(store, artId).catch(() => null);
-  if (!opened && (await measureWorld(store, world).catch(() => null))?.refuse) return { ok: false, reason: 'tooBig', worldId };
-  const setup = await finish(store, { artId, world, request, opened, board: boardFor(request) });
+  const { opened, damaged } = await open(store, artId);
+  if (!opened && !damaged && (await measureWorld(store, world).catch(() => null))?.refuse) return { ok: false, reason: 'tooBig', worldId };
+  const setup = await finish(store, { artId, world, request, opened, damaged, board: boardFor(request) });
   return { ok: true, setup };
 }
 
 /** Everything the Desk needs for a free drawing (`#/draw/<artId>`). */
 export async function loadFreeDesk(store: Store, artId: ArtId): Promise<DeskLoad> {
-  const opened = await openDrawing(store, artId).catch(() => null);
-  if (!opened && !fresh.has(artId)) return { ok: false, reason: 'notFound', worldId: null };
-  const rec = opened?.record ?? null;
+  const { opened, damaged } = await open(store, artId);
+  if (!opened && !damaged && !fresh.has(artId)) return { ok: false, reason: 'notFound', worldId: null };
+  const rec = opened?.record ?? damaged;
   const request: DeskRequest = { ...freeRequest(rec?.name ?? opened?.doc.name ?? t('draw.newDrawingName')), ...(rec ? { kind: rec.kind, rig: rec.rig } : {}) };
-  const board = opened ? { ...freeBoard('square'), w: opened.doc.width, h: opened.doc.height, pixelArt: opened.doc.pixelArt } : freeBoard('square');
-  const setup = await finish(store, { artId, world: null, request, opened, board });
+  const board = opened
+    ? { ...freeBoard('square'), w: opened.doc.width, h: opened.doc.height, pixelArt: opened.doc.pixelArt }
+    : damaged
+      ? { ...freeBoard('square'), w: damaged.board.w, h: damaged.board.h, pixelArt: damaged.board.pixelArt }
+      : freeBoard('square');
+  const setup = await finish(store, { artId, world: null, request, opened, damaged, board });
   return { ok: true, setup };
 }
 
 async function finish(
   store: Store,
-  o: { artId: ArtId; world: World | null; request: DeskRequest; opened: Awaited<ReturnType<typeof openDrawing>>; board: BoardSpec },
+  o: { artId: ArtId; world: World | null; request: DeskRequest; opened: Opened | null; damaged: ArtRecord | null; board: BoardSpec },
 ): Promise<DeskSetup> {
   const { request, opened, world } = o;
   const kind = (request.rig === 'none' ? 'object' : request.rig) as CharacterKind;
@@ -125,8 +151,10 @@ async function finish(
   let parts: Record<string, PartLayers>;
   if (opened) {
     doc = opened.doc;
-    parts = partsOfDoc(doc, opened.record);
-    mode = opened.record?.mode ?? (Object.keys(parts).length ? 'bones' : 'free');
+    // A new drawing of a damaged one has its own layers: the record's pairs and mode were the old drawing's.
+    const rec = opened.damaged ? null : opened.record;
+    parts = partsOfDoc(doc, rec);
+    mode = rec?.mode ?? (Object.keys(parts).length ? 'bones' : 'free');
     // Extras drawn earlier join the Extras step.
     for (const name of Object.keys(parts)) if (!steps.some((s) => s.parts.includes(name))) steps.find((s) => s.step === 'extras')?.parts.push(name);
   } else {
@@ -145,14 +173,17 @@ async function finish(
     request,
     board,
     doc,
-    record: opened?.record ?? null,
+    // A damaged record stays the drawing's (its name, its export in the world) until Bring to life replaces it.
+    record: opened?.record ?? o.damaged,
     restored: opened?.restored ?? false,
+    damaged: o.damaged !== null,
     mode,
     parts,
     steps,
     partBones,
     heroImage,
     colors,
-    saved: new Set(opened?.record?.cels ?? []),
+    // A damaged record's pieces may be missing: drafts keep every piece of the new drawing.
+    saved: new Set(o.damaged ? [] : (opened?.record?.cels ?? [])),
   };
 }

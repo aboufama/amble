@@ -314,6 +314,8 @@ export const draw = {
   // states
   loading: 'Getting your drawing…',
   notFound: "This drawing isn't here. Here's your Trail.",
+  damaged: "This drawing's file is damaged. You can draw it again; the old one stays in your world until you bring the new one to life.",
+  damagedFree: "This drawing's file is damaged. You can draw it again; the old one stays until you bring the new one to life.",
   saveFailed: "Couldn't save this drawing here.",
   saveToDrive: 'Save to Drive',
   memory: 'This drawing has lots of layers and frames. Merge some to keep Amble fast.',

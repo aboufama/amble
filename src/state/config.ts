@@ -76,16 +76,22 @@ export function setConfig(patch: Partial<ConfigSlice>): void {
   });
 }
 
+/** Reads started, and the newest one written: an older read never writes over a newer one. */
 let reads = 0;
+let written = 0;
 
 /**
  * Reads every configuration source again (at boot, after Join, Leave, a change in Settings, or a new managed
- * configuration). When reads overlap, only the latest one is kept, so an older answer never replaces a newer.
+ * configuration). Overlapping reads can finish out of order (Join, then Leave at once): the newest read
+ * wins, whichever finishes last.
  */
 export async function refreshConfig(): Promise<AiConfig> {
   const read = ++reads;
   const ai = await resolveAiConfig();
-  if (read === reads) setConfig({ ai });
+  if (read > written) {
+    written = read;
+    setConfig({ ai });
+  }
   return ai;
 }
 

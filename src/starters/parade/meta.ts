@@ -4,7 +4,6 @@
  * `hero`, then `pal1` to `pal7` (PARADE_KEYS).
  */
 import type { StarterMeta } from '../types';
-import game from './game.js?raw';
 
 export const PARADE_KEYS = ['hero', 'pal1', 'pal2', 'pal3', 'pal4', 'pal5', 'pal6', 'pal7'] as const;
 
@@ -25,6 +24,7 @@ export const parade: StarterMeta = {
     // The walkers are declared `spare` in static art (never asked for), and walk only once drawn.
     state: 'bones' as const,
   })),
-  files: [{ path: 'game.js', source: game }],
+  // The game's files load with a world, never with the app's first page.
+  files: async () => [{ path: 'game.js', source: (await import('./game.js?raw')).default }],
   scripts: {},
 };

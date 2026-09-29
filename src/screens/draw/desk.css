@@ -634,6 +634,43 @@
   animation: none;
 }
 
+/* A damaged drawing (its saved file can't be read) says so while it is drawn again, in a corner of the stage
+   (the guides and their labels stay clear), until the student puts it away. */
+.desk-damaged {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: min(380px, calc(100% - 240px));
+  margin: 0;
+  padding: 11px 6px 10px 14px;
+  border-radius: var(--r-btn);
+  font: var(--type-label);
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+  box-shadow:
+    inset 0 0 0 1.5px var(--line-control-panel),
+    var(--lift-sm);
+}
+
+.desk-damaged > .icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--warn);
+}
+
+.desk-damaged__text {
+  margin: 0;
+}
+
+.desk-damaged .btn {
+  flex: none;
+  margin: -6px 0 -4px;
+}
+
 /* The app's toasts stay clear of the view bar while the Desk is open. */
 body:has(.screen.desk) .toast-region {
   bottom: 84px;
@@ -1493,7 +1530,7 @@ body:has(.screen.desk) .toast-region {
   grid-template-columns: 110px minmax(0, 1fr) 306px;
   grid-template-rows: var(--topbar) minmax(0, 1fr);
   grid-template-areas:
-    '. . .'
+    'top top top'
     '. area .';
 }
 

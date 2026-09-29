@@ -1,11 +1,13 @@
 /**
  * `#/w/<id>/draw/<key>` and `#/draw/<artId|new>`: the Desk (§2.10; M3). Opens the drawing (its saved
  * thumbnail first while the layers come in), then the workspace. A drawing that is not there goes back to
- * the Trail; a world that is too big for a new drawing goes back to the world.
+ * the Trail; a world that is too big for a new drawing goes back to the world. While it opens, the top bar's
+ * back link is there already: a slow Chromebook never leaves the student on a loading sheet with no way out.
  */
 import { useEffect, useState } from 'react';
 import { navigate } from '../../app/router';
-import type { RouteOf } from '../../app/routes';
+import { TopBar } from '../../app/frame/TopBar';
+import type { Route, RouteOf } from '../../app/routes';
 import { useServices } from '../../app/services';
 import { loadFreeDesk, loadRequestDesk, newFreeId, type DeskSetup } from '../../draw/load';
 import { t } from '../../i18n';
@@ -63,9 +65,15 @@ export function Desk({ route }: { route: RouteOf<'draw'> | RouteOf<'drawFree'> }
     };
   }, [store, route]);
 
-  if (!setup)
+  if (!setup) {
+    const open = getState().session.world;
+    const back: { to: Route; label: string } =
+      route.name === 'draw'
+        ? { to: { name: 'world', id: route.worldId }, label: open?.id === route.worldId ? open.title : t('common.back') }
+        : { to: { name: 'trail', view: 'trail' }, label: t('common.backToTrail') };
     return (
       <div className="screen desk desk--loading" data-testid="screen-draw">
+        <TopBar className="desk__top" back={back} aiChip={false} />
         <main id="main" tabIndex={-1} className="desk__loading" aria-busy="true">
           <h1 className="sr-only">{t('draw.loading')}</h1>
           <div className="desk__loading-sheet" aria-hidden="true" />
@@ -74,5 +82,6 @@ export function Desk({ route }: { route: RouteOf<'draw'> | RouteOf<'drawFree'> }
         </main>
       </div>
     );
+  }
   return <DeskWorkspace key={setup.artId} setup={setup} />;
 }

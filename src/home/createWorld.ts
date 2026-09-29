@@ -10,6 +10,7 @@ import type { ArtId, ArtRecord, Assignment, CastKey, CastSlot, PlanReply, Starte
 import { startBuild as startBuildJob } from '../state/ai';
 import { refreshLibrary } from '../state/library';
 import { getState } from '../state/store';
+import { copyDrawings, copyStrokeLogs } from '../world/copy';
 import { warmupCode } from '../world/warmup';
 
 export const TITLE_MAX = 40;
@@ -143,12 +144,14 @@ export async function renameWorld(id: WorldId, title: string): Promise<World | n
   return commitWorld({ ...world, title: name, updatedAt: Date.now() });
 }
 
-/** Make a copy: the same world under a new id, starting its own Footsteps. */
+/** Make a copy: the same world under a new id, starting its own Footsteps, with its own drawings. */
 export async function copyWorld(id: WorldId): Promise<World | null> {
   const { store } = getServices();
   const world = await store.worlds.get(id);
   if (!world) return null;
   const now = Date.now();
+  // Drawing one again in the copy never changes the original's (the pictures themselves are shared).
+  const drawings = await copyDrawings(store, world.cast, now);
   // Shorten the old title, never the "(copy)" words, so a long title still reads as a copy.
   const room = TITLE_MAX - t('home.copyTitle', { title: '' }).length;
   const title = t('home.copyTitle', { title: world.title.slice(0, Math.max(1, room)).trimEnd() }).slice(0, TITLE_MAX);
@@ -162,7 +165,10 @@ export async function copyWorld(id: WorldId): Promise<World | null> {
     openedAt: now,
     steps: [step],
     head: step.id,
+    cast: drawings.cast,
     handIn: { fileName: null, savedAt: null, method: null, turnedInAt: null },
   };
-  return commitWorld(copy);
+  const made = await commitWorld(copy, { art: drawings.art });
+  await copyStrokeLogs(store, drawings.ids);
+  return made;
 }

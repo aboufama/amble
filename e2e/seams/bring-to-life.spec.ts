@@ -68,5 +68,6 @@ test('a drawing brought to life drops into the running game without a restart', 
   expect(saved).toMatchObject({ madeBy: 'student', rig: true, exported: true });
   expect(saved.steps).toHaveLength(steps + 1);
   expect(saved.steps.at(-1)?.kind).toBe('draw');
-  await expect(footsteps(page).first()).toContainText(boss.name);
+  // Mid-sentence, a name that starts with "The" reads "the" ("You drew the Moon King").
+  await expect(footsteps(page).first()).toContainText(boss.name.replace(/^The /, 'the '));
 });

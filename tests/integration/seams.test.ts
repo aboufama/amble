@@ -19,10 +19,10 @@ describe('the plan call knows the real starters', () => {
     expect([...PLAN_STARTERS].sort()).toEqual([...STARTER_IDS].sort());
   });
 
-  it("names only each starter's real cast keys, hero and your-turn member first among them", () => {
+  it("names only each starter's real cast keys, hero and your-turn member first among them", async () => {
     for (const id of STARTER_IDS) {
       const meta = metaOf(id);
-      const declared = Object.keys(readStatics(starterCode(meta)).art);
+      const declared = Object.keys(readStatics(await starterCode(meta)).art);
       const keys = STARTER_LINES[id].keys;
       expect(keys.filter((k) => !declared.includes(k)), `${id}: keys the game does not declare`).toEqual([]);
       expect(keys, id).toContain(meta.heroKey);
@@ -32,8 +32,8 @@ describe('the plan call knows the real starters', () => {
 });
 
 describe('the ladder on a real starter', () => {
-  it("writes the e2e plan onto the Moon King's own slots, keys kept", () => {
-    const starter = starterCode(metaOf('moon-king'));
+  it("writes the e2e plan onto the Moon King's own slots, keys kept", async () => {
+    const starter = await starterCode(metaOf('moon-king'));
     const { files, mapping, resting } = ladderFiles(PLAN, starter);
     expect(mapping).toEqual({ hero: 'hero', saltKing: 'moonKing', crumb: 'grumble', leaf: 'star' });
     expect(resting).toEqual([]);

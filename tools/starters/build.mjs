@@ -49,9 +49,10 @@ const fail = (msg) => {
 for (const meta of L.STARTERS) {
   if (only.length && !only.includes(meta.id)) continue;
   console.log(`\n${meta.id}`);
-  const v = L.validateGame(meta.files.map((f) => ({ path: f.path, content: f.source })), { manifest: L.KIT_API, fix: false });
+  const files = await meta.files();
+  const v = L.validateGame(files.map((f) => ({ path: f.path, content: f.source })), { manifest: L.KIT_API, fix: false });
   for (const i of [...v.errors, ...v.warnings]) fail(`${i.file}:${i.line} ${i.severity} ${i.rule}: ${i.message}`);
-  const lines = Object.fromEntries(meta.files.map((f) => [f.path, f.source.split('\n').length]));
+  const lines = Object.fromEntries(files.map((f) => [f.path, f.source.split('\n').length]));
   console.log(`  code: ${Object.entries(lines).map(([p, n]) => `${p} ${n} lines`).join(', ')}; ${v.errors.length} errors, ${v.warnings.length} warnings`);
 
   for (const cast of meta.cast) {

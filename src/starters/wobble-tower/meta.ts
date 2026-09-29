@@ -1,7 +1,5 @@
 /** Wobble Tower (Physics toy): build the tallest tower before the wobble wind knocks it down. */
 import type { StarterMeta } from '../types';
-import builders from './builders.js?raw';
-import game from './game.js?raw';
 
 export const wobbleTower: StarterMeta = {
   id: 'wobble-tower',
@@ -18,10 +16,14 @@ export const wobbleTower: StarterMeta = {
     { key: 'city', name: 'City at night', kind: 'background', rig: 'none', role: 'background', facing: 'viewer', state: 'drawn', script: 'city-night' },
     { key: 'boulder', name: 'Boulder', kind: 'prop', rig: 'none', role: 'prop', facing: 'viewer', state: 'spare' },
   ],
-  files: [
-    { path: 'builders.js', source: builders },
-    { path: 'game.js', source: game },
-  ],
+  // The game's files load with a world, never with the app's first page.
+  files: async () => {
+    const [builders, game] = await Promise.all([import('./builders.js?raw'), import('./game.js?raw')]);
+    return [
+      { path: 'builders.js', source: builders.default },
+      { path: 'game.js', source: game.default },
+    ];
+  },
   scripts: {
     wobbles: () => import('./art/wobbles.art').then((m) => m.default),
     dummy: () => import('./art/dummy.art').then((m) => m.default),

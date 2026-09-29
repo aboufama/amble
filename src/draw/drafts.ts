@@ -19,22 +19,68 @@ export interface Opened {
   record: ArtRecord | null;
   /** The draft was newer than the record (work that was never committed). */
   restored: boolean;
+  /**
+   * The saved drawing's file can't be read (the draft is a new drawing of it). The record stays as it is until
+   * Bring to life: the Desk keeps drafts only, and the world keeps playing the record's export.
+   */
+  damaged?: boolean;
 }
 
-/** The newest version of a drawing: its draft when newer than its record, else the record, else null. */
+/**
+ * A drawing whose record is there but whose saved file can't be read (missing or not an Amble drawing). It is
+ * never opened as a blank sheet under the same id without saying so: the first save would replace the record
+ * and take the drawing the game plays out of the world.
+ */
+export class DamagedDrawing extends Error {
+  constructor(readonly record: ArtRecord, cause?: unknown) {
+    super(`The drawing ${record.id} can't be read${cause instanceof Error ? `: ${cause.message}` : '.'}`);
+    this.name = 'DamagedDrawing';
+  }
+}
+
+async function readSaved(store: Store, record: ArtRecord, log: Uint8Array[] | null): Promise<ArtDoc> {
+  try {
+    const blob = await store.blobs.get(record.doc);
+    if (!blob) throw new Error('its file is missing');
+    return await deserializeArtDoc(blob, (ref) => store.blobs.get(ref), log);
+  } catch (err) {
+    throw new DamagedDrawing(record, err);
+  }
+}
+
+/** Whether a record's saved drawing can be read (its file is there and is an Amble drawing). */
+async function savedReadable(store: Store, record: ArtRecord): Promise<boolean> {
+  try {
+    const blob = await store.blobs.get(record.doc);
+    const json = blob ? (JSON.parse(await blob.text()) as Partial<ArtDocJson>) : null;
+    return json?.format === 'amble-art' && json.v === 1 && Array.isArray(json.cels);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The newest version of a drawing: its draft when newer than its record, else the record, else null. Throws
+ * `DamagedDrawing` when the record is there but its file can't be read (and there is no newer draft).
+ */
 export async function openDrawing(store: Store, artId: ArtId): Promise<Opened | null> {
   const [record, draft] = await Promise.all([store.art.get(artId).catch(() => null), store.drafts.get(artId).catch(() => null)]);
   const chunks = await store.strokes.read(artId).catch(() => [] as Uint8Array[]);
   const log = chunks.length ? chunks : null;
   if (draft && (!record || draft.at > record.updatedAt)) {
-    const json = JSON.parse(draft.doc) as ArtDocJson;
-    const doc = await deserializeArtDoc(json, async (ref) => draft.cels[ref] ?? (await store.blobs.get(ref)), log);
-    return { doc, record, restored: true };
+    try {
+      const json = JSON.parse(draft.doc) as ArtDocJson;
+      const doc = await deserializeArtDoc(json, async (ref) => draft.cels[ref] ?? (await store.blobs.get(ref)), log);
+      // Drawing a damaged one again: until it is brought to life, the record still can't be read.
+      const damaged = record ? !(await savedReadable(store, record)) : false;
+      return { doc, record, restored: true, ...(damaged ? { damaged } : {}) };
+    } catch (err) {
+      // A draft that can't be read: the saved drawing, when there is one.
+      if (!record) throw err;
+    }
   }
   if (!record) return null;
-  const blob = await store.blobs.get(record.doc);
-  if (!blob) return null;
-  const doc = await deserializeArtDoc(blob, (ref) => store.blobs.get(ref), log);
+  const doc = await readSaved(store, record, log);
   return { doc, record, restored: false };
 }
 
@@ -128,4 +174,15 @@ export async function saveDrawing(store: Store, o: SaveInput): Promise<ArtRecord
   await store.commit({ blobs, art: [record], clearDrafts: [o.artId] });
   if (strokeLog) await keepStrokeLog(store, o.artId, strokeLog).catch(() => undefined);
   return record;
+}
+
+/**
+ * A checkpoint of the Desk (20 s idle, the page hidden, the Desk closing): the drawing saved in one commit, or,
+ * drawing a damaged one again, kept in its draft with every piece, so the damaged record and the drawing the
+ * game plays stay until Bring to life replaces them. Returns the saved record (null when kept as a draft).
+ */
+export async function checkpointDrawing(store: Store, o: SaveInput & { damaged: boolean; worldId: WorldId | null; castKey: CastKey | null; tool: string }): Promise<ArtRecord | null> {
+  if (!o.damaged) return saveDrawing(store, o);
+  await writeDraft(store, o.doc, { artId: o.artId, worldId: o.worldId, castKey: o.castKey, saved: new Set() }, o.tool);
+  return null;
 }

@@ -1,7 +1,5 @@
 /** Moon King (Boss fight): a boss fight on the moon in three phases. */
 import type { StarterMeta } from '../types';
-import game from './game.js?raw';
-import moves from './moves.js?raw';
 
 export const moonKing: StarterMeta = {
   id: 'moon-king',
@@ -21,10 +19,14 @@ export const moonKing: StarterMeta = {
     { key: 'shot', name: 'Star shot', kind: 'projectile', rig: 'none', role: 'projectile', facing: 'right', state: 'bones' },
     { key: 'orb', name: 'Moon orb', kind: 'projectile', rig: 'none', role: 'enemyShot', facing: 'viewer', state: 'bones' },
   ],
-  files: [
-    { path: 'moves.js', source: moves },
-    { path: 'game.js', source: game },
-  ],
+  // The game's files load with a world, never with the app's first page.
+  files: async () => {
+    const [moves, game] = await Promise.all([import('./moves.js?raw'), import('./game.js?raw')]);
+    return [
+      { path: 'moves.js', source: moves.default },
+      { path: 'game.js', source: game.default },
+    ];
+  },
   scripts: {
     hero: () => import('./art/hero.art').then((m) => m.default),
     moonKing: () => import('./art/moonKing.art').then((m) => m.default),

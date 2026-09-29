@@ -112,6 +112,12 @@ export function World({ route }: { route: RouteOf<'world'> }) {
   // ---------------------------------------------------------------- the game's controller
 
   useEffect(() => {
+    let live = true;
+    /** Still this screen: mounted, and the route is still this world (the student may leave while it starts). */
+    const here = () => {
+      const r = getState().app.route;
+      return live && r.name === 'world' && r.id === route.id;
+    };
     const c = new WorldController(route.id, {
       onLift: (key, rect) => {
         const member = getState().session.cast.find((m) => m.key === key);
@@ -129,16 +135,21 @@ export function World({ route }: { route: RouteOf<'world'> }) {
       },
     });
     controller.current = c;
-    void c.start().then(() => afterStart());
+    // Left before it started: no flight over the next screen, and the hidden game stays paused. The flight
+    // (and the Add someone that waits for it) comes the next time this world shows.
+    void c.start().then(() => {
+      if (here()) void afterStart(here);
+    });
     return () => {
+      live = false;
       c.stop();
       if (controller.current === c) controller.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.id]);
 
-  /** Back from the Desk: the come-alive flight, then the game goes on. */
-  const afterStart = useCallback(async () => {
+  /** Back from the Desk: the come-alive flight, then the game goes on (while `here()`: still this world's screen). */
+  const afterStart = useCallback(async (here: () => boolean) => {
     const s = getState().session;
     const alive = s.comeAlive;
     if (!alive || !s.world) {
@@ -147,6 +158,11 @@ export function World({ route }: { route: RouteOf<'world'> }) {
     }
     setComeAlive(null);
     const items = alive.key ? ((await controller.current?.fetchObjects(700)) ?? null) : null;
+    if (!here()) {
+      // Gone before it could fly: it flies the next time this world shows.
+      if (!getState().session.comeAlive && getState().session.world?.id === s.world.id) setComeAlive(alive);
+      return;
+    }
     const f = frameRef.current?.getBoundingClientRect();
     const inWorld = alive.key && items && f ? boxOfKey(items, alive.key) : null;
     const target = inWorld && f ? { x: f.left + inWorld.x, y: f.top + inWorld.y, w: inWorld.w, h: inWorld.h } : null;
@@ -161,11 +177,13 @@ export function World({ route }: { route: RouteOf<'world'> }) {
       fallback,
       reduced,
       onCheer: () => {
+        if (!here()) return;
         playUiSound('drop');
         player.resume();
         if (alive.key) player.celebrate(alive.key);
       },
     });
+    if (!here()) return;
     if (name) announce(t('world.cameAlive', { name }));
     await afterAdd(s.world.id, alive.key, alive.artId);
   }, [player, reduced]);

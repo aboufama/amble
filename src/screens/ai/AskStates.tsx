@@ -20,13 +20,14 @@ import {
   closeExplainer,
   confirmExplainer,
   goBackBefore,
+  leftOutText,
   noteLocalRefusal,
   startExplain,
   stopExplain,
   stopJob,
 } from '../../state/ai';
 import { announce } from '../../state/app';
-import { useStore } from '../../state/store';
+import { getState, useStore } from '../../state/store';
 import { Button, Chip, Footprints, IconButton, PaperCard, TextArea } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { AiExplainer } from './AiExplainer';
@@ -114,7 +115,10 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
   useEffect(() => {
     if (!outcomeFor || outcomeFor.at === handled.current) return;
     handled.current = outcomeFor.at;
-    if (outcome?.kind === 'accepted') setText((cur) => (cur.trim() === outcomeFor.request.trim() ? '' : cur));
+    // A change the student's own edits kept out entirely keeps its words, to ask again.
+    const changed = getState().ai.changed;
+    const keptOut = changed?.worldId === outcomeFor.worldId && !changed.files.length && changed.leftOut.length > 0;
+    if (outcome?.kind === 'accepted' && !keptOut) setText((cur) => (cur.trim() === outcomeFor.request.trim() ? '' : cur));
     const words = keptWords(outcome, outcomeFor.request, outcomeFor.task);
     if (words) setText((cur) => cur || words);
   }, [outcome, outcomeFor]);
@@ -511,6 +515,7 @@ function DoneNotes({
     .map((k) => art.art.find((a) => a.key === k))
     .find((a) => a && a.required && !world.cast[a.key]?.art && !later.includes(a.key));
   const handFile = outcome.handEditsTouched ? (changed?.handFile ?? null) : null;
+  const leftOut = changed?.leftOut ?? [];
   const addedText = fresh ? addedMemberText(fresh.name) : '';
   return (
     <>
@@ -528,6 +533,13 @@ function DoneNotes({
               {t('ai.later')}
             </Button>
           </div>
+        </PaperCard>
+      )}
+      {leftOut.length > 0 && (
+        <PaperCard className="ai-paper" tilt={0.4} cut>
+          <p className="ai-paper__text" role="status" data-testid="ai-left-out">
+            {leftOutText(leftOut)}
+          </p>
         </PaperCard>
       )}
       {handFile && (

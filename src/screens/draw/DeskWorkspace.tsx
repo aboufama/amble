@@ -15,6 +15,7 @@ import type { Route } from '../../app/routes';
 import { useServices } from '../../app/services';
 import { bringToLife, pairsOf } from '../../draw/api';
 import { packFlipbook, type PackedFlipbook } from '../../draw/flipbook';
+import { dropPreviewJobs } from '../../draw/preview';
 import { DeskController } from '../../draw/deskController';
 import type { DeskSetup } from '../../draw/load';
 import { hasBones } from '../../draw/request';
@@ -71,6 +72,8 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
   const [bringing, setBringing] = useState(false);
   const [watching, setWatching] = useState(false);
   const [photo, setPhoto] = useState<'lines' | 'trace' | null>(null);
+  // A damaged drawing says so until the student puts the note away (like the request note, off the drawing).
+  const [damagedNote, setDamagedNote] = useState(setup.damaged);
   const brought = useRef(false);
   const memoryWarned = useRef(false);
   // "Draw this move yourself?" from Bones: the Flipbook opens on that move (read once, then cleared).
@@ -236,6 +239,8 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
     }
     setBringing(true);
     announce(t('draw.bringing'));
+    // The previews' rig jobs waiting in the rig worker would go before the drawing's own: they go.
+    dropPreviewJobs();
     try {
       ctrl.stopFlipbook();
       if (st.selection?.floating) ctrl.commitSelection();
@@ -406,6 +411,15 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
             {t('draw.sheetHelp')}
           </p>
           <RequestNote request={ctrl?.request ?? request} readAloudOn={prefs.readAloud} onToast={setToast} />
+          {damagedNote && (
+            <div className="desk-damaged" data-testid="desk-damaged">
+              <Icon name="warning" size={18} />
+              <p className="desk-damaged__text" role="status">
+                {t(setup.world ? 'draw.damaged' : 'draw.damagedFree')}
+              </p>
+              <IconButton icon="close" size={38} label={t('common.dismiss')} tooltip={false} onClick={() => setDamagedNote(false)} />
+            </div>
+          )}
           {ctrl && s?.guides && <PivotPin ctrl={ctrl} pin={s.pin} name={name} stage={stage} />}
           <DeskToast text={toast} onDone={clearToast} />
           {ctrl && perfHud && <PerfHud ctrl={ctrl} />}

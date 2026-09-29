@@ -30,9 +30,9 @@ export function drawnKeys(meta: StarterMeta, o: { withArt: boolean; hero?: ArtId
   return meta.cast.filter((c) => c.state === 'drawn' && !(o.hero && c.key === meta.heroKey)).map((c) => c.key);
 }
 
-/** A starter's code as world files: every line written by the starter. */
-export function starterCode(meta: StarterMeta): CodeFile[] {
-  return meta.files.map((f) => ({ path: f.path, source: f.source, authors: [['starter', f.source.split('\n').length]], locked: [] }));
+/** A starter's code as world files: every line written by the starter (its files load on demand). */
+export async function starterCode(meta: StarterMeta): Promise<CodeFile[]> {
+  return (await meta.files()).map((f) => ({ path: f.path, source: f.source, authors: [['starter', f.source.split('\n').length]], locked: [] }));
 }
 
 async function loadArt(meta: StarterMeta, key: CastKey, deps: OpenDeps): Promise<{ record: ArtRecord; blobs: Blob[] } | null> {
@@ -75,7 +75,7 @@ async function loadArt(meta: StarterMeta, key: CastKey, deps: OpenDeps): Promise
 export async function openStarter(id: SeedId, o: { withArt: boolean; hero?: ArtId }, deps: OpenDeps): Promise<Opened> {
   const meta = metaOf(id);
   const info = infoOf(meta);
-  const loaded = await Promise.all(drawnKeys(meta, o).map(async (key) => [key, await loadArt(meta, key, deps)] as const));
+  const [loaded, code] = await Promise.all([Promise.all(drawnKeys(meta, o).map(async (key) => [key, await loadArt(meta, key, deps)] as const)), starterCode(meta)]);
   const cast: Record<CastKey, CastSlot> = {};
   for (const c of meta.cast) cast[c.key] = { key: c.key, art: null, madeBy: null, extra: null, laterUntil: 0 };
   const art: ArtRecord[] = [];
@@ -100,7 +100,7 @@ export async function openStarter(id: SeedId, o: { withArt: boolean; hero?: ArtI
     updatedAt: now,
     openedAt: now,
     origin: meta.id === 'parade' ? { kind: 'parade' } : { kind: 'starter', starter: meta.id, withArt: o.withArt },
-    code: starterCode(meta),
+    code,
     cast,
     sounds: {},
     dials: {},

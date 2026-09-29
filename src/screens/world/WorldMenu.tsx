@@ -9,8 +9,10 @@ import { useServices } from '../../app/services';
 import { t } from '../../i18n';
 import { uid } from '../../model/ids';
 import type { World } from '../../model/types';
+import type { Store } from '../../store/api';
 import { showToast } from '../../state/app';
 import { flushWorld } from '../../state/session';
+import { copyDrawings, copyStrokeLogs } from '../../world/copy';
 import { getState, useStore } from '../../state/store';
 import { Menu, type MenuItem } from '../../ui/components';
 import { saveWorldToDrive } from '../files/SaveButton';
@@ -21,7 +23,7 @@ export function clockTime(at: number): string {
   return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-/** A copy of a world under a new id, with its own first footstep. */
+/** A copy of a world under a new id, with its own first footstep (its drawings come from `copyDrawings`). */
 export function copyOf(world: World, now = Date.now()): World {
   const title = t('world.copyTitle', { title: world.title }).slice(0, 40);
   const start = { id: uid('s_'), at: now, by: 'student' as const, kind: 'start' as const, text: t('world.copyStep', { title: world.title }) };
@@ -36,6 +38,18 @@ export function copyOf(world: World, now = Date.now()): World {
     head: start.id,
     handIn: { fileName: null, savedAt: null, method: null, turnedInAt: null },
   };
+}
+
+/**
+ * Make a copy (§2.6): the copy with its own drawings (drawing one again there never changes this world's; the
+ * pictures themselves are shared), in one commit. Returns the copy.
+ */
+export async function saveCopy(store: Store, world: World): Promise<World> {
+  const drawings = await copyDrawings(store, world.cast);
+  const next = { ...copyOf(world), cast: drawings.cast };
+  await store.commit({ art: drawings.art, worlds: [next] });
+  await copyStrokeLogs(store, drawings.ids);
+  return next;
 }
 
 export function WorldMenu({ world, onOpen }: { world: World; onOpen(sheet: SheetName): void }) {
@@ -69,8 +83,7 @@ export function WorldMenu({ world, onOpen }: { world: World; onOpen(sheet: Sheet
   const copy = async () => {
     try {
       await flushWorld();
-      const next = copyOf(world);
-      await store.commit({ worlds: [next] });
+      const next = await saveCopy(store, world);
       showToast(t('world.copyMade', { title: next.title }), { kind: 'success' });
       navigate({ name: 'world', id: next.id });
     } catch (err) {
