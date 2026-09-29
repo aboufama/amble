@@ -5,29 +5,13 @@
  * gets a smaller note that says what drawing on the Desk can do.
  */
 import { useEffect, useState } from 'react';
-import { requestFacts, type DeskRequest, type Fact } from '../../draw/request';
-import { t, type MessageKey } from '../../i18n';
+import { factText, requestFacts, type DeskRequest } from '../../draw/request';
+import { t } from '../../i18n';
 import { readAloud } from '../../ui/a11y';
 import { StickyNote } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 
-export function factText(f: Fact): string {
-  const v = f.vars;
-  switch (f.key) {
-    case 'faces':
-      return t(`draw.fact_faces_${v.side === 'left' ? 'left' : 'right'}`);
-    case 'facesAt':
-      return t(`draw.fact_facesAt_${v.side === 'left' ? 'left' : 'right'}`, { hero: v.hero });
-    case 'times':
-      if (v.n === 'half') return t('draw.fact_timesHalf', { hero: v.hero });
-      if (v.n === 'small') return t('draw.fact_timesSmall', { hero: v.hero });
-      return t('draw.fact_times', v);
-    case 'moves':
-      return t(`draw.fact_moves_${String(v.rig)}` as MessageKey);
-    default:
-      return t(`draw.fact_${f.key}` as MessageKey, v);
-  }
-}
+export { factText };
 
 const canSpeak = (): boolean => typeof speechSynthesis !== 'undefined';
 

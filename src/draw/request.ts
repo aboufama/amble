@@ -4,6 +4,7 @@
  * screen has it, else statically from the world's code, so the Desk works before any game runs.
  */
 import { extractManifest, sourceFilesOf } from '../cores/ai';
+import { t, type MessageKey } from '../i18n';
 import type { ArtKind, ArtShape, CastKey, CastMember, Facing, Pronoun, RigKind, Role, World, WorldId } from '../model/types';
 
 /** The hero unit of every size (§5.4): 40 x 64 game px. */
@@ -185,4 +186,23 @@ export function requestFacts(r: DeskRequest): Fact[] {
   if (r.kind === 'terrain') out.push({ key: 'tiles', vars: {} });
   if (r.kind === 'background') out.push({ key: 'fills', vars: {} });
   return out.slice(0, 4);
+}
+
+/** A fact in the student's words ("Faces left, at Pip"). */
+export function factText(f: Fact): string {
+  const v = f.vars;
+  switch (f.key) {
+    case 'faces':
+      return t(`draw.fact_faces_${v.side === 'left' ? 'left' : 'right'}`);
+    case 'facesAt':
+      return t(`draw.fact_facesAt_${v.side === 'left' ? 'left' : 'right'}`, { hero: v.hero });
+    case 'times':
+      if (v.n === 'half') return t('draw.fact_timesHalf', { hero: v.hero });
+      if (v.n === 'small') return t('draw.fact_timesSmall', { hero: v.hero });
+      return t('draw.fact_times', v);
+    case 'moves':
+      return t(`draw.fact_moves_${String(v.rig)}` as MessageKey);
+    default:
+      return t(`draw.fact_${f.key}` as MessageKey, v);
+  }
 }
