@@ -1,34 +1,31 @@
 /*
- * "What is it?" (§2.11): a paper pill with the kind's pictogram, and its card with six kind tiles and
- * three ways to look. Tokens only. Kept with the picker, so screens that import it get its look.
+ * "What is it?" (§2.11): a secondary button with the kind's pictogram, and its card with six kind tiles
+ * (the chosen one wears Scratch's selection edge and halo) and three ways to look (Scratch's tab style).
+ * Flat, 8 px corners. Tokens only. Kept with the picker, so screens that import it get its look.
  */
 .kind-pill {
-  --focus-ring: var(--ink);
   display: inline-flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
   max-width: 100%;
   min-height: var(--control);
-  padding: 0 14px 0 7px;
-  border: 0;
+  padding: 0 12px 0 6px;
+  border: 1px solid var(--line-control);
   border-radius: var(--r-btn);
   font: var(--type-label);
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow:
-    inset 0 0 0 1.5px var(--paper-line),
-    0 3px 0 color-mix(in srgb, var(--ink) 18%, transparent);
+  color: var(--text);
+  background: var(--surface);
   cursor: pointer;
   transition: background-color var(--t-micro) var(--ease-soft);
 }
 
 .kind-pill:hover:not(:disabled) {
-  background: var(--paper-2);
+  background: var(--bg);
 }
 
 .kind-pill:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: default;
 }
 
@@ -38,9 +35,9 @@
   place-items: center;
   width: 32px;
   height: 32px;
-  border-radius: 9px;
-  color: var(--ink);
-  background: var(--paper-3);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  background: var(--bg-lift);
 }
 
 .kind-pill__text {
@@ -52,9 +49,10 @@
 
 .kind-pill__caret {
   flex: none;
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
+/* the caret turns while the card is open (its meaning) */
 .kind-pill[aria-expanded='true'] .kind-pill__caret {
   rotate: 180deg;
 }
@@ -62,20 +60,21 @@
 .kind-pill--compact {
   min-height: var(--control-sm);
   gap: 8px;
-  padding: 0 12px 0 5px;
+  padding: 0 10px 0 4px;
   font: var(--type-chip);
 }
 
 .kind-pill--compact .kind-pill__pic {
   width: 28px;
   height: 28px;
-  border-radius: 8px;
 }
 
+/* nothing chosen yet: it asks, with the selection edge and halo */
 .kind-pill--unset {
+  border-color: var(--change-bright);
   box-shadow:
-    inset 0 0 0 2px var(--accent),
-    var(--glow-lantern);
+    inset 0 0 0 1px var(--change-bright),
+    0 0 0 4px var(--select-ring);
 }
 
 /* ---------- the card ---------- */
@@ -104,10 +103,13 @@
   color: var(--text-2);
 }
 
+/* room for the chosen tile's halo inside the grid */
 .kind-card__kinds {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--s2);
+  gap: var(--s3);
+  padding: 4px;
+  margin: -4px;
 }
 
 .kind-tile {
@@ -118,60 +120,66 @@
   gap: 4px;
   min-height: 70px;
   padding: 8px 6px;
-  border: 0;
-  border-radius: var(--r-btn);
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-card);
   font: var(--type-chip);
   color: var(--text);
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  background: var(--surface);
   cursor: pointer;
 }
 
 .kind-tile:hover {
-  background: color-mix(in srgb, var(--text) 9%, transparent);
+  background: var(--bg);
 }
 
-.kind-tile--on {
-  color: var(--on-accent);
-  background: var(--accent);
-  box-shadow:
-    inset 0 0 0 1.5px var(--accent-border),
-    var(--glow-lantern);
-}
-
+.kind-tile--on,
 .kind-tile--on:hover {
-  background: var(--accent);
+  color: var(--change);
+  border-color: var(--change-bright);
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 1px var(--change-bright),
+    0 0 0 4px var(--select-ring);
 }
 
 .kind-card__sub {
   margin: var(--s4) 0 var(--s2);
 }
 
+/* the three ways to look: Scratch's tab style (a grey well; the chosen one a white face) */
 .kind-card__looks {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--s2);
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--r-btn);
+  background: var(--bg-deep);
+}
+
+:root[data-theme='contrast'] .kind-card__looks {
+  border: 2px solid var(--line-control);
 }
 
 .look-btn {
-  min-height: var(--control);
+  min-height: calc(var(--control) - 6px);
   padding: 0 8px;
   border: 0;
-  border-radius: var(--r-btn);
+  border-radius: var(--r-sm);
   font: var(--type-chip);
   color: var(--text);
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  background: transparent;
   cursor: pointer;
 }
 
 .look-btn:hover {
-  background: color-mix(in srgb, var(--text) 9%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
 }
 
-.look-btn--on {
-  box-shadow: inset 0 0 0 2px var(--accent);
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+.look-btn--on,
+.look-btn--on:hover {
+  color: var(--change);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--change-bright);
 }
 
 .kind-card__foot {

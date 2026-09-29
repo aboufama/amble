@@ -1,8 +1,10 @@
 /**
- * The bones of the constellation (§2.11): tapered bones with a soft glow, `--alive` with stripes on the
- * screen-left side, `--accent` with dots on the screen-right side, cream for the middle, so colour is
- * never the only cue. Wiggly bits are dashed; the ground anchor is an amber line under the feet. Each
- * bone has a wide, invisible stroke to grab: drag its middle to move the whole bone, tap it for its card.
+ * The bones (§2.11), flat on the white sheet in the bones' green (`--bones`): tapered bones with stripes
+ * on the screen-left side and dots on the screen-right side, plain for the middle, so colour is never the
+ * only cue, each on a thin white casing so it stands clear of the drawing's colours. Wiggly bits are
+ * dashed; the ground anchor is a line under the feet; the bone whose card is open wears the selection
+ * purple and halo. Each bone has a wide, invisible stroke to grab: drag its middle to move the whole
+ * bone, tap it for its card.
  */
 import { useId, type PointerEvent } from 'react';
 import { sideOf, type Point, type RigData, type Side } from '../../cores/rig';
@@ -93,14 +95,18 @@ export function BoneLines({ rig, fit, w, h, dim, selectedBone, wigglyLine, onBon
         </pattern>
       </defs>
       <line className="bone-ground" x1={ax - groundHalf} y1={ay} x2={ax + groundHalf} y2={ay} />
-      {/* the glow: two soft, wide strokes instead of a blur filter, which costs a frame per repaint on weak GPUs */}
-      {(['far', 'near'] as const).map((ring) => (
-        <g key={ring} className={`bone-glow bone-glow--${ring}`}>
-          {order.map((s) => (
-            <line key={s.i} className={cx('bone-glow__line', `bone-glow__line--${s.side}`, selectedBone === s.i && 'bone-glow__line--on')} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />
+      {/* the open card's bone: Scratch's selection halo, flat, under the bones */}
+      {selectedBone !== null && segs[selectedBone] && (
+        <line className="bone-halo" x1={segs[selectedBone].x1} y1={segs[selectedBone].y1} x2={segs[selectedBone].x2} y2={segs[selectedBone].y2} />
+      )}
+      {/* a white casing under the plain and wiggly bones (the tapered ones are outlined in white themselves) */}
+      <g className="bone-case">
+        {order
+          .filter((s) => s.wiggly || s.side === 'C')
+          .map((s) => (
+            <line key={s.i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />
           ))}
-        </g>
-      ))}
+      </g>
       <g className="bone-links">
         {links.map((l) => (
           <line key={l.key} x1={l.from[0]} y1={l.from[1]} x2={l.to[0]} y2={l.to[1]} />
@@ -108,18 +114,16 @@ export function BoneLines({ rig, fit, w, h, dim, selectedBone, wigglyLine, onBon
       </g>
       <g className="bone-bodies">
         {order.map((s) => {
+          const on = selectedBone === s.i && 'bone--on';
           if (s.wiggly) {
-            return <line key={s.i} className={cx('bone-wiggly', `bone-wiggly--${s.side}`)} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />;
+            return <line key={s.i} className={cx('bone-wiggly', on)} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />;
           }
           if (s.side === 'C') {
-            return <line key={s.i} className={cx('bone-mid', s.held && 'bone--held')} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />;
+            return <line key={s.i} className={cx('bone-mid', s.held && 'bone--held', on)} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />;
           }
-          return <path key={s.i} className={cx('bone-side', s.held && 'bone--held')} d={spindle(s, maxHalf)} fill={`url(#${s.side === 'L' ? stripes : dots})`} />;
+          return <path key={s.i} className={cx('bone-side', s.held && 'bone--held', on)} d={spindle(s, maxHalf)} fill={`url(#${s.side === 'L' ? stripes : dots})`} />;
         })}
       </g>
-      {selectedBone !== null && segs[selectedBone] && (
-        <line className="bone-selected" x1={segs[selectedBone].x1} y1={segs[selectedBone].y1} x2={segs[selectedBone].x2} y2={segs[selectedBone].y2} />
-      )}
       {wigglyLine && <line className="bone-new-wiggly" x1={wigglyLine[0][0]} y1={wigglyLine[0][1]} x2={wigglyLine[1][0]} y2={wigglyLine[1][1]} />}
       <g className="bone-hits">
         {segs.map((s) => (

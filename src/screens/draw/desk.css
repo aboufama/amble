@@ -5,14 +5,17 @@
  * chosen thing (a tool, a step, a layer, a swatch) wears Scratch's selection: a 2 px purple edge and a
  * soft purple halo. Tokens only.
  *
- * The sheet is white in every theme (`--sheet`), so what sits on it reads its own ink (`--on-sheet`):
- * the words colour in Original colours, black in High contrast.
+ * The sheet is white in every theme (`--sheet`), so what sits on it reads the sheet's own ink
+ * (`--on-sheet`: the words colour in Original colours, black in High contrast; `--sheet-ink` stands in for
+ * it where the shared tokens don't have it yet).
  */
 
 /* ---------- the frame ---------- */
 .screen.desk {
-  --on-sheet: var(--text);
-  grid-template-columns: 110px minmax(0, 1fr) 306px;
+  --sheet-ink: var(--text);
+  /* The rail's column grows with the text size (110 px at 100 %), so its tiles keep their words whole. */
+  --rail-col: calc(40px + 4.375rem);
+  grid-template-columns: var(--rail-col) minmax(0, 1fr) 306px;
   grid-template-rows: var(--topbar) minmax(0, 1fr);
   grid-template-areas:
     'top top top'
@@ -23,11 +26,11 @@
 }
 
 :root[data-theme='contrast'] .screen.desk {
-  --on-sheet: var(--on-accent);
+  --sheet-ink: var(--on-accent);
 }
 
 .screen.desk--left {
-  grid-template-columns: 306px minmax(0, 1fr) 110px;
+  grid-template-columns: 306px minmax(0, 1fr) var(--rail-col);
   grid-template-areas:
     'top top top'
     'side area rail';
@@ -136,8 +139,8 @@
   align-items: center;
   justify-content: center;
   gap: 3px;
-  width: 70px;
-  height: 58px;
+  width: 100%;
+  height: calc(26px + 2rem);
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--r-btn);
@@ -171,7 +174,7 @@
 }
 
 .rail__label {
-  max-width: 64px;
+  max-width: calc(100% - 6px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -282,7 +285,7 @@
   }
 
   .rail__tool {
-    height: 50px;
+    height: calc(24px + 1.625rem);
     gap: 1px;
   }
 
@@ -336,7 +339,7 @@
 
 .desk__sheet {
   /* The guides' colours on the white sheet (the Desk's canvas code reads these). */
-  --guide-ink: var(--on-sheet);
+  --guide-ink: var(--on-sheet, var(--sheet-ink));
   --guide-mark: var(--line-control);
   --guide-bone: var(--bones);
   --guide-chosen: var(--change-bright);
@@ -358,11 +361,11 @@
 
 /* High contrast: black marks on the white sheet (the chrome's white and yellow would vanish on it). */
 :root[data-theme='contrast'] .desk__sheet {
-  --guide-mark: var(--on-sheet);
-  --guide-chosen: var(--on-sheet);
+  --guide-mark: var(--on-sheet, var(--sheet-ink));
+  --guide-chosen: var(--on-sheet, var(--sheet-ink));
   --guide-halo: transparent;
   --guide-ghost: var(--bones);
-  --guide-callout: var(--on-sheet);
+  --guide-callout: var(--on-sheet, var(--sheet-ink));
   --guide-on-callout: var(--text);
 }
 
@@ -607,7 +610,7 @@
 }
 
 .note__tab:hover {
-  background: color-mix(in srgb, var(--note) 78%, var(--text));
+  background: color-mix(in srgb, var(--note) 80%, var(--text));
 }
 
 .note__fold {
@@ -1537,7 +1540,7 @@ body:has(.screen.desk) .toast-region {
   margin: 0;
   padding: 0 24px;
   font: var(--type-meta);
-  color: var(--on-sheet);
+  color: var(--on-sheet, var(--sheet-ink));
   text-align: center;
 }
 
@@ -1731,14 +1734,14 @@ body:has(.screen.desk) .toast-region {
   inset: auto 0 12px;
   margin: 0;
   font: var(--type-label);
-  color: var(--on-sheet);
+  color: var(--on-sheet, var(--sheet-ink));
   text-align: center;
 }
 
 /* ---------- opening: a sheet where the paper will be (the World's lift card morphs into it) ---------- */
 .screen.desk--loading {
   display: grid;
-  grid-template-columns: 110px minmax(0, 1fr) 306px;
+  grid-template-columns: var(--rail-col) minmax(0, 1fr) 306px;
   grid-template-rows: var(--topbar) minmax(0, 1fr);
   grid-template-areas:
     '. . .'
@@ -1771,8 +1774,8 @@ body:has(.screen.desk) .toast-region {
 }
 
 /* ---------- the touch layout (1280x800, 48 px targets) ---------- */
-.desk--touch .rail__tool {
-  width: 72px;
+.screen.desk--touch {
+  --rail-col: calc(40px + 4.5rem);
 }
 
 .desk--touch .viewbar__icon {
@@ -1804,11 +1807,12 @@ body:has(.screen.desk) .toast-region {
 
 @media (max-width: 1279px) {
   .screen.desk {
-    grid-template-columns: 96px minmax(0, 1fr) 272px;
+    --rail-col: calc(26px + 4.375rem);
+    grid-template-columns: var(--rail-col) minmax(0, 1fr) 272px;
   }
 
   .screen.desk--left {
-    grid-template-columns: 272px minmax(0, 1fr) 96px;
+    grid-template-columns: 272px minmax(0, 1fr) var(--rail-col);
   }
 
   .desk__rail {
@@ -1836,7 +1840,7 @@ body:has(.screen.desk) .toast-region {
 }
 
 :root[data-layout='portrait'] .screen.desk {
-  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-columns: calc(26px + 4.375rem) minmax(0, 1fr);
   grid-template-rows: var(--topbar) minmax(420px, 1fr) auto;
   grid-template-areas:
     'top top'

@@ -115,6 +115,53 @@ test('undo restores pixels, redo brings them back', async ({ page }) => {
   await expect.poll(() => alphaAt(page, 'lines', x, y)).toBeGreaterThan(100);
 });
 
+/** Every tool the rail shows sits whole inside it and on the screen; returns the tools shown. */
+async function railTools(page: import('@playwright/test').Page): Promise<string[]> {
+  const rail = page.locator('.rail');
+  const box = (await rail.boundingBox())!;
+  const shown: string[] = [];
+  for (const tile of await rail.locator('.rail__tool').all()) {
+    const b = (await tile.boundingBox())!;
+    expect(b.y).toBeGreaterThanOrEqual(box.y - 1);
+    expect(b.y + b.height).toBeLessThanOrEqual(Math.min(box.y + box.height, page.viewportSize()!.height) + 1);
+    shown.push((await tile.getAttribute('data-tool')) ?? 'more');
+  }
+  return shown;
+}
+
+test('a Chromebook browser tab (1366x657) shows every tool on the rail', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 657 });
+  await openAmble(page);
+  await openDesk(page, '#/draw/new');
+  expect(await railTools(page)).toEqual(['ink', 'pencil', 'marker', 'crayon', 'airbrush', 'eraser', 'fill', 'select', 'shapes', 'trace']);
+});
+
+test('with big text in a short window, the tools that do not fit wait in More tools', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 657 });
+  await openAmble(page, { prefs: { textScale: 1.3 } });
+  await openDesk(page, '#/draw/new');
+  const shown = await railTools(page);
+  expect(shown).toContain('more');
+  expect(shown).toContain('ink');
+  const hidden = ['ink', 'pencil', 'marker', 'crayon', 'airbrush', 'eraser', 'fill', 'select', 'shapes', 'trace'].filter((t) => !shown.includes(t));
+  expect(hidden).toContain('trace');
+  const more = page.getByTestId('rail-more');
+  await more.click();
+  await page.locator('.rail-more [data-tool="shapes"]').click();
+  await expect(more).toHaveAttribute('aria-label', 'More tools. Shapes is chosen.');
+  expect(((await page.evaluate(() => (window as unknown as { __ambleDesk: { getSnapshot(): { tool: string } } }).__ambleDesk.getSnapshot())) as { tool: string }).tool).toBe('shapes');
+});
+
+test('every colour swatch on the panel has a name of its own', async ({ page }) => {
+  await openAmble(page);
+  const worldId = await openStarterWorld(page);
+  await openDesk(page, `#/w/${worldId}/draw/grumble`);
+  await page.getByRole('button', { name: 'More colours' }).click();
+  const names = await page.locator('.swatch').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''));
+  expect(names.length).toBeGreaterThanOrEqual(27);
+  expect(new Set(names).size).toBe(names.length);
+});
+
 test.describe('a finger held still', () => {
   test.use({ hasTouch: true, viewport: { width: 1280, height: 800 } });
 
