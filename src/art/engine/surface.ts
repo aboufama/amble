@@ -340,8 +340,14 @@ class Surface implements ArtSurface {
   private scheduleIdle(): void {
     clearTimeout(this.idleTimer);
     this.idleTimer = window.setTimeout(() => {
-      const run = (deadline?: IdleDeadline): void => {
-        void this.hist.compressIdle(3, () => (deadline ? deadline.timeRemaining() < 2 : false)).then(() => void this.packFrames());
+      // Packing happens in the worker a tile at a time, so it runs on even when the page never idles; it
+      // pauses while drawing or filling and picks up again later.
+      const run = (): void => {
+        void this.hist.compressIdle(3, () => this.destroyed || this.stroke !== null || this.busy).then((done) => {
+          if (this.destroyed) return;
+          if (done) void this.packFrames();
+          else this.scheduleIdle();
+        });
       };
       if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 4000 });
       else run();

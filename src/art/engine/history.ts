@@ -216,10 +216,12 @@ export class History {
     return this.packer.unpack(d.z);
   }
 
-  /** Deflates raw tiles of all but the newest `keepRaw` steps. Returns the bytes saved. */
-  async compressIdle(keepRaw = 3, deadline: () => boolean = () => false): Promise<number> {
-    if (!this.packer) return 0;
-    let saved = 0;
+  /**
+   * Deflates raw tiles of all but the newest `keepRaw` steps, one tile per worker round trip (so the main
+   * thread is never held). Stops early when `stop()` says so; resolves to true when nothing is left.
+   */
+  async compressIdle(keepRaw = 3, stop: () => boolean = () => false): Promise<boolean> {
+    if (!this.packer) return true;
     const stacks = [this.undoStack.slice(0, Math.max(0, this.undoStack.length - keepRaw)), this.redoStack.slice(0, Math.max(0, this.redoStack.length - keepRaw))];
     for (const list of stacks)
       for (const e of list) {
@@ -227,7 +229,7 @@ export class History {
         for (const s of e.steps) {
           if (!('pixels' in s)) continue;
           for (const t of s.pixels.tiles) {
-            if (deadline()) return saved;
+            if (stop()) return false;
             for (const k of ['before', 'after'] as const) {
               const d = t[k];
               if (!d || isPacked(d)) continue;
@@ -242,10 +244,9 @@ export class History {
           const before = e.bytes;
           e.bytes = entryBytes(e);
           this.bytes += e.bytes - before;
-          saved += before - e.bytes;
         }
       }
-    return saved;
+    return true;
   }
 
   clear(): void {
