@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AiProgress } from '../../src/model/types';
 import { runCodeJob, type CodeJob } from '../../src/pipeline/jobs';
-import { deps, fakeChat, fakeRobot, fixture, hangs, MOON_KING, PASS, robotFail, robotFrozen, world } from './helpers';
+import { code, deps, fakeChat, fakeRobot, fixture, hangs, MOON_KING, PASS, PLAN_SNAIL, robotFail, robotFrozen, world } from './helpers';
 
 const change = (words = 'make grumbles squashable', over: Partial<CodeJob> = {}): CodeJob => ({ task: 'change', world: world(), words, level: 'middle', ...over });
 
@@ -194,6 +194,30 @@ describe('the job state machine', () => {
     expect(r2).toMatchObject({ kind: 'accepted', repairs: 1 });
     expect(robot2.runs).toHaveLength(2);
     expect(once.calls[1].user).toContain("load: SyntaxError: Identifier 'FLOOR' has already been declared");
+  });
+
+  describe('a build on a starter with a helper file (every real starter has one)', () => {
+    const plan = PLAN_SNAIL;
+    const moves = code('moves.js', 'const FLOOR = 496;\n\n/** Fires a volley. */\nfunction volley(scene) {\n  return FLOOR;\n}\n');
+    const job = (): CodeJob => ({ task: 'build', world: world({ code: [], cast: {} }), words: plan.pitch, level: 'middle', build: { plan, starter: 'moon-king', baseFiles: [moves, code('game.js', MOON_KING)] } });
+    const build = (helper: string, gameUses: string) =>
+      `@@amble-patch 1\n@@summary The snail's rescue.\n@@safety ok\n@@file salt.js create\n${helper}@@file game.js create\n${MOON_KING.replace('  create() {\n', `  create() {\n    ${gameUses}\n`)}@@end\n`;
+
+    it('drops the starter helper when the reply declares its names again in a file of its own', async () => {
+      const { chat } = fakeChat([build('const FLOOR = 480;\n\nfunction saltWave(scene) {\n  return FLOOR;\n}\n', 'this.floorY = FLOOR - 10;')]);
+      const r = await runCodeJob(job(), deps(chat), track().events, new AbortController().signal);
+      expect(r.kind).toBe('accepted');
+      if (r.kind !== 'accepted') return;
+      expect(r.files.map((f) => f.path)).toEqual(['salt.js', 'game.js']);
+    });
+
+    it('keeps the starter helper when the new files still call it', async () => {
+      const { chat } = fakeChat([build('function saltWave(scene) {\n  return volley(scene);\n}\n', 'this.floorY = FLOOR - 10;')]);
+      const r = await runCodeJob(job(), deps(chat), track().events, new AbortController().signal);
+      expect(r.kind).toBe('accepted');
+      if (r.kind !== 'accepted') return;
+      expect(r.files.map((f) => f.path)).toEqual(['moves.js', 'salt.js', 'game.js']);
+    });
   });
 
   it('accepts untested when there is no player (tested: false)', async () => {
