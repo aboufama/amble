@@ -1,7 +1,8 @@
 /**
- * The Ask card's shell (§2.8): the notebook's top panel, **Change your world** with the AI HELPER badge.
- * Everything inside (the field, idea chips, progress, outcomes, the off and error copy, the scope chip)
- * is the AI pipeline's `AskStates`; Change mode's selection scopes it to one member.
+ * The wish box's shell (§2.8): the side panel's top panel, headed **Change your world**. Everything inside
+ * (the field, idea chips, working, outcomes, the resting and error lines, the scope chip) is the wish box's
+ * own `AskStates`; Change mode's selection scopes it to one member. When the wish box shows nothing (wishes
+ * are hidden here), the panel goes with it.
  */
 import { t } from '../../i18n';
 import type { World } from '../../model/types';
@@ -14,13 +15,12 @@ export function AskCard({ world }: { world: World }) {
   const scope = useStore((s) => s.session.scope);
   return (
     <section className="panel ask-card" aria-labelledby="ask-card-title" data-testid="ask-card">
-      <div className="ask-card__head">
-        <h2 id="ask-card-title" className="ask-card__title">
-          {t('world.askTitle')}
-        </h2>
-        <span className="ask-card__badge">{t('world.askBadge')}</span>
+      <h2 id="ask-card-title" className="ask-card__title">
+        {t('world.askTitle')}
+      </h2>
+      <div className="ask-card__body">
+        <AskStates world={world} manifest={manifest} scope={scope} onClearScope={() => setScope(null)} />
       </div>
-      <AskStates world={world} manifest={manifest} scope={scope} onClearScope={() => setScope(null)} />
     </section>
   );
 }

@@ -26,10 +26,15 @@ test.describe('the world in Play', () => {
 
     const cast = page.getByTestId('cast-line');
     await expect(cast).toContainText('Cast');
+    // The one to draw next is the picked tile: Your turn, Scratch's selection edge, and Draw me.
     const hero = page.getByTestId('cast-card-hero');
     await expect(hero).toHaveAttribute('data-status', 'needed');
-    await expect(hero).toHaveClass(/cast-card--glow/);
-    await expect(hero).toHaveAccessibleName('Pip, Hero, not drawn yet. Press Enter to draw.');
+    await expect(hero).toHaveClass(/cast-card--turn/);
+    await expect(hero).toHaveClass(/cast-card--picked/);
+    await expect(hero).toContainText('Your turn');
+    await expect(hero).toContainText('Draw me');
+    await expect(hero).toHaveAccessibleName('Pip, Hero, not drawn yet. Your turn! Press Enter to draw.');
+    await expect(page.locator('.cast-card--picked')).toHaveCount(1);
     await expect(page.getByTestId('cast-add')).toBeVisible();
     await expect(page.getByTestId('ask-card')).toContainText('Change your world');
     await expect(page.locator('.skip-link')).toHaveText('Skip to the game');
@@ -81,17 +86,10 @@ test.describe('the world in Play', () => {
     const play = page.getByRole('radio', { name: 'Play' });
     await play.click();
     await expect.poll(() => session(page, (s) => s.mode)).toBe('play');
-    // Under the pointer, the chosen option keeps its ink on paper.
-    const ink = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ink').trim());
-    const inkRgb = await page.evaluate((c) => {
-      const el = document.createElement('span');
-      el.style.color = c;
-      document.body.append(el);
-      const rgb = getComputedStyle(el).color;
-      el.remove();
-      return rgb;
-    }, ink);
-    expect(await play.evaluate((el) => getComputedStyle(el).color)).toBe(inkRgb);
+    // Under the pointer, the chosen option keeps the words it has when the pointer is away.
+    const underPointer = await play.evaluate((el) => getComputedStyle(el).color);
+    await page.mouse.move(2, 400);
+    await expect.poll(() => play.evaluate((el) => getComputedStyle(el).color)).toBe(underPointer);
     // The keys went back to the game: → is the hero's, it no longer flips the switch back to Change.
     await expect(page.getByTestId('world-slot')).toBeFocused();
     await page.keyboard.press('ArrowRight');
@@ -125,7 +123,8 @@ test.describe('the world in Play', () => {
     }
     await menu.getByRole('menuitem', { name: 'World info' }).click();
     const info = page.getByRole('dialog', { name: 'World info' });
-    await expect(info).toContainText('Art by you · Code by the AI helper and you · Starter:');
+    await expect(info).toContainText('Art by you · Code by Moon King, your wishes and you');
+    await expect(info).not.toContainText('AI');
     await page.keyboard.press('Escape');
     await expect(info).toHaveCount(0);
   });
@@ -145,6 +144,39 @@ test.describe('the world in Play', () => {
       return Object.values(w.cast).filter((c) => c.laterUntil > Date.now()).length;
     });
     expect(snoozed).toBe(1);
+  });
+
+  test('running slowly: a small note low in the world with something to do', async ({ page }) => {
+    await openWorld(page);
+    const frame = await gameFrame(page);
+    await startGame(page, frame);
+    // What the controller reports after 10 s under 20 fps.
+    const patch = (p: Record<string, unknown>) =>
+      page.evaluate(async (next) => {
+        const m = await import(/* @vite-ignore */ `${location.origin}/src/state/session.ts`);
+        m.patchSession(next);
+      }, p);
+    await patch({ heavy: true });
+    const note = page.getByTestId('world-heavy');
+    await expect(note).toContainText('Running slowly. Close other tabs, then restart it.');
+    await expect(note.getByRole('button', { name: 'Restart' })).toBeVisible();
+    // Low in the world view, clear of the HUD at the top.
+    const [n, v] = await Promise.all([note.boundingBox(), page.getByTestId('world-slot').boundingBox()]);
+    expect(n!.y).toBeGreaterThan(v!.y + v!.height * 0.6);
+    expect(n!.y + n!.height).toBeLessThanOrEqual(v!.y + v!.height);
+    // A twist that crowds the screen is what it offers to turn off.
+    await page.evaluate(async () => {
+      const m = await import(/* @vite-ignore */ `${location.origin}/src/state/session.ts`);
+      m.setTwist('starRain', true);
+    });
+    await expect(note).toContainText('Close other tabs, or turn off Rain of stars.');
+    await note.getByRole('button', { name: 'Turn off Rain of stars' }).click();
+    await expect(note).toHaveCount(0);
+    await expect.poll(() => readGame(frame, (g) => g.twists())).not.toContain('starRain');
+    // Closed, it stays closed.
+    await patch({ heavy: true });
+    await page.waitForTimeout(300);
+    await expect(note).toHaveCount(0);
   });
 
   test('full screen shows only the game, with an Exit button; Esc leaves it', async ({ page }) => {

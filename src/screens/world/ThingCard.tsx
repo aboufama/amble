@@ -1,7 +1,7 @@
 /**
- * Change mode's thing card (§2.7): a night panel with a lantern border and an arrow pointing at the thing:
- * its sticker, name and role line, ✎ Redraw (✎ Draw it for "just bones") and Bones, then the dials the
- * game gave this member, and "Dials change the game right away. No AI needed."
+ * Change mode's thing card (§2.7): a white popover with an arrow pointing at the thing: its sticker, name
+ * and role line, ✎ Redraw (✎ Draw it for "just bones") and Bones, then the dials the game gave this
+ * member, and "Dials change the game right away."
  */
 import { useEffect, useMemo, useRef } from 'react';
 import { midSentence, t } from '../../i18n';
@@ -41,7 +41,7 @@ export function ThingCard({ member, anchor, onDraw, onBones }: ThingCardProps) {
     return () => cancelAnimationFrame(id);
   }, [member.key]);
   return (
-    <Popover open anchor={anchor} onClose={closeThing} label={member.name} placement={placement} tone="lantern" className="thing-card">
+    <Popover open anchor={anchor} onClose={closeThing} label={member.name} placement={placement} className="thing-card">
       <div ref={head} className="thing-card__head" data-testid="thing-card" data-key={member.key}>
         <span className="thing-card__pic" aria-hidden="true">
           {drawn ? <Sticker src={sticker} alt="" size={54} /> : <PlaceholderGlyph rig={member.rig} role={member.role} shape={member.shape} size={54} />}
@@ -53,7 +53,7 @@ export function ThingCard({ member, anchor, onDraw, onBones }: ThingCardProps) {
         <IconButton icon="close" label={t('world.closeCard')} size={38} variant="quiet" tooltip={false} onClick={closeThing} className="thing-card__close" />
       </div>
       <div className="thing-card__actions">
-        <Button variant="paper" icon="draw" size={38} onClick={() => onDraw(member)} data-testid="thing-draw">
+        <Button variant={drawn ? 'paper' : 'lantern'} icon="draw" size={38} onClick={() => onDraw(member)} data-testid="thing-draw">
           {drawn ? t('world.redraw') : t('world.drawIt')}
         </Button>
         {rigged && drawn && (

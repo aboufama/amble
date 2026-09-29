@@ -1,8 +1,10 @@
 /**
- * The Cast line (§2.6): the drawings this world needs, hanging from a string under the world, hero
- * first. A drawn card opens a menu (Redraw, Bones, Rename, Moves, Save to My characters, Save as
- * picture); a card still to draw lifts onto the Desk; the dashed card adds someone. In the small layout
- * the line becomes a "Cast 4/6" button with a bottom sheet.
+ * The Cast line (§2.6): the drawings this world needs, hero first, as a pane of tiles under the world (the
+ * look of Scratch's sprite pane). A drawn tile opens a menu (Redraw, Bones, Rename, Moves, Save to My
+ * characters, Save as picture); a tile still to draw lifts onto the Desk; the dashed tile adds someone.
+ * One tile at a time carries the purple selection: the one whose menu is open, else the thing chosen in
+ * Change mode, else the one Amble wants drawn next. In the small layout the line becomes a "Cast 4/6"
+ * button with a bottom sheet.
  */
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { navigate } from '../../app/router';
@@ -104,7 +106,7 @@ export interface CastLineProps {
 }
 
 export function CastLine({ world, onDraw, onAdd }: CastLineProps) {
-  const { store, files, starters } = useServices();
+  const { store, files } = useServices();
   const cast = useStore((s) => s.session.cast);
   const fresh = useStore((s) => s.session.fresh);
   const selected = useStore((s) => s.session.selected);
@@ -120,15 +122,9 @@ export function CastLine({ world, onDraw, onAdd }: CastLineProps) {
     if (el) el.scrollBy({ left: dir * Math.max(120, el.clientWidth - 140), behavior: reduced ? 'auto' : 'smooth' });
   };
   const progress = castProgress(cast);
-  const glowKey = nextNeeded(cast)?.key ?? null;
-  const origin = world.origin;
-  const starterId = origin.kind === 'starter' || origin.kind === 'plan' ? origin.starter : null;
-  let yourTurn: string | null = null;
-  try {
-    yourTurn = starterId ? starters.info(starterId).yourTurn : null;
-  } catch {
-    yourTurn = null;
-  }
+  const turnKey = nextNeeded(cast)?.key ?? null;
+  const chosen = selected && cast.some((m) => m.key === selected) ? selected : null;
+  const pickedKey = menu?.member.key ?? chosen ?? turnKey;
 
   const rename = async (m: CastMember) => {
     if (!m.art) return;
@@ -171,7 +167,7 @@ export function CastLine({ world, onDraw, onAdd }: CastLineProps) {
       list.push({
         id: 'ask',
         label: t('world.askToAdd', { pronoun }),
-        icon: 'sparkle',
+        icon: 'plus',
         run: () => {
           if (!askBusy()) void runAsk('change', t('world.addRequestPlain', { name: m.name, role: m.role }));
         },
@@ -191,24 +187,16 @@ export function CastLine({ world, onDraw, onAdd }: CastLineProps) {
       <p className="cast-line__progress" aria-live="polite">
         {!cast.length ? t('world.castEmpty') : progress.allRequired ? t('world.castAllDrawn') : t('world.castProgress', { drawn: progress.drawn, total: progress.total })}
       </p>
+      {cast.length > 0 && <p className="cast-line__tap">{t('world.castTap')}</p>}
     </div>
   );
 
   const list = (
     <ul ref={row} className="cast-line__cards" aria-label={t('world.castLabel')}>
-      {cast.map((m, i) => (
-        <CastCard
-          key={m.key}
-          member={m}
-          index={i}
-          glow={m.key === glowKey}
-          yourTurn={m.key === yourTurn}
-          fresh={fresh.includes(m.key)}
-          selected={selected === m.key}
-          onPress={press}
-        />
+      {cast.map((m) => (
+        <CastCard key={m.key} member={m} turn={m.key === turnKey} picked={m.key === pickedKey} fresh={fresh.includes(m.key)} onPress={press} />
       ))}
-      <AddCard index={cast.length} onPress={onAdd} />
+      <AddCard onPress={onAdd} />
     </ul>
   );
 
@@ -231,9 +219,6 @@ export function CastLine({ world, onDraw, onAdd }: CastLineProps) {
 
   return (
     <section className="cast-line" data-region="cast" aria-label={t('world.castLabel')} data-testid="cast-line">
-      <svg className="cast-line__string" aria-hidden="true" preserveAspectRatio="none" viewBox="0 0 880 40">
-        <path d="M100 12 C300 26 520 26 880 10" />
-      </svg>
       {head}
       {list}
       {/* For the pointer only (the cards themselves are all reachable by Tab). */}

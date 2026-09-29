@@ -1,8 +1,8 @@
 /**
- * Problems (§2.6): when the game breaks while playing, a paper card over the world says where ("Something
- * in the game broke (boss.js, line 42).") with [Ask Amble to fix it] (AI on), [Show me the line] and
- * [Restart]. A twist's own error offers [Turn {name} off] instead, and the AI is never asked to fix it.
- * The ⋯ menu's Problems sheet lists them all.
+ * Problems (§2.6): when the game breaks while playing, a flat card over the world says where ("Something
+ * in the game broke (boss.js, line 42).") with [Fix it for me] (when wishes work here), [Show me the line]
+ * and [Restart]. A twist's own error offers [Turn {name} off] instead, and no wish is made to fix it. The
+ * ⋯ menu's Problems sheet lists them all.
  */
 import { useState } from 'react';
 import { lookInside } from '../code/open';
@@ -11,6 +11,7 @@ import type { PlayerError, World } from '../../model/types';
 import { setTwist } from '../../state/session';
 import { useStore } from '../../state/store';
 import { Button, Dialog, IconButton } from '../../ui/components';
+import { Icon } from '../../ui/icons';
 import { askBusy, runAsk } from '../../world/ask';
 import { useAiOn } from './hooks';
 
@@ -36,8 +37,11 @@ export function ProblemCard({ world, onRestart }: { world: World; onRestart(): v
   if (!problem || dismissed || problem === hidden) return null;
   const clear = () => setHidden(problem);
   return (
-    <div className="problem-card paper paper--cut on-paper" role="alert" data-testid="problem-card">
-      <p className="problem-card__text">{problemText(problem, twistName)}</p>
+    <div className="problem-card world-card" role="alert" data-testid="problem-card">
+      <p className="problem-card__text">
+        <Icon name="warning" size={20} className="problem-card__icon" />
+        <span>{problemText(problem, twistName)}</span>
+      </p>
       <div className="problem-card__actions">
         {problem.twist ? (
           <Button
@@ -53,7 +57,7 @@ export function ProblemCard({ world, onRestart }: { world: World; onRestart(): v
           </Button>
         ) : (
           aiOn && (
-            <Button variant="lantern" icon="sparkle" size={38} disabled={busy} onClick={() => !askBusy() && void runAsk('fix', t('world.askFix'), { problems: [problem] })}>
+            <Button variant="lantern" size={38} disabled={busy} onClick={() => !askBusy() && void runAsk('fix', t('world.askFix'), { problems: [problem] })}>
               {t('world.askFix')}
             </Button>
           )

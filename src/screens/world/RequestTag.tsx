@@ -1,5 +1,5 @@
 /**
- * The request tag (§2.6): a paper tag at the world view's bottom left, only at a pause, a lost life, a
+ * The request tag (§2.6): a flat card at the world view's bottom left, only at a pause, a lost life, a
  * win or loss, or after 5 s of idle ("The Grumbles are only bones. Draw one and they all come alive."
  * [Draw a Grumble] [Later]); in a Warm-up it asks at once. Also the ghost coach mark, once per device:
  * "Dashed = not drawn yet. Tap any dashed outline to draw it. The game keeps its place."
@@ -34,7 +34,7 @@ export function RequestTag({ onDraw }: { onDraw(member: CastMember, from: HTMLEl
     patchSession({ request: null });
   };
   return (
-    <div className="request-tag paper paper--cut on-paper" role="status" data-testid="request-tag" data-key={member.key}>
+    <div className="request-tag world-card" role="status" data-testid="request-tag" data-key={member.key}>
       <span ref={glyph} className="request-tag__glyph" aria-hidden="true">
         <PlaceholderGlyph rig={member.rig} role={member.role} shape={member.shape} size={44} />
       </span>
@@ -105,7 +105,7 @@ export function CoachMark({ pointer, frame, locate }: { pointer: boolean; frame:
   const at = coachPlace(box, frame);
   return (
     <div
-      className={cx('coach-mark paper paper--cut on-paper', at.side && `coach-mark--${at.side}`)}
+      className={cx('coach-mark world-card', at.side && `coach-mark--${at.side}`)}
       style={{ left: at.left, top: at.top }}
       role="note"
       data-testid="coach-mark"

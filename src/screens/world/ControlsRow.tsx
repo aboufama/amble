@@ -1,12 +1,13 @@
 /**
- * The controls row under the world (§2.6): ▶ Play | ✋ Change · ↻ Restart · ⛶ Full screen · the game's
- * keys as keycaps (or "Use the buttons on the screen" on touch; "Paused. Tap anything to change it." in
- * Change mode). In the small layout it also opens the notebook drawer (Ask & Footsteps).
+ * The controls row under the world (§2.6): ▶ Play | ✋ Change (Scratch's tab style) · ↻ Restart · ⛶ Full
+ * screen · the game's keys as keycaps (or "Use the buttons on the screen" on touch; "Paused. Tap anything
+ * to change it." in Change mode; "Working on your wish…" while one is worked on, so nothing covers the
+ * game). In the small layout it also opens the side panel's drawer (Wishes and footsteps).
  */
 import type { MouseEvent } from 'react';
 import { t } from '../../i18n';
 import type { Action, World } from '../../model/types';
-import { Button, Keycap, Segmented } from '../../ui/components';
+import { Button, Footprints, Keycap, Segmented } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { getState, useStore } from '../../state/store';
 import { actionWords, hintActions, keyHints } from '../../world/hints';
@@ -42,6 +43,9 @@ export interface ControlsRowProps {
 
 export function ControlsRow({ world, fullscreen, onMode, onRestart, onFullscreen, onDrawer }: ControlsRowProps) {
   const mode = useStore((s) => s.session.mode);
+  // Only while a job really runs: a Warm-up whose build was stopped is not "Building…" (it builds again the
+  // next time the world opens).
+  const job = useStore((s) => (s.ai.job?.worldId === world.id ? s.ai.job.task : null));
   const actions = useStore((s) => s.session.manifest?.controls) ?? NO_ACTIONS;
   const touch = useStore((s) => s.prefs.touchControls);
   const layout = useLayout();
@@ -75,7 +79,14 @@ export function ControlsRow({ world, fullscreen, onMode, onRestart, onFullscreen
         {mode === 'change' ? (
           <p className="world-controls__hint" role="status">
             <Icon name="info" size={18} />
-            {t('world.changeHint')}
+            <span>{t('world.changeHint')}</span>
+          </p>
+        ) : job ? (
+          <p className="world-controls__hint world-controls__working" role="status" data-testid="world-working">
+            <span aria-hidden="true">
+              <Footprints />
+            </span>
+            <span>{job === 'build' ? t('world.pillBuilding', { title: world.title }) : t('world.pillWorking')}</span>
           </p>
         ) : coarse ? (
           layout === 'touch' ? null : <p className="world-controls__hint">{t('world.touchHint')}</p>
