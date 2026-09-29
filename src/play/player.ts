@@ -556,6 +556,45 @@ export class Player {
   send(msg: ToPlayer): void {
     this.current?.send(msg);
   }
+
+  // ---------------------------------------------------------------- the World screen (step 5)
+
+  /** 'change' pauses the game (call `pause()` too, so the tab's visibility never resumes it) and streams `objects` 4 times a second. */
+  setMode(mode: 'play' | 'change'): void {
+    this.current?.send({ type: 'mode', mode });
+  }
+
+  /** A lantern outline around one object in Change mode (null clears). */
+  select(id: number | null): void {
+    this.current?.send({ type: 'select', id });
+  }
+
+  /** After Bring to life: the drawing cheers (or hops). */
+  celebrate(key: string): void {
+    this.current?.send({ type: 'celebrate', key });
+  }
+
+  /** While paused: simulate N frames (0 draws one); the game answers with an `objects` report. */
+  step(frames: number): void {
+    this.current?.send({ type: 'step', frames: Math.max(0, Math.min(600, Math.round(frames))) });
+  }
+
+  /** A PNG of the current frame at most `maxW` wide, or null when the game does not answer in time. */
+  snapshot(maxW: number, timeoutMs = 800): Promise<Blob | null> {
+    if (!this.current) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const timer = window.setTimeout(() => {
+        off();
+        resolve(null);
+      }, timeoutMs);
+      const off = this.on('snapshot', (png) => {
+        window.clearTimeout(timer);
+        off();
+        resolve(png);
+      });
+      this.current?.send({ type: 'snapshot', maxW: Math.max(16, Math.min(4096, Math.round(maxW))) });
+    });
+  }
 }
 
 function cloneBundle(b: GameBundle): GameBundle {
