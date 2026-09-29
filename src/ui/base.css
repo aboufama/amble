@@ -246,24 +246,9 @@ pre {
   gap: var(--s3);
 }
 
-/* Grain: a baked 256 px noise tile at 9 % on night backgrounds (never on paper or the world view). */
+/* Grain is retired: surfaces are flat, as in Scratch. The class stays for older markup. */
 .grain {
   position: relative;
-}
-
-.grain::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.09;
-  mix-blend-mode: overlay;
-  background-image: url('./assets/grain.png');
-  background-size: 256px 256px;
-}
-
-:root[data-theme='day'] .grain::after {
-  opacity: 0.05;
 }
 
 /* ---------- the player layer (§6.4) and full screen ---------- */

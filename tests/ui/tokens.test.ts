@@ -1,18 +1,15 @@
 /**
- * Colour contrast (§3.1), computed from the real tokens in src/ui/tokens.css and themes.css: every text
- * pair meets 4.5:1 and every control or focus pair 3:1, in Night, Day and High contrast.
+ * Colour contrast, computed from the real tokens in src/ui/tokens.css and themes.css: every text pair
+ * meets 4.5:1 and every control or focus pair 3:1, in Original (Scratch's palette) and High contrast.
  *
- * Pairs the spec's own values fail, and how the design system avoids them (recorded, not tested):
- * - Night `--line-control` #5a61aa is 2.995:1 on `--bg` (the spec rounds it to 3.0): the token is #5b62ab
- *   (3.04:1), one step lighter.
- * - Night `--line-control` is 2.4:1 on `--surface-top`: panels, dialogs, popovers and the complementary
- *   region redefine `--line-control` as `--line-control-panel` #7a82cc (3.14:1 or better).
- * - Day `--accent` #ffc15e is 1.37:1 on `--bg`: lantern buttons carry the 1.5 px #8a6a00 border
- *   (`--accent-border`), and Day's focus ring is #8a6a00, not the accent.
- * - Night `--warn` is 4.49:1 on `--surface-raised` (toasts, menus): words there stay `--text`, with a
- *   `--warn` icon or edge; danger and AI buttons keep `--text` words on their tint for the same reason.
- * - Day `--alive` is 4.49:1 on `--well`, and Day `--ai`/`--alive` fall under 4.5:1 on `--bg-deep`: those
- *   colours are never text on a field or on the letterbox.
+ * Scratch's own values that fail, and how the tokens avoid them (recorded, not tested):
+ * - White on Scratch blue #4c97ff is 2.9:1 and on Scratch green #0fbd8c 2.4:1, so words sit on the deeper
+ *   shades of the same hues (--brand #3373cc, Scratch's motion-tertiary; --alive #0a7a5a) and the bright
+ *   values (--brand-bright, --alive-bright) are only for fills without words, rings and illustration.
+ * - Scratch purple #855cd6 is 4.05:1 on the page (--bg), so --change is #7c52d0 and #855cd6 stays for
+ *   selection borders (--change-bright).
+ * - Scratch's 15 % black outline is 1.4:1: it only outlines cards and panels (--line); fields, switches
+ *   and sliders take --line-control #7d8399 (3.3:1 on the page).
  */
 import { describe, expect, it } from 'vitest';
 
@@ -41,11 +38,10 @@ function block(css: string, selector: string): Tokens {
   return out;
 }
 
-const night = block(CSS['/src/ui/tokens.css'], ':root');
+const original = block(CSS['/src/ui/tokens.css'], ':root');
 const THEMES: Record<string, Tokens> = {
-  night,
-  day: { ...night, ...block(CSS['/src/ui/themes.css'], ":root[data-theme='day']") },
-  contrast: { ...night, ...block(CSS['/src/ui/themes.css'], ":root[data-theme='contrast']") },
+  original,
+  contrast: { ...original, ...block(CSS['/src/ui/themes.css'], ":root[data-theme='contrast']") },
 };
 
 /** A token's colour as #rrggbb, following var() references. */
@@ -118,11 +114,18 @@ describe('colour contrast (§3.1)', () => {
     });
   }
 
-  it('matches the spec values that the spec states', () => {
-    expect(contrast(colour(night, '--text'), colour(night, '--bg'))).toBeCloseTo(14.4, 1);
-    expect(contrast(colour(night, '--line-control'), colour(night, '--bg'))).toBeGreaterThanOrEqual(3);
-    expect(contrast(colour(THEMES.day, '--text'), colour(THEMES.day, '--surface-top'))).toBeGreaterThan(15.5);
-    expect(contrast(colour(night, '--on-accent'), colour(night, '--accent'))).toBeCloseTo(10.3, 1);
+  it("uses Scratch's palette for the Original colours", () => {
+    expect(colour(original, '--bg')).toBe('#e5f0ff');
+    expect(colour(original, '--text')).toBe('#575e75');
+    expect(colour(original, '--brand')).toBe('#3373cc');
+    expect(colour(original, '--brand-bright')).toBe('#4c97ff');
+    expect(colour(original, '--change-bright')).toBe('#855cd6');
+    expect(contrast(colour(original, '--on-brand'), colour(original, '--brand'))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colour(original, '--on-warm'), colour(original, '--warm'))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps drawing surfaces white in every theme', () => {
+    for (const theme of Object.values(THEMES)) expect(colour(theme, '--sheet')).toBe('#ffffff');
   });
 
   it('uses a 4 px focus ring and no glows in High contrast', () => {

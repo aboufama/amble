@@ -1,41 +1,9 @@
 /*
- * Day ("Calm colours") and High contrast (§3.1): full token swaps. Paper stays light in Day; High contrast
- * turns every surface black with white edges, a yellow accent and a 4 px focus ring, and no glows.
- * Games are unaffected by themes.
+ * High contrast (Settings → Colours, as in Scratch): a full token swap. Every surface turns black with
+ * white edges, a yellow accent and a 4 px focus ring, and no halos. Drawing surfaces (--sheet) stay white
+ * so ink shows. Games are unaffected by themes. The stored 'night' and 'day' values from earlier builds
+ * both mean the Original colours in tokens.css.
  */
-:root[data-theme='day'] {
-  color-scheme: light;
-  --bg: #f4ecdb;
-  --bg-lift: #efe4cc;
-  --bg-deep: #e7dcc4;
-  --surface-top: #fffaf0;
-  --surface-bottom: #fffaf0;
-  --surface-raised: #ffffff;
-  --well: #ece2cc;
-  --line: #d8c9a6;
-  --line-control: #8c7b5a;
-  --line-control-panel: #8c7b5a;
-  --text: #221b2e;
-  --text-2: #4a4058;
-  --accent: #ffc15e;
-  --accent-border: #8a6a00;
-  --accent-text: #8a5a00;
-  --alive: #17744a;
-  --on-alive: #ffffff;
-  --ai: #2c5fb8;
-  --warn: #b3263e;
-  --change: #6f3fc0;
-  --glow-lantern: 0 0 0 1.5px #8a6a00;
-  --glow-firefly: 0 0 0 1.5px #17744a;
-  --veil: rgba(244, 236, 219, 0.55);
-  --scrim: rgba(34, 27, 46, 0.35);
-  --focus-ring: #8a6a00;
-  --focus-gap: #fffaf0;
-  --lift: 0 10px 24px rgba(60, 45, 20, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  --lift-sm: 0 4px 12px rgba(60, 45, 20, 0.14);
-  --lift-paper: 0 8px 20px rgba(60, 45, 20, 0.2);
-}
-
 :root[data-theme='contrast'] {
   color-scheme: dark;
   --bg: #000000;
@@ -50,11 +18,26 @@
   --line-control-panel: #ffffff;
   --text: #ffffff;
   --text-2: #ffffff;
+  --brand: #000000;
+  --brand-bright: #ffffff;
+  --brand-hover: #000000;
+  --on-brand: #ffffff;
   --accent: #ffff00;
   --accent-border: #ffffff;
   --accent-text: #ffff00;
   --on-accent: #000000;
   --on-alive: #000000;
+  --alive: #86f3cb;
+  --alive-bright: #86f3cb;
+  --ai: #9cc3ff;
+  --warn: #ff7a8e;
+  --change: #c79bff;
+  --change-bright: #c79bff;
+  --select-ring: #ffff00;
+  --hover-ring: #ffffff;
+  --warm: #ffff00;
+  --on-warm: #000000;
+  --bones: #0b8e69;
   --paper: #000000;
   --paper-2: #000000;
   --paper-3: #000000;
@@ -64,6 +47,7 @@
   --swash: #000000;
   --pencil-ink: #ffff00;
   --note: #000000;
+  --sheet: #ffffff;
   --glow-lantern: 0 0 0 2px #ffff00;
   --glow-firefly: 0 0 0 2px #ffffff;
   --veil: rgba(0, 0, 0, 0.7);

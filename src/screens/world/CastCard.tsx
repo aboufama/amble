@@ -1,7 +1,7 @@
 /**
  * One card on the Cast line (§2.6): drawn (sticker, name, role, ✓), needed (its "just bones" glyph and
  * ✎ Draw me; the most wanted one glows), your turn, optional, spare ("Room for Bubbles"), resting ("Not in
- * the game now"), with NEW and ×3 when they apply. Cards hang from the string at a slight tilt.
+ * the game now"), with NEW and ×3 when they apply. Cards sit square in a row.
  */
 import { forwardRef } from 'react';
 import { t, type MessageKey } from '../../i18n';
@@ -11,10 +11,8 @@ import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
 import { useSticker } from './hooks';
 
-const TILTS = [-1.2, 1, -0.6, 1.1, -0.8, 0.6, -1, 0.9];
-
-export function tiltOf(index: number): number {
-  return TILTS[index % TILTS.length];
+export function tiltOf(_index: number): number {
+  return 0; // cards sit square in a row, as Scratch's sprite tiles do
 }
 
 const PRONOUNS: Record<Pronoun, MessageKey> = { him: 'world.pronounHim', her: 'world.pronounHer', them: 'world.pronounThem', it: 'world.pronounIt' };

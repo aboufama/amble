@@ -1,6 +1,7 @@
 /**
- * Surfaces (§3.3, §3.4): the night `Panel`, and paper that means "yours": `PaperCard` (tape, a small
- * tilt, the hand-cut radius) and `StickyNote` (the request note's sticky paper).
+ * Surfaces: the `Panel`, and paper that means "yours": `PaperCard` and `StickyNote` (the request note's
+ * sticky paper). Both are flat, square to the page and untaped, like Scratch's cards and comment notes;
+ * `tape`, `tilt` and `cut` are accepted for older callers and ignored.
  */
 import { useId, type ReactNode } from 'react';
 import { cx } from '../cx';
@@ -50,22 +51,14 @@ export interface PaperCardProps {
   labelledBy?: string;
 }
 
-export function PaperCard({ tape = 'none', tilt = 0, cut = false, as: Tag = 'div', className, children, labelledBy }: PaperCardProps) {
-  const angle = Math.max(-1.5, Math.min(1.5, tilt));
+export function PaperCard({ as: Tag = 'div', className, children, labelledBy }: PaperCardProps) {
   return (
-    <Tag className={cx('paper', 'on-paper', cut && 'paper--cut', className)} style={angle ? { rotate: `${angle}deg` } : undefined} aria-labelledby={labelledBy}>
-      {(tape === 'lemon' || tape === 'both') && <span className="tape tape--lemon" aria-hidden="true" />}
-      {(tape === 'lime' || tape === 'both') && <span className="tape tape--lime" aria-hidden="true" />}
+    <Tag className={cx('paper', 'on-paper', className)} aria-labelledby={labelledBy}>
       {children}
     </Tag>
   );
 }
 
-export function StickyNote({ children, tilt = -2.5, className }: { children?: ReactNode; tilt?: number; className?: string }) {
-  return (
-    <div className={cx('sticky-note', 'on-paper', className)} style={{ rotate: `${tilt}deg` }}>
-      <span className="tape tape--lemon" aria-hidden="true" />
-      {children}
-    </div>
-  );
+export function StickyNote({ children, className }: { children?: ReactNode; tilt?: number; className?: string }) {
+  return <div className={cx('sticky-note', 'on-paper', className)}>{children}</div>;
 }
