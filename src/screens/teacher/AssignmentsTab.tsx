@@ -83,7 +83,7 @@ export function AssignmentsTab() {
                 </p>
                 <p className="asg-card__chips">
                   <Chip>{tn('school.staff_asgGoals', a.goals.length)}</Chip>
-                  <Chip dot={a.ai === 'off' ? 'off' : 'ai'}>{t('school.staff_asgAi', { mode: t(a.ai === 'on' ? 'school.staff_modeOn' : a.ai === 'explain' ? 'school.staff_modeExplain' : 'school.staff_modeOff') })}</Chip>
+                  <Chip>{t('school.staff_asgAi', { mode: t(a.ai === 'on' ? 'school.staff_modeOn' : a.ai === 'explain' ? 'school.staff_modeExplain' : 'school.staff_modeOff') })}</Chip>
                   {a.level && <Chip>{t(`school.${LEVEL_WORDS[a.level]}`)}</Chip>}
                   {inLink === a.id && (
                     <Chip dot="alive" className="asg-card__inlink">

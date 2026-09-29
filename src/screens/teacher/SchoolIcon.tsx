@@ -1,37 +1,35 @@
 /**
  * The Teacher desk's few extra icons (link, clipboard, folder, letter, projector, copy, download, shield,
- * clock, print, code, QR, next, trash), drawn to the set's rules (§3.5): a 24 px grid, round caps and joins,
- * `currentColor`, a slight wobble baked into the paths. Decorative: the words beside them name things.
+ * clock, print, code, QR, next, trash, server, wish), drawn to the set's rules (§3.5): a 24 px grid, clean
+ * geometric shapes with a 2 px stroke and round caps and joins, in `currentColor`. Decorative: the words
+ * beside them name things.
  */
 const PATHS = {
-  link: ['M10.2 13.8c1.5 1.6 3.9 1.6 5.4.1l3-3c1.5-1.5 1.5-4 0-5.5s-3.9-1.5-5.4 0l-1 1', 'M13.8 10.2c-1.5-1.6-3.9-1.6-5.4-.1l-3 3c-1.5 1.5-1.5 4 0 5.5s3.9 1.5 5.4 0l1-1'],
-  clipboard: [
-    'M8.6 5.2H6.9c-.9 0-1.6.7-1.6 1.6v12c0 .9.7 1.6 1.6 1.6h10.2c.9 0 1.6-.7 1.6-1.6v-12c0-.9-.7-1.6-1.6-1.6h-1.7',
-    'M9 3.7c2-.1 4-.1 6 0 .3 1 .3 2.1 0 3.1-2 .1-4 .1-6 0-.3-1-.3-2.1 0-3.1z',
-    'M8.7 11.1c2.2-.1 4.4-.1 6.6 0',
-    'M8.7 14.6c2.2-.1 4.3-.1 6.5 0',
-    'M8.7 18c1.3-.1 2.6-.1 3.9 0',
-  ],
-  folder: ['M3.6 7.6c0-.9.7-1.6 1.6-1.6h4.2l2 2.3h7.5c.9 0 1.6.7 1.6 1.6.1 2.8.1 5.6 0 8.4 0 .9-.7 1.6-1.6 1.6H5.2c-.9 0-1.6-.7-1.6-1.6-.1-3.6-.1-7.2 0-10.7z'],
-  letter: ['M4 6.6c5.3-.1 10.7-.1 16 0 .1 3.6.1 7.2 0 10.8-5.3.1-10.7.1-16 0-.1-3.6-.1-7.2 0-10.8z', 'M4.3 7.1c2.5 2 5 3.9 7.7 5.6 2.6-1.7 5.2-3.6 7.7-5.6'],
-  present: ['M3.5 5c5.7-.1 11.3-.1 17 0 .1 3.8.1 7.6 0 11.4-5.7.1-11.3.1-17 0-.1-3.8-.1-7.6 0-11.4z', 'M12 16.6c-.1 1.2-.1 2.4 0 3.6', 'M8.2 20.3c2.5-.1 5.1-.1 7.6 0'],
-  copy: ['M8.4 8.3c3.7-.1 7.4-.1 11.1 0 .1 3.7.1 7.4 0 11.1-3.7.1-7.4.1-11.1 0-.1-3.7-.1-7.4 0-11.1z', 'M15.7 8.2V5.9c0-.8-.6-1.4-1.4-1.4H5.9c-.8 0-1.4.6-1.4 1.4v8.4c0 .8.6 1.4 1.4 1.4h2.4'],
-  download: ['M12 4.2c-.1 3.6-.1 7.2 0 10.8', 'M7.6 10.8c1.5 1.4 2.9 2.9 4.4 4.4 1.5-1.5 2.9-3 4.4-4.4', 'M5 19.6c4.7-.2 9.3-.2 14 0'],
-  shield: ['M12 3.4c2.3 1 4.6 1.8 7 2.4.2 2 .2 3.9 0 5.8-.5 4.3-3.2 7.2-7 8.9-3.8-1.7-6.5-4.6-7-8.9-.2-1.9-.2-3.8 0-5.8 2.4-.6 4.7-1.4 7-2.4z', 'M9 12.2c.8.7 1.5 1.5 2.2 2.2 1.4-1.4 2.9-2.9 4.3-4.3'],
-  clock: ['M12 3.6c4.7 0 8.4 3.8 8.4 8.4s-3.7 8.4-8.4 8.4-8.4-3.8-8.4-8.4 3.7-8.4 8.4-8.4z', 'M12 7.6c-.1 1.5-.1 3 0 4.5 1 .6 2 1.2 3.1 1.8'],
-  print: ['M7 9V4.2c3.3-.1 6.7-.1 10 0V9', 'M6.8 17.3H4.9c-.8 0-1.4-.6-1.4-1.4v-5.5c0-.8.6-1.4 1.4-1.4h14.2c.8 0 1.4.6 1.4 1.4v5.5c0 .8-.6 1.4-1.4 1.4h-1.9', 'M7 14.2c3.3-.1 6.7-.1 10 0 .1 1.9.1 3.8 0 5.7-3.3.1-6.7.1-10 0-.1-1.9-.1-3.8 0-5.7z'],
-  code: ['M8.8 7c-1.8 1.7-3.5 3.4-5.2 5 1.7 1.7 3.4 3.3 5.2 5', 'M15.2 7c1.8 1.7 3.5 3.4 5.2 5-1.7 1.7-3.4 3.3-5.2 5'],
-  qr: ['M4.5 4.5h5.5v5.5H4.5z', 'M14 4.5h5.5v5.5H14z', 'M4.5 14h5.5v5.5H4.5z', 'M14 14h2.4v2.4H14z', 'M17.2 17.2h2.3v2.3h-2.3z'],
-  next: ['M9.2 5.4c2.3 2.3 4.5 4.5 6.6 6.7-2.1 2.1-4.2 4.3-6.5 6.5'],
-  trash: ['M5.2 7c4.5-.1 9.1-.1 13.6 0', 'M9.5 7V4.9c1.7-.1 3.3-.1 5 0V7', 'M6.8 7.2c.3 4.1.6 8.2 1 12.3 2.8.1 5.6.1 8.4 0 .4-4.1.7-8.2 1-12.3'],
+  link: ['M10 13.5a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1', 'M14 10.5a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1'],
+  clipboard: ['M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2', 'M9 3.5h6v3H9z', 'M9 11h6', 'M9 14.5h6', 'M9 18h3.5'],
+  folder: ['M3.5 7.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z'],
+  letter: ['M4 6.5h16v11H4z', 'M4.5 7l7.5 6 7.5-6'],
+  present: ['M3.5 5h17v11.5h-17z', 'M12 16.5V20', 'M8 20h8'],
+  copy: ['M9 9h11v11H9z', 'M15.5 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h3'],
+  download: ['M12 4v11', 'M7.5 10.5 12 15l4.5-4.5', 'M5 19.5h14'],
+  shield: ['M12 3.5 19 6v5.5c0 4.3-2.9 7.6-7 9-4.1-1.4-7-4.7-7-9V6z', 'm9 12 2.2 2.2L15.5 10'],
+  clock: ['M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z', 'M12 7.5V12l3 2'],
+  print: ['M7 9V4h10v5', 'M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2', 'M7 14h10v6H7z'],
+  code: ['M9 7l-5 5 5 5', 'M15 7l5 5-5 5'],
+  qr: ['M4.5 4.5h5.5v5.5H4.5z', 'M14 4.5h5.5v5.5H14z', 'M4.5 14h5.5v5.5H4.5z', 'M14 14h2.5v2.5H14z', 'M17 17h2.5v2.5H17z'],
+  next: ['M9.5 5.5 16 12l-6.5 6.5'],
+  trash: ['M5 7h14', 'M9.5 7V4.5h5V7', 'M7 7l.8 12.5h8.4L17 7'],
+  /** The school's AI helper: a service on a server (the Teacher desk and Help name it in words). */
+  server: ['M4.5 4.5h15v6h-15z', 'M4.5 13.5h15v6h-15z', 'M8 7.5h.01', 'M8 16.5h.01', 'M12 7.5h4', 'M12 16.5h4'],
+  /** A wish: a student's own words (a speech bubble). */
+  wish: ['M5 5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 16h-8l-4.5 3.5V16H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 5z'],
 } as const;
 
 export type SchoolIconName = keyof typeof PATHS;
 
 export function SchoolIcon({ name, size = 20 }: { name: SchoolIconName; size?: number }) {
-  const stroke = size <= 14 ? 2.6 : size <= 16 ? 2.4 : size <= 20 ? 2.2 : 2;
   return (
-    <svg className="icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" focusable="false" aria-hidden="true">
+    <svg className="icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" focusable="false" aria-hidden="true">
       {PATHS[name].map((d, i) => (
         <path key={i} d={d} />
       ))}

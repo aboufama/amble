@@ -1,8 +1,9 @@
 /**
  * The gallery's detail panel (§2.14): the chosen world playing (one at a time, muted until the teacher turns
- * sound on), ◀ 3 of 24 ▶, the keys, the assignment checklist with evidence (Amble's rows marked "auto", the
- * teacher's as checkboxes), **How it was built**, and a feedback box with **Copy** for Classroom. Notes and
- * checks stay on this device under the file's content hash.
+ * sound on), ◀ 3 of 24 ▶, the keys, the assignment checklist with evidence and what passed ("Amble: 3 of 4
+ * passed · 1 for you to check"; the teacher's rows are checkboxes), **How it was built** (AI changes in plain
+ * words, and the student's wishes in their own words), and a feedback box with **Copy** for Classroom. Notes
+ * and checks stay on this device under the file's content hash.
  */
 import { useId, useMemo, useRef } from 'react';
 import { useCommand, useEscape } from '../../app/keys';
@@ -59,7 +60,18 @@ export function GalleryDetail({ item, index, total, showNames, onMove, onBack }:
     for (const record of game.file?.art ?? []) art.set(record.id, { madeBy: record.madeBy, onBones: record.mode === 'bones' || record.rigInfo?.made === 'parts' });
     return runChecks(goalsFor(world, item.cast), { world, cast: item.cast, art: (id) => art.get(id) ?? null, facts: codeFacts(world.code), robot: game.robot ?? null });
   }, [world, item.cast, item.art, game.file, game.robot]);
-  const autoCount = outcomes.filter((o) => o.pass !== null).length;
+  // "Amble: 3 of 4 passed · 1 for you to check": what passed, never just how many were looked at.
+  const auto = outcomes.filter((o) => o.pass !== null);
+  const passed = auto.filter((o) => o.pass).length;
+  const testingNow = auto.some((o) => !o.pass && o.evidence.kind === 'untested' && game.robot === undefined && game.state !== 'failed');
+  const yours = outcomes.filter((o) => o.pass === null);
+  const yoursLeft = yours.filter((o) => !note.checks[o.goal.id]).length;
+  const checksSummary = [
+    auto.length ? t(testingNow ? 'school.staff_autoTesting' : 'school.staff_autoPassed', { passed, total: auto.length }) : null,
+    yours.length ? (yoursLeft ? tn('school.staff_forYou', yoursLeft) : t('school.staff_forYouDone')) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const story = item.story;
   const by = showNames && item.madeBy ? item.madeBy : null;
 
@@ -135,7 +147,7 @@ export function GalleryDetail({ item, index, total, showNames, onMove, onBack }:
           <h4 id={ids.checks} className="gbox__h">
             <Icon name="check" size={18} />
             {t('school.staff_asgChecklist')}
-            <small>{t('school.staff_checkedByAmble', { n: autoCount, total: outcomes.length })}</small>
+            <small data-testid="checks-summary">{checksSummary}</small>
           </h4>
           <ul className="gchecks">
             {outcomes.map((o) => {
@@ -180,7 +192,7 @@ export function GalleryDetail({ item, index, total, showNames, onMove, onBack }:
                 {by ? tn('school.staff_drawingsBy', story.drawings, { name: by }) : tn('school.staff_drawingsN', story.drawings)}
               </span>
               <span className="gstat gstat--ai">
-                <Icon name="sparkle" size={16} />
+                <SchoolIcon name="server" size={16} />
                 {tn('school.staff_aiChanges', story.aiChanges)}
               </span>
               <span className="gstat">
@@ -189,14 +201,19 @@ export function GalleryDetail({ item, index, total, showNames, onMove, onBack }:
               </span>
             </p>
             {story.requests.length > 0 && (
-              <ul className="gquotes">
-                {story.requests.slice(0, 3).map((r, i) => (
-                  <li key={i}>
-                    <Icon name="sparkle" size={16} />
-                    <q>{r}</q>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <p className="gquotes__h" id={`${ids.story}-wishes`}>
+                  {t('school.staff_wishesTitle')}
+                </p>
+                <ul className="gquotes" aria-labelledby={`${ids.story}-wishes`}>
+                  {story.requests.slice(0, 3).map((r, i) => (
+                    <li key={i}>
+                      <SchoolIcon name="wish" size={16} />
+                      <q>{r}</q>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </section>
         )}

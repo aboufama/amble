@@ -1,8 +1,9 @@
 /**
  * Teacher desk → Class link (§2.14; spec-mocks/13-teacher-classlink.png). Left: the school's AI helper
  * (address locked when the district set it, class code tested live), the class (name, AI mode, content level
- * capped by the district, assignment, expiry) and "Ready for tomorrow?". Right: the paper card to post in
- * Classroom (QR made on this device, Copy link, Big), a live preview of the Join card, and the trust line.
+ * capped by the district, assignment, expiry) and "Ready for tomorrow?". Right: the card to post in
+ * Classroom (QR made on this device, Copy link, Big; a dense code says so and offers a shorter link), a live
+ * preview of the Join card, and the trust line.
  */
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from '../../app/Link';
@@ -11,13 +12,13 @@ import { t } from '../../i18n';
 import type { AiMode, ClassLinkV1, Level } from '../../model/types';
 import { fitsInLink } from '../../school/assignment';
 import { capLink, classCodeHeaderFor, classLinkHref, DEFAULT_MODEL, linkProblem, shortHref } from '../../school/classLink';
-import { qrScannable } from '../../school/qr';
+import { makeQr, qrScannable } from '../../school/qr';
 import { setReadyTick, updateTeacherData, useReadyTicks, useTeacherData, type ReadyItem } from '../../school/teacherData';
 import { formatSeconds, hostOf, testEndpoint, type TestResult } from '../../school/testConnection';
 import { showToast } from '../../state/app';
 import { LEVELS } from '../../state/config';
 import { useStore } from '../../state/store';
-import { Dialog, PaperCard } from '../../ui/components';
+import { Button, Dialog } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
 import { JoinCardBody } from '../join/JoinCard';
@@ -43,6 +44,21 @@ export const LEVEL_SHORT: Record<Level, 'staff_levelShortElementary' | 'staff_le
 };
 
 const MODE_WORDS: Record<AiMode, 'staff_modeOn' | 'staff_modeExplain' | 'staff_modeOff'> = { on: 'staff_modeOn', explain: 'staff_modeExplain', off: 'staff_modeOff' };
+
+/**
+ * From this QR version up (89+ modules, about 500 characters), the code on the card is too dense for a phone
+ * to read from a screen: the card says so, points to Big, and offers the shorter link when an assignment is
+ * what makes it long. (A class link with the AI address and class code is about version 15.)
+ */
+export const DENSE_QR_VERSION = 18;
+
+function qrVersion(text: string): number {
+  try {
+    return makeQr(text).version;
+  } catch {
+    return Infinity;
+  }
+}
 
 function validAddress(url: string): boolean {
   try {
@@ -137,6 +153,7 @@ export function ClassLinkTab() {
   }
   const ready = !nameMissing && !addressBad && problem === null && href !== '';
   const scannable = ready && qrScannable(href);
+  const dense = scannable && qrVersion(href) >= DENSE_QR_VERSION;
 
   // The live test: when the address or the class code changes (after a pause in typing).
   useEffect(() => {
@@ -206,7 +223,7 @@ export function ClassLinkTab() {
 
         <section className="tpanel" aria-labelledby={`${ids.ai}-h`}>
           <h3 id={`${ids.ai}-h`} className="tpanel__h">
-            <Icon name="sparkle" size={20} className="icon--ai" />
+            <SchoolIcon name="server" />
             {t('school.staff_clAiTitle')}
             <small>{t('school.staff_clAiFrom')}</small>
           </h3>
@@ -396,9 +413,17 @@ export function ClassLinkTab() {
       </section>
 
       <aside className="cl__out" aria-label={t('school.staff_clOutLabel')}>
-        <PaperCard tape="lemon" tilt={0} className="linkcard">
-          <p className="linkcard__k">{t('school.staff_postThis')}</p>
-          <p className={cx('linkcard__cls', !link.cls && 'linkcard__cls--example')}>{link.cls || t('school.staff_classNameExample')}</p>
+        <section className="linkcard" aria-labelledby={`${ids.cls}-post`}>
+          <h3 id={`${ids.cls}-post`} className="linkcard__k">
+            {t('school.staff_postThis')}
+          </h3>
+          {link.cls ? (
+            <p className="linkcard__cls">{link.cls}</p>
+          ) : (
+            <p className="linkcard__cls linkcard__cls--empty" data-testid="class-name-slot">
+              {t('school.staff_classNameSlot')}
+            </p>
+          )}
           {ready ? (
             <div className="linkcard__row">
               <div className="linkcard__qr">{scannable ? <QrCode text={href} label={t('school.staff_qrLabel', { cls: link.cls })} /> : <p className="linkcard__long">{t('school.staff_qrTooLong')}</p>}</div>
@@ -410,7 +435,7 @@ export function ClassLinkTab() {
                   <TButton variant="lantern" icon="copy" onClick={() => void copy()} testId="copy-link">
                     {t('school.staff_copyLink')}
                   </TButton>
-                  <TButton variant="paper" icon="present" onClick={() => setBig(true)} disabled={!scannable}>
+                  <TButton variant="ghost" icon="present" onClick={() => setBig(true)} disabled={!scannable}>
                     {t('school.staff_big')}
                   </TButton>
                 </div>
@@ -429,6 +454,16 @@ export function ClassLinkTab() {
                       : t('school.staff_linkTooLong')}
             </p>
           )}
+          {dense && (
+            <div className="linkcard__dense" data-testid="dense-qr">
+              <p>{link.asg ? t('school.staff_qrDenseAsg') : t('school.staff_qrDense')}</p>
+              {link.asg && (
+                <Button variant="ghost" size={38} onClick={() => save({ asg: null })}>
+                  {t('school.staff_shorterLink')}
+                </Button>
+              )}
+            </div>
+          )}
           <div className="linkcard__exp">
             <SchoolIcon name="clock" size={16} />
             <span>
@@ -437,7 +472,7 @@ export function ClassLinkTab() {
               {link.exp ? t('school.staff_changeCodeHint') : t('school.staff_worksAlways')}
             </span>
           </div>
-        </PaperCard>
+        </section>
 
         <section className="tpanel preview" aria-labelledby={`${ids.cls}-see`}>
           <h3 id={`${ids.cls}-see`} className="tcaps">
@@ -454,7 +489,7 @@ export function ClassLinkTab() {
 
       {big && ready && (
         <Dialog open title={link.cls} titleHidden onClose={() => setBig(false)} className="qr-big" dismissOnBackdrop>
-          <div className="qr-big__inner on-paper">
+          <div className="qr-big__inner">
             <p className="qr-big__cls">{link.cls}</p>
             <QrCode text={href} label={t('school.staff_qrLabel', { cls: link.cls })} className="qr-big__code" />
             <p className="qr-big__hint">{t('school.staff_bigHint')}</p>
