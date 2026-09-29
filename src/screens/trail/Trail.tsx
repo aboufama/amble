@@ -47,7 +47,7 @@ import { SpaceChip, UpdatedChip } from '../files/TrailChips';
 import { setLegacy } from '../../state/library';
 import { AssignmentNote } from './AssignmentNote';
 import { HomeHeader } from './HomeHeader';
-import { NightSky, ParallaxHills, TrailGround } from './Landscape';
+import { Fireflies, NightSky, ParallaxHills, TrailGround } from './Landscape';
 import { LampSpot } from './LampSpot';
 import { ListView } from './ListView';
 import { LostAndFound } from './LostAndFound';
@@ -74,10 +74,22 @@ function firstLoadThisSession(): boolean {
   }
 }
 
+/** Whether the tab is hidden: the walkers, the fireflies and the lantern hold their place until it is back. */
+function usePageHidden(): boolean {
+  const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.visibilityState === 'hidden');
+  useEffect(() => {
+    const onChange = () => setHidden(document.visibilityState === 'hidden');
+    document.addEventListener('visibilitychange', onChange);
+    return () => document.removeEventListener('visibilitychange', onChange);
+  }, []);
+  return hidden;
+}
+
 export function Trail({ route }: { route: RouteOf<'trail'> }) {
   const { store } = useServices();
   const reduced = useReducedMotion();
   const paused = useStore((s) => s.prefs.trailPaused);
+  const hidden = usePageHidden();
   const [firstLoad] = useState(firstLoadThisSession);
   const still = reduced || paused;
 
@@ -105,7 +117,7 @@ export function Trail({ route }: { route: RouteOf<'trail'> }) {
   );
 
   return (
-    <div className={cx('trail', still && 'trail--still', firstLoad && 'trail--first-load', `trail--${route.view}`)} data-testid="screen-trail" data-view={route.view}>
+    <div className={cx('trail', still && 'trail--still', hidden && 'trail--hidden', firstLoad && 'trail--first-load', `trail--${route.view}`)} data-testid="screen-trail" data-view={route.view}>
       <NightSky decor={route.view === 'trail'} />
       <HomeHeader pulse={firstLoad && !reduced} extra={extra} />
       {route.view === 'trail' ? (
@@ -388,6 +400,7 @@ function TrailScene({ still, lit }: SceneProps) {
       >
         <div className="trail__content" style={{ width } as CSSProperties}>
           <TrailGround width={width} pools={placed.filter((p) => p.stop.kind !== 'signpost').map((p) => ({ cx: p.cx, big: p.stop.kind === 'lamp' }))} />
+          <Fireflies width={width} />
           <div className={cx('trail__decor', lit && 'trail__decor--lit')}>
             {placed.map((p) => {
               if (p.stop.kind === 'signpost') {

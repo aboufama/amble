@@ -172,17 +172,32 @@
   opacity: 0.35;
 }
 
-.trail-ground__fly {
+.trail-flies {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* An HTML box around the picture: Chrome runs opacity and translate on the compositor for HTML boxes,
+   never for SVG elements (an animated <svg> still costs a main-thread frame every frame). */
+.trail-fly {
+  position: absolute;
+  display: block;
+  animation: firefly 3.6s var(--ease-soft) infinite alternate;
+}
+
+.trail-fly svg {
+  display: block;
+  overflow: visible;
+}
+
+.trail-fly__dot {
   fill: color-mix(in srgb, var(--alive), white 40%);
 }
 
-.trail-ground__fly-glow {
+.trail-fly__glow {
   fill: var(--alive);
   opacity: 0.28;
-}
-
-.trail-ground__flies > g {
-  animation: firefly 3.6s var(--ease-soft) infinite alternate;
 }
 
 @keyframes firefly {
@@ -287,6 +302,6 @@
   opacity: 0.28;
 }
 
-:root[data-motion='reduced'] .trail-ground__flies > g {
+:root[data-motion='reduced'] .trail-fly {
   animation: none;
 }
