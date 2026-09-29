@@ -184,8 +184,11 @@ export interface ArtSurface {
   makeLastStrokePerfect(): Promise<PerfectKind | null>;
   /** Picks the displayed colour at a board point ('#rrggbb'). */
   pickColor(x: number, y: number): string;
-  /** Fills at a board point with the current colour and fill settings (like a tap with Fill). */
-  fillAt(x: number, y: number): Promise<boolean>;
+  /**
+   * Fills at a board point with the current colour and fill settings (like a tap with Fill). `all`: every
+   * pixel of the tapped colour on the fill's layer instead ("Fill all of this colour").
+   */
+  fillAt(x: number, y: number, o?: { all?: boolean }): Promise<boolean>;
   /** Resolves when no fill is being worked out and the screen shows the final pixels. */
   settled(): Promise<void>;
 

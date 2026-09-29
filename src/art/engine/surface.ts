@@ -679,10 +679,16 @@ class Surface implements ArtSurface {
 
   // ------------------------------------------------------------------------------------------ fill
 
-  /** Fill lands under the lines: tapping Fill on a lines layer paints on the colors layer below it. */
-  private fillTarget(): { layer: ArtLayer; sample: FillSample } | null {
+  /**
+   * Where a fill lands (§7.3, §7.4): under the lines. Tapping Fill on a plain lines layer paints on the
+   * colors layer below it (created if missing); on a part's lines layer, on that part's colours; a body part
+   * is walled by its own pair's lines, anything else by every visible lines layer.
+   */
+  private fillTarget(): { layer: ArtLayer; sample: FillSample; lines: string | null } | null {
     const board = this.board;
-    let layer = board.layer(this.layerId);
+    const plan = this.painter.fillPlan(this.frameId, this.layerId);
+    if (!plan) return null;
+    let layer = board.layer(plan.target);
     if (!layer) return null;
     if (layer.role === 'lines') {
       const i = board.layerIndex(layer.id);
@@ -701,13 +707,17 @@ class Surface implements ArtSurface {
       this.em.emit('toast', { message: 'This layer is hidden', kind: 'info' });
       return null;
     }
-    const lines = layer.role !== 'lines' && this.painter.hasVisibleLines(this.frameId);
-    const sample: FillSample = lines ? 'lines' : isPartRole(layer.role) ? 'layer' : 'all';
-    return { layer, sample };
+    if (layer.id === plan.target) return { layer, sample: plan.sample, lines: plan.lines };
+    const lines = this.painter.hasVisibleLines(this.frameId);
+    return { layer, sample: lines ? 'lines' : isPartRole(layer.role) ? 'layer' : 'all', lines: null };
   }
 
-  async fillAt(x: number, y: number): Promise<boolean> {
-    if (this.busy) return new Promise((resolve) => this.queued.push(() => void this.fillAt(x, y).then(resolve)));
+  /**
+   * Fills at a board point with the current colour: the gap-closing fill, or with `all`, every pixel of the
+   * tapped colour on the target layer ("Fill all of this colour").
+   */
+  async fillAt(x: number, y: number, o: { all?: boolean } = {}): Promise<boolean> {
+    if (this.busy) return new Promise((resolve) => this.queued.push(() => void this.fillAt(x, y, o).then(resolve)));
     if (this.stroke) return false;
     this.finishPour();
     if (this.sel.active) this.sel.commit();
@@ -715,13 +725,14 @@ class Surface implements ArtSurface {
     if (!(x >= 0 && y >= 0 && x < board.W && y < board.H)) return false;
     const target = this.fillTarget();
     if (!target) return false;
+    if (o.all) return this.fillAll(target.layer.id, x, y);
     // While the worker works, input is queued (not dropped) so the log stays in order.
     this.busy = true;
     const t0 = performance.now();
     try {
       const params = defaultFillParams(this.state.fill.gaps, board.W, board.H, board.pixelArt);
-      const req = { frame: this.frameId, layer: target.layer.id, x, y, tolerance: this.state.fill.tolerance, sample: target.sample, params };
-      const { result, analyzeMs } = await this.computeFill(req.sample, req.layer, x, y, req.tolerance, params);
+      const req = { frame: this.frameId, layer: target.layer.id, x, y, tolerance: this.state.fill.tolerance, sample: target.sample, params, lines: target.lines };
+      const { result, analyzeMs } = await this.computeFill(req.sample, req.layer, x, y, req.tolerance, params, req.lines);
       if (!result) {
         this.em.emit('toast', { message: 'Tap inside a shape to fill it', kind: 'fill' });
         return false;
@@ -730,7 +741,7 @@ class Surface implements ArtSurface {
       this.suppressUpload = req.layer;
       this.painter.applyFill(req, result, this.rgb());
       this.suppressUpload = null;
-      this.record('Fill', this.takePending(), { op: 'fill', layer: req.layer, frame: req.frame, x, y, color: this.state.color, tolerance: req.tolerance, sample: req.sample, gaps: params.gaps, fallbackGap: params.fallbackGap }, req.layer);
+      this.record('Fill', this.takePending(), { op: 'fill', layer: req.layer, frame: req.frame, x, y, color: this.state.color, tolerance: req.tolerance, sample: req.sample, gaps: params.gaps, fallbackGap: params.fallbackGap, ...(req.lines ? { lines: req.lines } : {}) }, req.layer);
       this.startPour(req.layer, result.box, x, y);
       this.st.fills.push({ ms: performance.now() - t0, analyzeMs, gap: result.gap, background: result.background, split: result.split, area: result.area, mode: req.sample });
       if (this.st.fills.length > 50) this.st.fills.shift();
@@ -748,13 +759,27 @@ class Surface implements ArtSurface {
     }
   }
 
-  private async computeFill(sample: FillSample, layer: string, x: number, y: number, tolerance: number, params: FillParams): Promise<{ result: FillResult | null; analyzeMs: number }> {
+  /** "Fill all of this colour" on `layer` at a board point (one undo step). */
+  private fillAll(layer: string, x: number, y: number): boolean {
+    const tolerance = this.board.pixelArt ? 0 : this.state.fill.tolerance;
+    const box = this.painter.recolorAll(this.frameId, layer, x, y, tolerance, this.rgb());
+    if (!box) {
+      this.em.emit('toast', { message: 'Tap a colour to change all of it', kind: 'fill' });
+      return false;
+    }
+    const params = defaultFillParams(this.state.fill.gaps, this.board.W, this.board.H, this.board.pixelArt);
+    this.record('Fill', this.takePending(), { op: 'fill', layer, frame: this.frameId, x, y, color: this.state.color, tolerance, sample: 'layer', gaps: params.gaps, fallbackGap: params.fallbackGap, all: true }, layer);
+    this.comp.flush();
+    return true;
+  }
+
+  private async computeFill(sample: FillSample, layer: string, x: number, y: number, tolerance: number, params: FillParams, only: string | null = null): Promise<{ result: FillResult | null; analyzeMs: number }> {
     const board = this.board;
     const maxGap = Math.max(...params.gaps, params.fallbackGap);
     if (sample === 'lines') {
-      const key = this.painter.linesKey(this.frameId, maxGap);
+      const key = this.painter.linesKey(this.frameId, maxGap, only);
       const send = async (withWalls: boolean): Promise<WorkerResponse> => {
-        const walls = withWalls ? this.painter.linesWalls(this.frameId) : undefined;
+        const walls = withWalls ? this.painter.linesWalls(this.frameId, only) : undefined;
         const res = await this.worker.call({ type: 'fillLines', key, x, y, params, walls, W: board.W, H: board.H, maxGap }, walls ? [walls.buffer as ArrayBuffer] : []);
         this.worker.known.add(key);
         return res;
@@ -774,17 +799,21 @@ class Surface implements ArtSurface {
     return { result: res.result, analyzeMs: res.analyzeMs };
   }
 
-  /** Precomputes the lines analysis in the worker ~300 ms after the lines change, so a tap only pays for its region. */
+  /**
+   * Precomputes the lines analysis in the worker ~300 ms after the lines change, so a tap only pays for its
+   * region: the active part's own lines when drawing on the bones, every lines layer otherwise.
+   */
   private scheduleLinesAnalysis(): void {
     clearTimeout(this.linesTimer);
     this.linesTimer = window.setTimeout(() => {
       if (!this.b || this.destroyed || !this.worker.threaded) return;
-      if (!this.painter.hasVisibleLines(this.frameId)) return;
+      const only = this.painter.fillPlan(this.frameId, this.layerId)?.lines ?? null;
+      if (!this.painter.hasVisibleLines(this.frameId, only)) return;
       const p = defaultFillParams(this.state.fill.gaps, this.board.W, this.board.H, this.board.pixelArt);
       const maxGap = Math.max(...p.gaps, p.fallbackGap);
-      const key = this.painter.linesKey(this.frameId, maxGap);
+      const key = this.painter.linesKey(this.frameId, maxGap, only);
       if (this.worker.known.has(key)) return;
-      const walls = this.painter.linesWalls(this.frameId);
+      const walls = this.painter.linesWalls(this.frameId, only);
       this.worker.known.add(key);
       this.worker.call({ type: 'analyze', key, W: this.board.W, H: this.board.H, maxGap, walls }, [walls.buffer as ArrayBuffer]).catch(() => this.worker.known.delete(key));
     }, 300);
@@ -1018,6 +1047,8 @@ class Surface implements ArtSurface {
     this.layerId = id;
     this.comp.setActive(id);
     this.em.emit('layers', this.layers());
+    // A body part fills against its own lines: warm that analysis up for the new part.
+    this.scheduleLinesAnalysis();
   }
 
   private layerOp(label: string, step: ReturnType<typeof addLayer> | null, op: Extract<LogOp, { op: 'layer' }>): void {

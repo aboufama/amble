@@ -48,6 +48,13 @@ export interface LogFill {
   sample: FillSample;
   gaps: number[];
   fallbackGap: number;
+  /**
+   * 'lines' fills on a body part: the one lines layer that walled it (the part's pair). Absent: every
+   * visible lines layer, or the pair when the target is a part layer that has one (older logs, scripts).
+   */
+  lines?: string;
+  /** "Fill all of this colour": every pixel of the tapped colour on the layer, wherever it is. */
+  all?: true;
 }
 
 export interface LogShape {
