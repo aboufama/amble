@@ -296,12 +296,17 @@ function preview(): void {
   const sheetCanvas = renderContactSheet(L.bound, { clips: ['walk', 'run', 'jump', 'attack', 'hurt'], frames: 8, size: 90, background: '#fdf8ec', grid: '#e9dcc0' });
   const holder = Object.assign(document.createElement('div'), { className: 'row' });
   stage.appendChild(holder);
-  holder.appendChild(sheetCanvas as HTMLCanvasElement);
+  const shown = Object.assign(document.createElement('canvas'), { width: sheetCanvas.width, height: sheetCanvas.height });
+  shown.getContext('2d')!.drawImage(sheetCanvas, 0, 0);
+  holder.appendChild(shown);
   setTimeout(() => done({ previews: previews.map((p) => p.clip) }), 1200);
 }
 
 async function workerMode(): Promise<void> {
   const w = createRigWorker();
+  // the samples are painted on this thread; do it before timing the frames
+  const drawn = SAMPLES.map((def) => ({ def, s: def.draw() }));
+  await new Promise((r) => setTimeout(r, 50));
   let longest = 0, last = performance.now(), beating = true;
   const beat = () => {
     const t = performance.now();
@@ -312,8 +317,7 @@ async function workerMode(): Promise<void> {
   requestAnimationFrame(beat);
   const rows: string[] = [];
   const results: Record<string, unknown>[] = [];
-  for (const def of SAMPLES) {
-    const s = def.draw();
+  for (const { def, s } of drawn) {
     const t0 = performance.now();
     const r = await w.autoRig({ image: s.image, layers: s.layers }, { kind: s.kind });
     const t1 = performance.now();
@@ -324,7 +328,7 @@ async function workerMode(): Promise<void> {
     rows.push(`${def.name.padEnd(10)} autoRig ${(t1 - t0).toFixed(0)} ms (in worker ${r.ms.toFixed(0)}), bind ${(t2 - t1).toFixed(0)} ms, cached bind ${(t3 - t2).toFixed(0)} ms, confidence ${r.confidence}, ${b.stats.triangles}/${again.stats.triangles} tris`);
     results.push({ name: def.name, autoRigMs: t1 - t0, bindMs: t2 - t1, cachedBindMs: t3 - t2, confidence: r.confidence });
   }
-  const s = SAMPLES[0].draw();
+  const s = drawn[0].s;
   const r = await w.autoRig({ image: s.image }, { kind: 'biped' });
   const strip = await w.strip({ image: s.image }, r.rig, 'walk', { frames: 8, size: 100 });
   const row = Object.assign(document.createElement('div'), { className: 'row' });
