@@ -1,8 +1,9 @@
 /**
- * Bring to life (§2.10, §8.4): a requested drawing goes into the running world by a hot swap (no new
- * game from the Desk), in one commit with its world slot, then the Desk returns to the world.
+ * Bring to life (§2.10, §8.4): a requested drawing goes into the running world by a hot swap (the game is
+ * never restarted), in one commit with its world slot, then the Desk returns to the world.
  */
 import { expect, openAmble, test } from '../helpers/app';
+import { gameFrame, openWorld, readGame } from '../world/world';
 import { boardSize, circle, drawOnBoard, openDesk, openStarterWorld, settle, tapOnBoard } from './desk';
 
 type Amble = {
@@ -15,11 +16,11 @@ type Amble = {
 };
 
 test('a request, brought to life, is hot-swapped into the running world', async ({ page }) => {
-  test.setTimeout(90_000);
-  await openAmble(page);
-  const world = await openStarterWorld(page);
-  // The world's game is running before the Desk opens.
-  await page.waitForFunction(() => Number(document.querySelector<HTMLElement>('[data-first-frame]')?.dataset.firstFrame ?? 0) >= 1, null, { timeout: 30_000 });
+  test.setTimeout(120_000);
+  const world = await openWorld(page);
+  // The world's game is running before the Desk opens: this game, created once.
+  const before = await readGame(await gameFrame(page), (g) => ({ created: g.createCount, boss: !!g.find('boss')?.drawn }));
+  expect(before.boss).toBe(false);
 
   await openDesk(page, `#/w/${world}/draw/boss`);
   // From here on, count what the Desk asks of the player.
@@ -75,8 +76,11 @@ test('a request, brought to life, is hot-swapped into the running world', async 
   expect(saved.sticker).toBeGreaterThan(100);
   expect(saved.kind).toBe('character');
 
-  // The world shows again, with its footstep.
+  // The world shows again, still the same game (not restarted), now with the drawing.
   await expect(page.getByTestId('screen-world')).toBeVisible();
+  const frame = await gameFrame(page);
+  await expect.poll(() => readGame(frame, (g) => !!g.find('boss')?.drawn), { timeout: 20_000 }).toBe(true);
+  expect(await readGame(frame, (g) => g.createCount)).toBe(before.created);
 });
 
 test('an empty sheet says to draw first', async ({ page }) => {
