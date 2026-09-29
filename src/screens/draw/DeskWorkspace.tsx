@@ -284,7 +284,8 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
       const a = ctrl.surface.docToClient(bx, by);
       const b = ctrl.surface.docToClient(bx + bw, by + bh);
       const from = new DOMRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
-      announce(t('draw.cameAlive', { name }));
+      // Back in its world, the world says it once the drawing lands there (after the come-alive flight).
+      if (to === 'bones' || !(setup.world && r.key)) announce(t('draw.cameAlive', { name }));
       if (res.onePiece) showToast(t('draw.noLimbs', { name: midSentence(name) }));
       const bonesRoute: Route = setup.world && r.key ? { name: 'bones', worldId: setup.world.id, key: r.key } : { name: 'bonesFree', artId: res.record.id };
       if (to === 'bones') {

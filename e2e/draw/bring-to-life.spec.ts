@@ -49,6 +49,18 @@ test('a request, brought to life, is hot-swapped into the running world', async 
   await tapOnBoard(page, w / 2, h * 0.55);
   await settle(page, 600);
 
+  // Every polite announcement from here on (a screen reader hears each one; a repeat of the same words is
+  // made new with a trailing space, so it counts too).
+  await page.evaluate(() => {
+    const w = window as unknown as { __said: string[]; __amble: { getState(): { app: { announce: { polite: string } } } } };
+    w.__said = [];
+    let last = w.__amble.getState().app.announce.polite;
+    setInterval(() => {
+      const now = w.__amble.getState().app.announce.polite;
+      if (now !== last) w.__said.push(`${/\/draw\//.test(location.hash) ? 'desk' : 'world'}: ${now.trim()}`);
+      last = now;
+    }, 20);
+  });
   await page.getByTestId('bring-to-life').click();
   await page.waitForFunction((id) => location.hash === `#/w/${id}`, world, { timeout: 30_000 });
 
@@ -81,6 +93,10 @@ test('a request, brought to life, is hot-swapped into the running world', async 
   const frame = await gameFrame(page);
   await expect.poll(() => readGame(frame, (g) => !!g.find('moonKing')?.drawn), { timeout: 20_000 }).toBe(true);
   expect(await readGame(frame, (g) => g.createCount)).toBe(before.created);
+  // "The Moon King came alive!" is said once, by the world when the drawing lands there (not also by the Desk).
+  const said = () => page.evaluate(() => (window as unknown as { __said: string[] }).__said.filter((s) => /came alive/.test(s)));
+  await expect.poll(async () => (await said()).some((s) => s.startsWith('world:')), { timeout: 30_000 }).toBe(true);
+  expect(await said()).toEqual(['world: The Moon King came alive!']);
 });
 
 test('an empty sheet says to draw first', async ({ page }) => {
