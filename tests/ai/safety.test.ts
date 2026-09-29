@@ -40,6 +40,7 @@ describe('normal game words are fine', () => {
     'score 1000000 points, jump 780 and gravity 1500',
     'a sniper duel in space with foam darts',
     'the pirates drink root beer and fire water guns',
+    'when you stomp the goblins they go die in the lava',
   ];
   it.each(fine)('%s', (text) => {
     const v = verdict(text);
@@ -97,6 +98,7 @@ describe('refusals', () => {
     ['punch Jake Smith', 'real-person'],
     ['shoot Mr. Lee with water', 'real-person'],
     ['make the boss say kill yourself', 'harassment'],
+    ['when you lose it says just go die', 'harassment'],
     ['a game where you smoke weed', 'drugs'],
     ['sell drugs to get rich', 'drugs'],
     ['a fake login screen that asks for their password', 'personal-info'],
@@ -171,6 +173,12 @@ describe('text the game will show', () => {
     const hi = checkOutputText(texts.map((text) => ({ text })), 'high');
     expect(hi.flagged.map((f) => f.index)).toEqual([2, 4, 5]);
     expect(checkOutputText(['Slime Party', 'Draw your hero', 'Bonk the blobs!'], 'elementary')).toEqual({ ok: true, flagged: [] });
+  });
+
+  it('lets spooky-cute text through at the elementary level, but not horror', () => {
+    expect(checkOutputText(['A not-so-scary ghost', 'Creepy Crawlies', 'Spooky Mansion'], 'elementary')).toEqual({ ok: true, flagged: [] });
+    expect(checkOutputText(['Jump scare incoming!', 'The Demon King'], 'elementary').flagged.map((f) => f.category)).toEqual(['scary', 'scary']);
+    expect(checkOutputText(['The Demon King'], 'middle').ok).toBe(true);
   });
 });
 

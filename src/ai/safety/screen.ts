@@ -88,7 +88,7 @@ function outputCategory(text: string, band: AgeBand): OutputCategory | null {
   if (band === 'elementary') {
     if (findListed(vs, 'insults')) return 'insult';
     if (findListed(vs, 'gore')) return 'gore';
-    if (findListed(vs, 'scary')) return 'scary';
+    if (findListed(vs, 'horror')) return 'scary';
   }
   return null;
 }

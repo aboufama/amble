@@ -43,7 +43,7 @@ const DRUG_USE = [
 ];
 
 /** Telling someone to hurt themselves. */
-const HARASSMENT = ['kill yourself', 'kill urself', 'kys', 'go die', 'neck yourself', 'unalive yourself'];
+const HARASSMENT = ['kill yourself', 'kill urself', 'kys', 'just go die', 'go die in a hole', 'neck yourself', 'unalive yourself'];
 
 const GAMBLING = ['loot box*', 'lootbox*'];
 
@@ -68,7 +68,11 @@ const WEAPONS = [
   'gun', 'guns', 'pistol', 'pistols', 'rifle', 'rifles', 'shotgun*', 'machine gun*', 'handgun*', 'ak 47', 'ak47', 'ar 15', 'ar15', 'glock*', 'uzi', 'uzis', 'assault rifle*', 'grenade*',
 ];
 
-const SCARY = ['horror', 'creepy', 'terrifying', 'jump scare*', 'jumpscare*', 'demon', 'demons', 'demonic', 'satan*', 'serial killer*', 'slasher*', 'scary', 'scariest'];
+/** Horror, never in elementary game text. */
+const HORROR = ['horror', 'terrifying', 'jump scare*', 'jumpscare*', 'demon', 'demons', 'demonic', 'satan*', 'serial killer*', 'slasher*'];
+
+/** Scary words in a request add a tone note; mild ones ("creepy crawlies") are fine in spooky-cute game text. */
+const SCARY = [...HORROR, 'creepy', 'scary', 'scariest'];
 
 /** Name-calling: never in game text at the elementary level. */
 const INSULTS = ['stupid', 'idiot*', 'dumb', 'dumbass*', 'loser', 'losers', 'moron*', 'shut up', 'you suck'];
@@ -98,6 +102,7 @@ export type LexiconCategory =
   | 'gore'
   | 'weapons'
   | 'scary'
+  | 'horror'
   | 'insults';
 
 const LISTS: Record<LexiconCategory, readonly string[]> = {
@@ -114,6 +119,7 @@ const LISTS: Record<LexiconCategory, readonly string[]> = {
   gore: GORE,
   weapons: WEAPONS,
   scary: SCARY,
+  horror: HORROR,
   insults: INSULTS,
 };
 
