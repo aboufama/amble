@@ -154,6 +154,36 @@ export async function flushWorld(): Promise<void> {
   await autosave?.flush();
 }
 
+/**
+ * A newer version of the open world was committed outside the session (Go back, Run it, Bring to life,
+ * Bones, Hand in, an AI result). The session takes it and the autosave's queue now holds it, so an older
+ * copy still waiting to be saved is never written over it. With `keep`, only what the commit changed goes
+ * in (`keep` copies it) with the commit's footsteps, and edits the session made meanwhile stay; without it,
+ * the committed world replaces the session's. Returns the session's world (null when another is open).
+ */
+export function adoptWorld(committed: World, keep?: (w: Draft<World>, committed: World) => void): World | null {
+  if (getState().session.world?.id !== committed.id) return null;
+  setState((s) => {
+    const w = s.session.world;
+    if (!w || w.id !== committed.id) return;
+    if (!keep) {
+      s.session.world = committed;
+      return;
+    }
+    keep(w, committed);
+    // Footsteps only ever append: the session's own steps not in the commit (recorded meanwhile) stay.
+    const known = new Set(committed.steps.map((st) => st.id));
+    const mine = w.steps.filter((st) => !known.has(st.id));
+    w.steps = mine.length ? [...committed.steps, ...mine].sort((a, b) => a.at - b.at) : committed.steps;
+    w.head = mine.length ? w.steps[w.steps.length - 1].id : committed.head;
+    w.updatedAt = Math.max(w.updatedAt, committed.updatedAt);
+  });
+  const world = getState().session.world;
+  if (world) saver().schedule(world);
+  refreshCast();
+  return world;
+}
+
 // ------------------------------------------------------------------ footsteps
 
 /** Prints a footstep for the open world (Footsteps snapshots it) and saves the result. */
@@ -212,11 +242,20 @@ export function gameSignature(world: World): string {
 }
 
 let loaded: string | null = null;
+/** The player's load count when `loaded` was put in it (another screen may have loaded another game since). */
+let loadedCount = -1;
 let loading: Promise<GameManifest | null> | null = null;
 
-/** Whether the player already runs this world as it is now (returning from the Desk). */
+function playerLoads(): number {
+  return getServices().player.loadCount?.() ?? -1;
+}
+
+/**
+ * Whether the player already runs this world as it is now (returning from the Desk), and nothing else was
+ * loaded into it meanwhile (a new world's Desk preview, the Teacher desk's gallery).
+ */
 export function isLoaded(world: World): boolean {
-  return loaded === gameSignature(world) && !getState().session.stopped;
+  return loaded === gameSignature(world) && !getState().session.stopped && playerLoads() === loadedCount;
 }
 
 /**
@@ -276,6 +315,7 @@ export function loadGame(world: World, o: { autostart?: boolean } = {}): Promise
     try {
       const manifest = await player.load(init);
       loaded = sig;
+      loadedCount = playerLoads();
       if (getState().session.world?.id === world.id) {
         patchSession({ manifest, ready: true });
         refreshCast();
@@ -309,7 +349,10 @@ export function pendingLoad(): Promise<GameManifest | null> | null {
  */
 export function noteLoaded(): void {
   const world = getState().session.world;
-  if (world && !loading) loaded = gameSignature(world);
+  if (world && !loading) {
+    loaded = gameSignature(world);
+    loadedCount = playerLoads();
+  }
 }
 
 // ------------------------------------------------------------------ live changes: dials, twists, modes

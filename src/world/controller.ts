@@ -21,6 +21,7 @@ import {
   refreshCast,
   updateWorld,
 } from '../state/session';
+import { resumeBuild } from '../state/ai';
 import { getState } from '../state/store';
 import { sameObjects, type Box } from './objects';
 import { pickRequest, triggerOf, type TagTrigger } from './requestPolicy';
@@ -37,6 +38,8 @@ export interface ControllerHooks {
   onLift(key: CastKey, rect: Box): void;
   /** Esc inside the game: leave full screen, or take focus back to the editor. */
   onEscape(): void;
+  /** The world is not in the store (a discarded starter copy reached with Back, an old address). */
+  onMissing?(): void;
 }
 
 /** A Warm-up world's code (§2.5): the cast idles while the build runs. */
@@ -91,7 +94,12 @@ export class WorldController {
   async start(): Promise<void> {
     this.listen();
     const world = await openWorld(this.worldId);
-    if (this.stopped || !world) return;
+    if (this.stopped) return;
+    if (!world) {
+      this.hooks.onMissing?.();
+      return;
+    }
+    if (isWarmup(world.code)) resumeBuild(world);
     if (isLoaded(world)) {
       const { player } = getServices();
       patchSession({ ready: true, manifest: player.manifest() ?? getState().session.manifest });

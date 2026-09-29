@@ -251,6 +251,15 @@ describe('builds and the ladder', () => {
     if (out.kind === 'accepted') expect(out.manifest.art.map((a) => a.key)).toEqual(expect.arrayContaining(['hero', 'saltKing', 'crumb', 'leaf']));
   });
 
+  it('ends a build the AI helper cannot do (off, offline) on the plan starter too, sending nothing', async () => {
+    const h = harness([]);
+    h.setOnline(false);
+    const w = world({ origin: { kind: 'plan', starter: 'moon-king', planTitle: PLAN_SNAIL.title }, plan: PLAN_SNAIL });
+    const out = await h.service.build(w, PLAN_SNAIL, job());
+    expect(out.kind).toBe('fallback');
+    expect(h.sent).toHaveLength(0);
+  });
+
   it('ends a failed build on the plan starter with the plan written in', async () => {
     const h = harness([sse([broken]), sse([broken]), sse([broken])]);
     const w = world({ origin: { kind: 'plan', starter: 'moon-king', planTitle: PLAN_SNAIL.title }, plan: PLAN_SNAIL });

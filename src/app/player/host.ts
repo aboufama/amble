@@ -35,6 +35,11 @@ export interface PlayerHost {
   /** Shows the last robot-tested game. */
   promote(): Promise<GameManifest>;
   manifest(): GameManifest | null;
+  /**
+   * An addition: how many games the visible player was asked to run so far. Whoever loaded one can tell
+   * whether it is still the one showing (the Desk's preview and the Teacher desk's gallery load others).
+   */
+  loadCount?(): number;
   swapArt(art: DrawnArt): void;
   clearArt(key: string): void;
   dial(key: string, value: number): void;
@@ -375,6 +380,10 @@ export class PlayerHostImpl implements PlayerHost {
 
   manifest(): GameManifest | null {
     return this.player?.manifest ?? null;
+  }
+
+  loadCount(): number {
+    return this.loads;
   }
 
   swapArt(art: DrawnArt): void {

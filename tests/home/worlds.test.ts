@@ -9,7 +9,9 @@ import type { FilesApi } from '../../src/files/api';
 import { createHistory } from '../../src/history/api';
 import { copyWorld, createPlanWorld, firstToDraw, openSeed, planHeroKey, renameWorld, startBuild } from '../../src/home/createWorld';
 import { getPlanSession, planSeconds, resetPlanSession, startPlan, stopPlan } from '../../src/home/planSession';
-import { isUntouchedStarterCopy, routeWorldId } from '../../src/home/starterCopies';
+import { canDiscardCopy, isUntouchedStarterCopy, routeWorldId } from '../../src/home/starterCopies';
+import { artIdFor } from '../../src/draw/artId';
+import { codeDraftKey } from '../../src/screens/code/open';
 import type { AiOutcome, PlanOutcome } from '../../src/model/types';
 import { createAppAi, type AiService } from '../../src/pipeline/api';
 import type { SchoolApi } from '../../src/school/api';
@@ -17,7 +19,7 @@ import type { PlayerHost } from '../../src/app/player/host';
 import { createStarterCatalog } from '../../src/starters/api';
 import { getState, resetState } from '../../src/state/store';
 import { MemoryStore } from '../../src/store/memory';
-import { samplePlan, sampleWorld } from '../foundation/samples';
+import { sampleArt, sampleDraft, samplePlan, sampleWorld } from '../foundation/samples';
 
 function services(over: Partial<Services> = {}): Services {
   const s: Services = {
@@ -129,6 +131,37 @@ describe('starter copies', () => {
   it('never count seeds or plan worlds (the hero is the student’s)', () => {
     expect(isUntouchedStarterCopy({ ...copy, origin: { kind: 'starter', starter: 'moon-king', withArt: false } })).toBe(false);
     expect(isUntouchedStarterCopy({ ...copy, origin: { kind: 'plan', starter: 'moon-king', planTitle: 'x' } })).toBe(false);
+  });
+
+  it('stay when they hold work that prints no footstep', async () => {
+    const { store } = services();
+    const title = createStarterCatalog().info('moon-king').title;
+    const example = sampleArt({ id: 'a_x', madeBy: 'example', createdAt: 5, updatedAt: 5 });
+    const w = { ...copy, title, controls: {}, sounds: {} };
+    await store.commit({ art: [example] });
+    expect(await canDiscardCopy(store, w)).toBe(true);
+    // A new name.
+    expect(await canDiscardCopy(store, { ...w, title: 'My moon fight' })).toBe(false);
+    // Remapped keys.
+    expect(await canDiscardCopy(store, { ...w, controls: { jump: ['KeyW'] } })).toBe(false);
+    // Code typed in Look inside, not run yet.
+    await store.cache.put(codeDraftKey(w.id), { 'game.js': { base: 'a', text: 'b' } });
+    expect(await canDiscardCopy(store, w)).toBe(false);
+    await store.cache.put(codeDraftKey(w.id), null);
+    // A Desk draft for one of its members.
+    await store.drafts.put(sampleDraft({ artId: 'a_draft00001', worldId: w.id, castKey: 'moonKing' }));
+    expect(await canDiscardCopy(store, w)).toBe(false);
+    await store.drafts.clear('a_draft00001');
+    // An example drawn over and saved as the Desk closed (not brought to life yet).
+    await store.commit({ art: [{ ...example, updatedAt: 9 }] });
+    expect(await canDiscardCopy(store, w)).toBe(false);
+    await store.commit({ art: [example] });
+    // A member drawn at the Desk (its stable id) and saved, not brought to life yet.
+    const started = sampleArt({ id: await artIdFor(w.id, 'grumble'), madeBy: 'student', export: null });
+    const withGrumble = { ...w, cast: { ...w.cast, grumble: { key: 'grumble', art: null, madeBy: null, extra: null, laterUntil: 0 } } };
+    expect(await canDiscardCopy(store, withGrumble)).toBe(true);
+    await store.commit({ art: [started] });
+    expect(await canDiscardCopy(store, withGrumble)).toBe(false);
   });
 
   it("know when the student is still inside a world", () => {

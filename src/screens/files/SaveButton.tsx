@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCommand } from '../../app/keys';
 import { useServices } from '../../app/services';
+import type { FilesApi, SavedFile } from '../../files/api';
 import { isChromeOS } from '../../files/fsAccess';
 import { t } from '../../i18n';
 import type { SaveState, World } from '../../model/types';
@@ -37,6 +38,21 @@ export function saveLabel(): string {
   return isChromeOS() ? t('files.saveToDrive') : t('files.saveFile');
 }
 
+/** Saves a world to Drive (its kept file, the picker, else a download) and says how it went. */
+export async function saveWorldToDrive(files: FilesApi, world: World): Promise<SavedFile | null> {
+  try {
+    const saved = await files.saveWorld(world);
+    if (!saved) return null;
+    const text = saved.method === 'download' ? t('files.savedDownload') : isChromeOS() ? t('files.savedToDrive', { time: clock(saved.at) }) : t('files.savedToFile', { name: saved.name });
+    showToast(text, { kind: 'success' });
+    return saved;
+  } catch (err) {
+    console.warn('Save to Drive failed:', err);
+    showToast(t('files.saveFailed'), { kind: 'error' });
+    return null;
+  }
+}
+
 export interface SaveButtonProps {
   world: World;
   compact?: boolean;
@@ -60,14 +76,8 @@ export function SaveButton({ world, compact = false, state: given, onSaved }: Sa
     busyRef.current = true;
     setBusy(true);
     try {
-      const saved = await files.saveWorld(latest.current);
-      if (!saved) return;
-      const text = saved.method === 'download' ? t('files.savedDownload') : isChromeOS() ? t('files.savedToDrive', { time: clock(saved.at) }) : t('files.savedToFile', { name: saved.name });
-      showToast(text, { kind: 'success' });
-      onSaved?.(saved);
-    } catch (err) {
-      console.warn('Save to Drive failed:', err);
-      showToast(t('files.saveFailed'), { kind: 'error' });
+      const saved = await saveWorldToDrive(files, latest.current);
+      if (saved) onSaved?.(saved);
     } finally {
       busyRef.current = false;
       setBusy(false);

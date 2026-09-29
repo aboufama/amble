@@ -214,6 +214,8 @@ function Fallback({ starter, idea, heroId }: { starter: StarterId; idea: string;
   const [busy, setBusy] = useState(false);
   const info = starters.info(starter);
   const start = async () => {
+    // A second click while the world is being made would make a second world.
+    if (busy) return;
     setBusy(true);
     try {
       const world = await openSeed(starter, heroId);

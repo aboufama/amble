@@ -1,55 +1,22 @@
 /**
- * Asks the world screen itself sends to the AI helper (§2.6): "Ask Amble to fix it" on the problem card,
+ * Asks the world screen sends itself to the AI helper (§2.6): "Ask Amble to fix it" on the problem card,
  * "Ask Amble to add him" on a resting cast member, and "Add {name}, a {role}: {what}" after Add someone.
- * The running job shows in the `ai` slice like any Ask (the Ask card and the progress pill read it); an
- * accepted change goes into the world through `applyAccepted`. The world keeps playing meanwhile.
+ * They run as the AI slice's jobs, like any Ask: the Ask card and the progress pill show them, its Stop
+ * stops them, their outcome (a failure, a refusal, the crisis card) shows in the Ask card, and an accepted
+ * change goes into the world through `applyAccepted`. The world keeps playing meanwhile.
  */
-import { getServices } from '../app/services';
-import type { AiOutcome, AiProgress, CastKey, PlayerError } from '../model/types';
-import { applyAccepted } from '../state/session';
-import { getState, setState } from '../state/store';
+import type { AiOutcome, CastKey, PlayerError } from '../model/types';
+import { isWorking, startChange, startFix } from '../state/ai';
+import { getState } from '../state/store';
 
-let running: AbortController | null = null;
-
+/** Is the open world's AI helper already working on something? (One job per world, §2.8.) */
 export function askBusy(): boolean {
-  return !!getState().ai.job || !!running;
-}
-
-function progress(p: AiProgress): void {
-  setState((s) => {
-    if (s.ai.job) s.ai.job.progress = p;
-  });
+  const world = getState().session.world;
+  return !!world && isWorking(world.id);
 }
 
 export async function runAsk(task: 'change' | 'fix', words: string, o: { scope?: CastKey; problems?: PlayerError[] } = {}): Promise<AiOutcome> {
   const world = getState().session.world;
-  if (!world) return { kind: 'cancelled' };
-  if (askBusy()) return { kind: 'cancelled' };
-  const { ai } = getServices();
-  const controller = new AbortController();
-  running = controller;
-  setState((s) => {
-    s.ai.job = { worldId: world.id, task, request: words, progress: { phase: 'checking' }, startedAt: Date.now() };
-  });
-  let outcome: AiOutcome;
-  try {
-    const job = { signal: controller.signal, onProgress: progress };
-    outcome = task === 'fix' ? await ai.fix(world, o.problems ?? getState().session.problems, job) : await ai.change(world, words, { ...job, scope: o.scope });
-  } catch (err) {
-    outcome = { kind: 'failed', reason: 'transport', message: err instanceof Error ? err.message : String(err), details: [] };
-  } finally {
-    if (running === controller) running = null;
-  }
-  if ((outcome.kind === 'accepted' || outcome.kind === 'fallback') && getState().session.world?.id === world.id) {
-    await applyAccepted(outcome, { task, request: task === 'change' ? words : undefined }).catch((err: unknown) => console.warn(err));
-  }
-  setState((s) => {
-    if (s.ai.job?.worldId === world.id) s.ai.job = null;
-    s.ai.lastOutcome = outcome;
-  });
-  return outcome;
-}
-
-export function stopAsk(): void {
-  running?.abort();
+  if (!world || askBusy()) return { kind: 'cancelled' };
+  return task === 'fix' ? startFix(world, o.problems ?? getState().session.problems, words) : startChange(world, words, o.scope ?? null);
 }

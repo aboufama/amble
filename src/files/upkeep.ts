@@ -70,7 +70,9 @@ function whenIdle(fn: () => void, timeout = 5000): void {
 async function saveOpenWorld(): Promise<void> {
   const { files, store } = getServices();
   const open = getState().session.world;
-  const world = open ? ((await store.worlds.get(open.id).catch(() => null)) ?? open) : null;
+  // The session's copy is the newest: when the store is full it is the only one with the latest changes.
+  const stored = open ? await store.worlds.get(open.id).catch(() => null) : null;
+  const world = open && (!stored || open.updatedAt >= stored.updatedAt) ? open : stored;
   if (!world) {
     navigate({ name: 'settings', section: 'storage' });
     return;

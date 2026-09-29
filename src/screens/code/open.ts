@@ -15,6 +15,11 @@ export interface LookInsideRequest {
   explain?: { from: number; to: number; reply: ExplainReply };
 }
 
+/** Where Look inside keeps a world's changes that were not run yet (the store's cache). */
+export function codeDraftKey(worldId: WorldId): string {
+  return `code-draft:${worldId}`;
+}
+
 let pending: LookInsideRequest | null = null;
 const listeners = new Set<(r: LookInsideRequest) => void>();
 

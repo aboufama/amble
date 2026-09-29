@@ -8,20 +8,11 @@
  * cast slot holds it), so the Desk finds unfinished work again, and M6's restore finds it after a crash.
  */
 import { deserializeArtDoc, newArtDoc, serializeArtDoc, type ArtDoc, type ArtDocJson } from '../cores/art';
-import { sha256Hex } from '../model/ids';
 import type { ArtId, ArtKind, ArtRecord, BlobRef, CastKey, DeskDraft, PartLayers, RigKind, WorldId } from '../model/types';
 import type { Store } from '../store/api';
 import type { BoardSpec } from './boards';
 
-const BASE36 = '0123456789abcdefghijklmnopqrstuvwxyz';
-
-/** The id of the drawing for cast member `key` of world `worldId` (stable, so unfinished work is found again). */
-export async function artIdFor(worldId: WorldId, key: CastKey): Promise<ArtId> {
-  const hex = await sha256Hex(new TextEncoder().encode(`desk:${worldId}/${key}`));
-  let id = 'a_';
-  for (let i = 0; i < 10; i++) id += BASE36[parseInt(hex.slice(i * 2, i * 2 + 2), 16) % 36];
-  return id;
-}
+export { artIdFor } from './artId';
 
 export interface Opened {
   doc: ArtDoc;

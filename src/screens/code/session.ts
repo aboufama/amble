@@ -23,7 +23,7 @@ import { lineChanges, nearLine } from './cm/lineEdits';
 import { lintSources, toDiagnostic, type CodeIssue } from './cm/lint';
 import { isLineLocked, lockBypass, lockedLines, setLocked } from './cm/locked';
 import { createView, fileState } from './cm/setup';
-import type { LookInsideRequest } from './open';
+import { codeDraftKey as draftKey, type LookInsideRequest } from './open';
 import { runIt, type FileEdit } from './run';
 
 export type RunState =
@@ -68,10 +68,6 @@ const DRAFT_DELAY_MS = 800;
 /** game.js first, then helpers (the order students read them in). */
 export function tabOrder(code: readonly CodeFile[]): string[] {
   return [...code.map((f) => f.path)].sort((a, b) => (a === 'game.js' ? -1 : b === 'game.js' ? 1 : a.localeCompare(b)));
-}
-
-function draftKey(worldId: string): string {
-  return `code-draft:${worldId}`;
 }
 
 /** The AI helper's answer as a note (with its notes for line ranges). */

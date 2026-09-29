@@ -19,6 +19,8 @@ import type { HistoryApi } from '../history/api';
 import { t } from '../i18n';
 import { blobRefOf, hexOfRef, uid } from '../model/ids';
 import type { ArtExport, ArtId, ArtKind, ArtRecord, BlobRef, CastKey, Facing, PartLayers, RigKind, Role, World, WorldId } from '../model/types';
+import { adoptWorld } from '../state/session';
+import { getState } from '../state/store';
 import type { Store } from '../store/api';
 import { keepStrokeLog } from './drafts';
 import type { PackedFlipbook } from './flipbook';
@@ -72,6 +74,30 @@ export interface BringDeps {
   rig(source: RigSource, req: AutoRigRequest & { lane?: string }): Promise<{ rig: RigData; confidence: number; notes: string[]; issues: string[] }>;
   sticker(flat: Blob): Promise<Blob>;
   export(doc: ArtDoc, maxSide: number, pairs: Array<{ name: string; layers: string[] }>): Promise<ArtExportResult | null>;
+  /**
+   * The world open in the session, when it is this one: its copy is the newest (the autosave may not have
+   * written it yet), and the committed world goes back into it, or that copy would later be saved over it.
+   */
+  session?: SessionLink;
+}
+
+export interface SessionLink {
+  world(id: WorldId): World | null;
+  adopt(world: World, key: CastKey): void;
+}
+
+/** The app's session: the open world's copy, and the drawing's slot and footstep back into it. */
+export function sessionLink(): SessionLink {
+  return {
+    world: (id) => {
+      const open = getState().session.world;
+      return open?.id === id ? open : null;
+    },
+    adopt: (world, key) =>
+      void adoptWorld(world, (w, committed) => {
+        w.cast[key] = committed.cast[key];
+      }),
+  };
 }
 
 /** The rig kind a drawing gets bones for; null for 'none' (not rigged). */
@@ -115,6 +141,7 @@ function defaultDeps(): BringDeps {
     player: s.player,
     rig: (source, req) => rigWorker.autoRig(source, req),
     sticker: (flat) => makeSticker(flat),
+    session: sessionLink(),
     // The Desk usually hands in its own export (made in the worker); this one makes the same part composites.
     export: (doc, maxSide, pairs) => exportArt(doc, { maxSide, scale: 1, thumbSize: 128, ...(pairs.length ? { pairs } : {}) }),
   };
@@ -220,7 +247,9 @@ export async function bringToLife(input: BringToLifeInput, deps: BringDeps = def
   let world: World | null = null;
   const key = input.castKey;
   if (input.worldId && key) {
-    const w = await store.worlds.get(input.worldId);
+    const stored = await store.worlds.get(input.worldId);
+    const open = deps.session?.world(input.worldId) ?? null;
+    const w = open && (!stored || open.updatedAt >= stored.updatedAt) ? open : stored;
     if (w) {
       const slot = w.cast[key] ?? { key, art: null, madeBy: null, extra: null, laterUntil: 0 };
       world = { ...w, cast: { ...w.cast, [key]: { ...slot, art: record.id, madeBy: 'student' } }, updatedAt: now };
@@ -247,6 +276,7 @@ export async function bringToLife(input: BringToLifeInput, deps: BringDeps = def
     } catch (err) {
       console.warn('The footstep was not recorded:', err);
     }
+    deps.session?.adopt(world, key);
   }
 
   let drawn: DrawnArt | null = null;

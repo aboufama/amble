@@ -79,12 +79,23 @@ export function sameArt(record: ArtRecord, entry: ArtEntry): boolean {
   );
 }
 
+/** Whether games see the same drawing (export and bones), whatever the Desk saved since. */
+function sameInGame(record: ArtRecord, entry: ArtEntry): boolean {
+  return (
+    (record.export?.hash ?? null) === (entry.export?.hash ?? null) &&
+    (record.export?.flat ?? null) === (entry.export?.flat ?? null) &&
+    sameRig(record.rigData, entry.rigData)
+  );
+}
+
 /**
  * A drawing brought back to a snapshot's version, or null when it already is. The version goes up (never
- * back), because caches and the running game key drawings by version and hash.
+ * back), because caches and the running game key drawings by version and hash. When games saw the same
+ * drawing then as now, only the Desk's unfinished work (saved at a checkpoint, not brought to life yet)
+ * is newer: no footstep holds it, so Go back leaves it where it is.
  */
 export function restoreArt(record: ArtRecord, entry: ArtEntry, now: number): ArtRecord | null {
-  if (sameArt(record, entry)) return null;
+  if (sameArt(record, entry) || sameInGame(record, entry)) return null;
   return {
     ...record,
     doc: entry.doc,

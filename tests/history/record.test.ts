@@ -152,6 +152,23 @@ describe('goBack', () => {
     expect(forward.steps).toHaveLength(6);
   });
 
+  it("keeps the drawing the student is still working on at the Desk when games saw the same one", async () => {
+    const world = await open();
+    clock += 60_000;
+    const withDial = await history.record({ ...world, dials: { jump: 900 } }, { kind: 'dials', by: 'student', text: 'You turned Jump height up to 900.' });
+    // Redrawing the hero at the Desk, saved at a checkpoint but not brought to life yet: new pixels, the
+    // same export and bones (what games load).
+    clock += 60_000;
+    const working = { ...(await store.art.get('a_hero000001'))!, doc: REF_C, cels: [REF_C], updatedAt: clock };
+    await store.commit({ art: [working] });
+    clock += 60_000;
+    const back = await history.goBack(withDial, world.head);
+    expect(back.dials).toEqual(world.dials);
+    const hero = await store.art.get('a_hero000001');
+    expect(hero?.doc).toBe(REF_C);
+    expect(hero?.cels).toEqual([REF_C]);
+  });
+
   it('keeps drawn members added later as resting members', async () => {
     const world = await open();
     const withNew = { ...world, cast: { ...world.cast, pizza: { key: 'pizza', art: 'a_pizza00001', madeBy: 'student' as const, extra: null, laterUntil: 0 } } };

@@ -8,7 +8,8 @@ import { getServices } from '../app/services';
 import { playerPrefsFrom } from '../app/player/prefs';
 import type { GameManifest } from '../cores/play';
 import type { ArtId, World, WorldId } from '../model/types';
-import { getState, setState } from '../state/store';
+import { adoptWorld } from '../state/session';
+import { getState } from '../state/store';
 import { safeBaseName, worldFileName } from '../files/names';
 import { toInitMessage } from '../world/init';
 import { castFromCode, type CastInfo } from './assignment';
@@ -26,15 +27,19 @@ export async function loadWorld(id: WorldId): Promise<World | null> {
   return getServices().store.worlds.get(id);
 }
 
-/** Saves a changed world (one commit) and keeps the open session's copy in step. */
+/**
+ * Saves the hand-in fields (initials, the file, turned in, its footstep) in one commit. When the world is
+ * open they go onto the session's copy first, so edits made while the file picker was open (an AI change
+ * landing) stay, and the autosave never writes an older copy over them.
+ */
 export async function commitWorld(next: World): Promise<World> {
-  await getServices().store.commit({ worlds: [next] });
-  if (getState().session.world?.id === next.id) {
-    setState((s) => {
-      s.session.world = next;
-    });
-  }
-  return next;
+  const merged =
+    adoptWorld(next, (w, c) => {
+      w.credits = c.credits;
+      w.handIn = c.handIn;
+    }) ?? next;
+  await getServices().store.commit({ worlds: [merged] });
+  return merged;
 }
 
 /** The cast as the running game reports it, else as `static art` declares it. */

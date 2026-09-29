@@ -15,6 +15,8 @@ import {
   closeWorld,
   flushWorld,
   gameSignature,
+  isLoaded,
+  loadGame,
   openWorld,
   patchSession,
   setDial,
@@ -106,6 +108,21 @@ describe('openWorld', () => {
     await openWorld(other.id);
     expect(getState().session.world?.id).toBe(other.id);
     expect(getState().session.mode).toBe('play');
+  });
+
+  it('knows when another screen put another game in the player (a Desk preview, the gallery)', async () => {
+    let loads = 0;
+    player.load.mockImplementation(async () => {
+      loads++;
+      return MANIFEST;
+    });
+    (player as unknown as { loadCount(): number }).loadCount = () => loads;
+    const open = getState().session.world!;
+    await loadGame(open);
+    expect(isLoaded(open)).toBe(true);
+    // The Teacher desk's gallery plays a student's world in the same player.
+    await player.load();
+    expect(isLoaded(open)).toBe(false);
   });
 
   it('signs a game by its code, sounds and controls, not by its dials', () => {

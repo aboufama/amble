@@ -5,6 +5,7 @@
  * never blocks.
  */
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCommand } from '../../app/keys';
 import { navigate } from '../../app/router';
 import type { RouteOf } from '../../app/routes';
 import { useServices } from '../../app/services';
@@ -83,6 +84,7 @@ export function HandInSheet({ route }: { route: RouteOf<'handin'> }) {
   const [fileName, setFileName] = useState('');
   const [nameEdited, setNameEdited] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [turning, setTurning] = useState(false);
   const [saveProblem, setSaveProblem] = useState<string | null>(null);
   const [nudge, setNudge] = useState(false);
   const saveRef = useRef<HTMLButtonElement>(null);
@@ -143,6 +145,12 @@ export function HandInSheet({ route }: { route: RouteOf<'handin'> }) {
     };
   }, [worldId, assignment0, code0]);
 
+  // Ctrl+S here is step 1: the file with the initials, not the world's plain save behind the sheet.
+  const saveNow = useRef<() => void>(() => undefined);
+  useCommand('save', () => {
+    saveNow.current();
+  });
+
   if (missing) {
     return (
       <Dialog open size="sm" title={t('school.handinTitle')} onClose={close} className="handin" actions={<Button variant="lantern" onClick={() => navigate({ name: 'trail', view: 'trail' })}>{t('school.handinMissingBack')}</Button>}>
@@ -196,21 +204,31 @@ export function HandInSheet({ route }: { route: RouteOf<'handin'> }) {
     }
   };
 
+  saveNow.current = () => void save();
+
   const turnIn = async () => {
-    if (!world) return;
+    if (!world || turning) return;
     if (!saved) {
       setNudge(true);
       saveRef.current?.focus();
       return;
     }
-    const at = Date.now();
-    const recorded = await services.history.record(world, { kind: 'handin', by: 'student', text: t('school.stepHandedIn', { name: saved.fileName ?? fileName }) });
-    const next: World = { ...recorded, handIn: { ...recorded.handIn, turnedInAt: at } };
-    setWorld(await commitWorld(next));
-    const said = t('school.handedIn', { time: time(at) });
-    showToast(said, { kind: 'success' });
-    announce(said);
-    close();
+    setTurning(true);
+    try {
+      const at = Date.now();
+      const recorded = await services.history.record(world, { kind: 'handin', by: 'student', text: t('school.stepHandedIn', { name: saved.fileName ?? fileName }) });
+      const next: World = { ...recorded, handIn: { ...recorded.handIn, turnedInAt: at } };
+      setWorld(await commitWorld(next));
+      const said = t('school.handedIn', { time: time(at) });
+      showToast(said, { kind: 'success' });
+      announce(said);
+      close();
+    } catch (err) {
+      console.warn('Turning it in was not recorded:', err);
+      showToast(t('school.turnInFailed'), { kind: 'error' });
+    } finally {
+      setTurning(false);
+    }
   };
 
   const title = (
@@ -232,7 +250,7 @@ export function HandInSheet({ route }: { route: RouteOf<'handin'> }) {
           <Button variant="ghost" onClick={close}>
             {t('school.backToWorld')}
           </Button>
-          <Button variant="lantern" icon={turnedIn ? 'check' : undefined} onClick={() => void turnIn()} data-testid="turned-in">
+          <Button variant="lantern" icon={turnedIn ? 'check' : undefined} busy={turning} onClick={() => void turnIn()} data-testid="turned-in">
             {turnedIn ? t('school.turnedInAgain', { time: time(turnedIn) }) : t('school.turnedIn')}
           </Button>
         </>

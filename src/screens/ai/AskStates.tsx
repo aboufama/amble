@@ -65,9 +65,12 @@ const LOCAL_ONLY = new Set(['off', 'offline', 'expired']);
 
 type LocalRefusal = { note: string; alternatives: string[] };
 
-/** The words stay in the field after a failure, a stop or an unavailable helper. */
-function keptWords(outcome: AiOutcome | null, request: string | undefined): string {
-  if (!outcome || !request) return '';
+/**
+ * The words stay in the field after a failure, a stop or an unavailable helper (the student's own words:
+ * a fix from the problem card has none to give back).
+ */
+function keptWords(outcome: AiOutcome | null, request: string | undefined, task: string | undefined): string {
+  if (!outcome || !request || task === 'fix') return '';
   return outcome.kind === 'failed' || outcome.kind === 'cancelled' || outcome.kind === 'unavailable' ? request : '';
 }
 
@@ -84,7 +87,7 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
   const school = useStore((s) => s.config.school);
   const level = ai?.levelFor(world) ?? 'middle';
 
-  const [text, setText] = useState(() => keptWords(outcome, outcomeFor?.request));
+  const [text, setText] = useState(() => keptWords(outcome, outcomeFor?.request, outcomeFor?.task));
   const [verdict, setVerdict] = useState<SafetyVerdict | null>(null);
   const [anyway, setAnyway] = useState(false);
   const [localRefusal, setLocalRefusal] = useState<LocalRefusal | null>(null);
@@ -112,7 +115,7 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
     if (!outcomeFor || outcomeFor.at === handled.current) return;
     handled.current = outcomeFor.at;
     if (outcome?.kind === 'accepted') setText((cur) => (cur.trim() === outcomeFor.request.trim() ? '' : cur));
-    const words = keptWords(outcome, outcomeFor.request);
+    const words = keptWords(outcome, outcomeFor.request, outcomeFor.task);
     if (words) setText((cur) => cur || words);
   }, [outcome, outcomeFor]);
 
