@@ -32,9 +32,16 @@ function report(shell: EditorShell): void {
   shell.post({ type: 'objects', items: collectObjects(game, MAX_OBJECTS).map((f) => f.item) });
 }
 
-/** Redraws a paused game so an outline change shows (a running game draws it on its next frame). */
+/**
+ * Redraws a paused game so an outline change shows (a running game draws it on its next frame). A new
+ * post-FX pipeline draws its first frame empty, so a paused game draws once more on the next frame.
+ */
 function redraw(shell: EditorShell): void {
-  if (shell.paused()) shell.render();
+  if (!shell.paused()) return;
+  shell.render();
+  requestAnimationFrame(() => {
+    if (shell.paused()) shell.render();
+  });
 }
 
 function setMode(shell: EditorShell, next: 'play' | 'change'): void {
