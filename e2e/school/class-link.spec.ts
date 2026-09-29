@@ -4,7 +4,7 @@
  * to switch.
  */
 import { classLinkPayload, expect, openAmble, TEST_CLASS, test, waitForApp } from '../helpers/app';
-import { mockAi } from '../helpers/mockAi';
+import { AI_BASE, mockAi } from '../helpers/mockAi';
 
 test('Join turns the AI helper on, and Leave this class turns it off', async ({ page }) => {
   await mockAi(page);
@@ -13,6 +13,8 @@ test('Join turns the AI helper on, and Leave this class turns it off', async ({ 
   const card = page.getByRole('dialog');
   await expect(card.getByRole('heading', { name: 'Join Test class?' })).toBeVisible();
   await expect(card).toContainText('Your drawings stay yours and stay here.');
+  // The class and district names come from the link: the card also says where the words will go.
+  await expect(card.getByTestId('join-host')).toHaveText(`Your words will go to ${new URL(AI_BASE).host}.`);
   await card.getByRole('button', { name: 'Join', exact: true }).click();
   await expect(card).toBeHidden();
   await expect(page.getByTestId('toasts').getByText('You joined Test class.')).toBeVisible();

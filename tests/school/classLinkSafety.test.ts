@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { classLinkToCore, loadClassLink, parseClassLink, resolveAiConfig, saveClassLink } from '../../src/cores/ai';
 import { readIntake, toBase64Url } from '../../src/school/classLink';
+import { joinHost } from '../../src/screens/join/JoinCard';
 import { sampleAssignment, sampleClassLink } from '../foundation/samples';
 
 const fragment = (v: unknown) => `#class=${toBase64Url(JSON.stringify(v))}`;
@@ -72,5 +73,14 @@ describe('a class code with a space in it', () => {
     expect(loadClassLink(storage)?.code).toBe('MAPLE 7Q2K');
     const config = await resolveAiConfig({ local: storage, session: null, env: {}, managed: null, dev: false, now: NOW });
     expect(config.auth).toEqual({ type: 'class-code', header: 'X-Amble-Class', code: 'MAPLE 7Q2K' });
+  });
+});
+
+describe('the Join card', () => {
+  it('names the address the words will go to, so a link to somewhere else looks different', () => {
+    expect(joinHost(sampleClassLink())).toBe('ai.test');
+    expect(joinHost(sampleClassLink({ ai: { baseUrl: 'https://ai.sau99.org:8443/v1', model: 'm', auth: { type: 'none' } } }))).toBe('ai.sau99.org:8443');
+    expect(joinHost(sampleClassLink({ mode: 'off' }))).toBeNull();
+    expect(joinHost(sampleClassLink({ ai: null }))).toBeNull();
   });
 });

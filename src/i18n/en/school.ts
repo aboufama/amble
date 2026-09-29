@@ -13,6 +13,7 @@ export const school = {
   joinBodyExplain: "Your teacher's AI helper will turn on for Amble on this Chromebook, to explain code. Your drawings stay yours and stay here.",
   joinBodyNoAi: 'Amble will know your class on this Chromebook. Your drawings stay yours and stay here.',
   joinFrom: 'Class link from {district}',
+  joinHost: 'Your words will go to {host}.',
   join: 'Join',
   notNow: 'Not now',
   joined: 'You joined {cls}.',
