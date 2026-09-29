@@ -16,7 +16,7 @@ export type AmbleWindow = {
 
 export { openFixtureWorld } from '../helpers/fixtureWorld';
 
-/** Mounts the AI cards over the page: the Ask card, the steer toast and the build pill, or What Amble sends. */
+/** Mounts the AI cards over the page: the wish box, the wish toast and the build pill, or What Amble sends. */
 export async function mountHarness(page: Page, view: 'ask' | 'sent' = 'ask'): Promise<void> {
   await page.evaluate(async (v) => {
     const url = '/src/screens/ai/harness.tsx';
@@ -24,6 +24,15 @@ export async function mountHarness(page: Page, view: 'ask' | 'sent' = 'ask'): Pr
     harness.mountAiHarness({ view: v });
   }, view);
   await expect(page.getByTestId(view === 'sent' ? 'ai-sent' : 'ai-ask')).toBeVisible();
+}
+
+/** Takes the harness off the page (before going to a screen that shows the cards itself, like the Desk). */
+export async function unmountHarness(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const url = '/src/screens/ai/harness.tsx';
+    const harness = await import(/* @vite-ignore */ url);
+    harness.unmountAiHarness();
+  });
 }
 
 /**
@@ -46,22 +55,13 @@ export async function pauseGame(page: Page): Promise<void> {
   );
 }
 
-/** Marks the AI explainer as seen on this device (most specs are not about it). */
-export async function skipExplainer(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    (window as unknown as AmbleWindow).__amble.setState((s) => {
-      s.prefs.seen.aiExplainer = Date.now();
-    });
-  });
-}
-
-/** Types into the Ask field and presses ★ Ask. */
+/** Types a wish into the field and presses Make it happen. */
 export async function ask(page: Page, words: string): Promise<void> {
   await page.getByTestId('ai-field').fill(words);
   await page.getByTestId('ai-send').click();
 }
 
-/** The Ask card's state (`data-state`). */
+/** The wish box's state (`data-state`). */
 export function askState(page: Page) {
   return page.getByTestId('ai-ask');
 }

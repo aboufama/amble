@@ -46,7 +46,7 @@ test('idea → plan → draw while it builds → tested build → Bring to life 
   // The build is robot-tested and accepted while the student draws.
   await drawOnDesk(page);
   await expect(pill).toHaveAttribute('data-state', 'ready', { timeout: 180_000 });
-  await expect(pill).toHaveText('Your world is ready · tested');
+  await expect(pill).toHaveText('Your world is ready!');
   const built = await page.evaluate((id) => (window as unknown as { __amble: { store: { worlds: { get(id: string): Promise<{ code: Array<{ path: string; source: string }>; steps: Array<{ by: string; kind: string }> } | null> } } } }).__amble.store.worlds.get(id), worldId);
   expect(built?.code.find((f) => f.path === 'game.js')?.source.startsWith('// MOON KING')).toBe(true);
   expect(built?.steps.at(-1)).toMatchObject({ by: 'ai', kind: 'ask' });

@@ -58,7 +58,7 @@ test('every starter and every world type plays under the robot with 0 errors', a
   expect(outsideRequests(guards.egress, new URL(baseURL!).origin)).toEqual([]);
 });
 
-test('a seed plays as just bones; dials, twists and the off Ask card work with no AI', async ({ page, guards, baseURL }) => {
+test('a seed plays as just bones; dials, twists and the resting wish box work with no AI', async ({ page, guards, baseURL }) => {
   test.setTimeout(180_000);
   await openAmble(page, { clean: true });
   await openSeed(page, 'moon-king');
@@ -77,8 +77,9 @@ test('a seed plays as just bones; dials, twists and the off Ask card work with n
   expect(seen.shown.length).toBeGreaterThan(0);
   expect(seen.untagged).toEqual([]);
 
-  // The Ask card says the AI is off, and points at what still works.
-  await expect(page.getByTestId('ask-card')).toContainText('The AI helper is off here.');
+  // The wish box rests in one quiet line that points at what still works (no set-up button, no AI words).
+  await expect(page.getByTestId('ai-status')).toHaveText('Wishes are resting right now. Dials and Twists still work.');
+  await expect(page.getByTestId('ai-ask')).not.toContainText(/\bAI\b|set up/i);
 
   // A dial changes the running game at once.
   await page.getByRole('radio', { name: 'Change' }).click();
