@@ -398,7 +398,7 @@ export function createAiService(env: AiEnv): AmbleAi {
           },
           seed: ++jobs,
         },
-        { onProgress: o.onProgress, onArt: o.onArt },
+        { onProgress: o.onProgress, onArt: o.onArt, onWait: o.onWait },
         o.signal,
       );
       if (result.kind === 'accepted' && result.robot) robots.set(job.world.id, result.robot.summary);

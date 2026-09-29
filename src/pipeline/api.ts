@@ -32,6 +32,8 @@ export interface JobOptions {
   onProgress(p: AiProgress): void;
   /** New cast members as soon as the streamed `static art` closes. */
   onArt?(specs: ArtNeed[]): void;
+  /** A retry wait and why (M5's Ask card shows "busy" for a 429 and "queued" otherwise). */
+  onWait?(ms: number, reason: 'rate-limited' | 'server' | 'network'): void;
 }
 
 export interface AiService {

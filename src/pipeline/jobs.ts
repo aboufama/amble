@@ -30,7 +30,7 @@ export interface ChatCall {
   signal: AbortSignal;
   onDelta(delta: string, text: string): void;
   /** The transport is waiting before a retry (429 with Retry-After, 5xx, network). */
-  onWaiting(ms: number, reason: 'rate-limited' | 'server' | 'network'): void;
+  onWaiting(ms: number, reason: WaitReason): void;
 }
 
 export interface ChatReply {
@@ -78,10 +78,15 @@ export type JobResult =
 
 type Failed = Extract<JobResult, { kind: 'failed' }>;
 
+/** Why a request is waiting before it is sent again: a 429, a server error or a dropped connection. */
+export type WaitReason = 'rate-limited' | 'server' | 'network';
+
 export interface JobEvents {
   onProgress(p: AiProgress): void;
   /** New cast members, as soon as a streamed game.js declares them. */
   onArt?(needs: ArtNeed[]): void;
+  /** A retry wait, with its reason (the Ask card's busy and queued copy differ). */
+  onWait?(ms: number, reason: WaitReason): void;
 }
 
 class Stopped extends Error {}
@@ -188,7 +193,10 @@ async function run(job: CodeJob, deps: JobDeps, events: JobEvents, signal: Abort
         stream.feed(delta);
         tick(false, text.length);
       },
-      onWaiting: (ms) => events.onProgress({ phase: 'queued', waitMs: ms }),
+      onWaiting: (ms, reason) => {
+        events.onWait?.(ms, reason);
+        events.onProgress({ phase: 'queued', waitMs: ms });
+      },
     });
     stop();
     // A proxy that answered a stream request with plain JSON may deliver everything at the end.
