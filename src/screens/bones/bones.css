@@ -900,6 +900,11 @@
   padding: 14px 18px;
 }
 
+/* the panel scrolls when short; its parts never squeeze */
+.bones-side > * {
+  flex-shrink: 0;
+}
+
 .bones-side__section {
   display: flex;
   flex-direction: column;
@@ -932,6 +937,7 @@
 .move-stage {
   --stage-h: clamp(120px, calc(100vh - 538px), 230px);
   position: relative;
+  container: move-stage / size;
   height: var(--stage-h);
   overflow: hidden;
   border-radius: 16px;
@@ -985,6 +991,13 @@
   gap: 4px;
   font: var(--type-meta);
   color: var(--text-2);
+}
+
+/* a short stage (small screens) keeps its ground clear of words */
+@container move-stage (max-height: 170px) {
+  .move-stage__toy {
+    display: none;
+  }
 }
 
 .move-stage__toy .keycap {
@@ -1259,11 +1272,22 @@
   display: none;
 }
 
+/* small: the tools are icons (their words stay, visually hidden, as their names) */
 :root[data-layout='small'] .bones-tools .btn__label {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+:root[data-layout='small'] .bones-tools .btn .icon {
+  display: inline-block;
 }
 
 :root[data-layout='small'] .bones-tools .btn {
+  position: relative;
   width: var(--btn-h);
   padding: 0;
 }
@@ -1272,16 +1296,24 @@
   display: none;
 }
 
+/* portrait: the sky on top, the moves below it; the panel scrolls inside, the page stays put */
 :root[data-layout='portrait'] .screen.bones-screen {
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   grid-template-areas:
     'top'
     'main'
     'aside';
+  height: 100%;
+  min-height: 0;
 }
 
 :root[data-layout='portrait'] .bones-main {
-  grid-template-rows: auto 70vh;
+  grid-template-rows: auto 52vh;
+}
+
+:root[data-layout='portrait'] .bones-side {
+  margin-top: 12px;
 }
 
 :root[data-layout='portrait'] .bones-tools {

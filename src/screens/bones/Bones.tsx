@@ -86,6 +86,8 @@ function BonesFrame({ route, view, status, actions, children, aside, onBack }: F
             to={drawingRoute(route)}
             className="btn btn--ghost btn--h44 topbar__back"
             onClick={(e) => {
+              // a plain click goes back to the drawing (a ctrl- or middle-click opens it in a new tab)
+              if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
               e.preventDefault();
               onBack?.();
               goBackTo(drawingRoute(route));

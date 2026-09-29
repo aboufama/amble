@@ -6,13 +6,13 @@
  */
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import { t } from '../../i18n';
-import { CHARACTER_KINDS, type CharacterKind } from '../../cores/rig';
+import type { CharacterKind } from '../../cores/rig';
 import type { Facing } from '../../model/types';
 import { Button, KindIcon, Popover, kindWord } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { rovingIndex } from '../../ui/a11y';
 import { cx } from '../../ui/cx';
-import { facingPhrase, kindPhrase } from '../../bones/kindWords';
+import { KINDS, facingPhrase, kindPhrase } from '../../bones/kindWords';
 import './kindPicker.css';
 
 export interface KindPickerProps {
@@ -52,11 +52,11 @@ export function KindPicker({ value, facing, onChange, compact = false, open, onO
   const aria = unset ? t('bones.kindAsk') : t('bones.kindPillLabel', { kind: kindPhrase(value), facing: facingPhrase(facing) });
 
   const onKindKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
-    const next = rovingIndex(e.key, i, CHARACTER_KINDS.length, 'both');
+    const next = rovingIndex(e.key, i, KINDS.length, 'both');
     if (next === null) return;
     e.preventDefault();
     kindRefs.current[next]?.focus();
-    onChange(CHARACTER_KINDS[next], facing);
+    onChange(KINDS[next], facing);
   };
 
   const onLookKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
@@ -95,7 +95,7 @@ export function KindPicker({ value, facing, onChange, compact = false, open, onO
           <span className="kind-card__hint">{t('bones.kindHint')}</span>
         </div>
         <div role="radiogroup" aria-labelledby={titleId} className="kind-card__kinds">
-          {CHARACTER_KINDS.map((kind, i) => {
+          {KINDS.map((kind, i) => {
             const on = !unset && kind === value;
             return (
               <button

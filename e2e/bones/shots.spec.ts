@@ -128,3 +128,17 @@ for (const size of SIZES) {
     await shot('11-missing');
   });
 }
+
+test('Bones at the other layout sizes', async ({ page }) => {
+  await openAmble(page, { clean: true });
+  const s = await seedDrawing(page, { sample: 'hero', name: 'Pip' });
+  for (const [w, h] of [[1366, 657], [1280, 600], [1024, 600], [800, 1280]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.evaluate((hash) => (location.hash = hash), `#/bones/${s.artId}`);
+    await expect(page.getByTestId('bones-status')).toContainText(/bones/);
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: `${DIR}/20-size-${w}x${h}.png`, fullPage: h > w });
+    await page.evaluate(() => (location.hash = '#/settings'));
+    await page.waitForTimeout(300);
+  }
+});

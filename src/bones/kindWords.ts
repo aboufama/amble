@@ -6,6 +6,12 @@ import { t, type MessageKey } from '../i18n';
 import type { CharacterKind } from '../cores/rig';
 import type { Facing } from '../model/types';
 
+/**
+ * The six kinds in picker order: the rig's CHARACTER_KINDS, written out so the kind picker (on the First
+ * page) imports nothing of the rig engine at run time. A test keeps the two lists equal.
+ */
+export const KINDS: readonly CharacterKind[] = ['biped', 'quadruped', 'flyer', 'swimmer', 'blob', 'object'];
+
 const KIND_PHRASES: Record<CharacterKind, MessageKey> = {
   biped: 'bones.kindBiped',
   quadruped: 'bones.kindQuadruped',

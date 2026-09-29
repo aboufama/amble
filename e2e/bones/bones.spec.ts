@@ -3,6 +3,7 @@
  * Mirror sides, What is it?, Feel, wiggly bits, Remove, undo, and Done (made by hand, a footstep, back
  * where the student came from). No AI anywhere: Magic bones and the rest run on the device.
  */
+import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, gotoRoute, openAmble, test } from '../helpers/app';
 import { readArt, readSteps, seedDrawing } from './seed';
@@ -279,4 +280,40 @@ test('a drawing with no kind yet asks what it is, then finds its bones', async (
   await card.getByRole('radio', { name: 'Blob' }).click();
   await expect(page.getByTestId('bones-status')).toContainText(/Amble found \d+ bone/);
   await savedRig(page, artId, (a) => a.rigData?.kind === 'blob' && a.rig === 'blob');
+});
+
+test('Bones has no WCAG 2.1 A/AA problems (axe), with its cards open too', async ({ page }) => {
+  const { artId } = await seedDrawing(page, { sample: 'hero', name: 'Pip' });
+  await openBones(page, `#/bones/${artId}`);
+  await page.waitForTimeout(600);
+  const scan = async (what: string) => {
+    const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+    expect(r.violations.map((v) => `${what}: ${v.id} (${v.nodes.length}) ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(', ')}`)).toEqual([]);
+  };
+  await scan('screen');
+  await page.getByRole('button', { name: /^Left elbow/ }).focus();
+  await scan('a star with its name');
+  await page.getByRole('button', { name: /What is it\?/ }).click();
+  await scan('What is it?');
+  await page.keyboard.press('Escape');
+  await page.getByRole('tree').getByRole('treeitem').first().focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.bone-card')).toBeVisible();
+  await scan("a bone's card");
+});
+
+test('no page scroll, and the key controls show, at every layout size', async ({ page }) => {
+  const { artId } = await seedDrawing(page, { sample: 'hero', name: 'Pip' });
+  for (const [w, h] of [[1366, 768], [1366, 657], [1280, 800], [1280, 600], [1024, 600], [800, 1280]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await openBones(page, `#/bones/${artId}`);
+    const size = `${w}x${h}`;
+    const scroll = await page.evaluate(() => ({ h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth, ih: innerHeight, iw: innerWidth }));
+    expect(scroll.w, size).toBeLessThanOrEqual(scroll.iw);
+    if (w > h) expect(scroll.h, size).toBeLessThanOrEqual(scroll.ih);
+    for (const control of [page.getByRole('button', { name: 'Done' }), page.getByRole('button', { name: 'Magic bones' }), page.getByRole('button', { name: /^Left elbow/ })]) {
+      await expect(control, size).toBeInViewport();
+    }
+    await gotoRoute(page, '#/settings');
+  }
 });

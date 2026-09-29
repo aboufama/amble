@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { t } from '../../src/i18n';
 import { CHARACTER_KINDS, addDynamic, clipsFor, jointList, resolveClip, templateFor, type FitIssue } from '../../src/cores/rig';
 import { ISSUE_CODES, JOINT_KEYS, boneName, guessReasons, issueText, issuesFromNotes, jointName, movesFor, firstMove, moveWord, nowWord, starsOf } from '../../src/bones/words';
-import { facingWord, kindPhrase, rigFacing } from '../../src/bones/kindWords';
+import { KINDS, facingWord, kindPhrase, rigFacing } from '../../src/bones/kindWords';
 
 describe('joint and bone words', () => {
   it('has words for every star of every kind (never the core English, never the fallback)', () => {
@@ -82,6 +82,10 @@ describe('moves, kinds and facing', () => {
     expect(movesFor('flyer')[0]).toBe('fly');
     expect(movesFor('swimmer')[0]).toBe('swim');
     expect(clipsFor('biped')).toContain('walk');
+  });
+
+  it('lists the same kinds as the rig core, in the same order', () => {
+    expect([...KINDS]).toEqual([...CHARACTER_KINDS]);
   });
 
   it('says every kind and turns facing both ways', () => {
