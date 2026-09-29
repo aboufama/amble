@@ -161,6 +161,9 @@ function TrailScene({ still, lit }: SceneProps) {
 
   const starterList = useMemo(() => starters.list(), [starters]);
   const hasCharacters = characters.length > 0;
+  // A student with worlds on the Trail is back, even without a free drawing yet: "Welcome back." with
+  // **+ New world**, never the first visit's "Play a world first" (the lamppost still waits for a character).
+  const returning = hasCharacters || worlds.some((w) => w.putAwayAt === null);
   const latest = latestCharacter(characters);
   const resting = useMemo(() => restingCharacters(characters, worlds), [characters, worlds]);
   const assignment = pendingAssignment(classAsg, worlds);
@@ -185,7 +188,7 @@ function TrailScene({ still, lit }: SceneProps) {
       ro.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, [hasCharacters]);
+  }, [returning]);
 
   // ◂ ▸ know when the trail has more to show.
   useEffect(() => {
@@ -351,8 +354,8 @@ function TrailScene({ still, lit }: SceneProps) {
       <div className="trail__banner">
         <StorageBanner />
       </div>
-      <div ref={copy} className={cx('trail-copy', hasCharacters && 'trail-copy--back')}>
-        {hasCharacters ? (
+      <div ref={copy} className={cx('trail-copy', returning && 'trail-copy--back')}>
+        {returning ? (
           <div className="trail-copy__back">
             <h1 className="trail-copy__welcome">{t('home.welcomeBack')}</h1>
             <Link to={{ name: 'new', hero: null, idea: false }} className="btn btn--lantern btn--h44" data-testid="new-world">
@@ -389,7 +392,7 @@ function TrailScene({ still, lit }: SceneProps) {
             </p>
           </>
         )}
-        {hasCharacters && shared && (
+        {returning && shared && (
           <p className="trail-copy__trust">
             <Icon name="lock" size={18} />
             <span>{t('home.trustShared')}</span>
