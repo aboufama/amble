@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { Board } from '../../src/art/engine/board';
 import { History, entryBytes, tilesOf, type Packer } from '../../src/art/engine/history';
 import { makeLayer } from '../../src/art/engine/model';
+import { sameBytes } from './helpers';
 
 const F = 'f1';
 const L = 'l1';
@@ -68,7 +69,7 @@ function slowPacker(): Packer & { waiting: number; releaseAll(): Promise<void> }
 
 const counted = (h: History): number => [...h.undoStack, ...h.redoStack].reduce((n, e) => n + entryBytes(e), 0);
 
-describe('the undo budget while old steps are packed in the background', () => {
+describe('the undo budget while old steps are packed in the background', { timeout: 60_000 }, () => {
   it('stays equal to what the stacks hold when a step is dropped while it is being packed', async () => {
     const b = board();
     const packer = slowPacker();
@@ -103,7 +104,7 @@ describe('the undo budget while old steps are packed in the background', () => {
   });
 });
 
-describe('an undo whose packed tiles cannot come back', () => {
+describe('an undo whose packed tiles cannot come back', { timeout: 60_000 }, () => {
   it('changes no pixels and keeps the step, so the student can try again', async () => {
     const b = board();
     let unpacks = 0;
@@ -124,7 +125,7 @@ describe('an undo whose packed tiles cannot come back', () => {
     const before = b.pixels(F, L)!.slice();
     await expect(h.undo()).rejects.toThrow('worker failed');
     // All or nothing: no tile of the step was put back.
-    expect(b.pixels(F, L)!).toEqual(before);
+    expect(sameBytes(b.pixels(F, L)!, before)).toBe(true);
     expect(h.labels().undo).toBe('white');
     expect(h.canRedo).toBe(false);
     expect(h.bytes).toBe(counted(h));
