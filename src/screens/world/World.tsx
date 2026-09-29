@@ -122,6 +122,11 @@ export function World({ route }: { route: RouteOf<'world'> }) {
         if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
         else frameRef.current?.querySelector<HTMLElement>('#game')?.focus({ preventScroll: true });
       },
+      // Nothing to show: never a loading screen with no way out.
+      onMissing: () => {
+        showToast(t('world.notFound'));
+        navigate({ name: 'trail', view: 'trail' }, { replace: true });
+      },
     });
     controller.current = c;
     void c.start().then(() => afterStart());

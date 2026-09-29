@@ -191,6 +191,7 @@ export const world = {
   problemPlain: 'Something in the game broke.',
   problemTwist: 'The twist {name} broke something in this world.',
   askFix: 'Ask Amble to fix it',
+  notFound: "This world isn't here. Here's your Trail.",
   showLine: 'Show me the line',
   turnOff: 'Turn {name} off',
   problemsTitle: 'Problems',
