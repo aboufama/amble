@@ -1022,6 +1022,24 @@
   opacity: 0.72;
 }
 
+/* "Room for {name}": the name is the point, so it gets two lines (and the glyph, only a hint of the kind,
+   gets smaller) instead of "Room for Bu…". */
+.cast-card--spare .cast-card__name {
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.12;
+}
+
+.cast-card--spare .cast-card__pic {
+  height: 36px;
+}
+
+.cast-card--spare .cast-card__pic .ph-glyph {
+  max-height: 36px;
+}
+
 .cast-card--spare:focus-visible,
 .cast-card--resting:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
@@ -1095,6 +1113,16 @@
   :root[data-layout='tab'] .cast-card__pic .ph-glyph,
   :root[data-layout='tab'] .cast-card__pic .sticker {
     max-height: 40px;
+  }
+
+  /* Compact cards have one line for a name. */
+  :root[data-layout='tab'] .cast-card--spare .cast-card__name {
+    display: block;
+    white-space: nowrap;
+  }
+
+  :root[data-layout='tab'] .cast-card--spare .cast-card__pic {
+    height: 40px;
   }
 
   :root[data-layout='tab'] .cast-line__head {
