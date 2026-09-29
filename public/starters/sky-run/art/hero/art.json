@@ -13,7 +13,7 @@
   "h": 256,
   "pixelArt": false
  },
- "doc": "sha256:0d801449d67afa7ba879f662c5d6258e0228d2918cdff3c98e3f959daec8437f",
+ "doc": "sha256:4e2c0ceef7d0713cfca1dadaf49d4513dd0bd08e830db018184292223ce2b406",
  "cels": [
   "sha256:1449bd2ad515b9b25a055c845cd99254cacc83014241144fc70b41ef87095390",
   "sha256:98475c67a3ec21bce25334bc142cb5f9ef9efd066c963e26c0566b5f0b79d1a5",
@@ -361,7 +361,7 @@
   "sha256:60dad2eedeedd704cdebdd8294cbb1764bb49374c4abe4737e6a45c7484df623": "parts/armR.png",
   "sha256:1a2520351502f6cdfc4882b6832a583078ae30e30e6f6337639678cdcfb63aec": "sticker.png",
   "sha256:64648f66b53633ddedd9ada06ea2c1accfe3380fa564715678c4ecf65df0eca9": "thumb.png",
-  "sha256:0d801449d67afa7ba879f662c5d6258e0228d2918cdff3c98e3f959daec8437f": "doc.json",
+  "sha256:4e2c0ceef7d0713cfca1dadaf49d4513dd0bd08e830db018184292223ce2b406": "doc.json",
   "sha256:1449bd2ad515b9b25a055c845cd99254cacc83014241144fc70b41ef87095390": "cels/armL.png",
   "sha256:98475c67a3ec21bce25334bc142cb5f9ef9efd066c963e26c0566b5f0b79d1a5": "cels/armL-lines.png",
   "sha256:970ba5d8a9157cf22aa1b7bf897cf36303b64b0535ecb6e5fc3eaaad9ca9a168": "cels/legL.png",

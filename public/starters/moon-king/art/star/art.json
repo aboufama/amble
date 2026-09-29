@@ -13,7 +13,7 @@
   "h": 128,
   "pixelArt": false
  },
- "doc": "sha256:cd8bd7f5d6520af215d9695ca384caac756a97da426bb5131850031a3068833d",
+ "doc": "sha256:3f9cfe92a9d5c59c6e270dcdd9039c76b186be9b3ee385fab7f2ad99f3d877ca",
  "cels": [
   "sha256:411cc38cc58208704ce0fca9999cd53a9dcb4e9cedc2c71f0b12c86cad00b20f",
   "sha256:37e132e2b861b3a6c1f7d359e30a8c83a9f2272294ca1fb0e594dde03be51d2a"
@@ -66,7 +66,7 @@
   "sha256:ede9694c5d63f9a78358b6330c9cf1771ad9ba01039213082cd815b84202f28e": "thumb.png",
   "sha256:ff826cb0e5b08e21938fea7652d51a2fe83385a945b58bdc8f29b3e2b9c9aa53": "ink.png",
   "sha256:2e150fd80a8e3384cb5e30858d7e0269e21a37431cd1eb3a7542b259d1e1deb8": "sticker.png",
-  "sha256:cd8bd7f5d6520af215d9695ca384caac756a97da426bb5131850031a3068833d": "doc.json",
+  "sha256:3f9cfe92a9d5c59c6e270dcdd9039c76b186be9b3ee385fab7f2ad99f3d877ca": "doc.json",
   "sha256:411cc38cc58208704ce0fca9999cd53a9dcb4e9cedc2c71f0b12c86cad00b20f": "cels/colors.png",
   "sha256:37e132e2b861b3a6c1f7d359e30a8c83a9f2272294ca1fb0e594dde03be51d2a": "cels/lines.png"
  }

@@ -12,6 +12,9 @@ import type { ArtExport, BlobRef, PartLayers } from '../../model/types';
 import type { StarterArtJson, StarterCast } from '../types';
 import { blank, over, sticker, type Rgba } from './pixels';
 
+/** When the starter drawings were made (the stored docs' `created` and `updated`). */
+const MADE_AT = Date.UTC(2026, 8, 1);
+
 export interface BuildArtInput {
   cast: StarterCast;
   script: ArtScript;
@@ -117,7 +120,9 @@ export async function buildArt(input: BuildArtInput): Promise<BuiltArt> {
   const stickerRef = await add('sticker.png', await png(sticker(flat)));
   const thumbRef = await add('thumb.png', await bytesOf(ex.thumb.png));
 
-  const serialized = await serializeArtDoc(doc);
+  // A stable id and date, so the same drawing always builds the same files (no churn in the commits).
+  const stableId = `art${(await refOf(new TextEncoder().encode(`${script.name}:${cast.key}`))).slice(7, 19)}`;
+  const serialized = await serializeArtDoc({ ...doc, id: stableId, created: MADE_AT, updated: MADE_AT });
   const docBytes = await bytesOf(serialized.docBlob);
   const docRef = await add('doc.json', docBytes);
   const celRefs: BlobRef[] = [];
