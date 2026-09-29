@@ -1,0 +1,273 @@
+/*
+ * Saving and opening (M6): the save state and Save to Drive in a world's top bar, Open a file, the
+ * storage banner and chips of the Trail, the old-Amble card, the file dialogs and the drop overlay.
+ * Tokens only.
+ */
+
+/* ---------- the save state (§2.6): a quiet line left of Save to Drive ---------- */
+.save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: var(--control);
+  margin-right: var(--s1);
+  font: var(--type-chip);
+  font-weight: 400;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.save-state__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--alive);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--alive) 80%, transparent);
+}
+
+.save-state--saving .save-state__dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--text-2);
+  animation: save-breathe 1.2s var(--ease-soft) infinite alternate;
+}
+
+.save-state--warn {
+  color: var(--text);
+}
+
+.save-state--warn .icon {
+  flex: none;
+  color: var(--warn);
+}
+
+@keyframes save-breathe {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+:root[data-motion='reduced'] .save-state--saving .save-state__dot {
+  animation: none;
+}
+
+/* ---------- the files-only and out-of-space banners (§2.4, §2.16) ---------- */
+.files-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: min(920px, calc(100% - 2 * var(--s4)));
+  margin: var(--s3) auto 0;
+  padding: var(--s2) var(--s2) var(--s2) var(--s4);
+  border-radius: var(--r-paper);
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: var(--lift-sm);
+  --focus-ring: var(--ink);
+}
+
+.files-banner > .icon {
+  flex: none;
+  color: var(--ink-2);
+}
+
+.files-banner__text {
+  flex: 1;
+  margin: 0;
+  font: var(--type-body);
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+}
+
+.files-banner__actions {
+  display: flex;
+  flex: none;
+  gap: var(--s2);
+}
+
+/* ---------- Trail chips: space and updates ---------- */
+.files-chip {
+  gap: var(--s2);
+}
+
+.files-chip .icon {
+  color: var(--warn);
+}
+
+.files-chip--news .icon {
+  color: var(--alive);
+}
+
+/* ---------- the old-Amble card (§4.7) ---------- */
+.legacy-card {
+  position: relative;
+  display: grid;
+  gap: var(--s3);
+  width: min(400px, 100%);
+  padding: var(--s5) var(--s5) var(--s4);
+}
+
+.legacy-card__eyebrow {
+  margin: 0;
+  font: var(--type-caps);
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.legacy-card__title {
+  margin: 0;
+  font: var(--type-heading);
+  color: var(--ink);
+}
+
+.legacy-card__text {
+  margin: 0;
+  font: var(--type-body);
+  color: var(--ink);
+}
+
+.legacy-card__count {
+  margin: 0;
+  font: var(--type-meta);
+  color: var(--ink-2);
+}
+
+.legacy-card__pictures {
+  display: flex;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legacy-card__pictures li {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-paper);
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--paper-line) 45%, transparent);
+}
+
+.legacy-card__pictures img {
+  max-width: 46px;
+  max-height: 46px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 1.5px var(--paper)) drop-shadow(0 1px 1px color-mix(in srgb, var(--ink) 25%, transparent));
+}
+
+.legacy-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s1);
+}
+
+/* ---------- dialogs ---------- */
+.files-dialog__lead {
+  display: flex;
+  gap: var(--s3);
+  align-items: flex-start;
+}
+
+.files-dialog__lead > .icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.files-dialog__lead--warn > .icon {
+  color: var(--warn);
+}
+
+.files-dialog__text {
+  margin: 0;
+  font: var(--type-body);
+}
+
+.files-dialog__text + .files-dialog__text {
+  margin-top: var(--s2);
+  color: var(--text-2);
+}
+
+/* ---------- the drop overlay (§2.4) ---------- */
+.file-drop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  display: grid;
+  place-items: center;
+  padding: var(--s6);
+  background: var(--scrim);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--t-ui) var(--ease-amble),
+    visibility 0s linear var(--t-ui);
+}
+
+.file-drop--on {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--t-ui) var(--ease-amble),
+    visibility 0s;
+}
+
+.file-drop__card {
+  display: grid;
+  gap: var(--s2);
+  justify-items: center;
+  width: min(520px, 100%);
+  padding: var(--s10) var(--s8);
+  border-radius: var(--r-paper);
+  color: var(--ink);
+  text-align: center;
+  background: var(--paper);
+  outline: 3px dashed color-mix(in srgb, var(--paper-line) 70%, transparent);
+  outline-offset: -14px;
+  box-shadow: var(--lift-paper), var(--glow-lantern);
+  transform: translateY(8px) rotate(-0.6deg);
+  transition: transform var(--t-ui) var(--ease-amble);
+}
+
+.file-drop--on .file-drop__card {
+  transform: translateY(0) rotate(-0.6deg);
+}
+
+.file-drop__title {
+  margin: 0;
+  font: var(--display-m);
+  font-size: 1.625rem;
+  line-height: 2rem;
+}
+
+.file-drop__hint {
+  margin: 0;
+  font: var(--type-body);
+  color: var(--ink-2);
+}
+
+:root[data-motion='reduced'] .file-drop,
+:root[data-motion='reduced'] .file-drop__card {
+  transition: none;
+  transform: none;
+}
+
+/* ---------- narrow screens (dialogs and banners reflow at 320 px) ---------- */
+@media (max-width: 720px) {
+  .files-banner {
+    flex-wrap: wrap;
+  }
+
+  .files-banner__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
