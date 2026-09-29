@@ -10,6 +10,7 @@ import { gameFrame, openWorld } from '../world/world';
 
 type Win = Window & {
   __amble: {
+    getState(): { session: { cast: Array<{ key: string; kind: string; rig: string; role: string; status: string; priority: number; onScreen: boolean }> } };
     services: {
       player: { on(type: 'warn', fn: (m: { message: string }) => void): () => void };
       store: { worlds: { get(id: string): Promise<unknown> } };
@@ -28,8 +29,23 @@ function riggedIn(frame: Frame, key: string): Promise<boolean> {
   }, key);
 }
 
-async function drawBoss(page: Page, world: string): Promise<void> {
-  await openDesk(page, `#/w/${world}/draw/boss`);
+/**
+ * A character with bones that the game shows now, other than the hero: an undrawn one first, else one to
+ * redraw (the fixture game's boss; in the real Moon King, whose seed comes drawn, the Moon King).
+ */
+function characterToDraw(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const cast = (window as unknown as Win).__amble.getState().session.cast;
+    const pick = cast
+      .filter((m) => m.kind === 'character' && m.rig !== 'none' && m.role !== 'hero' && m.status !== 'spare' && m.onScreen)
+      .sort((a, b) => Number(a.status === 'drawn') - Number(b.status === 'drawn') || a.priority - b.priority)[0];
+    if (!pick) throw new Error('This world shows no character to draw.');
+    return pick.key;
+  });
+}
+
+async function drawCharacter(page: Page, world: string, key: string): Promise<void> {
+  await openDesk(page, `#/w/${world}/draw/${key}`);
   const { w, h } = await boardSize(page);
   await drawOnBoard(page, circle(w / 2, h * 0.55, w * 0.25, 0, 360));
   await settle(page, 400);
@@ -47,12 +63,13 @@ test('a drawing brought to life plays with its bones from the bake, in the runni
     w.__warns = [];
     w.__amble.services.player.on('warn', (m) => w.__warns.push(m.message));
   });
-  await drawBoss(page, world);
+  const key = await characterToDraw(page);
+  await drawCharacter(page, world, key);
   await page.getByTestId('bring-to-life').click();
   await page.waitForFunction((id) => location.hash === `#/w/${id}`, world, { timeout: 30_000 });
 
   let frame = await gameFrame(page);
-  await expect.poll(() => riggedIn(frame, 'boss'), { timeout: 30_000 }).toBe(true);
+  await expect.poll(() => riggedIn(frame, key), { timeout: 30_000 }).toBe(true);
   // The game never bound anything itself: the player's runtime has no binder.
   expect(await frame.evaluate(() => typeof (window as unknown as Record<string, unknown>).__ambleRigBinder)).toBe('undefined');
   expect(await page.evaluate(() => (window as unknown as Win).__warns.filter((m) => /bones/i.test(m)))).toEqual([]);
@@ -61,13 +78,14 @@ test('a drawing brought to life plays with its bones from the bake, in the runni
   await page.reload();
   await expect(page.getByTestId('player-layer')).toHaveAttribute('data-first-frame', /^[1-9]\d*$/, { timeout: 45_000 });
   frame = await gameFrame(page);
-  await expect.poll(() => riggedIn(frame, 'boss'), { timeout: 30_000 }).toBe(true);
+  await expect.poll(() => riggedIn(frame, key), { timeout: 30_000 }).toBe(true);
 });
 
 test('a shared web page binds its drawings itself and plays them with their bones', async ({ page, context }) => {
   test.setTimeout(150_000);
   const world = await openWorld(page);
-  await drawBoss(page, world);
+  const key = await characterToDraw(page);
+  await drawCharacter(page, world, key);
   await page.getByTestId('bring-to-life').click();
   await page.waitForFunction((id) => location.hash === `#/w/${id}`, world, { timeout: 30_000 });
   const html = await page.evaluate(async (wid) => {
@@ -83,7 +101,7 @@ test('a shared web page binds its drawings itself and plays them with their bone
   await shared.setContent(html);
   await shared.getByRole('button', { name: /Play/ }).click();
   await shared.waitForFunction(() => !!(window as unknown as { __ambleGame?: { game?: unknown } }).__ambleGame?.game, null, { timeout: 45_000 });
-  await expect.poll(() => riggedIn(shared.mainFrame(), 'boss'), { timeout: 30_000 }).toBe(true);
+  await expect.poll(() => riggedIn(shared.mainFrame(), key), { timeout: 30_000 }).toBe(true);
   expect(await shared.evaluate(() => typeof (window as unknown as Record<string, unknown>).__ambleRigBinder)).toBe('function');
   expect(requests).toEqual([]);
   await shared.close();
