@@ -47,11 +47,15 @@ export function csp(o: CspOptions): Plugin {
   return {
     name: 'amble-csp',
     apply: 'build',
-    transformIndexHtml() {
-      return [
-        { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: editorCsp(o) }, injectTo: 'head-prepend' },
-        { tag: 'meta', attrs: { name: 'referrer', content: 'no-referrer' }, injectTo: 'head-prepend' },
-      ];
+    transformIndexHtml(html) {
+      return {
+        // index.html carries `frame-src 'self'` for the dev server; the build has this one full policy instead.
+        html: html.replace(/[ \t]*<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>\n?/gi, ''),
+        tags: [
+          { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: editorCsp(o) }, injectTo: 'head-prepend' },
+          { tag: 'meta', attrs: { name: 'referrer', content: 'no-referrer' }, injectTo: 'head-prepend' },
+        ],
+      };
     },
   };
 }
