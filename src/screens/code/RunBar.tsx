@@ -51,8 +51,11 @@ export function RunBar({ run, message, oldDraft, onShow, onBringBack }: RunBarPr
         </p>
       ) : (
         <p className="run-bar__keys" aria-hidden="true">
-          <Keycap>Ctrl</Keycap>
-          <Keycap>Enter</Keycap>
+          {t('history.runKeys')
+            .split('+')
+            .map((key) => (
+              <Keycap key={key}>{key}</Keycap>
+            ))}
           <span>{t('history.runIt')}</span>
         </p>
       )}

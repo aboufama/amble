@@ -62,7 +62,6 @@ export const history = {
 
   // ---------------------------------------------------------------- Look inside
   codeHeader: 'This is the real code of your world. Change a number and press Run it!',
-  backTo: '{title}',
   fileTabs: 'Code files',
   editedFile: 'You changed this file',
   editorLabel: 'Code of {file}',

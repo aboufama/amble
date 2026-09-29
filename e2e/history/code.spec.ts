@@ -218,4 +218,11 @@ test('kit calls have hover docs and autocomplete', async ({ page }) => {
   await page.waitForTimeout(200);
   await page.keyboard.press('Enter');
   await expect(page.locator('.cm-line', { hasText: 'this.fx.shake' })).toHaveCount(1);
+
+  // Tab indents inside the editor; Esc then Tab leaves it (no keyboard trap).
+  await page.keyboard.press('Tab');
+  await expect(page.locator('.cm-content')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => Boolean(document.activeElement?.closest('.cm-editor')))).toBe(false);
 });

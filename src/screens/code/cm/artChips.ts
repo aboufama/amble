@@ -86,6 +86,8 @@ class ArtChipWidget extends WidgetType {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'cm-art-chip cm-art-chip--bones';
+    // Out of the Tab order (Esc then Tab leaves the editor); keyboards draw from What's this? beside it.
+    button.tabIndex = -1;
     button.setAttribute('aria-label', `${info.label}. ${this.o.drawLabel}`);
     const label = document.createElement('span');
     label.className = 'cm-art-chip__label';

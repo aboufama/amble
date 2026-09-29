@@ -75,8 +75,9 @@
   padding: 0 16px 16px;
 }
 
+/* Portrait: the code (scrolling inside itself) and the running world share the first screenful. */
 :root[data-layout='portrait'] .code-screen .screen__main {
-  min-height: 70vh;
+  height: max(420px, calc(100dvh - var(--topbar) - (100vw - 32px) * 9 / 16 - 16px));
   padding: 6px 16px 14px;
 }
 
