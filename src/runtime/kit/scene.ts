@@ -164,7 +164,11 @@ export class AmbleScene extends Phaser.Scene {
     const reg = boot.registry(this.game);
     const cfg = ctor.__ambleConfig ?? boot.defaultConfig();
     const uiScene = this.scene.get(UI_SCENE) ?? this;
+    // A level restart reuses this scene: the level it was on carries over, so setLevel(2) then restart()
+    // builds level 2 (and R after losing tries the same level again). Playing again after a win starts at 1.
+    const before = this.__kit;
     const k = new Kit(this, cfg, reg, uiScene);
+    if (before && before.state !== 'won') k.levelNumber = before.levelNumber;
     this.__kit = k;
     buildFxAtlas(this);
     k.fx = new Fx(k);

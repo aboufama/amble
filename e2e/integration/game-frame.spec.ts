@@ -141,3 +141,34 @@ test('a heal right after a hit leaves the heart full', async ({ page }) => {
   await expect.poll(async () => (await inScene<Array<{ tweens: number }>>(frame, HEARTS)).every((h) => h.tweens === 0), { timeout: 15_000 }).toBe(true);
   expect((await inScene<Array<{ alpha: number }>>(frame, HEARTS)).map((h) => h.alpha)).toEqual(before.map(() => 1));
 });
+
+test('a level restart keeps the level setLevel chose, and playing again after a win starts at level 1', async ({ page }) => {
+  test.setTimeout(150_000);
+  await openWorld(page);
+  // A game that notes the level each create() builds (its own fields live on through a level restart): level 1,
+  // then setLevel(2) and restart(), then a win and restart() (play again). It reports what it saw as an error,
+  // which the robot test collects.
+  const LEVELS = `class Game extends Amble.Scene {
+  static config = { physics: 'none' };
+  create() {
+    this.seen = [...(this.seen || []), this.levelNumber];
+    if (this.seen.length === 1) this.after(50, () => { this.setLevel(2); this.restart(); });
+    else if (this.seen.length === 2) this.after(50, () => { this.win(); this.after(50, () => this.restart()); });
+    else throw new Error('levels ' + this.seen.join(' '));
+  }
+}
+`;
+  const errors = await page.evaluate(async (source) => {
+    type Amble = { getState(): { session: { world: object | null }; prefs: unknown }; services: { player: { robot(init: unknown): Promise<{ raw: { errors: Array<{ message: string }> } }> } } };
+    const a = (window as unknown as { __amble: Amble }).__amble;
+    const initUrl = '/src/world/init.ts';
+    const prefsUrl = '/src/app/player/prefs.ts';
+    const { toInitMessage } = (await import(/* @vite-ignore */ initUrl)) as { toInitMessage(w: unknown, o: unknown): Promise<unknown> };
+    const { playerPrefsFrom } = (await import(/* @vite-ignore */ prefsUrl)) as { playerPrefsFrom(p: unknown): Record<string, unknown> };
+    const world = { ...a.getState().session.world, code: [{ path: 'game.js', source, authors: [], locked: [] }] };
+    const init = await toInitMessage(world, { mode: 'robot', prefs: { ...playerPrefsFrom(a.getState().prefs), muted: true }, robot: { gameMs: 3000, seed: 1, bot: 'none' }, autostart: true });
+    const r = await a.services.player.robot(init);
+    return r.raw.errors.map((e) => e.message);
+  }, LEVELS);
+  expect(errors).toContainEqual(expect.stringContaining('levels 1 2 1'));
+});

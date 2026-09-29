@@ -452,6 +452,7 @@ declare namespace Amble {
     /** Game speed (0.25 = slow motion). */
     timeScale: number;
     readonly gravityFlipped: boolean;
+    /** The level set by setLevel(); a level restart keeps it (playing again after a win starts at 1). */
     readonly levelNumber: number;
 
     /** Declares a dial (if new) and returns its current value. */
@@ -501,9 +502,9 @@ declare namespace Amble {
 
     win(text?: string): void;
     lose(text?: string): void;
-    /** Starts the level again. */
+    /** Starts the level again: create() runs anew, with this.levelNumber kept. */
     restart(): void;
-    /** Announces a level: this.setLevel(2, 'THE CAVES'). */
+    /** Sets and announces level n: this.setLevel(2, 'THE CAVES'), then this.restart() builds it. */
     setLevel(n: number, title?: string): void;
     /** Combo-multiplied; pops "+n" at (x, y). */
     addScore(n: number, x?: number, y?: number): number;
