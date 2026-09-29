@@ -9,7 +9,7 @@ import { Button } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
 import type { CodeIssue } from './cm/lint';
-import { kitCall } from './cm/kitDocs';
+import { kitCall } from './cm/kitCall';
 import type { CursorInfo } from './session';
 
 export interface HelpPanelProps {

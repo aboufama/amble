@@ -7,12 +7,9 @@ import { autocompletion, type Completion, type CompletionContext, type Completio
 import type { EditorState, Extension, Text } from '@codemirror/state';
 import { hoverTooltip } from '@codemirror/view';
 import { KIT_API, KIT_REFERENCE, type KitMember as ActorDoc, type KitReference, type KitReferenceMember as KitMember } from '../../../cores/play';
+import { kitCall, type KitDoc } from './kitCall';
 
-export interface KitDoc {
-  /** '' for scene members (`this.spawnHero`), a namespace ('fx'), or 'actor' for character methods. */
-  ns: string;
-  member: KitMember;
-}
+export { kitCall, type KitDoc };
 
 export interface KitIndex {
   scene: Map<string, KitMember>;
@@ -81,13 +78,6 @@ export function kitRefAt(doc: Text, pos: number, index: KitIndex = sharedKitInde
   if (root && NOT_CHARACTERS.has(root) && !object.includes('.')) return null;
   const member = index.actor.get(name);
   return member ? { ns: 'actor', member, from, to } : null;
-}
-
-/** How a member is written in code: `this.fx.shake(intensity?, ms?)`. */
-export function kitCall(doc: KitDoc): string {
-  if (doc.ns === '') return `this.${doc.member.signature}`;
-  if (doc.ns === 'actor') return `.${doc.member.signature}`;
-  return `this.${doc.ns}.${doc.member.signature}`;
 }
 
 /** Every kit member used between `from` and `to`, once each, in order. */
