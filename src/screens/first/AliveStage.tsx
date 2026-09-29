@@ -33,6 +33,8 @@ export interface AliveStageHandle {
   rerig(rig: RigData): Promise<void>;
   /** Hop to a stage x (CSS px). */
   hop(x: number): void;
+  /** Where the creature stands now, in page px (the start of its flight into a world). */
+  box(): DOMRect | null;
 }
 
 export interface AliveStageProps {
@@ -144,6 +146,16 @@ export const AliveStage = forwardRef<AliveStageHandle, AliveStageProps>(function
       await preview.current?.load(flat, next);
     },
     hop: hopTo,
+    box() {
+      const el = canvas.current;
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      const st = state.current;
+      const k = st.height / geo.height;
+      const left = geo.left * k;
+      const right = geo.right * k;
+      return new DOMRect(r.left + st.x - left, r.top + st.groundY - st.height, left + right, st.height);
+    },
   }));
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {

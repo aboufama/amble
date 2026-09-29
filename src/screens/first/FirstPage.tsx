@@ -22,6 +22,7 @@ import type { ArtRecord, Facing, StarterId } from '../../model/types';
 import { announce, showToast } from '../../state/app';
 import { refreshLibrary } from '../../state/library';
 import { markSeen } from '../../state/prefs';
+import { setComeAlive } from '../../state/session';
 import { getState, useStore } from '../../state/store';
 import { useReducedMotion } from '../../ui/a11y';
 import { Button } from '../../ui/components';
@@ -412,6 +413,14 @@ export function FirstPage() {
     setBusySeed(seed);
     try {
       const world = await openSeed(seed, alive.record.id);
+      // The creature flies from the paper into its place in the running world (M2 plays the flight).
+      const exp = alive.record.export;
+      const from = stageRef.current?.box() ?? null;
+      if (exp && from) {
+        const key = Object.values(world.cast).find((slot) => slot.art === alive.record.id)?.key ?? null;
+        const sticker = await store.blobs.url(exp.sticker).catch(() => null);
+        if (sticker) setComeAlive({ key, artId: alive.record.id, sticker, from });
+      }
       // The paper morphs into the world view (§2.3): M2 names its world view the same.
       transitionName(paperRef.current, 'world-view');
       navigate({ name: 'world', id: world.id });
