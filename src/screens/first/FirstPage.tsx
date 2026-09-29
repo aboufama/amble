@@ -89,13 +89,22 @@ export function FirstPage() {
   const [touched, setTouched] = useState(false);
 
   const [phase, setPhase] = useState<Phase>('drawing');
-  const [alive, setAlive] = useState<Alive | null>(null);
+  const [alive, setAliveState] = useState<Alive | null>(null);
+  // The latest creature, for changes that overlap (a rename while new bones are found).
+  const aliveRef = useRef<Alive | null>(null);
+  const setAlive = useCallback((next: Alive | null) => {
+    aliveRef.current = next;
+    setAliveState(next);
+  }, []);
   const [awake, setAwake] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [name, setName] = useState('');
   const [kind, setKind] = useState<CharacterKind>('blob');
   const [facing, setFacing] = useState<Facing>('viewer');
   const [kindBusy, setKindBusy] = useState(false);
+  // The kind and facing asked for last: the picker shows them at once, the bones follow.
+  const kindWant = useRef<{ kind: CharacterKind; facing: Facing } | null>(null);
+  const kindRunning = useRef(false);
   const [note, setNote] = useState<string | null>(null);
   const [pose, setPose] = useState<PoseImage | null>(null);
   const [busySeed, setBusySeed] = useState<StarterId | null>(null);
@@ -321,49 +330,78 @@ export function FirstPage() {
 
   // ------------------------------------------------------------ the chips
   const rename = async (next: string) => {
-    if (!alive) return;
-    const record: ArtRecord = { ...alive.record, name: next, updatedAt: Date.now() };
+    const cur = aliveRef.current;
+    if (!cur) return;
+    const record: ArtRecord = { ...cur.record, name: next, updatedAt: Date.now() };
     setName(next);
-    setAlive({ ...alive, record });
+    setAlive({ ...cur, record });
     await store.commit({ art: [record] }).catch(() => showToast(t('home.couldNotSave'), { kind: 'error' }));
     void refreshLibrary(store);
   };
 
+  /** New bones for one choice of kind and facing; a kind with no limbs to find keeps the old bones. */
+  const applyKind = async (want: { kind: CharacterKind; facing: Facing }) => {
+    const cur = aliveRef.current;
+    if (!cur) return;
+    const rec = cur.record;
+    let rig = cur.rig;
+    let confidence = rec.rigInfo?.confidence ?? 1;
+    let notes = rec.rigInfo?.notes ?? [];
+    let kindNow = (rec.rig === 'none' ? 'blob' : rec.rig) as CharacterKind;
+    if (want.kind !== kindNow) {
+      const mask = rec.export?.inkMask ? await store.blobs.get(rec.export.inkMask) : null;
+      const reply = await rigWorker.autoRig({ image: cur.flat, ...(mask ? { layers: { lines: mask } } : {}) }, { kind: want.kind, lane: `rig:${rec.id}` });
+      if (reply.confidence < 0.5 && want.kind !== 'blob') {
+        setNote(t('home.kindNoLimbs', { name: rec.name }));
+      } else {
+        rig = reply.rig;
+        confidence = reply.confidence;
+        notes = reply.notes;
+        kindNow = want.kind;
+      }
+    }
+    rig = setRigFacing(rig, facingNumber(want.facing));
+    await stageRef.current?.rerig(rig);
+    // Built on the latest record, so a rename made meanwhile stays.
+    const latest = aliveRef.current ?? cur;
+    const record: ArtRecord = { ...latest.record, rig: kindNow, facing: want.facing, rigData: rig, rigInfo: { made: 'auto', confidence, notes }, updatedAt: Date.now() };
+    setAlive({ ...latest, record, rig });
+    if (!kindWant.current) {
+      // The picker shows what the creature really is now (a kind without limbs goes back).
+      setKind(kindNow);
+      setFacing(want.facing);
+    }
+    if (kindNow === want.kind) announce(t('home.kindChanged', { name: record.name, kind: kindSentence(kindNow) }));
+    await store.commit({ art: [record] });
+    void refreshLibrary(store);
+  };
+
   const changeKind = async (nextKind: CharacterKind, nextFacing: Facing) => {
-    if (!alive || kindBusy) return;
-    const rec = alive.record;
+    if (!aliveRef.current) return;
+    setKind(nextKind);
+    setFacing(nextFacing);
+    kindWant.current = { kind: nextKind, facing: nextFacing };
+    if (kindRunning.current) return;
+    kindRunning.current = true;
     setKindBusy(true);
     setNote(null);
     try {
-      let rig = alive.rig;
-      let confidence = rec.rigInfo?.confidence ?? 1;
-      let notes = rec.rigInfo?.notes ?? [];
-      let kindNow = kind;
-      if (nextKind !== kind) {
-        const mask = rec.export?.inkMask ? await store.blobs.get(rec.export.inkMask) : null;
-        const reply = await rigWorker.autoRig({ image: alive.flat, ...(mask ? { layers: { lines: mask } } : {}) }, { kind: nextKind, lane: `rig:${rec.id}` });
-        if (reply.confidence < 0.5 && nextKind !== 'blob') {
-          setNote(t('home.kindNoLimbs', { name }));
-        } else {
-          rig = reply.rig;
-          confidence = reply.confidence;
-          notes = reply.notes;
-          kindNow = nextKind;
-        }
+      while (kindWant.current) {
+        const want = kindWant.current;
+        kindWant.current = null;
+        await applyKind(want);
       }
-      rig = setRigFacing(rig, facingNumber(nextFacing));
-      const record: ArtRecord = { ...rec, rig: kindNow, facing: nextFacing, rigData: rig, rigInfo: { made: 'auto', confidence, notes }, updatedAt: Date.now() };
-      await stageRef.current?.rerig(rig);
-      setAlive({ ...alive, record, rig });
-      setKind(kindNow);
-      setFacing(nextFacing);
-      if (kindNow === nextKind) announce(t('home.kindChanged', { name, kind: kindSentence(kindNow) }));
-      await store.commit({ art: [record] });
-      void refreshLibrary(store);
     } catch (err) {
       console.warn('The new bones did not work:', err);
-      setNote(t('home.kindNoLimbs', { name }));
+      kindWant.current = null;
+      const rec = aliveRef.current?.record;
+      if (rec) {
+        setKind((rec.rig === 'none' ? 'blob' : rec.rig) as CharacterKind);
+        setFacing(rec.facing);
+        setNote(t('home.kindNoLimbs', { name: rec.name }));
+      }
     } finally {
+      kindRunning.current = false;
       setKindBusy(false);
     }
   };
@@ -469,7 +507,9 @@ export function FirstPage() {
                   <>
                     <KindChip kind={kind} facing={facing} busy={kindBusy} onChange={(k, f) => void changeKind(k, f)} />
                     <NameChip name={name} onRename={(n) => void rename(n)} />
-                    <span className="first__tap-hint">{note ?? t('home.tapHint', { name })}</span>
+                    <span className="first__tap-hint">
+                      {kindBusy ? t('home.kindChanging') : (note ?? t('home.tapHint', { name }))}
+                    </span>
                   </>
                 )}
               </div>

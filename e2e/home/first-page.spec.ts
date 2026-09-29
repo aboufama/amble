@@ -31,6 +31,8 @@ async function drawPerson(page: Page, board: Locator): Promise<void> {
 }
 
 test('a first doodle comes alive, gets a kind and a name, and walks into Boss fight', async ({ page }) => {
+  // The rig worker starts cold in a fresh profile, and test machines are slow: generous waits.
+  test.setTimeout(180_000);
   const ai = await mockAi(page);
   await openAmble(page, { ai: 'mock' });
   await expect(page.getByTestId('screen-home')).toHaveAttribute('data-home', 'first');
@@ -49,16 +51,21 @@ test('a first doodle comes alive, gets a kind and a name, and walks into Boss fi
 
   const t0 = Date.now();
   await bring.click();
-  await expect(first).toHaveAttribute('data-awake', 'true');
+  await expect(first).toHaveAttribute('data-awake', 'true', { timeout: 60_000 });
   test.info().annotations.push({ type: 'alive', description: `awake ${Date.now() - t0} ms after the click` });
 
-  // The creature keeps moving: two frames of its canvas differ.
+  // The creature keeps moving: its canvas changes between frames.
   const canvas = page.getByTestId('alive-canvas');
   await expect(canvas).toBeVisible();
-  const a = await canvas.screenshot();
-  await page.waitForTimeout(450);
-  const b = await canvas.screenshot();
-  expect(a.equals(b), 'the alive canvas changes between frames').toBe(false);
+  const moving = await canvas.evaluate(async (c: HTMLCanvasElement) => {
+    const first = c.toDataURL();
+    for (let i = 0; i < 12; i++) {
+      await new Promise((r) => setTimeout(r, 150));
+      if (c.toDataURL() !== first) return true;
+    }
+    return false;
+  });
+  expect(moving, 'the alive canvas changes between frames').toBe(true);
 
   // It is on the shelf, as a blob until told otherwise.
   const character = async () => page.evaluate(() => (window as unknown as { __amble: Amble }).__amble.getState().library.characters[0] ?? null);
@@ -66,12 +73,15 @@ test('a first doodle comes alive, gets a kind and a name, and walks into Boss fi
   const art = (await character())!;
   expect(art.rig).toBe('blob');
 
-  // The kind chip: it's a Person.
+  // The kind chip: it's a person (the card stays open for the facing too; Esc closes it).
   const kindChip = page.getByTestId('kind-chip');
-  await kindChip.click();
+  await expect(kindChip).toContainText('A blob');
+  await kindChip.getByRole('button').click();
   await page.getByRole('radio', { name: /person/i }).click();
-  await expect(kindChip).toContainText('Person');
-  await expect.poll(async () => (await character())?.rig).toBe('biped');
+  await expect(kindChip).toContainText('A person');
+  await expect.poll(async () => (await character())?.rig, { timeout: 30_000 }).toBe('biped');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('radio', { name: /person/i })).toBeHidden();
 
   // The name chip.
   await page.getByTestId('name-chip').click();

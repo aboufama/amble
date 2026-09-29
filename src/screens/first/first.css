@@ -590,13 +590,38 @@
   min-height: var(--target);
   padding: 0 14px;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--r-btn);
   font: var(--type-label);
   color: var(--ink);
-  background: color-mix(in srgb, var(--paper), white 60%);
+  background: var(--paper);
   box-shadow:
-    inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 22%, transparent),
-    0 2px 0 color-mix(in srgb, var(--ink) 12%, transparent);
+    inset 0 0 0 1.5px var(--paper-line),
+    0 3px 0 color-mix(in srgb, var(--ink) 18%, transparent);
+  cursor: pointer;
+}
+
+/* The kind picker's pill, as tall as the name chip beside it. */
+.first-kind {
+  display: inline-flex;
+}
+
+.first-kind .kind-pill {
+  min-height: var(--target);
+  font: var(--type-label);
+}
+
+.first-kind--busy .kind-pill__pic {
+  animation: kind-busy 900ms var(--ease-soft) infinite alternate;
+}
+
+@keyframes kind-busy {
+  to {
+    opacity: 0.45;
+  }
+}
+
+:root[data-motion='reduced'] .first-kind--busy .kind-pill__pic {
+  animation: none;
 }
 
 .paper-chip b {
@@ -604,7 +629,7 @@
 }
 
 .paper-chip:hover {
-  background: var(--paper);
+  background: var(--paper-2);
 }
 
 .paper-chip--busy {
@@ -628,15 +653,6 @@
   font: 700 0.96875rem/1.25rem var(--font-ui);
   color: var(--ink);
   background: var(--paper-2);
-}
-
-.kind-popover {
-  width: min(420px, calc(100vw - 24px));
-}
-
-.kind-popover__title {
-  margin: 0 0 10px;
-  font: var(--type-heading);
 }
 
 .first__alive-note {
