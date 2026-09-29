@@ -24,8 +24,6 @@ export interface RobotTestOptions {
    * counts as frozen only when no frame finishes for a few seconds (see `RobotWatch`), never for being slow.
    */
   timeoutMs?: number;
-  /** The progress watchdog's other limits (tests): see `ROBOT_LIMITS`. */
-  limits?: Partial<Omit<RobotLimits, 'ceilingMs'>>;
   thresholds?: RobotThresholds;
   /** Where the hidden iframe lives (default: a hidden box on document.body). */
   host?: HTMLElement;
@@ -97,7 +95,7 @@ export function runRobotTest(options: RobotTestOptions): Promise<RobotReport> {
     robot: { gameMs, seed, bot: options.bot ?? 'auto' },
   };
 
-  const limits: RobotLimits = { ...ROBOT_LIMITS, ...options.limits, ceilingMs: options.timeoutMs ?? ROBOT_LIMITS.ceilingMs };
+  const limits: RobotLimits = { ...ROBOT_LIMITS, ceilingMs: options.timeoutMs ?? ROBOT_LIMITS.ceilingMs };
   const why = (stop: RobotStop): string => {
     const secs = (ms: number) => Math.round(ms / 1000);
     if (stop === 'start') return 'The game froze before it started playing (a loop that never ends in create()?).';
