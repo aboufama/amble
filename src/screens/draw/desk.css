@@ -1161,6 +1161,13 @@ body:has(.screen.desk) .toast-region {
   white-space: nowrap;
 }
 
+/* The chosen row is lighter (a lantern tint over the raised surface): its hint takes some of the main text
+   colour to stay at 4.5:1 and more (Night: 5.5:1; --text-2 alone is 4.2:1 there). */
+.layer--on .layer__hint,
+.layer--on .layer__status {
+  color: color-mix(in srgb, var(--text-2) 60%, var(--text));
+}
+
 .layer__status--now {
   font-weight: 700;
   color: var(--alive);
