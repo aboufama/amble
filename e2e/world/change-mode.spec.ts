@@ -87,6 +87,21 @@ test.describe('Change mode', () => {
     expect(await session(page, (s) => s.scope)).toBe(null);
   });
 
+  test('a world that stops in Change mode can be restarted from its card, above the veil', async ({ page }) => {
+    await openWorld(page);
+    await page.getByRole('radio', { name: 'Change' }).click();
+    await expect(page.getByTestId('change-layer')).toBeVisible();
+    // What the frozen-game watchdog does when a game stops answering.
+    await page.evaluate(() => (window as unknown as { __amble: { setState(r: (s: { session: { stopped: string | null } }) => void): void } }).__amble.setState((s) => {
+      s.session.stopped = 'crashed';
+    }));
+    const card = page.getByTestId('world-stopped');
+    await expect(card).toContainText('The world stopped.');
+    await card.getByRole('button', { name: 'Restart it' }).click();
+    await expect(card).toHaveCount(0);
+    await expect(page.getByTestId('player-layer')).toHaveAttribute('data-first-frame', /^[1-9]\d*$/, { timeout: 45_000 });
+  });
+
   test('Tab moves between the tags and Enter opens a card', async ({ page }) => {
     await openWorld(page);
     await page.getByRole('radio', { name: 'Change' }).click();
