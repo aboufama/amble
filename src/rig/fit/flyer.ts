@@ -136,7 +136,7 @@ export function fitFlyer(a: Analysis, guide: Guide | null, facingHint?: Facing):
   }
   if (!wings.length || (front && wings.length < 2)) {
     fit.issues.push('missing-wing');
-    fit.notes.push('Amble could not find both wings. Drag out a wiggly bit, or pick another kind.');
+    fit.notes.push('I couldn\'t find both wings. Add a wiggly bit, or pick another kind.');
   }
   const wingAttach = wings.map(attachOf);
   let shoulderIdx = wingAttach.length ? Math.max(...wingAttach.map((p) => spineIdx.get(p) ?? 0)) : Math.floor(spinePath.length * 0.5);

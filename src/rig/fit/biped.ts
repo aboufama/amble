@@ -105,17 +105,17 @@ export function fitBiped(a: Analysis, guide: Guide | null): Fit {
     }
     if (splitLegs) {
       fit.issues.push('legs-merged');
-      fit.notes.push('The legs touch, so they looked stuck together. Amble split them; drag a knee if it is off.');
+      fit.notes.push('The legs almost touch, so they looked stuck together. I split them. If a knee is in the wrong place, drag it.');
     } else {
       fit.issues.push('one-leg');
-      fit.notes.push('Amble found one leg. Use Mirror to copy it, or drag the joints.');
+      fit.notes.push('I found one leg. Press Mirror sides to copy it, or drag the joints.');
     }
   } else {
     let lowest = -1;
     for (let i = 0; i < a.w * a.h; i++) if (a.skel[i] && Number.isFinite(dist[i]) && (lowest < 0 || i > lowest)) lowest = i;
     pelvis = lowest >= 0 ? lowest : head.p;
     fit.issues.push('no-legs');
-    fit.notes.push('Amble could not find legs, so this character will slide instead of walk.');
+    fit.notes.push('I couldn\'t find legs, so this character will slide instead of walk. You can add bones yourself.');
   }
   const spinePath = pathDown(parent, head.p, pelvis).reverse(); // pelvis ... head end
   if (spinePath.length < 2) spinePath.push(head.p);
@@ -180,7 +180,7 @@ export function fitBiped(a: Analysis, guide: Guide | null): Fit {
   }
   if (arms.length === 1) {
     fit.issues.push('missing-arm');
-    fit.notes.push('Amble found one arm. Use Mirror to copy it to the other side.');
+    fit.notes.push('I found one arm. Press Mirror sides to copy it to the other side.');
   }
 
   // --- neck above the highest shoulder, then the head bone through the head's centre to its top
@@ -250,7 +250,7 @@ export function fitBiped(a: Analysis, guide: Guide | null): Fit {
     if (g.held) {
       const held = fit.bones[fit.bones.length - 1];
       held.name = held.name.replace(/^held/, 'wand');
-      fit.notes.push('Amble thinks the thin thing in a hand is being held, so it stays stiff.');
+      fit.notes.push('The thin thing in a hand looks like something being held, so it stays stiff.');
     }
   }
   for (const l of legGeo) {

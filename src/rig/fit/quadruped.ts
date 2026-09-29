@@ -118,7 +118,7 @@ export function fitQuadruped(a: Analysis, guide: Guide | null): Fit {
           pushLimb(fit, straightLimb(s.top, s.bottom), [`${n}1`, `${n}2`], [`${n}1` as BoneRole, `${n}2` as BoneRole], 'spine');
           feet.push(s.bottom[0]);
         });
-        fit.notes.push(`The ${fb === 'F' ? 'front' : 'back'} legs touch; Amble split them by colour.`);
+        fit.notes.push(`The ${fb === 'F' ? 'front' : 'back'} legs touch, so I split them by colour.`);
         return;
       }
     }
@@ -137,7 +137,7 @@ export function fitQuadruped(a: Analysis, guide: Guide | null): Fit {
   doGroup(back, backAtt, 'B');
   if (feet.length < 4) {
     fit.issues.push('few-legs');
-    fit.notes.push(`Amble found ${feet.length} legs. Drag the joints, or use Mirror to copy a leg.`);
+    fit.notes.push(`I found ${feet.length} legs. Drag the joints, or press Mirror sides to copy a leg.`);
   }
   [...legs, head, ...(tail ? [tail] : [])].forEach((e) => fit.used.add(e));
   fit.anchor = [feet.length ? feet.reduce((s, x) => s + x, 0) / feet.length : cx, bbox.y1 + 0.5];

@@ -80,7 +80,7 @@ export function fitObject(a: Analysis): Fit {
   }
   protrusionExtras(a, fit);
   addExtras(a, fit, { thin: 0.3, thinOnly: true });
-  if (wheels.length) fit.notes.push(`Amble found ${wheels.length === 1 ? 'a wheel' : `${wheels.length} wheels`}; they spin when it moves.`);
+  if (wheels.length) fit.notes.push(`I found ${wheels.length === 1 ? 'a wheel' : `${wheels.length} wheels`}; they spin when it moves.`);
   fit.anchor = [bx, bbox.y1 + 0.5];
   return fit;
 }

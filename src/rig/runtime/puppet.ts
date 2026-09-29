@@ -47,7 +47,6 @@ export class RigPuppet {
   private body: BodyLike | null = null;
   private speeds: FollowSpeeds = {};
   private wasGround = true;
-  private moving = false;
   private readonly local: Float32Array | null;
 
   constructor(src: BoundRig | RigData) {
@@ -163,8 +162,8 @@ export class RigPuppet {
     ctx.dir = this.drawn === 0 ? this.want : this.drawn;
     const sgn = this.flip >= 0 ? 1 : -1;
     const mdx = ((motion.dx ?? 0) / scale) * sgn, mdy = (motion.dy ?? 0) / scale;
-    if (motion.dx) this.moving = true;
-    ctx.moving = this.moving || !!this.body;
+    // wheels roll with real motion when there is some, else at the clip's own pace
+    ctx.moving = !!motion.dx;
     ctx.distance += mdx;
     this.animator.update(dt, this.pose);
     this.solve(dt, mdx, mdy);

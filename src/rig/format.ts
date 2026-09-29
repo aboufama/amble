@@ -1,7 +1,8 @@
 /**
- * Reading and checking stored rigs. `parseRig` accepts anything (JSON from a file, a message, an old
- * project) and returns a well-formed `RigData` v1 or a readable error. Unknown fields are preserved
- * (a newer Amble may add some); unknown roles become 'extra' (clips ignore them).
+ * Reading and checking stored rigs. `parseRig` accepts anything (JSON text from a file, a message, an
+ * old project) and returns a well-formed `RigData` v1 or throws a `RigFormatError` with a readable
+ * reason (`tryParseRig` returns the reason instead). Unknown fields are preserved (a newer Amble may
+ * add some); unknown roles become 'extra' (clips ignore them).
  */
 import { BONE_ROLES, CHARACTER_KINDS } from './types';
 import type { AnimTweak, BoneRole, CharacterKind, DynamicSpec, Facing, RigBone, RigData, RigPart } from './types';
@@ -140,11 +141,23 @@ export function normalizeRig(value: unknown): RigData {
 
 export type ParseResult = { ok: true; rig: RigData } | { ok: false; error: string };
 
-/** Like `normalizeRig`, but never throws; accepts a JSON string too. */
-export function parseRig(value: unknown): ParseResult {
+/** A rig from JSON text or a parsed value; throws `RigFormatError`. */
+export function parseRig(value: unknown): RigData {
+  let v = value;
+  if (typeof value === 'string') {
+    try {
+      v = JSON.parse(value) as unknown;
+    } catch {
+      throw new RigFormatError('The rig is not valid JSON.');
+    }
+  }
+  return normalizeRig(v);
+}
+
+/** Like `parseRig`, but returns the reason instead of throwing. */
+export function tryParseRig(value: unknown): ParseResult {
   try {
-    const v = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
-    return { ok: true, rig: normalizeRig(v) };
+    return { ok: true, rig: parseRig(value) };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }

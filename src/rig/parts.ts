@@ -6,13 +6,14 @@
 import { layerAlpha } from './analyze';
 import type { LayerPixels, RigData, RigPart } from './types';
 
-interface PartSpec {
+export interface PartSpec {
   name: string;
   order: number;
   bones: string[];
 }
 
-function specsFor(rig: RigData): PartSpec[] {
+/** The pieces of a kind (layer names for drawing on the bones), with their bones and draw order. */
+export function specsFor(rig: Pick<RigData, 'kind' | 'facing'>): PartSpec[] {
   switch (rig.kind) {
     case 'biped':
       return [

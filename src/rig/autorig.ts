@@ -37,16 +37,26 @@ export interface AutoRigOptions {
   workSize?: number;
   /** Authorship recorded in the rig (default 'auto'). */
   made?: RigData['made'];
+  /** Supplies analyses (a cache): same pixels and working size must give the same analysis. */
+  analyze?: (workSize: number) => Analysis;
 }
 
-export interface AutoRigResult {
+/** What rigging a drawing tells the app. */
+export interface RigResult {
   rig: RigData;
-  analysis: Analysis;
-  /** Kid-readable notes for the Bones view. */
+  /** Kid-readable notes for the Bones view ("Amble's guess"). */
   notes: string[];
+  /** Stable codes for what went wrong, for the UI's own words. */
   issues: FitIssue[];
-  /** Low when a limb is missing, legs merged or hints were dropped: the Bones view should open. */
-  confidence: 'high' | 'low';
+  /**
+   * 0..1: lowered when a limb is missing, legs were stuck together or hints were dropped. Below 0.6
+   * the Desk offers "Check the bones?".
+   */
+  confidence: number;
+}
+
+export interface AutoRigResult extends RigResult {
+  analysis: Analysis;
   workSize: number;
   ms: number;
 }
@@ -58,7 +68,17 @@ const RETRY_WEIGHT: Partial<Record<FitIssue, number>> = {
   'no-legs': 3, 'one-leg': 3, 'legs-merged': 2, 'few-legs': 2, 'missing-arm': 1, 'missing-wing': 1, 'no-head': 2,
 };
 
-const LOW_CONFIDENCE: FitIssue[] = ['no-head', 'no-legs', 'one-leg', 'legs-merged', 'few-legs', 'missing-arm', 'missing-wing', 'hint-dropped', 'short-body'];
+/** How much each issue costs in confidence. */
+const PENALTY: Partial<Record<FitIssue, number>> = {
+  'no-legs': 0.5, 'one-leg': 0.45, 'legs-merged': 0.45, 'few-legs': 0.4, 'no-head': 0.4, 'missing-arm': 0.45,
+  'missing-wing': 0.45, 'hint-dropped': 0.3, 'short-body': 0.3, 'no-tail': 0.05,
+};
+
+export function confidenceOf(issues: readonly FitIssue[]): number {
+  let c = 1;
+  for (const i of new Set(issues)) c -= PENALTY[i] ?? 0.1;
+  return Math.max(0, Math.round(c * 100) / 100);
+}
 
 function fitKind(a: Analysis, kind: CharacterKind, guide: Guide | null, facing: Facing | undefined): Fit {
   switch (kind) {
@@ -97,12 +117,12 @@ export function autoRig(input: RigInput, kind: CharacterKind, opts: AutoRigOptio
   const longest = Math.max(img.width, img.height);
   const hints: Hints | null = opts.hints || opts.tipHints ? { joints: opts.hints, tips: opts.tipHints } : null;
   const run = (workSize: number) => {
-    const a = analyze(input, { workSize });
+    const a = opts.analyze ? opts.analyze(workSize) : analyze(input, { workSize });
     const guide = hints ? makeGuide(a, kind, hints, opts.unsnapped === 'keep') : null;
     const fit = fitKind(a, kind, guide, opts.facing);
     if (guide && guide.unsnapped.size && opts.unsnapped !== 'keep') {
       fit.issues.push('hint-dropped');
-      fit.notes.push('Some hinted joints did not match the drawing, so Amble placed those limbs itself.');
+      fit.notes.push('Some of the helper\'s joints didn\'t match the drawing, so I placed those limbs myself.');
     }
     return { a, fit, workSize };
   };
@@ -123,7 +143,7 @@ export function autoRig(input: RigInput, kind: CharacterKind, opts: AutoRigOptio
     analysis: a,
     notes: fit.notes,
     issues,
-    confidence: issues.some((i) => LOW_CONFIDENCE.includes(i)) ? 'low' : 'high',
+    confidence: confidenceOf(issues),
     workSize: best.workSize,
     ms: performance.now() - t0,
   };
@@ -148,7 +168,8 @@ export function rigFromFit(a: Analysis, fit: Fit, kind: CharacterKind, opts: Aut
     index.set(b.name, bones.length);
     bones.push(bone);
   }
-  const facing: Facing = kind === 'biped' ? opts.facing ?? 0 : fit.facing;
+  // bipeds and things can't tell which way they look; the art request can
+  const facing: Facing = kind === 'biped' || kind === 'object' ? opts.facing ?? fit.facing : fit.facing;
   return {
     format: 'amble-rig',
     v: 1,
