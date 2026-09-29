@@ -64,6 +64,29 @@ test.describe('Change mode', () => {
     await expect.poll(() => session(page, (s) => (s.world as unknown as { steps: Array<{ text: string }> }).steps.at(-1)?.text)).toBe('You switched on Moon gravity');
   });
 
+  test('clicking into the Ask field keeps it about the selected member, and the notebook takes the next click', async ({ page }) => {
+    await openWorld(page);
+    await page.getByRole('radio', { name: 'Change' }).click();
+    await page.getByTestId('tag-moonKing').click();
+    await expect(page.getByTestId('thing-card')).toBeVisible();
+    const ask = page.getByTestId('ask-card');
+    await expect(ask.getByText('About the Moon King')).toBeVisible();
+    // A click elsewhere closes the card; the request the student is about to type stays about him.
+    await ask.getByRole('textbox').click();
+    await expect(page.getByTestId('thing-card')).toHaveCount(0);
+    await expect(ask.getByText('About the Moon King')).toBeVisible();
+    expect(await session(page, (s) => s.scope)).toBe('moonKing');
+    // Nothing in the notebook moves under the pointer when the card closes: one click switches the tab.
+    await page.getByTestId('tag-moonKing').click();
+    await expect(page.getByTestId('thing-card')).toBeVisible();
+    await page.getByTestId('tune-card').getByRole('radio', { name: 'Twists' }).click();
+    await expect(page.getByTestId('tune-card').getByRole('radio', { name: 'Twists' })).toHaveAttribute('aria-checked', 'true');
+    // The chip's ✕ ends it.
+    await ask.getByRole('button', { name: 'Stop asking about the Moon King' }).click();
+    await expect(ask.getByText('About the Moon King')).toHaveCount(0);
+    expect(await session(page, (s) => s.scope)).toBe(null);
+  });
+
   test('Tab moves between the tags and Enter opens a card', async ({ page }) => {
     await openWorld(page);
     await page.getByRole('radio', { name: 'Change' }).click();

@@ -380,6 +380,16 @@ export function selectThing(thing: { id: number; key: CastKey } | null): void {
   patchSession({ selectedId: thing?.id ?? null, selected: thing?.key ?? null, scope: thing?.key ?? null });
 }
 
+/**
+ * Closes the thing card (its ✕, Esc, or a click elsewhere, like into the Ask field) and keeps the Ask
+ * field about that member: the student is usually on the way to typing a request about it. The chip's ✕,
+ * tapping empty world or leaving Change mode clears the scope.
+ */
+export function closeThing(): void {
+  getServices().player.select(null);
+  patchSession({ selectedId: null, selected: null });
+}
+
 export function setScope(scope: CastKey | null): void {
   patchSession({ scope });
 }
