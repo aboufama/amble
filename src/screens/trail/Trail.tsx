@@ -106,7 +106,7 @@ export function Trail({ route }: { route: RouteOf<'trail'> }) {
 
   return (
     <div className={cx('trail', still && 'trail--still', firstLoad && 'trail--first-load', `trail--${route.view}`)} data-testid="screen-trail" data-view={route.view}>
-      <NightSky />
+      <NightSky decor={route.view === 'trail'} />
       <HomeHeader pulse={firstLoad && !reduced} extra={extra} />
       {route.view === 'trail' ? (
         <TrailScene still={still} lit={firstLoad && !reduced} />
