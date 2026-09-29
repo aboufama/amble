@@ -39,6 +39,19 @@ test('a class link: live test, QR code, Copy link, and a student joins with it',
   await student.close();
 });
 
+test('a key pasted as the class code never goes into a link, and the teacher is told why', async ({ page }) => {
+  await mockAi(page);
+  await openAmble(page, { clean: true, route: '#/teacher/link' });
+  const tab = page.getByTestId('teacher-classlink');
+  await tab.getByLabel('AI address').fill(AI_BASE);
+  await tab.getByLabel('Name students see').fill('Room 12 · Period 3');
+  await tab.getByLabel('Class code').fill('sk-proj-abcdefghijklmnopqrstuvwxyz0123456789');
+  await expect(tab.getByText("A key can't go in a class link: anyone with the link could use it. Use a class code from your district's AI proxy.")).toBeVisible();
+  await expect(tab.getByTestId('copy-link')).toHaveCount(0);
+  await expect(tab.getByRole('img', { name: /QR code/ })).toHaveCount(0);
+  await page.screenshot({ path: process.env.QA_SHOT ?? test.info().outputPath('key-in-link.png') });
+});
+
 test('an assignment goes into the class link', async ({ page }) => {
   await openAmble(page, { clean: true, route: '#/teacher/assignments' });
   await page.getByRole('button', { name: 'New assignment' }).first().click();
