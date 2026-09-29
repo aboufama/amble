@@ -73,3 +73,17 @@ test('steps are picked by tapping, strokes land on the part, the preview moves, 
   expect(made.mode).toBe('bones');
   expect(made.parts).toEqual(expect.arrayContaining(['torso', 'head']));
 });
+
+test('Bones from the Desk brings the drawing to life and opens its bones', async ({ page }) => {
+  test.setTimeout(90_000);
+  await openAmble(page);
+  const world = await openStarterWorld(page);
+  await openDesk(page, `#/w/${world}/draw/minion`);
+  const { w, h } = await boardSize(page);
+  await drawOnBoard(page, circle(w / 2, h * 0.6, w * 0.2, 0, 360));
+  await settle(page, 400);
+  await page.getByRole('button', { name: 'Bones', exact: true }).click();
+  await page.waitForFunction((id) => location.hash === `#/w/${id}/bones/minion`, world, { timeout: 30_000 });
+  await expect(page.getByTestId('screen-bones')).toBeVisible();
+  await expect(page.getByText('is only bones so far')).toHaveCount(0);
+});

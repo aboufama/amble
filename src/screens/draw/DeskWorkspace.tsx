@@ -220,7 +220,11 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
 
   // ------------------------------------------------------------------------------------------ Bring to life
 
-  const bring = async () => {
+  /**
+   * Bring to life, then back to the world (or the Trail); `to: 'bones'` opens the new bones instead (the
+   * Bones view needs the drawing brought to life first).
+   */
+  const bring = async (to: 'world' | 'bones' = 'world') => {
     if (!ctrl || bringing) return;
     const st = ctrl.getSnapshot();
     if (!st.ready) return;
@@ -278,10 +282,14 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
       const a = ctrl.surface.docToClient(bx, by);
       const b = ctrl.surface.docToClient(bx + bw, by + bh);
       const from = new DOMRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
-      setComeAlive({ key: r.key, artId: res.record.id, sticker: res.sticker, from });
       announce(t('draw.cameAlive', { name }));
       if (res.onePiece) showToast(t('draw.noLimbs', { name }));
       const bonesRoute: Route = setup.world && r.key ? { name: 'bones', worldId: setup.world.id, key: r.key } : { name: 'bonesFree', artId: res.record.id };
+      if (to === 'bones') {
+        navigate(bonesRoute);
+        return;
+      }
+      setComeAlive({ key: r.key, artId: res.record.id, sticker: res.sticker, from });
       if (res.lowConfidence) showToast(t('draw.lowConfidence'), { action: { label: t('draw.check'), run: () => navigate(bonesRoute) } });
       if (setup.world && r.key) navigate({ name: 'world', id: setup.world.id });
       else {
@@ -296,11 +304,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
     }
   };
 
-  const toBones = async () => {
-    if (!ctrl) return;
-    await saving.saveNow();
-    navigate(setup.world && request.key ? { name: 'bones', worldId: setup.world.id, key: request.key } : { name: 'bonesFree', artId: setup.artId });
-  };
+  const toBones = () => void bring('bones');
 
   const rename = async () => {
     const next = await askUser({ title: t('draw.namePrompt'), label: t('draw.namePrompt'), value: name, maxLength: 40 });
@@ -357,11 +361,11 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
       <IconButton icon="redo" label={t('draw.redo')} variant="ghost" onClick={() => void ctrl?.redo()} disabled={!s?.canRedo} aria-keyshortcuts="Control+Shift+Z" />
       <Menu label={t('draw.more')} icon="more" variant="ghost" items={moreItems} />
       {bonesKind && inked && (
-        <Button variant="ghost" icon="bones" className="desk__compact" onClick={() => void toBones()}>
+        <Button variant="ghost" icon="bones" className="desk__compact" onClick={toBones} disabled={bringing}>
           {t('draw.bones')}
         </Button>
       )}
-      <Button variant="lantern" icon="sparkle" onClick={() => void bring()} busy={bringing} disabled={!s?.ready || bringing} className="desk__bring" data-testid="bring-to-life">
+      <Button variant="lantern" icon="sparkle" onClick={() => void bring('world')} busy={bringing} disabled={!s?.ready || bringing} className="desk__bring" data-testid="bring-to-life">
         {bringing ? t('draw.bringing') : t('draw.bringToLife')}
       </Button>
     </>
