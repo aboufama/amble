@@ -467,12 +467,20 @@ export class Painter {
     };
     const first = o.outline[0];
     const s = this.begin(spec, first.x, first.y, 1, 0);
-    const t = this.shapeTarget(s, o.outline, spec);
+    const t = op.outline === false ? this.emptyTarget(s) : this.shapeTarget(s, o.outline, spec);
     if (op.filled && o.polygon) {
       for (const m of symmetryMaps(op.mirror)) fillPolygon(t, o.polygon.map((p) => ({ x: m[0] * p.x + m[2] * p.y + m[4], y: m[1] * p.x + m[3] * p.y + m[5] })), 1);
       if (board.pixelArt) hardenCoverage(t);
     }
     return s.commit();
+  }
+
+  /** A session's coverage target with nothing drawn yet (a shape that is only filled). */
+  private emptyTarget(s: StrokeSession): Target {
+    if (s.isPixel) return this.pixelStroke().prefix;
+    const e = this.strokeEngine();
+    e.lockEmpty();
+    return e.prefix;
   }
 
   private shapeTarget(s: StrokeSession, outline: Point[], spec: StrokeSpec): Target {

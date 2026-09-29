@@ -4,6 +4,7 @@
  * of explicit shapes (stroke scripts and shape tools).
  */
 import { type Point, segDist } from './geom';
+import { flatten as flattenSpline } from './spline';
 
 export type PerfectKind = 'line' | 'circle' | 'ellipse' | 'triangle' | 'rectangle' | 'polygon';
 
@@ -215,7 +216,7 @@ function squareUp(c: Point[]): Point[] {
   return order.map((p) => ({ x: p.x * ca - p.y * sa, y: p.x * sa + p.y * ca }));
 }
 
-export type ShapeKind = 'line' | 'ellipse' | 'rect' | 'triangle';
+export type ShapeKind = 'line' | 'ellipse' | 'rect' | 'triangle' | 'polygon' | 'curve';
 
 export interface ShapeOutline {
   /** Dense outline points (closed shapes end where they start). */
@@ -224,14 +225,44 @@ export interface ShapeOutline {
   polygon: Point[] | null;
 }
 
+/** A smooth curve through the points (centripetal Catmull-Rom), as dense points. */
+export function curveThrough(pts: Point[], step = 2): Point[] {
+  if (pts.length < 3) return densify(pts, step);
+  const ctrl = pts.map((p) => ({ x: p.x, y: p.y, p: 1 }));
+  const out: Array<{ x: number; y: number; p: number; s: number }> = [{ x: ctrl[0].x, y: ctrl[0].y, p: 1, s: 0 }];
+  flattenSpline(ctrl, ctrl.length, 0, ctrl.length - 1, 0, 0.25, step, out, []);
+  return out.map((v) => ({ x: v.x, y: v.y }));
+}
+
+/** Whether a curve's ends meet (it closes into a shape that can be filled). */
+export function curveCloses(pts: Point[]): boolean {
+  if (pts.length < 3) return false;
+  const a = pts[0];
+  const b = pts[pts.length - 1];
+  let len = 0;
+  for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  return Math.hypot(b.x - a.x, b.y - a.y) <= Math.max(6, len * 0.06);
+}
+
 /**
  * Outline of an explicit shape. line: 2+ points (a polyline); rect: two opposite corners; ellipse: two
- * corners of its bounding box; triangle: three corners. Returns null when the points do not fit.
+ * corners of its bounding box; triangle: three corners; polygon: its corners (closed); curve: a smooth curve
+ * through 2+ points (filled when its ends meet). Returns null when the points do not fit.
  */
 export function shapeOutline(kind: ShapeKind, pts: Point[], step = 2): ShapeOutline | null {
   if (kind === 'line') {
     if (pts.length < 2) return null;
     return { outline: densify(pts, step), polygon: null };
+  }
+  if (kind === 'curve') {
+    if (pts.length < 2) return null;
+    const closed = curveCloses(pts);
+    const outline = curveThrough(closed ? [...pts.slice(0, -1), pts[0]] : pts, step);
+    return { outline, polygon: closed ? outline : null };
+  }
+  if (kind === 'polygon') {
+    if (pts.length < 3) return null;
+    return { outline: densify([...pts, pts[0]], step), polygon: pts };
   }
   if (kind === 'triangle') {
     if (pts.length < 3) return null;

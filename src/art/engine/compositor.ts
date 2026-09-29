@@ -35,6 +35,20 @@ export interface SelectionOverlay {
   rotate: Point | null;
 }
 
+/** A shape being drawn or edited with the Shapes tool (board px). */
+export interface ShapeOverlay {
+  outline: Point[];
+  closed: boolean;
+  color: string;
+  /** Line width, board px (0 = no outline). */
+  width: number;
+  filled: boolean;
+  /** Its control points, draggable until the next tool. */
+  handles: Point[];
+  /** The keyboard crosshair (arrows move it, Enter places a point). */
+  crosshair: Point | null;
+}
+
 export interface Overlays {
   symmetry: Symmetry | null;
   selection: SelectionOverlay | null;
@@ -42,6 +56,7 @@ export interface Overlays {
   lasso: Point[] | null;
   /** Brush outline at the pointer: view CSS px and radius. */
   cursor: { x: number; y: number; r: number } | null;
+  shape: ShapeOverlay | null;
 }
 
 function make(W: number, H: number): Surface2D {
@@ -84,7 +99,7 @@ export class Compositor {
   active: string;
   paper: string;
   workspace: string;
-  readonly overlays: Overlays = { symmetry: null, selection: null, lasso: null, cursor: null };
+  readonly overlays: Overlays = { symmetry: null, selection: null, lasso: null, cursor: null, shape: null };
   private readonly board: Board;
   private readonly displays = new Map<string, Display>();
   private readonly below: Surface2D;
@@ -587,6 +602,12 @@ export class Compositor {
     }
     if (o.lasso) for (const p of o.lasso) add(p, 3);
     if (o.cursor) unionInto(r, { x0: o.cursor.x - o.cursor.r - 3, y0: o.cursor.y - o.cursor.r - 3, x1: o.cursor.x + o.cursor.r + 3, y1: o.cursor.y + o.cursor.r + 3 });
+    if (o.shape) {
+      const pad = (o.shape.width / 2) * this.view.zoom + 4;
+      for (const p of o.shape.outline) add(p, pad);
+      for (const p of o.shape.handles) add(p, 16);
+      if (o.shape.crosshair) add(o.shape.crosshair, 22);
+    }
     return isEmpty(r) ? null : r;
   }
 
@@ -595,7 +616,7 @@ export class Compositor {
     const v = this.ctx;
     const k = this.dpr;
     const grid = this.board.pixelArt && this.view.zoom >= 8;
-    if (!o.symmetry && !o.selection && !o.lasso && !o.cursor && !grid) return;
+    if (!o.symmetry && !o.selection && !o.lasso && !o.cursor && !o.shape && !grid) return;
     v.save();
     v.setTransform(1, 0, 0, 1, 0, 0);
     v.beginPath();
@@ -666,6 +687,7 @@ export class Compositor {
       for (const p of o.selection.handles ?? []) handle(p, false);
       if (o.selection.rotate) handle(o.selection.rotate, true);
     }
+    if (o.shape) this.drawShapeOverlay(v, o.shape, toDev);
     if (o.cursor) {
       const { x, y, r } = o.cursor;
       v.beginPath();
@@ -679,6 +701,70 @@ export class Compositor {
       v.stroke();
     }
     v.restore();
+  }
+
+  /** A shape in progress, painted the way it will be drawn, with its handles and the keyboard crosshair. */
+  private drawShapeOverlay(v: CanvasRenderingContext2D, s: ShapeOverlay, toDev: (x: number, y: number) => Point): void {
+    const k = this.dpr;
+    if (s.outline.length > 1) {
+      v.beginPath();
+      const p0 = toDev(s.outline[0].x, s.outline[0].y);
+      v.moveTo(p0.x, p0.y);
+      for (let i = 1; i < s.outline.length; i++) {
+        const p = toDev(s.outline[i].x, s.outline[i].y);
+        v.lineTo(p.x, p.y);
+      }
+      if (s.closed) v.closePath();
+      v.lineCap = 'round';
+      v.lineJoin = 'round';
+      if (s.filled && s.closed) {
+        v.globalAlpha = 0.85;
+        v.fillStyle = s.color;
+        v.fill();
+      }
+      if (s.width > 0) {
+        v.globalAlpha = 0.9;
+        v.strokeStyle = s.color;
+        v.lineWidth = Math.max(1.5 * k, s.width * this.view.zoom * k);
+        v.stroke();
+      }
+      v.globalAlpha = 1;
+    }
+    for (const h of s.handles) {
+      const q = toDev(h.x, h.y);
+      v.beginPath();
+      v.arc(q.x, q.y, 7 * k, 0, Math.PI * 2);
+      v.fillStyle = '#ffffff';
+      v.fill();
+      v.lineWidth = 2.5 * k;
+      v.strokeStyle = '#2d6cdf';
+      v.stroke();
+    }
+    if (s.crosshair) {
+      const q = toDev(s.crosshair.x, s.crosshair.y);
+      const r = 10 * k;
+      v.lineWidth = 2 * k;
+      for (const [color, w] of [
+        ['rgba(255,255,255,0.95)', 4 * k],
+        ['#2d6cdf', 2 * k],
+      ] as const) {
+        v.strokeStyle = color;
+        v.lineWidth = w;
+        v.beginPath();
+        v.moveTo(q.x - r * 1.6, q.y);
+        v.lineTo(q.x - r * 0.5, q.y);
+        v.moveTo(q.x + r * 0.5, q.y);
+        v.lineTo(q.x + r * 1.6, q.y);
+        v.moveTo(q.x, q.y - r * 1.6);
+        v.lineTo(q.x, q.y - r * 0.5);
+        v.moveTo(q.x, q.y + r * 0.5);
+        v.lineTo(q.x, q.y + r * 1.6);
+        v.stroke();
+        v.beginPath();
+        v.arc(q.x, q.y, r, 0, Math.PI * 2);
+        v.stroke();
+      }
+    }
   }
 
   private drawGrid(v: CanvasRenderingContext2D, toDev: (x: number, y: number) => Point): void {

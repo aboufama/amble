@@ -446,6 +446,13 @@ export class StrokeEngine {
     return dirty;
   }
 
+  /** Ends a just-begun stroke without drawing anything (a shape that is only filled). */
+  lockEmpty(): void {
+    this.pts = [];
+    this.shapeLocked = true;
+    this.active = false;
+  }
+
   /** Whole-stroke integer bounding box (for committing). */
   box(): Rect {
     return toPixels(this.prefix.box, this.W, this.H, 1);

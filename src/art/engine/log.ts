@@ -61,7 +61,8 @@ export interface LogShape {
   op: 'shape';
   layer: string;
   frame: string;
-  shape: 'line' | 'ellipse' | 'rect' | 'triangle';
+  /** polygon: its corners, closed (lasso fill); curve: a smooth curve through the points. */
+  shape: 'line' | 'ellipse' | 'rect' | 'triangle' | 'polygon' | 'curve';
   brush: BrushId;
   size: number;
   color: string;
@@ -69,6 +70,8 @@ export interface LogShape {
   points: [number, number][];
   filled: boolean;
   mirror: Symmetry | null;
+  /** Draw the outline with the brush (default true); false = only the fill (lasso fill, filled shapes). */
+  outline?: boolean;
 }
 
 export type Affine6 = [number, number, number, number, number, number];
