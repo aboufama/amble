@@ -56,6 +56,13 @@ test('a change asked in the world is robot-tested, waits as a new version, plays
   await expect(step).toContainText(`You asked: "${WORDS}"`);
   await expect(step).toContainText('tested');
 
+  // The toast's See the change shows this change in the Footsteps sheet (as the footstep's link does), and goes.
+  const toast = page.locator('.toast', { hasText: 'Amble changed your world' });
+  await toast.getByRole('button', { name: 'See the change' }).click();
+  await expect(page.getByTestId('diff-sheet')).toContainText(WORDS);
+  await expect(page.getByTestId('diff-sheet')).toContainText('game.js');
+  await expect(toast).toHaveCount(0);
+
   // One change request, the class code only in its header, never the student's name or drawings.
   const changes = ai.tasks('change');
   expect(changes).toHaveLength(1);

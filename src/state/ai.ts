@@ -22,11 +22,13 @@ import type {
   LocalSteer,
   PlanReply,
   PlayerError,
+  StepId,
   StepInput,
   World,
   WorldId,
 } from '../model/types';
-import { announce, showToast } from './app';
+import { seeChange } from '../screens/footsteps/seeChange';
+import { announce, dismissToast, showToast } from './app';
 import { markSeen } from './prefs';
 import { applyAccepted, setDial, setTwist } from './session';
 import { getState, setState } from './store';
@@ -238,11 +240,34 @@ function changedFiles(before: World, outcome: Extract<AiOutcome, { kind: 'accept
   return outcome.files.filter((f) => before.code.find((b) => b.path === f.path)?.source !== f.source).map((f) => f.path);
 }
 
-/** "Amble changed your world: …" [See the change] (§2.8 Done). */
-function doneToast(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, files: string[]): void {
+/** The "Amble changed your world" toast on screen, if any (it goes once its change is being shown). */
+let changeToast: string | null = null;
+
+/** Closes the "Amble changed your world" toast: See the change is open, so it has done its job. */
+export function dismissChangeToast(): void {
+  if (changeToast) dismissToast(changeToast);
+  changeToast = null;
+}
+
+/**
+ * "Amble changed your world: …" [See the change] (§2.8 Done). See the change opens the same sheet as the
+ * footstep's link (§2.9: the summary, the student's words and the diff), back in the world if the student
+ * has moved on; Look inside only when there is no step to show.
+ */
+function doneToast(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, files: string[], stepId: StepId | null): void {
   if (getState().session.world?.id !== worldId) return;
   const text = outcome.summary ? t('ai.changed', { summary: outcome.summary }) : t('ai.changedPlain');
-  showToast(text, { kind: 'ai', action: { label: t('ai.seeChange'), run: () => navigate({ name: 'code', worldId, file: files[0] ?? 'game.js' }) } });
+  const run = () => {
+    if (!stepId) {
+      navigate({ name: 'code', worldId, file: files[0] ?? 'game.js' });
+      return;
+    }
+    const route = getState().app.route;
+    if (route.name !== 'world' || route.id !== worldId) navigate({ name: 'world', id: worldId });
+    seeChange(worldId, stepId);
+  };
+  dismissChangeToast();
+  changeToast = showToast(text, { kind: 'ai', action: { label: t('ai.seeChange'), run } });
 }
 
 /** Applies an accepted change or fix: the session's `applyAccepted` (M2), else a direct commit. */
@@ -256,11 +281,11 @@ async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind:
     s.ai.changed = { worldId, files, handFile };
   });
   if (getState().session.world?.id === worldId) {
-    await applyAccepted(outcome);
-    doneToast(worldId, outcome, files);
+    const recorded = await applyAccepted(outcome);
+    doneToast(worldId, outcome, files, recorded.steps.at(-1)?.id ?? null);
     return;
   }
-  await commitWorld({ ...before, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, task, words));
+  const recorded = await commitWorld({ ...before, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, task, words));
   if (getState().session.world?.id === worldId) {
     setState((s) => {
       s.session.manifest = outcome.manifest;
@@ -268,7 +293,7 @@ async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind:
     });
     void getServices().player.promote().catch(() => undefined);
   }
-  doneToast(worldId, outcome, files);
+  doneToast(worldId, outcome, files, recorded.steps.at(-1)?.id ?? null);
 }
 
 /** A build's result, written to the stored world (the student may be drawing on the Desk). */
