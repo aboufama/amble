@@ -85,42 +85,6 @@
   font-size: 1.0625rem;
 }
 
-/* the build pill (§2.5) */
-.pill {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: var(--s2);
-  height: 34px;
-  padding: 0 14px 0 10px;
-  border-radius: var(--r-chip);
-  font: var(--type-chip);
-  color: var(--text);
-  background: color-mix(in srgb, var(--ai) 14%, var(--bg-deep));
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ai) 55%, transparent);
-  white-space: nowrap;
-}
-
-.pill .footprints {
-  transform: scale(0.7);
-  margin: 0 -6px;
-}
-
-.pill__pct {
-  font-family: var(--font-code);
-  color: var(--ai);
-}
-
-.pill--ready {
-  color: var(--text);
-  background: color-mix(in srgb, var(--alive) 16%, var(--bg-deep));
-  box-shadow: inset 0 0 0 1.5px var(--alive);
-}
-
-.pill--ready .icon {
-  color: var(--alive);
-}
-
 /* ---------- the tool rail ---------- */
 .desk__rail {
   grid-area: rail;

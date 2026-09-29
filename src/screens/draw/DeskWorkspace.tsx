@@ -30,9 +30,10 @@ import { askUser } from '../../ui/dialogs';
 import { Icon } from '../../ui/icons';
 import { PAPER, THEMES } from '../../ui/tokens';
 import { TopBar } from '../../app/frame/TopBar';
+import { BuildPill } from '../ai/BuildPill';
 import { KindPicker } from '../bones/KindPicker';
 import { colorName } from './ColorPanel';
-import { BuildPill, DeskToast, PivotPin } from './DeskBits';
+import { DeskToast, PivotPin } from './DeskBits';
 import { GuideStrip } from './GuideStrip';
 import { PhotoImport } from './PhotoImport';
 import { RequestNote } from './RequestNote';
@@ -315,7 +316,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
         <h1 className="topbar__title desk__title">{t('draw.drawingTitle', { name })}</h1>
       )}
       {request.role && <Tag role={request.role} variant="paper" className="desk__role" />}
-      <BuildPill worldId={setup.world?.id ?? null} />
+      {setup.world && <BuildPill worldId={setup.world.id} />}
     </>
   );
 

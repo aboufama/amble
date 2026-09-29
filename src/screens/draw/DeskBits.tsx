@@ -1,67 +1,11 @@
 /**
- * Small pieces of the Desk: the build pill in the top bar (a world being built while the student draws),
- * the pivot pin on the sheet (where it stands in the game), and the Desk's toast above the view bar
- * ("Perfect circle!", "Closed a small gap and filled it.").
+ * Small pieces of the Desk: the pivot pin on the sheet (where it stands in the game), and the Desk's toast
+ * above the view bar ("Perfect circle!", "Closed a small gap and filled it.").
  */
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useEffect, useId, useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import type { DeskController } from '../../draw/deskController';
 import { t } from '../../i18n';
-import type { AiProgress } from '../../model/types';
-import { useStore } from '../../state/store';
-import { Footprints } from '../../ui/components';
 import { Icon } from '../../ui/icons';
-
-/** The build's share done, by phase (§2.5): an estimate, never a promise. */
-export function buildPercent(p: AiProgress): number {
-  switch (p.phase) {
-    case 'queued':
-    case 'checking':
-      return 2;
-    case 'planning':
-      return 4;
-    case 'writing':
-      return Math.round(2 + Math.min(1, (p.chars ?? 0) / 12000) * 78);
-    case 'validating':
-      return 85;
-    case 'testing':
-      return 90;
-    case 'fixing':
-      return p.round === 2 ? 80 : 60;
-    case 'swapping':
-      return 98;
-    default:
-      return 2;
-  }
-}
-
-/** "Building your world · 64%" while a build of this world runs; "Your world is ready · tested" after. */
-export function BuildPill({ worldId }: { worldId: string | null }) {
-  const job = useStore((s) => s.ai.job);
-  const outcome = useStore((s) => s.ai.lastOutcome);
-  const [seen, setSeen] = useState(false);
-  const building = !!worldId && job?.worldId === worldId && job.task === 'build';
-  useEffect(() => {
-    if (building) setSeen(true);
-  }, [building]);
-  if (building && job) {
-    return (
-      <span className="pill" role="status">
-        <Footprints />
-        <span>{t('draw.building')}</span>
-        <span className="pill__pct">{t('draw.buildingPercent', { n: buildPercent(job.progress) })}</span>
-      </span>
-    );
-  }
-  if (seen && outcome?.kind === 'accepted') {
-    return (
-      <span className="pill pill--ready" role="status">
-        <Icon name="check" size={16} />
-        <span>{t('draw.buildReady')}</span>
-      </span>
-    );
-  }
-  return null;
-}
 
 /**
  * The pivot pin (mint): where the drawing stands in the game. Drag it, or focus it and use the arrow keys
