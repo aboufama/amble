@@ -299,10 +299,20 @@ pre {
   }
 }
 
+/* The page crossfades quickly; named elements (the world view) morph at --t-move. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
+  animation-duration: var(--t-ui);
+  animation-timing-function: var(--ease-amble);
+}
+
+::view-transition-group(*) {
   animation-duration: var(--t-move);
   animation-timing-function: var(--ease-amble);
+}
+
+::view-transition-group(root) {
+  animation-duration: var(--t-ui);
 }
 
 :root[data-motion='reduced'] {

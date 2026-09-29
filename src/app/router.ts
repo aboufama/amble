@@ -143,12 +143,15 @@ export function formatRoute(route: Route): string {
 const listeners = new Set<() => void>();
 let currentHash: string | null = null;
 let currentRoute: Route = { name: 'home' };
+/** The route the screens show: the address bar's, from the moment `changed()` last ran. */
+let shownRoute: Route | null = null;
 
 function locationHash(): string {
   return typeof location === 'undefined' ? '' : location.hash;
 }
 
-function snapshot(): Route {
+/** The route the address bar says (parsed once per hash). */
+function addressRoute(): Route {
   const hash = locationHash();
   if (hash !== currentHash) {
     currentHash = hash;
@@ -157,9 +160,18 @@ function snapshot(): Route {
   return currentRoute;
 }
 
+/**
+ * What `useRoute()` reads. It follows `changed()`, not the address bar directly: `navigate` updates the
+ * address first and the screens a moment later (inside a View Transition), and a render in between must
+ * still see the old screen, or the transition would picture the new one as the old.
+ */
+function snapshot(): Route {
+  return shownRoute ?? addressRoute();
+}
+
 function changed(): void {
-  const route = snapshot();
-  setRoute(route);
+  shownRoute = addressRoute();
+  setRoute(shownRoute);
   for (const fn of listeners) fn();
 }
 
@@ -170,7 +182,7 @@ function subscribe(fn: () => void): () => void {
 
 /** The route the address bar shows. */
 export function currentRouteNow(): Route {
-  return snapshot();
+  return addressRoute();
 }
 
 /** Re-renders on every route change (back/forward, links, `navigate`). */
@@ -181,22 +193,23 @@ export function useRoute(): Route {
 export interface NavigateOptions {
   /** Replace the current history entry instead of adding one. */
   replace?: boolean;
-  /** Animate with a View Transition when supported and motion is allowed (default true). */
+  /** Animate with a View Transition when supported, motion is allowed and the page is not busy (default true). */
   transition?: boolean;
 }
 
-/** Goes to a route: updates the hash, the store's `app.route` and every `useRoute()` synchronously. */
+/**
+ * Goes to a route. The address (and so Back) changes at once, in the tap itself; the store's `app.route`
+ * and every `useRoute()` follow synchronously, or inside a View Transition, which never holds the change
+ * back more than a moment (transitions.ts).
+ */
 export function navigate(route: Route, o: NavigateOptions = {}): void {
   const hash = formatRoute(route);
-  const apply = () => {
-    if (hash !== locationHash()) {
-      if (o.replace) history.replaceState(history.state, '', hash);
-      else history.pushState(null, '', hash);
-    }
-    changed();
-  };
-  if (o.transition === false) apply();
-  else withViewTransition(() => flushSync(apply));
+  if (hash !== locationHash()) {
+    if (o.replace) history.replaceState(history.state, '', hash);
+    else history.pushState(null, '', hash);
+  }
+  if (o.transition === false) changed();
+  else withViewTransition(() => flushSync(changed));
 }
 
 export function hrefOf(route: Route): string {
