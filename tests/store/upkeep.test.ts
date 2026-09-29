@@ -9,8 +9,9 @@ import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dailyTidy, purgeExpired, watchHealth } from '../../src/files/upkeep';
 import { blobRefOf } from '../../src/model/ids';
-import type { BlobRef } from '../../src/model/types';
-import { resetState, getState } from '../../src/state/store';
+import type { BlobRef, World } from '../../src/model/types';
+import { setServices, type Services } from '../../src/app/services';
+import { resetState, getState, setState } from '../../src/state/store';
 import { upkeepOf, type Store, type StoreUpkeep } from '../../src/store/api';
 import { GC_LAST_KEY } from '../../src/store/gc';
 import { openAmbleDb } from '../../src/store/idb';
@@ -133,6 +134,37 @@ describe('the IndexedDB store', () => {
     await store.commit({ worlds: [sampleWorld()] });
     expect(store.health()).toBe('ok');
     expect(getState().library.storage).toBe('ok');
+  });
+
+  it("saves the open world's newest copy to Drive from the out-of-space toast", async () => {
+    const store = new IdbStore(await openAmbleDb(new IDBFactory()));
+    const saved: World[] = [];
+    setServices({
+      store,
+      files: {
+        saveWorld: async (w: World) => {
+          saved.push(w);
+          return { name: 'Moon King.amble', at: 1, method: 'download' };
+        },
+      },
+    } as unknown as Services);
+    const before = sampleWorld();
+    await store.commit({ worlds: [before] });
+    // The student keeps working; the store fills up, so these changes live only in the session.
+    setState((s) => {
+      s.session.world = { ...before, title: 'Moon King 2', updatedAt: before.updatedAt + 60_000 };
+    });
+    watchHealth(store);
+    const put = IDBObjectStore.prototype.put;
+    vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore['put']>) {
+      if (this.name === 'worlds') throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+      return put.apply(this, args);
+    });
+    await store.commit({ worlds: [getState().session.world!] }).catch(() => undefined);
+    const toast = getState().app.toasts.find((t) => t.action);
+    toast?.action?.run();
+    await vi.waitFor(() => expect(saved).toHaveLength(1));
+    expect(saved[0].title).toBe('Moon King 2');
   });
 
   it('reopens a connection the browser closed', async () => {
