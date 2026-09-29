@@ -127,3 +127,24 @@ test('with storage blocked, the First page banner clears the tapes and the paper
   // The trust line stays where it is without the banner (696 at 1366x768), off the lit path.
   expect(g.trustBottom).toBeLessThanOrEqual(700);
 });
+
+test("with storage blocked, the Trail's banner pushes Welcome back down instead of covering New world", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'indexedDB', {
+      configurable: true,
+      get() {
+        throw new DOMException('Blocked by policy', 'SecurityError');
+      },
+    });
+  });
+  await openAmble(page);
+  await makeWorlds(page, ['Moss Run']);
+  await gotoRoute(page, '#/trail');
+  await expect(page.getByTestId('storage-banner')).toBeVisible();
+  const newWorld = page.getByTestId('new-world');
+  // A real click on the button's centre (a covered button would lose it to the banner).
+  await newWorld.click({ trial: true });
+  const banner = (await page.getByTestId('storage-banner').boundingBox())!;
+  const button = (await newWorld.boundingBox())!;
+  expect(button.y, 'New world sits under the banner').toBeGreaterThanOrEqual(banner.y + banner.height);
+});
