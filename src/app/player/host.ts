@@ -20,6 +20,7 @@ import {
   type RobotReport,
   type RobotVerdict,
   type ToPlayer,
+  type WorldObject,
 } from '../../cores/play';
 
 export type SlotId = 'world' | 'desk-preview' | 'code' | 'gallery' | 'handin';
@@ -57,6 +58,8 @@ export interface PlayerHost {
   /** The iframe's accessible name ("Moon King (game)"). An addition to the spec's interface. */
   setTitle(title: string): void;
   on<T extends FromPlayer['type']>(type: T, fn: (m: Extract<FromPlayer, { type: T }>) => void): () => void;
+  /** Change mode's object reports (4 Hz, ≤ 64 items); `on('objects', …)` in one call (§8.3 step 5). */
+  onObjects(fn: (items: WorldObject[]) => void): () => void;
 }
 
 type AnyListener = (m: FromPlayer) => void;
@@ -415,6 +418,10 @@ export class PlayerHostImpl implements PlayerHost {
     const listener = fn as AnyListener;
     set.add(listener);
     return () => set.delete(listener);
+  }
+
+  onObjects(fn: (items: WorldObject[]) => void): () => void {
+    return this.on('objects', (m) => fn(m.items));
   }
 
   /** Tears everything down (tests, "Delete everything"). */

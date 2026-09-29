@@ -15,7 +15,7 @@
   --surface-raised: #2e3478;
   --well: #111338;
   --line: #3d448f; /* decorative only */
-  --line-control: #5a61aa; /* 3.0:1 on --bg */
+  --line-control: #5b62ab; /* 3.04:1 on --bg (the spec's #5a61aa is 2.995:1, a hair under 3:1) */
   --line-control-panel: #7a82cc; /* 3:1 on every surface (panels redefine --line-control with it) */
   --text: #f4ecdc;
   --text-2: #a7acdc;
@@ -57,6 +57,7 @@
   --tint-prop: #c9c2b2;
   --tint-decor: #bfc6e0;
   --bones: #86f3cb;
+  --hatch: #ffffff;
   --dash: #f4ecdc;
   --dash-halo: rgba(8, 9, 30, 0.55);
 
@@ -69,11 +70,11 @@
   --font-ui: 'Atkinson Hyperlegible Next', system-ui, sans-serif;
   --font-code: 'JetBrains Mono', ui-monospace, monospace;
   --weight-display: 600;
-  --display-xl: 600 3.5rem/3.625rem var(--font-display);
-  --display-l: 600 2.5rem/2.75rem var(--font-display);
-  --display-m: 600 1.875rem/2.125rem var(--font-display);
-  --type-title: 600 1.375rem/1.75rem var(--font-display);
-  --type-heading: 600 1.1875rem/1.625rem var(--font-display);
+  --display-xl: var(--weight-display) 3.5rem/3.625rem var(--font-display);
+  --display-l: var(--weight-display) 2.5rem/2.75rem var(--font-display);
+  --display-m: var(--weight-display) 1.875rem/2.125rem var(--font-display);
+  --type-title: var(--weight-display) 1.375rem/1.75rem var(--font-display);
+  --type-heading: var(--weight-display) 1.1875rem/1.625rem var(--font-display);
   --type-label: 600 0.96875rem/1.25rem var(--font-ui);
   --type-chip: 600 0.875rem/1.125rem var(--font-ui);
   --type-caps: 700 0.78125rem/1rem var(--font-ui);

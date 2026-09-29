@@ -205,7 +205,28 @@ export class IdbStore implements Store {
     if (!names.size) return;
 
     const tx = this.tx([...names], 'readwrite');
+    const finished = done(tx);
     const now = Date.now();
+    try {
+      this.writeCommit(tx, c, blobs, now);
+    } catch (err) {
+      // A write that throws (a record without its key, a value that can't be stored) must not let the
+      // earlier writes commit: abort, so nothing is written.
+      try {
+        tx.abort();
+      } catch {
+        // Already finished.
+      }
+      await finished.catch(() => undefined);
+      throw err;
+    }
+    await finished;
+    const worlds = [...new Set([...(c.worlds ?? []).map((w) => w.id), ...Object.keys(c.snapshots ?? {})])];
+    const artIds = [...new Set((c.art ?? []).map((a) => a.id))];
+    if (worlds.length || artIds.length) this.emit({ ...(worlds.length ? { worlds } : {}), ...(artIds.length ? { art: artIds } : {}) });
+  }
+
+  private writeCommit(tx: IDBTransaction, c: Commit, blobs: Array<{ ref: BlobRef; blob: Blob }>, now: number): void {
     if (blobs.length) {
       const store = tx.objectStore('blobs');
       for (const { ref, blob } of blobs) {
@@ -238,9 +259,6 @@ export class IdbStore implements Store {
       };
     }
     for (const id of c.clearDrafts ?? []) tx.objectStore('drafts').delete(id);
-    await done(tx);
-    const worlds = [...new Set([...written, ...Object.keys(c.snapshots ?? {})])];
-    if (worlds.length || art.size) this.emit({ ...(worlds.length ? { worlds } : {}), ...(art.size ? { art: [...art.keys()] } : {}) });
   }
 
   async estimate(): Promise<{ usage: number; quota: number; persisted: boolean }> {

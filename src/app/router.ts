@@ -203,6 +203,18 @@ export function hrefOf(route: Route): string {
   return formatRoute(route);
 }
 
+/** Hands a `#class=` fragment to the school service (for the Join card) and strips it from the address bar. */
+function takeClassLink(services: Pick<Services, 'school'>, hash: string): void {
+  let intake = null;
+  try {
+    intake = services.school.readClassLink(hash);
+  } catch (err) {
+    console.warn('The class link could not be read:', err);
+  }
+  history.replaceState(history.state, '', `${location.pathname}${location.search}#/`);
+  setJoinIntake(intake);
+}
+
 /**
  * Boot: reads a `#class=` link (handing it to the school service for the Join card), strips it from the
  * address bar, restores the last route after a discarded tab, and starts listening for hash changes.
@@ -211,19 +223,17 @@ export function hrefOf(route: Route): string {
 export function initRouter(services: Pick<Services, 'school'>, o: { lastRoute?: string | null } = {}): () => void {
   const hash = locationHash();
   if (hasClassLink(hash)) {
-    let intake = null;
-    try {
-      intake = services.school.readClassLink(hash);
-    } catch (err) {
-      console.warn('The class link could not be read:', err);
-    }
-    history.replaceState(history.state, '', `${location.pathname}${location.search}#/`);
-    setJoinIntake(intake);
+    takeClassLink(services, hash);
   } else if (!hash && o.lastRoute && (document as Document & { wasDiscarded?: boolean }).wasDiscarded) {
     const route = parseHash(o.lastRoute);
     if (route.name !== 'notFound') history.replaceState(history.state, '', formatRoute(route));
   }
-  const onChange = () => changed();
+  // A class link pasted into the address bar of an open tab arrives as a hash change.
+  const onChange = () => {
+    const now = locationHash();
+    if (hasClassLink(now)) takeClassLink(services, now);
+    changed();
+  };
   window.addEventListener('hashchange', onChange);
   window.addEventListener('popstate', onChange);
   changed();

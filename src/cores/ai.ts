@@ -255,9 +255,9 @@ const FALLBACK_KIT_MANIFEST: KitManifest = {
 // ------------------------------------------------------------------ class links
 
 /** `class=<value>` in a hash: `#class=…`, or after a route (`#/trail?class=…`). */
-const CLASS_PARAM = /(?:^#?|[#&?/])class=([A-Za-z0-9_-]+)/;
+const CLASS_PARAM = /(?:^#?|[#&?/])class=([^&#]*)/;
 
-/** Whether a location hash carries a class link. */
+/** Whether a location hash carries a class link (even a damaged one: it is read, then stripped). */
 export function hasClassLink(hash: string): boolean {
   return CLASS_PARAM.test(hash);
 }
@@ -386,16 +386,17 @@ export function classLinkToCore(link: ClassLinkV1): ClassLink | null {
 export function parseClassLink(fragment: string, now: Date = new Date()): ClassLinkParse | null {
   const m = CLASS_PARAM.exec(fragment);
   if (!m) return null;
-  if (m[1].length > 2800) return { ok: false, reason: 'damaged' };
+  if (m[1].length > 2800 || !/^[A-Za-z0-9_-]+={0,2}$/.test(m[1])) return { ok: false, reason: 'damaged' };
+  const value = m[1].replace(/=+$/, '');
   let raw: unknown;
   try {
-    raw = JSON.parse(fromBase64Url(m[1]));
+    raw = JSON.parse(fromBase64Url(value));
   } catch {
     return { ok: false, reason: 'damaged' };
   }
   if (typeof raw !== 'object' || raw === null || (raw as { v?: unknown }).v !== 1) return { ok: false, reason: 'damaged' };
   if ('cls' in raw) return readSpecPayload(raw as Record<string, unknown>, now);
-  const core = readClassLink(`#class=${m[1]}`);
+  const core = readClassLink(`#class=${value}`);
   if (!core) return { ok: false, reason: 'damaged' };
   if (!core.ok) return { ok: false, reason: /key|secret|token|https|safe/i.test(core.error) ? 'unsafe' : 'damaged' };
   const link = classLinkFromCore(core.link);

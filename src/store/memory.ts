@@ -149,6 +149,10 @@ export class MemoryStore implements Store {
   };
 
   async commit(c: Commit): Promise<void> {
+    // Like IndexedDB: a record without its key fails the whole commit before anything is written.
+    for (const r of [...(c.worlds ?? []), ...(c.art ?? []), ...(c.steps ?? [])]) {
+      if (typeof (r as { id?: unknown }).id !== 'string') throw new DOMException('A record has no id.', 'DataError');
+    }
     // Everything is prepared first, then applied in one go (nothing awaits in between).
     const blobs = await Promise.all((c.blobs ?? []).map(async (blob) => [await blobRefOf(blob), blob] as const));
     const art = new Map((c.art ?? []).map((a) => [a.id, clone(a)]));

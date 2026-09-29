@@ -91,3 +91,26 @@ export function layerRoot(): HTMLElement {
   const open = [...document.querySelectorAll<HTMLDialogElement>('dialog[open]')].filter((d) => d.matches(':modal'));
   return open[open.length - 1] ?? document.body;
 }
+
+const LAYERS_EVENT = 'amble:layers';
+
+/** Dialog calls this after a modal dialog opens or closes, so floating layers follow the top modal. */
+export function notifyLayers(): void {
+  if (typeof document !== 'undefined') document.dispatchEvent(new Event(LAYERS_EVENT));
+}
+
+/**
+ * The element app-wide floating layers (toasts, live regions) render into: the top modal dialog, else
+ * the body. Content outside a modal dialog is inert, so a toast's button or a live region there would
+ * be unreachable. Null before the first effect.
+ */
+export function useLayerRoot(): HTMLElement | null {
+  const [root, setRoot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    const update = () => setRoot(layerRoot());
+    update();
+    document.addEventListener(LAYERS_EVENT, update);
+    return () => document.removeEventListener(LAYERS_EVENT, update);
+  }, []);
+  return root;
+}

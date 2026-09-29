@@ -39,7 +39,7 @@ export const THEMES: Record<ThemeName, ThemeColors> = {
     surfaceRaised: '#2e3478',
     well: '#111338',
     line: '#3d448f',
-    lineControl: '#5a61aa',
+    lineControl: '#5b62ab',
     lineControlPanel: '#7a82cc',
     text: '#f4ecdc',
     text2: '#a7acdc',

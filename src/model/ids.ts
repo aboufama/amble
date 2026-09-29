@@ -73,7 +73,8 @@ const K = new Uint32Array([
 export function sha256Js(data: Uint8Array): Uint8Array {
   const h = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
   const bitLen = data.length * 8;
-  const padded = new Uint8Array((((data.length + 9) >> 6) + 1) << 6);
+  // Room for the 0x80 byte and the 64-bit length, rounded up to whole 64-byte blocks.
+  const padded = new Uint8Array(Math.ceil((data.length + 9) / 64) * 64);
   padded.set(data);
   padded[data.length] = 0x80;
   const view = new DataView(padded.buffer);

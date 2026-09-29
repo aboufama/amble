@@ -5,6 +5,7 @@
  */
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
 import { t } from '../../i18n';
+import { notifyLayers } from '../a11y';
 import { cx } from '../cx';
 import { IconButton } from './Button';
 
@@ -59,10 +60,12 @@ export function Dialog({
     if (open && !dialog.open) {
       returnTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       dialog.showModal();
+      notifyLayers();
       const target = initialFocus?.current ?? dialog.querySelector<HTMLElement>('[autofocus], [data-autofocus]');
       target?.focus();
     } else if (!open && dialog.open) {
       dialog.close();
+      notifyLayers();
     }
   }, [open, initialFocus]);
 
@@ -70,6 +73,7 @@ export function Dialog({
     const dialog = ref.current;
     return () => {
       if (dialog?.open) dialog.close();
+      notifyLayers();
     };
   }, []);
 
@@ -81,6 +85,7 @@ export function Dialog({
       close.current('escape');
     };
     const onClosed = () => {
+      notifyLayers();
       const back = returnTo.current;
       returnTo.current = null;
       if (back?.isConnected) back.focus({ preventScroll: true });
