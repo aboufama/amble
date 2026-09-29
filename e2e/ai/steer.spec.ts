@@ -5,7 +5,7 @@
  */
 import { expect, openAmble, test } from '../helpers/app';
 import { mockAi } from '../helpers/mockAi';
-import { ask, mountHarness, openStarterWorld, outcomeOf, skipExplainer, type AmbleWindow } from './harness';
+import { ask, mountHarness, openFixtureWorld, outcomeOf, skipExplainer, type AmbleWindow } from './harness';
 
 const dialOf = (page: import('@playwright/test').Page, key: string) =>
   page.evaluate((k) => (window as unknown as AmbleWindow).__amble.getState().session.world.dials[k] ?? null, key);
@@ -13,7 +13,7 @@ const dialOf = (page: import('@playwright/test').Page, key: string) =>
 test('"make the jump higher" turns the dial with no AI call; Undo puts it back', async ({ page }) => {
   const ai = await mockAi(page, { patches: [] });
   await openAmble(page, { ai: 'mock', clean: true });
-  await openStarterWorld(page);
+  await openFixtureWorld(page);
   await mountHarness(page);
 
   await ask(page, 'make the jump higher');
@@ -33,7 +33,7 @@ test('"make the jump higher" turns the dial with no AI call; Undo puts it back',
 test('a twist by name, and Ask the AI instead sends the same words as a change', async ({ page }) => {
   const ai = await mockAi(page, { patches: ['change-stomp.patch'] });
   await openAmble(page, { ai: 'mock', clean: true });
-  const id = await openStarterWorld(page);
+  const id = await openFixtureWorld(page);
   await mountHarness(page);
   await skipExplainer(page);
 
@@ -52,7 +52,7 @@ test('a twist by name, and Ask the AI instead sends the same words as a change',
 
 test('with the AI off, dials still turn; other wishes say they need the AI helper', async ({ page }) => {
   await openAmble(page, { clean: true });
-  await openStarterWorld(page);
+  await openFixtureWorld(page);
   await mountHarness(page);
 
   await expect(page.getByTestId('ai-ask')).toHaveAttribute('data-state', 'off');

@@ -1,10 +1,11 @@
 /**
  * The AI cards' e2e harness (dev server only: the app never imports this file, so it is never built).
- * It mounts the cards over whatever screen is open, wired to the app's real store and services, the way
- * M2's Ask card and M3's Desk embed them: the Ask card (title, badge, `AskStates`) where the notebook sits,
- * the steer toast over the world view, and the build pill. e2e/ai specs load it with
- * `import('/src/screens/ai/harness.tsx')` and call `mountAiHarness()`; `view: 'sent'` shows What Amble
- * sends instead. `planWorld(plan)` makes a world from a plan the way M1's plan card does.
+ * It mounts the cards the open screen does not show itself, wired to the app's real store and services:
+ * the build pill always, and over a screen without the world's notebook, the Ask card (title, badge,
+ * `AskStates`) and the steer toast (the world screen has its own, so specs drive the real ones there).
+ * e2e/ai specs load it with `import('/src/screens/ai/harness.tsx')` and call `mountAiHarness()`;
+ * `view: 'sent'` shows What Amble sends instead. `planWorld(plan)` makes a world from a plan the way
+ * M1's plan card does.
  */
 import { StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -27,7 +28,16 @@ function AskHarness() {
   const world = useStore((s) => s.session.world);
   const manifest = useStore((s) => s.session.manifest);
   const scope = useStore((s) => s.session.selected);
+  // The world screen shows its own Ask card and steer toast.
+  const inWorld = useStore((s) => s.app.route.name === 'world' && s.app.route.id === s.session.world?.id);
   if (!world) return null;
+  if (inWorld) {
+    return (
+      <div className="ai-harness__pill">
+        <BuildPill worldId={world.id} />
+      </div>
+    );
+  }
   return (
     <>
       <div className="ai-harness__world" data-testid="ai-harness-world">

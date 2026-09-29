@@ -14,7 +14,7 @@ import type { AiOutcome, PlanOutcome } from '../../src/model/types';
 import { createAppAi, type AiService } from '../../src/pipeline/api';
 import type { SchoolApi } from '../../src/school/api';
 import type { PlayerHost } from '../../src/app/player/host';
-import { createStarterStub } from '../../src/starters/api';
+import { createStarterCatalog } from '../../src/starters/api';
 import { getState, resetState } from '../../src/state/store';
 import { MemoryStore } from '../../src/store/memory';
 import { samplePlan, sampleWorld } from '../foundation/samples';
@@ -25,7 +25,7 @@ function services(over: Partial<Services> = {}): Services {
     files: {} as FilesApi,
     ai: createAppAi(),
     history: createHistory(),
-    starters: createStarterStub(),
+    starters: createStarterCatalog(),
     school: {} as SchoolApi,
     player: {} as PlayerHost,
     ...over,

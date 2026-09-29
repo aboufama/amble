@@ -6,39 +6,16 @@
  */
 import { expect, openAmble, test } from '../helpers/app';
 import { CLASS_CODE, mockAi } from '../helpers/mockAi';
-import { firstFrames, footsteps, gameFrame, openSeed, readGame, startGame } from '../journeys/journey';
+import { firstFrames, footsteps, gameFrame, gameSource, JUMP_SUMMARY as SUMMARY, jumpPatch, openSeed, readGame, startGame } from '../journeys/journey';
 
 const WORDS = 'let me jump three times';
-const SUMMARY = 'Now your hero can jump three times in the air.';
-
-/** A change patch written against the world's own game.js: the hero's platformer gets a third jump. */
-function patchFor(source: string): string {
-  const line = source.split('\n').find((l) => l.includes('.platformer(') && l.includes('jumps: 2'));
-  if (!line) throw new Error('No platformer line with jumps: 2 in this starter.');
-  return [
-    '@@amble-patch 1',
-    `@@summary ${SUMMARY}`,
-    '@@play Press jump three times to fly higher.',
-    '@@next Make the jumps higher|Add a dash in the air',
-    '@@safety ok',
-    '@@file game.js edit',
-    '@@find',
-    line,
-    '@@replace',
-    line.replace('jumps: 2', 'jumps: 3'),
-    '@@done',
-    '@@end',
-    '',
-  ].join('\n');
-}
 
 test('a change asked in the world is robot-tested, waits as a new version, plays, and is a footstep', async ({ page }) => {
   test.setTimeout(240_000);
   const ai = await mockAi(page, { chunkDelayMs: 30 });
   await openAmble(page, { ai: 'mock', clean: true, prefs: { seen: { aiExplainer: Date.now() } } });
   const worldId = await openSeed(page, 'moon-king');
-  const game = (await page.evaluate(() => (window as unknown as { __amble: { getState(): { session: { world: { code: Array<{ path: string; source: string }> } | null } } } }).__amble.getState().session.world?.code.find((f) => f.path === 'game.js')?.source)) ?? '';
-  ai.queue({ text: patchFor(game) });
+  ai.queue({ text: jumpPatch(await gameSource(page)) });
 
   // Playing: the game is running when the student asks.
   const frame = await gameFrame(page);

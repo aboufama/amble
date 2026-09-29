@@ -6,7 +6,7 @@ import type { AiMode, AiStatus, Level, ClassLinkV1 } from '../../src/model/types
 import type { AppServicesLike } from '../../src/pipeline/env';
 import { SYSTEM_PROMPT } from '../../src/pipeline/prompts/system';
 import { createAiService, type AiEnv, type AiEnvConfig } from '../../src/pipeline/service';
-import { createStarterStub } from '../../src/starters/api';
+import { createStarterCatalog } from '../../src/starters/api';
 import { MemoryStore } from '../../src/store/memory';
 import { fakeEndpoint, httpError, plain, sse, type Reply } from '../ai/fakeEndpoint';
 import { fakeRobot, fixture, PLAN_SNAIL, robotFail, world } from './helpers';
@@ -35,7 +35,7 @@ function harness(replies: Reply[], o: { config?: Partial<AiEnvConfig>; robot?: R
   const onlineListeners = new Set<() => void>();
   const statuses: AiStatus[] = [];
   const robot = o.robot ?? fakeRobot();
-  const services: AppServicesLike = { store, player: { robot: () => Promise.reject(new Error('unused')) }, starters: createStarterStub(), history: createHistory() };
+  const services: AppServicesLike = { store, player: { robot: () => Promise.reject(new Error('unused')) }, starters: createStarterCatalog(), history: createHistory() };
   const env: AiEnv = {
     config: () => cfg,
     onConfig: (fn) => (configListeners.add(fn), () => configListeners.delete(fn)),
@@ -260,8 +260,8 @@ describe('builds and the ladder', () => {
     expect(h.sent).toHaveLength(3);
     const game = out.files.find((f) => f.path === 'game.js')?.source ?? '';
     expect(game).toContain("title: 'Shelly\\'s Big Rescue'");
-    expect(game).toMatch(/boss: \{[^\n]*name: 'The Salt King'/);
-    expect(game).toMatch(/boss: \{[^\n]*ask: 'Draw the Salt King, a grumpy salt shaker'/);
+    expect(game).toMatch(/moonKing: \{[^\n]*name: 'The Salt King'/);
+    expect(game).toMatch(/moonKing: \{[^\n]*ask: 'Draw the Salt King, a grumpy salt shaker'/);
     expect(out.message).toMatch(/^Amble couldn't build all of it, so it started you from .+ with your ideas\. Your other characters are waiting on the cast line\./);
   });
 

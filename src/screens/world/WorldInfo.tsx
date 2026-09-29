@@ -1,7 +1,8 @@
 /**
  * World info (⋯ → World info, §2.6): title, idea, who made it (initials, if set), when it started and last
  * changed, when it was last saved to Drive, its size, the starter it began from, and the credits line
- * "Art by {madeBy or 'you'} · Code by the AI helper and you · Starter: Moon King".
+ * "Art by {madeBy or 'you'} · Code by the AI helper and you · Starter: Moon King", plus the starter's own
+ * credit while any of its example drawings is still in the world.
  */
 import { useEffect, useState } from 'react';
 import { useServices } from '../../app/services';
@@ -48,6 +49,7 @@ export function WorldInfo({ open, world, onClose }: { open: boolean; world: Worl
 
   const starter = starterTitle(world, (id) => starters.info(id));
   const artBy = world.credits.madeBy || t('world.infoYou');
+  const examples = Object.values(world.cast).some((slot) => slot.art && slot.madeBy === 'example');
   const rows: Array<[string, string]> = [
     [t('world.infoWorldTitle'), world.title],
     ...(world.pitch ? ([[t('world.infoPitch'), world.pitch]] as Array<[string, string]>) : []),
@@ -69,6 +71,7 @@ export function WorldInfo({ open, world, onClose }: { open: boolean; world: Worl
         ))}
       </dl>
       <p className="world-info__credits">{starter ? t('world.infoCredits', { artBy, starter }) : t('world.infoCreditsNoStarter', { artBy })}</p>
+      {examples && <p className="world-info__credits">{t('starters.credits')}</p>}
     </Dialog>
   );
 }

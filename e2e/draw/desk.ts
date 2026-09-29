@@ -16,12 +16,18 @@ type Hook = {
   board: { w: number; h: number };
 };
 
-/** Opens the Moon King starter and returns its world id. */
+/** Opens the Moon King seed (nothing drawn yet) as the student's world and returns its world id. */
 export async function openStarterWorld(page: Page): Promise<string> {
-  await gotoRoute(page, '#/starter/moon-king');
+  const id = await page.evaluate(async () => {
+    const a = (window as unknown as { __amble: { services: { starters: { open(id: string, o: { withArt: boolean }): Promise<{ world: { id: string } }> }; store: { commit(c: unknown): Promise<void> } }; navigate(r: unknown): void } }).__amble;
+    const { world } = await a.services.starters.open('moon-king', { withArt: false });
+    await a.services.store.commit({ worlds: [world] });
+    a.navigate({ name: 'world', id: world.id });
+    return world.id;
+  });
   await expect(page.getByTestId('screen-world')).toBeVisible();
-  await page.waitForFunction(() => /^#\/w\//.test(location.hash));
-  return new URL(page.url()).hash.replace('#/w/', '');
+  await page.waitForFunction((w) => location.hash === `#/w/${w}`, id);
+  return id;
 }
 
 /** Goes to a Desk route and waits until the drawing takes input. */

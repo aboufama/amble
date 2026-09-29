@@ -5,7 +5,7 @@
  */
 import { expect, openAmble, test } from '../helpers/app';
 import { FIXTURE_FACTS, mockAi } from '../helpers/mockAi';
-import { ask, askState, mountHarness, openStarterWorld, outcomeOf, skipExplainer, storedWorld } from './harness';
+import { ask, askState, mountHarness, openFixtureWorld, outcomeOf, skipExplainer, storedWorld } from './harness';
 
 /** boss.js again, still throwing on line 3. */
 const STILL_BROKEN = `@@amble-patch 1
@@ -23,7 +23,7 @@ function moonKingStomp(scene, boss) {
 test('a runtime error found by the robot test is repaired once', async ({ page }) => {
   const ai = await mockAi(page, { patches: ['change-throws.patch', 'fix-ok.patch'] });
   await openAmble(page, { ai: 'mock', clean: true });
-  const id = await openStarterWorld(page);
+  const id = await openFixtureWorld(page);
   await mountHarness(page);
   await skipExplainer(page);
 
@@ -49,7 +49,7 @@ test('two failed repairs: Failed, the world just like before, and the details', 
   // Each repair changes boss.js, and each version still throws on line 3.
   const ai = await mockAi(page, { patches: ['change-throws.patch', { text: STILL_BROKEN }, { text: STILL_BROKEN.replace('amount + 1', 'amount + 2') }] });
   await openAmble(page, { ai: 'mock', clean: true });
-  const id = await openStarterWorld(page);
+  const id = await openFixtureWorld(page);
   await mountHarness(page);
   await skipExplainer(page);
   const before = (await storedWorld(page, id)).code;

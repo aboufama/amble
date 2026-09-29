@@ -11,7 +11,7 @@ import { createFiles } from '../../src/files/service';
 import { createHistory } from '../../src/history/api';
 import { isBlobRef } from '../../src/model/ids';
 import type { AmbleFile, BlobRef } from '../../src/model/types';
-import { createStarterStub } from '../../src/starters/api';
+import { createStarterCatalog } from '../../src/starters/api';
 import type { Store } from '../../src/store/api';
 import { openAmbleDb } from '../../src/store/idb';
 import { IdbStore } from '../../src/store/idbStore';
@@ -66,7 +66,7 @@ describe.each(IMPLS)('.amble files over the %s store', (_name, make) => {
     const seed = await seedWorld(store);
     const blob = await packAmble(await collectWorld(store, seed.world, 'world'));
     const target = await make();
-    const files = createFiles({ store: () => target, history: () => createHistory(), starters: () => createStarterStub() });
+    const files = createFiles({ store: () => target, history: () => createHistory(), starters: () => createStarterCatalog() });
     const f = await files.read(blob);
     const id = await files.importWorld(f, { asCopy: false, fileName: 'Moon King.amble' });
     const again = await files.importWorld(await files.read(blob), { asCopy: false });
@@ -104,7 +104,7 @@ describe.each(IMPLS)('.amble files over the %s store', (_name, make) => {
     expect(f.world).toBeNull();
     expect(f.art).toHaveLength(1);
     const target = await make();
-    const files = createFiles({ store: () => target, history: () => null, starters: () => createStarterStub() });
+    const files = createFiles({ store: () => target, history: () => null, starters: () => createStarterCatalog() });
     const [id] = await files.importDrawing(f);
     const rec = (await target.art.get(id))!;
     expect(rec).toMatchObject({ name: 'Blorp', shelf: true });
@@ -120,7 +120,7 @@ describe.each(IMPLS)('.amble files over the %s store', (_name, make) => {
     expect(f.manifest).toMatchObject({ kind: 'assignment', assignmentId: 'g_boss000001' });
     expect(f.steps).toEqual([]);
     const target = await make();
-    const files = createFiles({ store: () => target, history: () => null, starters: () => createStarterStub() });
+    const files = createFiles({ store: () => target, history: () => null, starters: () => createStarterCatalog() });
     const id = await files.importWorld(f, { asCopy: true });
     const mine = (await target.worlds.get(id))!;
     expect(mine.origin).toEqual({ kind: 'assignment', assignmentId: 'g_boss000001', starter: 'moon-king' });

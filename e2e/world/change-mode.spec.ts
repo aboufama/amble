@@ -18,16 +18,16 @@ test.describe('Change mode', () => {
 
     const layer = page.getByTestId('change-layer');
     await expect(layer).toHaveAttribute('role', 'application');
-    await expect(page.getByTestId('tag-boss')).toBeVisible();
+    await expect(page.getByTestId('tag-moonKing')).toBeVisible();
     await expect(page.getByTestId('tag-hero')).toContainText('Pip');
-    await expect(page.getByTestId('tag-ground')).toContainText('made by the game');
+    await expect(page.getByTestId('tag-ledge')).toContainText('made by the game');
 
-    await page.getByTestId('tag-boss').click();
+    await page.getByTestId('tag-moonKing').click();
     const card = page.getByTestId('thing-card');
     await expect(card).toContainText('Moon King');
-    await expect(card).toHaveAttribute('data-key', 'boss');
+    await expect(card).toHaveAttribute('data-key', 'moonKing');
     await expect(page.getByTestId('thing-draw')).toHaveText(/Draw it/);
-    expect(await session(page, (s) => s.scope)).toBe('boss');
+    expect(await session(page, (s) => s.scope)).toBe('moonKing');
 
     const dial = page.getByRole('slider', { name: 'Orb speed' });
     await expect(dial).toBeVisible();
@@ -67,8 +67,8 @@ test.describe('Change mode', () => {
   test('Tab moves between the tags and Enter opens a card', async ({ page }) => {
     await openWorld(page);
     await page.getByRole('radio', { name: 'Change' }).click();
-    await expect(page.getByTestId('tag-boss')).toBeVisible();
-    await page.getByTestId('tag-boss').focus();
+    await expect(page.getByTestId('tag-moonKing')).toBeVisible();
+    await page.getByTestId('tag-moonKing').focus();
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('thing-card')).toBeVisible();
     // Focus moved into the card (its first control).

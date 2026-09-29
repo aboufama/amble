@@ -8,7 +8,7 @@ import type { PickerHost } from '../../src/files/fsAccess';
 import { createFiles } from '../../src/files/service';
 import { readAmble } from '../../src/files/amble';
 import { onSavedToFile } from '../../src/files/saved';
-import { createStarterStub } from '../../src/starters/api';
+import { createStarterCatalog } from '../../src/starters/api';
 import { MemoryStore } from '../../src/store/memory';
 import { seedWorld } from './fixtures';
 
@@ -88,7 +88,7 @@ describe('Save to Drive', () => {
     const p = pickers();
     const saved: string[] = [];
     const stop = onSavedToFile((id) => saved.push(id));
-    const files = createFiles({ store: () => store, history: () => null, starters: () => createStarterStub(), pickers: p.host, now: () => 1000 });
+    const files = createFiles({ store: () => store, history: () => null, starters: () => createStarterCatalog(), pickers: p.host, now: () => 1000 });
     const first = await files.saveWorld(world);
     expect(first).toEqual({ name: 'Moon King.amble', at: 1000, method: 'fs-access' });
     expect(p.names).toEqual(['Moon King.amble']);
@@ -109,7 +109,7 @@ describe('Save to Drive', () => {
     const { world } = await seedWorld(store);
     const p = pickers();
     const asked: number[] = [];
-    const files = createFiles({ store: () => store, history: () => null, starters: () => createStarterStub(), pickers: p.host, askReadOnly: async () => (asked.push(1), true) });
+    const files = createFiles({ store: () => store, history: () => null, starters: () => createStarterCatalog(), pickers: p.host, askReadOnly: async () => (asked.push(1), true) });
     await files.saveWorld(world);
     p.made[0].perm = 'denied';
     const copy = await files.saveWorld(world);
@@ -122,7 +122,7 @@ describe('Save to Drive', () => {
     const store = new MemoryStore();
     const { world } = await seedWorld(store);
     const p = pickers({ cancel: true });
-    const files = createFiles({ store: () => store, history: () => null, starters: () => createStarterStub(), pickers: p.host });
+    const files = createFiles({ store: () => store, history: () => null, starters: () => createStarterCatalog(), pickers: p.host });
     expect(await files.saveWorld(world)).toBeNull();
     expect(await store.handles.get(world.id)).toBeNull();
     expect(downloads).toEqual([]);
@@ -131,9 +131,9 @@ describe('Save to Drive', () => {
   it('downloads the file when the picker is missing or blocked by policy', async () => {
     const store = new MemoryStore();
     const { world } = await seedWorld(store);
-    const blocked = createFiles({ store: () => store, history: () => null, starters: () => createStarterStub(), pickers: pickers({ blocked: true }).host });
+    const blocked = createFiles({ store: () => store, history: () => null, starters: () => createStarterCatalog(), pickers: pickers({ blocked: true }).host });
     expect(await blocked.saveWorld(world)).toMatchObject({ method: 'download', name: 'Moon King.amble' });
-    const missing = createFiles({ store: () => store, history: () => null, starters: () => createStarterStub(), pickers: {} });
+    const missing = createFiles({ store: () => store, history: () => null, starters: () => createStarterCatalog(), pickers: {} });
     expect(await missing.saveWorld(world, { name: 'Moon King - J.R.amble' })).toMatchObject({ method: 'download', name: 'Moon King - J.R.amble' });
     expect(downloads.map((d) => d.name)).toEqual(['Moon King.amble', 'Moon King - J.R.amble']);
     expect(await store.handles.get(world.id)).toBeNull();
@@ -143,7 +143,7 @@ describe('Save to Drive', () => {
     const store = new MemoryStore();
     const { world } = await seedWorld(store);
     await store.commit({ worlds: [{ ...world, id: 'w_second0001', title: 'Moon King' }] });
-    const files = createFiles({ store: () => store, history: () => null, starters: () => createStarterStub(), pickers: {} });
+    const files = createFiles({ store: () => store, history: () => null, starters: () => createStarterCatalog(), pickers: {} });
     const zip = await files.saveAll();
     const { unzipSync } = await import('fflate');
     const names = Object.keys(unzipSync(new Uint8Array(await zip.arrayBuffer()))).sort();

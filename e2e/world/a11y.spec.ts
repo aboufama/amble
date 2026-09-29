@@ -18,7 +18,7 @@ test.describe('the world screen is accessible', () => {
     expect(await axe(page)).toEqual([]);
 
     await page.getByRole('radio', { name: 'Change' }).click();
-    await page.getByTestId('tag-boss').click();
+    await page.getByTestId('tag-moonKing').click();
     await expect(page.getByTestId('thing-card')).toBeVisible();
     expect(await axe(page)).toEqual([]);
     await page.keyboard.press('Escape');
@@ -39,6 +39,6 @@ test.describe('the world screen is accessible', () => {
     }
     expect(await page.evaluate(() => !!document.activeElement?.closest('[data-region="cast"]'))).toBe(true);
     const list = page.getByRole('list', { name: 'Cast: the drawings this world needs' });
-    await expect(list.getByRole('button', { name: /Moon King, Boss, not drawn yet\. Press Enter to draw\./ })).toBeVisible();
+    await expect(list.getByRole('button', { name: /The Moon King, Boss, not drawn yet\. Press Enter to draw\./ })).toBeVisible();
   });
 });

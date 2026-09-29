@@ -1,6 +1,6 @@
 /** Helpers for the world screen's specs: open a starter as a world, reach its game frame, read the game. */
 import type { Frame, Page } from '@playwright/test';
-import { expect, gotoRoute, openAmble } from '../helpers/app';
+import { expect, openAmble } from '../helpers/app';
 
 export interface GameHook {
   state: string;
@@ -23,10 +23,18 @@ interface AmbleWin {
   };
 }
 
-/** Opens Amble, then a starter as the student's world; waits for its first frame. Returns the world id. */
+/**
+ * Opens Amble, then the Moon King seed as the student's world (nothing drawn yet: every member is just
+ * bones); waits for its first frame. Returns the world id.
+ */
 export async function openWorld(page: Page): Promise<string> {
   await openAmble(page);
-  await gotoRoute(page, '#/starter/moon-king');
+  await page.evaluate(async () => {
+    const a = (window as unknown as { __amble: { services: { starters: { open(id: string, o: { withArt: boolean }): Promise<{ world: { id: string } }> }; store: { commit(c: unknown): Promise<void> } }; navigate(r: unknown): void } }).__amble;
+    const { world } = await a.services.starters.open('moon-king', { withArt: false });
+    await a.services.store.commit({ worlds: [world] });
+    a.navigate({ name: 'world', id: world.id });
+  });
   await expect(page).toHaveURL(/#\/w\/[A-Za-z0-9_-]+$/);
   await expect(page.getByTestId('screen-world')).toBeVisible();
   await expect(page.getByTestId('player-layer')).toHaveAttribute('data-first-frame', /^[1-9]\d*$/, { timeout: 45_000 });

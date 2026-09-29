@@ -6,7 +6,7 @@
 import type { Page } from '@playwright/test';
 import { expect, openAmble, test } from '../helpers/app';
 import { mockAi } from '../helpers/mockAi';
-import { mountHarness, openStarterWorld, pauseGame, type AmbleWindow } from './harness';
+import { mountHarness, openFixtureWorld, pauseGame, type AmbleWindow } from './harness';
 
 const OUT = process.env.AI_SHOTS;
 test.skip(!OUT, 'screenshots only when AI_SHOTS is set');
@@ -36,7 +36,7 @@ for (const [w, h] of [
     await page.setViewportSize({ width: w, height: h });
     await mockAi(page, { patches: [] });
     await openAmble(page, { ai: 'mock', clean: true });
-    const id = await openStarterWorld(page);
+    const id = await openFixtureWorld(page);
     await pauseGame(page);
     await mountHarness(page);
     const shot = async (name: string) => {

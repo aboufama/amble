@@ -41,12 +41,13 @@ test('a build that fails after its repairs becomes the plan starter with the pla
   const world = await storedWorld(page, id);
   const game = world.code.find((f: { path: string }) => f.path === 'game.js').source as string;
   expect(game).toContain("title: 'Shelly\\'s Big Rescue'");
-  expect(game).toMatch(/boss: \{[^\n]*name: 'The Salt King'/);
-  expect(game).toMatch(/minion: \{[^\n]*ask: 'Draw a salt crumb'/);
-  expect(game).toMatch(/bossHealth: \{[^\n]*label: 'Salt King health'/);
-  // The plan's members now play the starter's slots; the leaf rests on the cast line.
-  expect(Object.keys(world.cast)).toEqual(expect.arrayContaining(['hero', 'boss', 'minion', 'leaf']));
-  expect(world.cast.leaf.extra).toMatchObject({ name: 'Lettuce leaf', role: 'item' });
+  // Each plan member plays the Moon King slot it maps to, under the plan's name and ask; the plan's dial
+  // label goes on the one starter dial that measures the same thing (Salt speed → orbSpeed).
+  expect(game).toMatch(/moonKing: \{[^\n]*name: 'The Salt King'/);
+  expect(game).toMatch(/grumble: \{[^\n]*ask: 'Draw a salt crumb'/);
+  expect(game).toMatch(/star: \{[^\n]*name: 'Lettuce leaf'/);
+  expect(game).toMatch(/orbSpeed: \{[^\n]*label: 'Salt speed'/);
+  expect(Object.keys(world.cast)).toEqual(expect.arrayContaining(['hero', 'moonKing', 'grumble', 'star']));
   expect((await stepTexts(page, id)).at(-1)).toMatch(/^Amble started your world from .+ with your ideas\.$/);
 
   await expect(askState(page)).toContainText("Amble couldn't build all of it, so it started you from");

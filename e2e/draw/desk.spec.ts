@@ -90,7 +90,7 @@ test('undo restores pixels, redo brings them back', async ({ page }) => {
 test('switching drawings within 100 ms of a stroke loses nothing', async ({ page }) => {
   await openAmble(page);
   const world = await openStarterWorld(page);
-  await openDesk(page, `#/w/${world}/draw/boss`);
+  await openDesk(page, `#/w/${world}/draw/moonKing`);
   await page.getByRole('radio', { name: 'Freehand' }).click();
   const { w, h } = await boardSize(page);
   const y = Math.round(h * 0.5);
@@ -101,10 +101,10 @@ test('switching drawings within 100 ms of a stroke loses nothing', async ({ page
   ]);
   // Straight to another drawing, at once.
   await page.evaluate((id) => {
-    location.hash = `#/w/${id}/draw/minion`;
+    location.hash = `#/w/${id}/draw/grumble`;
   }, world);
-  await openDesk(page, `#/w/${world}/draw/minion`);
-  await openDesk(page, `#/w/${world}/draw/boss`);
+  await openDesk(page, `#/w/${world}/draw/grumble`);
+  await openDesk(page, `#/w/${world}/draw/moonKing`);
   await expect.poll(() => alphaAt(page, 'lines', Math.round(w * 0.5), y), { timeout: 10_000 }).toBeGreaterThan(100);
   // It was saved as a drawing (with no draft left over).
   const saved = await page.evaluate(async (id) => {
@@ -113,7 +113,7 @@ test('switching drawings within 100 ms of a stroke loses nothing', async ({ page
     const drafts = await a.store.drafts.list();
     return { names: list.map((r) => r.name), drafts: drafts.length, id };
   }, world);
-  expect(saved.names).toContain('Moon King');
+  expect(saved.names).toContain('The Moon King');
 });
 
 test('a photo of a paper drawing becomes a Lines layer, on this Chromebook', async ({ page, guards }) => {

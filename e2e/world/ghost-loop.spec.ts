@@ -14,10 +14,10 @@ test.describe('the ghost loop', () => {
     const creates = await readGame(frame, (g) => g.createCount);
 
     // Where the Moon King's stand-in is, in the game frame; then tap it on the page.
-    const box = await readGame(frame, (g) => g.objects().find((o) => o.key === 'boss')!);
+    const box = await readGame(frame, (g) => g.objects().find((o) => o.key === 'moonKing')!);
     const slot = (await page.getByTestId('world-slot').boundingBox())!;
     await page.mouse.click(slot.x + box.x + box.w / 2, slot.y + box.y + box.h / 2);
-    await expect(page).toHaveURL(new RegExp(`#/w/${id}/draw/boss$`), { timeout: 15_000 });
+    await expect(page).toHaveURL(new RegExp(`#/w/${id}/draw/moonKing$`), { timeout: 15_000 });
     await expect(page.getByTestId('screen-draw')).toBeVisible();
     await expect.poll(() => readGame(frame, (g) => g.state)).toBe('paused');
 
@@ -40,22 +40,22 @@ test.describe('the ghost loop', () => {
       g.strokeStyle = '#221b2e';
       g.stroke();
       const png = await c.convertToBlob({ type: 'image/png' });
-      w.__amble.services.player.swapArt({ key: 'boss', image: png });
+      w.__amble.services.player.swapArt({ key: 'moonKing', image: png });
       const { setComeAlive } = await import(/* @vite-ignore */ `${location.origin}/src/state/session.ts`);
-      setComeAlive({ key: 'boss', artId: 'a_test000001', sticker: URL.createObjectURL(png), from: new DOMRect(300, 200, 200, 180) });
+      setComeAlive({ key: 'moonKing', artId: 'a_test000001', sticker: URL.createObjectURL(png), from: new DOMRect(300, 200, 200, 180) });
       w.__amble.navigate({ name: 'world', id: worldId });
     }, id);
 
     await expect(page.getByTestId('screen-world')).toBeVisible();
-    await expect.poll(() => readGame(frame, (g) => !!g.find('boss')?.drawn), { timeout: 15_000 }).toBe(true);
+    await expect.poll(() => readGame(frame, (g) => !!g.find('moonKing')?.drawn), { timeout: 15_000 }).toBe(true);
     await expect.poll(() => readGame(frame, (g) => g.state), { timeout: 15_000 }).toBe('running');
     expect(await readGame(frame, (g) => g.createCount)).toBe(creates);
-    expect(await readGame(frame, (g) => g.objects().find((o) => o.key === 'boss')?.drawn)).toBe(true);
+    expect(await readGame(frame, (g) => g.objects().find((o) => o.key === 'moonKing')?.drawn)).toBe(true);
   });
 
   test('a needed cast card lifts its member onto the Desk', async ({ page }) => {
     const id = await openWorld(page);
-    await page.getByTestId('cast-card-boss').click();
-    await expect(page).toHaveURL(new RegExp(`#/w/${id}/draw/boss$`), { timeout: 15_000 });
+    await page.getByTestId('cast-card-moonKing').click();
+    await expect(page).toHaveURL(new RegExp(`#/w/${id}/draw/moonKing$`), { timeout: 15_000 });
   });
 });

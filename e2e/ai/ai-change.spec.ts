@@ -5,12 +5,12 @@
  */
 import { expect, openAmble, test } from '../helpers/app';
 import { CLASS_CODE, mockAi } from '../helpers/mockAi';
-import { ask, askState, mountHarness, openStarterWorld, outcomeOf, stepTexts, storedWorld } from './harness';
+import { ask, askState, mountHarness, openFixtureWorld, outcomeOf, stepTexts, storedWorld } from './harness';
 
 test('a change: explainer first, then working, tested, done, stored and logged', async ({ page }) => {
   const ai = await mockAi(page, { patches: ['change-stomp.patch'], chunkDelayMs: 40 });
   await openAmble(page, { ai: 'mock', clean: true });
-  const id = await openStarterWorld(page);
+  const id = await openFixtureWorld(page);
   await mountHarness(page);
 
   // Idle: the field, three idea chips, ★ Ask disabled while empty, and the info line.
@@ -77,7 +77,7 @@ test('a change: explainer first, then working, tested, done, stored and logged',
 test('Stop leaves the world as it was, and the words stay', async ({ page }) => {
   const ai = await mockAi(page, { patches: ['change-stomp.patch'], firstByteDelayMs: 60_000 });
   await openAmble(page, { ai: 'mock', clean: true });
-  const id = await openStarterWorld(page);
+  const id = await openFixtureWorld(page);
   await mountHarness(page);
   await page.evaluate(() => (window as unknown as { __amble: { setState(fn: (s: { prefs: { seen: Record<string, number> } }) => void): void } }).__amble.setState((s) => void (s.prefs.seen.aiExplainer = 1)));
   const before = (await storedWorld(page, id)).code;

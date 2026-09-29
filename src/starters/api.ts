@@ -1,7 +1,6 @@
 /**
  * The starter worlds and seeds (§9, §8.4; M8): the catalog the Trail, New world, the AI ladder and the
- * legacy import use. `createStarterCatalog()` is the real one; `createStarterStub` stays as its old name
- * until services.ts switches over.
+ * legacy import use, made by `createStarterCatalog()`.
  */
 import type { ArtScript } from '../cores/art';
 import type { ArtId, ArtRecord, CastKey, Level, SeedId, StarterId, StarterInfo, World } from '../model/types';
@@ -54,6 +53,3 @@ export function createStarterCatalog(o: CatalogOptions = {}): StarterCatalog {
     matchIdea,
   };
 }
-
-/** @deprecated The catalog's old name, kept so services.ts works unchanged; use createStarterCatalog. */
-export const createStarterStub = createStarterCatalog;

@@ -1,5 +1,5 @@
 /**
- * What the e2e/ai specs share: a starter world opened in the app, the AI cards' harness mounted over it
+ * What the e2e/ai specs share: a world playing the fixture boss game, the AI cards' harness mounted over it
  * (src/screens/ai/harness.tsx, loaded from the dev server), and reads of the app's state and store.
  */
 import { expect, type Page } from '@playwright/test';
@@ -14,25 +14,7 @@ export type AmbleWindow = {
   };
 };
 
-/** Opens a new world from a starter (as a seed, no drawings) and waits until its game has loaded. */
-export async function openStarterWorld(page: Page, starter = 'moon-king'): Promise<string> {
-  const id = await page.evaluate(async (starterId) => {
-    const a = (window as unknown as AmbleWindow).__amble;
-    const opened = await a.services.starters.open(starterId, { withArt: false });
-    await a.services.store.commit({ worlds: [opened.world] });
-    a.navigate({ name: 'world', id: opened.world.id });
-    return opened.world.id as string;
-  }, starter);
-  await page.waitForFunction(
-    (worldId) => {
-      const s = (window as unknown as AmbleWindow).__amble.getState();
-      return s.session.world?.id === worldId && s.session.manifest !== null && s.session.manifest.art.length > 0;
-    },
-    id,
-    { timeout: 60_000 },
-  );
-  return id;
-}
+export { openFixtureWorld } from '../helpers/fixtureWorld';
 
 /** Mounts the AI cards over the page: the Ask card, the steer toast and the build pill, or What Amble sends. */
 export async function mountHarness(page: Page, view: 'ask' | 'sent' = 'ask'): Promise<void> {
