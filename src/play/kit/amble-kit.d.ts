@@ -402,10 +402,12 @@ declare namespace Amble {
   }
 
   // ---------------------------------------------------------------- structure
+  /** `time` in game ms, then `next` (a list: one is picked); `update` gets `dt` in seconds. */
   interface BrainState<T> { time?: number; next?: string | string[]; enter?(obj: T, b: Brain<T>): void; update?(obj: T, dt: number, b: Brain<T>): void; exit?(obj: T, b: Brain<T>): void }
   interface Brain<T> { obj: T; state: string; time: number; go(state: string | string[]): void; stop(): void }
   /** `at` = the fraction of health where the phase starts. */
   interface Phase<T> { at: number; name?: string; sub?: string; invuln?: number; enter?(obj: T, index: number): void }
+  /** `spawn` returns the enemy it makes: the next wave starts when they are all gone. */
   interface Wave { count?: number; every?: number; title?: string; spawn(i: number, wave: number): unknown }
   interface ParallaxLayer { draw?: 'stars' | 'mountains' | 'hills' | 'clouds' | 'city'; key?: string; color?: Color; factor?: number; y?: number; height?: number; speed?: number; depth?: number; seed?: number }
   type LegendEntry = string | ({ key: string; solid?: boolean; oneWay?: boolean; height?: number; depth?: number } & SpawnOptions) | ((x: number, y: number) => void);
@@ -467,6 +469,7 @@ declare namespace Amble {
     spawnEnemy(x: number, y: number, key?: string, o?: SpawnOptions): Actor;
     spawnBoss(x: number, y: number, key?: string, o?: SpawnOptions): Actor;
     spawnItem(x: number, y: number, key?: string, o?: SpawnOptions): Actor;
+    /** A shot that nobody fired: it hits the hero (unless `role: 'hero'`). */
     spawnProjectile(x: number, y: number, key: string, o?: ShotOptions & { angle?: number }): Phaser.Physics.Arcade.Sprite | null;
     /** Active members of a named group ('enemies', 'items', 'hazards' or your own). */
     all(group: string): Actor[];
