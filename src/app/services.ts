@@ -1,12 +1,12 @@
 /**
  * The app's services (§8.4), created once in main.tsx: `useServices()` in components, `getServices()` in
- * plain code. Each is an interface owned by a module; until the module lands, a stub stands in.
+ * plain code. Each is an interface owned by a module; tests pass their own in place of any of them.
  */
 import { createContext, createElement, useContext, type ReactNode } from 'react';
-import { createFilesStub, type FilesApi } from '../files/api';
-import { createHistoryStub, type HistoryApi } from '../history/api';
-import { createAiStub, type AiService } from '../pipeline/api';
-import { createSchoolStub, type SchoolApi } from '../school/api';
+import { createFiles, type FilesApi } from '../files/api';
+import { createHistory, type HistoryApi } from '../history/api';
+import { createAppAi, type AiService } from '../pipeline/api';
+import { createSchool, type SchoolApi } from '../school/api';
 import { createStarterStub, type StarterCatalog } from '../starters/api';
 import type { Store } from '../store/api';
 import { openStore } from '../store';
@@ -15,30 +15,30 @@ import { PlayerHostImpl, type PlayerHost } from './player/host';
 export interface Services {
   /** src/store/api.ts (M6). */
   store: Store;
-  /** src/files/api.ts (M6; stub throws NotBuiltYet). */
+  /** src/files/api.ts (M6): `.amble` files, Save to Drive, open, share, the old-Amble rescue. */
   files: FilesApi;
-  /** src/pipeline/api.ts (M5; stub: status 'off'). */
+  /** src/pipeline/api.ts (M5): status 'off' and nothing ever sent until an AI service is set up. */
   ai: AiService;
-  /** src/history/api.ts (M9; stub appends a StepSummary, no snapshot). */
+  /** src/history/api.ts (M9): Footsteps, Go back and provenance. */
   history: HistoryApi;
-  /** src/starters/api.ts (M8; stub: the fixture world). */
+  /** src/starters/api.ts (M8): the starter worlds and seeds. */
   starters: StarterCatalog;
-  /** src/school/api.ts (M7; stub: basic class link, no checks). */
+  /** src/school/api.ts (M7): class links, joining a class, assignment checks. */
   school: SchoolApi;
   /** src/app/player/host.ts (FOUNDATION). */
   player: PlayerHost;
 }
 
-/** Builds the services; any of them can be passed in (tests, and modules as they land). */
+/** Builds the services; any of them can be passed in (tests). */
 export async function createServices(o: Partial<Services> = {}): Promise<Services> {
   const store = o.store ?? (await openStore());
   return {
     store,
-    files: o.files ?? createFilesStub(),
-    ai: o.ai ?? createAiStub(),
-    history: o.history ?? createHistoryStub(),
+    files: o.files ?? createFiles(),
+    ai: o.ai ?? createAppAi(),
+    history: o.history ?? createHistory(),
     starters: o.starters ?? createStarterStub(),
-    school: o.school ?? createSchoolStub(store),
+    school: o.school ?? createSchool(store),
     player: o.player ?? new PlayerHostImpl(),
   };
 }

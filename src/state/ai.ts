@@ -12,7 +12,6 @@ import { getServices } from '../app/services';
 import { navigate } from '../app/router';
 import type { ArtNeed } from '../cores/play';
 import { t } from '../i18n';
-import { NotBuiltYet } from '../model/notBuilt';
 import type {
   AiJobView,
   AiOutcome,
@@ -259,13 +258,9 @@ async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind:
     s.ai.changed = { worldId, files, handFile };
   });
   if (getState().session.world?.id === worldId) {
-    try {
-      await applyAccepted(outcome);
-      doneToast(worldId, outcome, files);
-      return;
-    } catch (err) {
-      if (!(err instanceof NotBuiltYet)) throw err;
-    }
+    await applyAccepted(outcome);
+    doneToast(worldId, outcome, files);
+    return;
   }
   await commitWorld({ ...before, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, task, words));
   if (getState().session.world?.id === worldId) {

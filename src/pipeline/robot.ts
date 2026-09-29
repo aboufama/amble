@@ -4,8 +4,7 @@
  * Loops are guarded first (`Amble.__loop()` at the top of every loop body, line numbers unchanged).
  */
 import { instrument } from '../cores/ai';
-import { DEFAULT_PLAYER_PREFS, judgeRobot, PLAYER_CORE, type InitMessage, type PlayerError, type RobotRaw, type RobotVerdict } from '../cores/play';
-import { NotBuiltYet } from '../model/notBuilt';
+import { DEFAULT_PLAYER_PREFS, judgeRobot, type InitMessage, type PlayerError, type RobotRaw, type RobotVerdict } from '../cores/play';
 import type { CodeFile, World } from '../model/types';
 import type { FixError } from './userMessage';
 
@@ -61,7 +60,6 @@ interface HostLike {
 /** The robot test through the app's PlayerHost and M2's `toInitMessage`. */
 export function playerRobot(host: HostLike, world: () => World, toInit: (w: World, o: { mode: 'robot'; prefs: typeof DEFAULT_PLAYER_PREFS; robot: { gameMs: number; seed: number; bot: 'auto' }; autostart: boolean }) => Promise<InitMessage>): RobotRunner {
   return async (files, o) => {
-    if (PLAYER_CORE === 'stub') return null;
     const prefs = { ...DEFAULT_PLAYER_PREFS, muted: true, errorPanel: false, touch: 'off' as const, quality: 1 as const, ghostTaps: false };
     const init = instrumentFiles(await toInit({ ...world(), code: [...files] }, { mode: 'robot', prefs, robot: { gameMs: ROBOT_GAME_MS, seed: o.seed, bot: 'auto' }, autostart: true }));
     if (o.signal.aborted) throw new DOMException('Stopped', 'AbortError');
@@ -73,7 +71,6 @@ export function playerRobot(host: HostLike, world: () => World, toInit: (w: Worl
       const { raw, verdict } = await Promise.race([host.robot(init), limit]);
       return outcomeOf(raw, verdict);
     } catch (err) {
-      if (err instanceof NotBuiltYet) return null;
       if (o.signal.aborted) throw err;
       const message = err instanceof Error ? err.message : String(err);
       return { pass: false, reasons: [message], errors: [{ file: 'game.js', line: 0, column: 0, phase: 'frozen', message, count: 1 }], warnings: [], summary: 'failed · the game froze' };

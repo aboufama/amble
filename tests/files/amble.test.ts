@@ -8,7 +8,7 @@ import { unzipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { collectDrawing, collectWorld, packAmble, readAmble, withNewIds } from '../../src/files/amble';
 import { createFiles } from '../../src/files/service';
-import { createHistoryStub } from '../../src/history/api';
+import { createHistory } from '../../src/history/api';
 import { isBlobRef } from '../../src/model/ids';
 import type { AmbleFile, BlobRef } from '../../src/model/types';
 import { createStarterStub } from '../../src/starters/api';
@@ -66,7 +66,7 @@ describe.each(IMPLS)('.amble files over the %s store', (_name, make) => {
     const seed = await seedWorld(store);
     const blob = await packAmble(await collectWorld(store, seed.world, 'world'));
     const target = await make();
-    const files = createFiles({ store: () => target, history: () => createHistoryStub(), starters: () => createStarterStub() });
+    const files = createFiles({ store: () => target, history: () => createHistory(), starters: () => createStarterStub() });
     const f = await files.read(blob);
     const id = await files.importWorld(f, { asCopy: false, fileName: 'Moon King.amble' });
     const again = await files.importWorld(await files.read(blob), { asCopy: false });

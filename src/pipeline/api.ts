@@ -1,8 +1,7 @@
 /**
- * The AI helper (§5, §8.4; M5 owns): the interface every screen uses, and the service main.tsx creates.
- * `createAiStub` keeps the name services.ts calls; it now returns the real helper (`createAiService`
- * over the app's config, store, player and starters). With no AI configured its status is 'off' and
- * nothing is ever sent.
+ * The AI helper (§5, §8.4; M5 owns): the interface every screen uses, and the service the app creates
+ * (`createAppAi`: `createAiService` over the app's config, store, player and starters). With no AI
+ * configured its status is 'off' and nothing is ever sent.
  */
 import type { CharacterKind, JointHints } from '../cores/rig';
 import type {
@@ -60,11 +59,6 @@ export { createAiService, type AmbleAi };
 /** The app's AI helper, wired to the store (its status feeds the AI chip). */
 export function createAppAi(): AmbleAi {
   return createAiService(appEnv(setAiStatus));
-}
-
-/** The name services.ts uses; it returns the real helper now. */
-export function createAiStub(): AiService {
-  return createAppAi();
 }
 
 /** The helper's richer interface, when the app's service is ours (it always is, outside tests). */

@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { bringLegacy, castKeyFrom } from '../../src/files/legacy';
 import { dismissLegacy, findLegacy, legacyFromFileText } from '../../src/files/legacyCheck';
 import { dataUrlBytes, encodeWav, type PictureMaker, type SoundMaker } from '../../src/files/media';
-import { createHistoryStub } from '../../src/history/api';
+import { createHistory } from '../../src/history/api';
 import { LEGACY_AUTOSAVE_KEY } from '../../src/legacy/reader';
 import type { LegacyProject } from '../../src/legacy/types';
 import { createStarterStub } from '../../src/starters/api';
@@ -97,7 +97,7 @@ describe('the old Amble rescue', () => {
     const found = await findLegacy({ store });
     expect(found?.title).toBe('Cat Quest');
     expect(found?.drawings.map((d) => d.name)).toEqual(['cat walk', 'cat jump', 'night sky']);
-    const r = await bringLegacy({ store, starters: createStarterStub(), history: createHistoryStub(), pictures, sounds }, found!);
+    const r = await bringLegacy({ store, starters: createStarterStub(), history: createHistory(), pictures, sounds }, found!);
     expect(r).toMatchObject({ title: 'Cat Quest (old)', drawings: 3, sounds: 2 });
     const world = (await store.worlds.get(r.worldId))!;
     expect(world.title).toBe('Cat Quest (old)');

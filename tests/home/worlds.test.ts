@@ -6,12 +6,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setServices, type Services } from '../../src/app/services';
 import type { FilesApi } from '../../src/files/api';
-import { createHistoryStub } from '../../src/history/api';
+import { createHistory } from '../../src/history/api';
 import { copyWorld, createPlanWorld, firstToDraw, openSeed, planHeroKey, renameWorld, startBuild } from '../../src/home/createWorld';
 import { getPlanSession, planSeconds, resetPlanSession, startPlan, stopPlan } from '../../src/home/planSession';
 import { isUntouchedStarterCopy, routeWorldId } from '../../src/home/starterCopies';
 import type { AiOutcome, PlanOutcome } from '../../src/model/types';
-import { createAiStub, type AiService } from '../../src/pipeline/api';
+import { createAppAi, type AiService } from '../../src/pipeline/api';
 import type { SchoolApi } from '../../src/school/api';
 import type { PlayerHost } from '../../src/app/player/host';
 import { createStarterStub } from '../../src/starters/api';
@@ -23,8 +23,8 @@ function services(over: Partial<Services> = {}): Services {
   const s: Services = {
     store: new MemoryStore(),
     files: {} as FilesApi,
-    ai: createAiStub(),
-    history: createHistoryStub(),
+    ai: createAppAi(),
+    history: createHistory(),
     starters: createStarterStub(),
     school: {} as SchoolApi,
     player: {} as PlayerHost,
@@ -69,7 +69,7 @@ describe("a plan's world", () => {
     const files = [{ path: 'game.js', source: '// built', authors: [['ai', 1]] as Array<['ai', number]>, locked: [] }];
     const accepted: AiOutcome = { kind: 'accepted', files, manifest: {} as never, summary: 'Built', play: '', next: [], safety: { kind: 'ok', note: '' }, repairs: 0, tested: true, handEditsTouched: false, newArt: [] };
     const build = vi.fn<AiService['build']>(async () => accepted);
-    const { store } = services({ ai: { ...createAiStub(), build } });
+    const { store } = services({ ai: { ...createAppAi(), build } });
     const world = await createPlanWorld(samplePlan(), 'idea', null);
     startBuild(world, samplePlan());
     expect(getState().ai.job).toMatchObject({ worldId: world.id, task: 'build' });
@@ -82,7 +82,7 @@ describe("a plan's world", () => {
 
   it('keeps the Warm-up when the build fails', async () => {
     const build = vi.fn<AiService['build']>(async () => ({ kind: 'failed', reason: 'runtime', message: 'no', details: [] }));
-    const { store } = services({ ai: { ...createAiStub(), build } });
+    const { store } = services({ ai: { ...createAppAi(), build } });
     const world = await createPlanWorld(samplePlan(), 'idea', null);
     startBuild(world, samplePlan());
     await vi.waitFor(() => expect(getState().ai.job).toBeNull());
@@ -142,7 +142,7 @@ describe('the idea on its way to a plan', () => {
   it('waits, then keeps the outcome and how long it took', async () => {
     let resolve: (o: PlanOutcome) => void = () => undefined;
     const plan = vi.fn<AiService['plan']>(() => new Promise<PlanOutcome>((r) => (resolve = r)));
-    const ai = { ...createAiStub(), plan };
+    const ai = { ...createAppAi(), plan };
     const run = startPlan(ai, 'a snail', { id: 'a_1', name: 'Shelly', kind: 'character', rig: 'blob' }, 'middle', () => 'sky-run');
     expect(getPlanSession()).toMatchObject({ idea: 'a snail', status: 'waiting' });
     expect(plan.mock.calls[0][1]).toMatchObject({ level: 'middle', hero: { name: 'Shelly', kind: 'character', rig: 'blob' } });
@@ -153,13 +153,13 @@ describe('the idea on its way to a plan', () => {
   });
 
   it('falls back to the closest starter when the call breaks', async () => {
-    const ai = { ...createAiStub(), plan: vi.fn<AiService['plan']>(async () => Promise.reject(new Error('blocked'))) };
+    const ai = { ...createAppAi(), plan: vi.fn<AiService['plan']>(async () => Promise.reject(new Error('blocked'))) };
     await startPlan(ai, 'a runner in the sky', null, 'middle', () => 'sky-run');
     expect(getPlanSession().outcome).toMatchObject({ kind: 'fallback', starter: 'sky-run' });
   });
 
   it('stops, keeping the words', async () => {
-    const ai = { ...createAiStub(), plan: vi.fn<AiService['plan']>((_idea, o) => new Promise<PlanOutcome>((_r, reject) => o.signal.addEventListener('abort', () => reject(new Error('aborted'))))) };
+    const ai = { ...createAppAi(), plan: vi.fn<AiService['plan']>((_idea, o) => new Promise<PlanOutcome>((_r, reject) => o.signal.addEventListener('abort', () => reject(new Error('aborted'))))) };
     const run = startPlan(ai, 'a maze of ghosts', null, 'middle', () => 'lantern-maze');
     stopPlan();
     await run;

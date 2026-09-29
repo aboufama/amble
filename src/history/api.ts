@@ -87,8 +87,3 @@ export function createHistory(o: HistoryOptions = {}): HistoryApi {
   };
 }
 
-/**
- * services.ts (FOUNDATION) builds the history with this name; it is the real history now, reading the
- * app's store at call time. INTEGRATION can switch the call to `createHistory()`.
- */
-export const createHistoryStub = createHistory;

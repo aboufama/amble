@@ -1,5 +1,5 @@
 /**
- * The `draw` slice (M3 owns; FOUNDATION-STUB): which drawing the Desk has open, whether it has unsaved
+ * The `draw` slice (M3 owns): which drawing the Desk has open, whether it has unsaved
  * strokes, the tool, and on-the-bones vs freehand.
  */
 import type { ArtId } from '../model/types';

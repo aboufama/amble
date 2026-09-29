@@ -269,8 +269,3 @@
   font: var(--type-meta);
   color: var(--text-2);
 }
-
-.idea-box .stub-ai {
-  margin-top: 10px;
-  padding: 0;
-}

@@ -19,6 +19,7 @@ import { initRouter, navigate } from './app/router';
 import { createServices, ServicesProvider, setServices, type Services } from './app/services';
 import { AI_CORE, resolveAiConfig } from './cores/ai';
 import { PLAYER_CORE } from './cores/play';
+import { startFilesUpkeep } from './files/api';
 import { registerServiceWorker } from './pwa/register';
 import { setConfig } from './state/config';
 import { refreshLibrary } from './state/library';
@@ -67,6 +68,7 @@ function unlockOnFirstGesture(): void {
 async function boot(): Promise<void> {
   const services = await createServices();
   setServices(services);
+  startFilesUpkeep();
   const [prefs, lastRoute] = await Promise.all([
     services.store.settings.get('prefs').catch(() => null),
     services.store.settings.get('lastRoute').catch(() => null),

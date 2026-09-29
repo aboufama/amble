@@ -5,8 +5,6 @@
 import type { LegacyImport } from '../legacy/reader';
 import type { AmbleFile, ArtId, World, WorldId } from '../model/types';
 import type { PickedFile, SaveKind } from './fsAccess';
-import { createFiles } from './service';
-import { startFilesUpkeep } from './upkeep';
 
 export { FileProblem, isFileProblem } from './problem';
 export type { PickedFile, SaveKind } from './fsAccess';
@@ -60,14 +58,4 @@ export interface FilesApi {
 }
 
 export { createFiles } from './service';
-
-/**
- * The app's FilesApi, as `src/app/services.ts` creates it at boot (it still calls FOUNDATION's name).
- * Also starts the storage upkeep once the services exist (§4.3-4.4: the daily GC, the restore toast, the
- * quota watch, the files-only nudges, the old-Amble check, file drops and PWA launches).
- */
-export function createFilesStub(): FilesApi {
-  const files = createFiles();
-  startFilesUpkeep();
-  return files;
-}
+export { startFilesUpkeep } from './upkeep';
