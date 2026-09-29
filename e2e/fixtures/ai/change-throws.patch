@@ -1,0 +1,19 @@
+@@amble-patch 1
+@@summary The Moon King now stomps and shakes the ground.
+@@play Watch out when the Moon King stomps!
+@@next Make the stomp bigger|Add falling rocks
+@@safety ok
+@@file boss.js create
+// The Moon King's stomp: the ground shakes when he lands.
+function moonKingStomp(scene, boss) {
+  const power = boss.stompPower.amount;
+  if (scene.clock % 3000 < 20) scene.fx.shake(power);
+}
+@@file game.js edit
+@@find
+    b.setPosition(700 + Math.sin(t * 0.8 * speed) * 150, 190 + Math.sin(t * 1.7 * speed) * 45 - this.rage * 15);
+@@replace
+    b.setPosition(700 + Math.sin(t * 0.8 * speed) * 150, 190 + Math.sin(t * 1.7 * speed) * 45 - this.rage * 15);
+    moonKingStomp(this, b);
+@@done
+@@end

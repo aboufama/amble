@@ -1,0 +1,147 @@
+/*
+ * Night Trail design tokens (§3). Night is the default; Day and High contrast live in themes.css.
+ * Components read tokens only: no hex values in component CSS. Mirrored in tokens.ts for canvas code.
+ */
+:root {
+  color-scheme: dark;
+
+  /* ---------- colour (§3.1) ---------- */
+  --bg: #151843;
+  --bg-lift: #1d2160; /* the radial lift behind the world view */
+  --bg-deep: #0b0c24;
+  --surface-top: #232863;
+  --surface-bottom: #1b1f52;
+  --surface: linear-gradient(180deg, var(--surface-top), var(--surface-bottom));
+  --surface-raised: #2e3478;
+  --well: #111338;
+  --line: #3d448f; /* decorative only */
+  --line-control: #5b62ab; /* 3.04:1 on --bg (the spec's #5a61aa is 2.995:1, a hair under 3:1) */
+  --line-control-panel: #7a82cc; /* 3:1 on every surface (panels redefine --line-control with it) */
+  --text: #f4ecdc;
+  --text-2: #a7acdc;
+  --accent: #ffc15e;
+  --accent-border: transparent;
+  --on-accent: #221b2e;
+  --alive: #86f3cb;
+  --ai: #9cc3ff;
+  --warn: #ff7a8e;
+  --change: #c79bff;
+  --paper: #fdf8ec;
+  --paper-2: #f6eedb;
+  --paper-3: #e9dcc0;
+  --paper-line: #8c7b5a;
+  --ink: #221b2e;
+  --ink-2: #4a4058;
+  --pencil-ink: #3f5db0;
+  --note: #fff3a8;
+  --glow-lantern: 0 0 0 1px rgba(255, 193, 94, 0.55), 0 0 22px rgba(255, 193, 94, 0.38);
+  --glow-firefly: 0 0 0 1px rgba(134, 243, 203, 0.5), 0 0 18px rgba(134, 243, 203, 0.3);
+  --veil: rgba(11, 12, 36, 0.48); /* Change mode's night veil */
+  --scrim: rgba(6, 7, 22, 0.62); /* behind modal dialogs and sheets */
+
+  /* focus (§3.9): a 3 px ring with a 3 px gap */
+  --focus-ring: var(--accent);
+  --focus-gap: var(--bg-deep);
+  --focus-width: 3px;
+
+  /* placeholder role tints (§3.8): only inside games and placeholder glyphs, at 55 % under hatching */
+  --tint-hero: #7cc7ef;
+  --tint-friend: #8fe3b0;
+  --tint-enemy: #f08aa2;
+  --tint-boss: #a993ee;
+  --tint-npc: #c9b6f2;
+  --tint-item: #f2cf5e;
+  --tint-hazard: #f4a261;
+  --tint-projectile: #9cc3ff;
+  --tint-terrain: #d9b98c;
+  --tint-prop: #c9c2b2;
+  --tint-decor: #bfc6e0;
+  --bones: #86f3cb;
+  --hatch: #ffffff;
+  --dash: #f4ecdc;
+  --dash-halo: rgba(8, 9, 30, 0.55);
+
+  /* tape (§3.3) */
+  --tape-lemon: rgba(255, 216, 77, 0.85);
+  --tape-lime: rgba(182, 242, 90, 0.85);
+
+  /* ---------- type (§3.2) ---------- */
+  --font-display: 'Fredoka', 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+  --font-ui: 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+  --font-code: 'JetBrains Mono', ui-monospace, monospace;
+  --weight-display: 600;
+  --display-xl: var(--weight-display) 3.5rem/3.625rem var(--font-display);
+  --display-l: var(--weight-display) 2.5rem/2.75rem var(--font-display);
+  --display-m: var(--weight-display) 1.875rem/2.125rem var(--font-display);
+  --type-title: var(--weight-display) 1.375rem/1.75rem var(--font-display);
+  --type-heading: var(--weight-display) 1.1875rem/1.625rem var(--font-display);
+  --type-label: 600 0.96875rem/1.25rem var(--font-ui);
+  --type-chip: 600 0.875rem/1.125rem var(--font-ui);
+  --type-caps: 700 0.78125rem/1rem var(--font-ui);
+  --type-body: 400 1rem/1.5rem var(--font-ui);
+  --type-meta: 400 0.84375rem/1.125rem var(--font-ui);
+  --type-code: 500 0.875rem/1.375rem var(--font-code);
+  --type-code-diff: 500 0.8125rem/1.25rem var(--font-code);
+  --caps-spacing: 0.08em;
+  --letter-spacing: normal;
+  --word-spacing: normal;
+
+  /* ---------- space, radii, elevation (§3.3) ---------- */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+  --s14: 56px;
+  --r-chip: 999px;
+  --r-btn: 14px;
+  --r-btn-lg: 18px;
+  --r-card: 18px;
+  --r-world: 20px;
+  --r-paper: 5px;
+  --r-cut: 255px 12px 225px 14px / 14px 225px 12px 255px;
+  --lift: 0 14px 34px rgba(4, 5, 20, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.04);
+  --lift-sm: 0 6px 16px rgba(4, 5, 20, 0.45);
+  --lift-paper: 0 10px 26px rgba(0, 0, 0, 0.45);
+
+  /* ---------- controls ---------- */
+  --control-sm: 38px;
+  --control: 44px;
+  --control-lg: 58px;
+  --target: 44px;
+  --topbar: 60px;
+  --header: 66px;
+
+  /* ---------- motion (§3.6) ---------- */
+  --ease-amble: cubic-bezier(0.3, 0.7, 0.2, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-soft: cubic-bezier(0.45, 0, 0.2, 1);
+  --ease-lift: cubic-bezier(0.2, 0.9, 0.25, 1.15);
+  --t-micro: 120ms;
+  --t-ui: 200ms;
+  --t-move: 360ms;
+  --t-lift: 320ms;
+  --t-page: 480ms;
+  --t-world: 600ms;
+  --t-alive: 900ms;
+
+  /* ---------- layers ---------- */
+  --z-player: 5;
+  --z-overlay: 10;
+  --z-topbar: 15;
+  --z-sheet: 30;
+  --z-popover: 40;
+  --z-toast: 50;
+  --z-tooltip: 60;
+  --z-fullscreen: 100;
+}
+
+/* Touch layout: every control 48 px (§2.2). */
+:root[data-layout='touch'] {
+  --control-sm: 44px;
+  --control: 48px;
+  --target: 48px;
+}

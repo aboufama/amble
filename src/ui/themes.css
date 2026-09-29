@@ -1,0 +1,107 @@
+/*
+ * Day ("Calm colours") and High contrast (§3.1): full token swaps. Paper stays light in Day; High contrast
+ * turns every surface black with white edges, a yellow accent and a 4 px focus ring, and no glows.
+ * Games are unaffected by themes.
+ */
+:root[data-theme='day'] {
+  color-scheme: light;
+  --bg: #f4ecdb;
+  --bg-lift: #efe4cc;
+  --bg-deep: #e7dcc4;
+  --surface-top: #fffaf0;
+  --surface-bottom: #fffaf0;
+  --surface-raised: #ffffff;
+  --well: #ece2cc;
+  --line: #d8c9a6;
+  --line-control: #8c7b5a;
+  --line-control-panel: #8c7b5a;
+  --text: #221b2e;
+  --text-2: #4a4058;
+  --accent: #ffc15e;
+  --accent-border: #8a6a00;
+  --alive: #17744a;
+  --ai: #2c5fb8;
+  --warn: #b3263e;
+  --change: #6f3fc0;
+  --glow-lantern: 0 0 0 1.5px #8a6a00;
+  --glow-firefly: 0 0 0 1.5px #17744a;
+  --veil: rgba(244, 236, 219, 0.55);
+  --scrim: rgba(34, 27, 46, 0.35);
+  --focus-ring: #8a6a00;
+  --focus-gap: #fffaf0;
+  --lift: 0 10px 24px rgba(60, 45, 20, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --lift-sm: 0 4px 12px rgba(60, 45, 20, 0.14);
+  --lift-paper: 0 8px 20px rgba(60, 45, 20, 0.2);
+}
+
+:root[data-theme='contrast'] {
+  color-scheme: dark;
+  --bg: #000000;
+  --bg-lift: #000000;
+  --bg-deep: #000000;
+  --surface-top: #000000;
+  --surface-bottom: #000000;
+  --surface-raised: #000000;
+  --well: #000000;
+  --line: #ffffff;
+  --line-control: #ffffff;
+  --line-control-panel: #ffffff;
+  --text: #ffffff;
+  --text-2: #ffffff;
+  --accent: #ffff00;
+  --accent-border: #ffffff;
+  --on-accent: #000000;
+  --paper: #000000;
+  --paper-2: #000000;
+  --paper-3: #000000;
+  --paper-line: #ffffff;
+  --ink: #ffffff;
+  --ink-2: #ffffff;
+  --pencil-ink: #ffff00;
+  --note: #000000;
+  --glow-lantern: 0 0 0 2px #ffff00;
+  --glow-firefly: 0 0 0 2px #ffffff;
+  --veil: rgba(0, 0, 0, 0.7);
+  --scrim: rgba(0, 0, 0, 0.8);
+  --focus-ring: #ffff00;
+  --focus-gap: #000000;
+  --focus-width: 4px;
+  --lift: none;
+  --lift-sm: none;
+  --lift-paper: none;
+  --tape-lemon: transparent;
+  --tape-lime: transparent;
+}
+
+/* High contrast: a 2 px edge on every control; role colours only as underlines plus words. */
+:root[data-theme='contrast'] :is(.btn, .chip, .field__input, .segmented, .toggle__switch, .slider__range, .tag, .panel, .paper, .dialog, .menu, .popover, .toast) {
+  border: 2px solid var(--line-control);
+}
+
+:root[data-theme='contrast'] .grain::after,
+:root[data-theme='contrast'] .tape {
+  display: none;
+}
+
+/* The operating system's forced colours (Windows High Contrast): let system colours through. */
+@media (forced-colors: active) {
+  .btn,
+  .chip,
+  .field__input,
+  .segmented__option,
+  .toggle__switch,
+  .tag,
+  .panel,
+  .paper,
+  .dialog,
+  .menu,
+  .popover,
+  .toast {
+    border: 1px solid CanvasText;
+    forced-color-adjust: auto;
+  }
+
+  :focus-visible {
+    outline: 3px solid Highlight;
+  }
+}
