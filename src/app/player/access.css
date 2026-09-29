@@ -1,7 +1,8 @@
 /*
  * Captions for game sounds (GameAccess.tsx): a plain rounded strip at the bottom edge of the game, over the
  * player layer, that never takes a click. Tokens only, so it follows every theme; rem type, so it follows
- * the text size and spacing settings.
+ * the text size and spacing settings. No motion: a caption is there the moment its sound plays (a fade-in
+ * could leave it invisible while the page draws no frames), so reduced motion needs nothing more.
  */
 .game-captions,
 .world-view[data-player-fullscreen] > .game-captions {
@@ -36,27 +37,16 @@
   word-spacing: var(--word-spacing);
   text-align: center;
   overflow-wrap: anywhere;
-  animation: caption-in var(--t-micro) var(--ease-soft);
 }
 
 .game-captions--compact {
   bottom: var(--s2);
-  padding: 2px var(--s2);
+  padding: calc(var(--s1) / 2) var(--s2);
   border-radius: var(--s2);
 }
 
 .game-captions--compact .game-captions__line {
   font: var(--type-chip);
-}
-
-@keyframes caption-in {
-  from {
-    opacity: 0;
-  }
-}
-
-:root[data-motion='reduced'] .game-captions__line {
-  animation: none;
 }
 
 /* High contrast: a solid strip with a white edge, like every panel there. */

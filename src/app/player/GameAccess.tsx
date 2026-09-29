@@ -74,13 +74,13 @@ export function GameAccess({ avoid, compact = false }: GameAccessProps) {
   const [lines, setLines] = useState<readonly CaptionLine[]>([]);
   const [log, setLog] = useState<Array<{ id: number; text: string }>>([]);
   const queue = useRef(new CaptionQueue());
+  const said = useRef(0);
   const strip = useRef<HTMLDivElement>(null);
   const lift = useLift(strip, avoid, lines);
 
   useEffect(() => {
     const captions = queue.current;
     let timer = 0;
-    let said = 0;
     // Each line goes when its time is up: one timer, for the next line to go.
     const show = () => {
       window.clearTimeout(timer);
@@ -89,7 +89,7 @@ export function GameAccess({ avoid, compact = false }: GameAccessProps) {
       const next = captions.nextChange();
       if (next !== null) timer = window.setTimeout(show, Math.max(16, next - now));
     };
-    const mirror = new TextMirror((text) => setLog((l) => [...l.slice(1 - LOG_KEEP), { id: ++said, text }]));
+    const mirror = new TextMirror((text) => setLog((l) => [...l.slice(1 - LOG_KEEP), { id: ++said.current, text }]));
     const offEvent = player.on('event', ({ event }) => {
       if (event.kind !== 'caption') {
         mirror.event(event);
