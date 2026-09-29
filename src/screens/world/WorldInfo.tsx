@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useServices } from '../../app/services';
 import { t } from '../../i18n';
-import type { World } from '../../model/types';
+import type { SeedId, World } from '../../model/types';
 import { formatBytes, measureWorld } from '../../store/quota';
 import { Dialog } from '../../ui/components';
 import { clockTime } from './WorldMenu';
@@ -15,12 +15,12 @@ function day(at: number): string {
   return new Date(at).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-export function starterTitle(world: World, info: (id: never) => { title: string }): string | null {
+export function starterTitle(world: World, info: (id: SeedId) => { title: string }): string | null {
   const o = world.origin;
   const id = o.kind === 'starter' || o.kind === 'plan' ? o.starter : o.kind === 'assignment' ? o.starter : null;
   if (!id) return null;
   try {
-    return info(id as never).title;
+    return info(id).title;
   } catch {
     return null;
   }

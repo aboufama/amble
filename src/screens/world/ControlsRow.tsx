@@ -29,7 +29,8 @@ export function ControlsRow({ world, fullscreen, onMode, onRestart, onFullscreen
   const layout = useLayout();
   const coarse = layout === 'touch' || touch === 'on';
   const hints = keyHints(hintActions(actions, world.code), world.controls);
-  const small = layout === 'small' || layout === 'portrait';
+  const small = layout === 'small';
+  const narrow = small || layout === 'portrait';
   return (
     <div className="world-controls" data-testid="world-controls">
       <Segmented
@@ -60,7 +61,7 @@ export function ControlsRow({ world, fullscreen, onMode, onRestart, onFullscreen
           </p>
         ) : coarse ? (
           layout === 'touch' ? null : <p className="world-controls__hint">{t('world.touchHint')}</p>
-        ) : hints.length ? (
+        ) : hints.length && !narrow ? (
           <ul className="world-controls__keys" aria-label={t('world.keysLabel')}>
             {hints.map((h) => (
               <li key={h.word}>

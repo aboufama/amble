@@ -9,7 +9,7 @@ import { SAMPLE_RATE } from '../../audio/synth';
 import type { SoundEffect } from '../../audio/effects';
 import { useServices } from '../../app/services';
 import { t, type MessageKey } from '../../i18n';
-import type { SoundPiece, World } from '../../model/types';
+import type { BlobRef, SoundPiece, World } from '../../model/types';
 import { showToast } from '../../state/app';
 import { loadGame, recordStep, updateWorld } from '../../state/session';
 import { Button, Chip, Field, IconButton, Sheet } from '../../ui/components';
@@ -29,7 +29,7 @@ const RECORD_MS = 5000;
 
 let audio: AudioContext | null = null;
 
-async function play(piece: SoundPiece | null, name: string, blobOf: (ref: string) => Promise<Blob | null>): Promise<void> {
+async function play(piece: SoundPiece | null, name: string, blobOf: (ref: BlobRef) => Promise<Blob | null>): Promise<void> {
   audio ??= new AudioContext();
   if (audio.state === 'suspended') await audio.resume();
   let buffer: AudioBuffer | null = null;
@@ -107,7 +107,7 @@ function SoundRow({ name, piece, onChange, micOk }: { name: string; piece: Sound
   return (
     <li className="sound-row" data-testid={`sound-${name}`}>
       <div className="sound-row__head">
-        <IconButton icon="play" label={t('world.soundPlay', { name })} size={38} variant="ghost" onClick={() => void play(piece ?? null, name, (r) => store.blobs.get(r as never))} />
+        <IconButton icon="play" label={t('world.soundPlay', { name })} size={38} variant="ghost" onClick={() => void play(piece ?? null, name, (r) => store.blobs.get(r))} />
         <div className="sound-row__title">
           <strong>{nameFromKey(name)}</strong>
           <span>{sourceLine(name, piece)}</span>

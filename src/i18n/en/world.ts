@@ -169,8 +169,6 @@ export const world = {
   // ---- the Ask card's shell
   askTitle: 'Change your world',
   askBadge: 'AI helper',
-  scopeAbout: 'About {name}',
-  scopeClear: 'Ask about the whole world',
 
   // ---- Dials | Twists
   tuneGroup: 'World dials or twists',
@@ -224,8 +222,6 @@ export const world = {
   soundRecordHint: 'Up to 5 seconds. It stays on this Chromebook.',
   soundNoMic: 'The microphone is off for Amble here.',
   soundEffects: 'Effects',
-  fxHigher: 'Higher',
-  fxLower: 'Lower',
   fxFaster: 'Faster',
   fxSlower: 'Slower',
   fxLouder: 'Louder',
