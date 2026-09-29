@@ -98,8 +98,11 @@ test('when the plan call fails, the closest starter is offered', async ({ page }
   await sendIdea(page);
   const fallback = page.getByTestId('plan-fallback');
   await expect(fallback).toBeVisible({ timeout: 60_000 });
-  await page.getByTestId('fallback-start').click();
+  // An eager double click still makes one world.
+  await page.getByTestId('fallback-start').dblclick();
   await expect(page).toHaveURL(/#\/w\/w_[A-Za-z0-9_-]+$/);
   const { world } = await worldOf(page);
   expect(world?.origin.kind).toBe('starter');
+  await page.waitForTimeout(1000);
+  expect(await page.evaluate(async () => (await (window as unknown as { __amble: { store: { worlds: { list(): Promise<unknown[]> } } } }).__amble.store.worlds.list()).length)).toBe(1);
 });
