@@ -6,7 +6,23 @@
 import { renderSynth, SAMPLE_RATE, type SynthSegment } from '../audio/synth';
 import { getState } from '../state/store';
 
-export type UiSound = 'tok' | 'toggleOn' | 'toggleOff' | 'paper' | 'lift' | 'drop' | 'pour' | 'step' | 'alive' | 'sent' | 'ready' | 'pick' | 'put' | 'oops';
+export type UiSound =
+  | 'tok'
+  | 'toggleOn'
+  | 'toggleOff'
+  | 'paper'
+  | 'lift'
+  | 'drop'
+  | 'pour'
+  | 'step'
+  | 'alive'
+  | 'sent'
+  | 'ready'
+  | 'pick'
+  | 'put'
+  | 'oops'
+  | 'boing'
+  | 'chime';
 
 interface Layer {
   /** Start offset in seconds. */
@@ -31,7 +47,7 @@ const seg = (wave: SynthSegment['wave'], startFreq: number, endFreq: number, dur
   endVolume,
 });
 
-/** The recipes of §3.7 as synth layers. */
+/** The recipes of §3.7 as synth layers, plus Home's `boing` (a hop on the First page, §2.3) and `chime` (the Trail's first load, §2.4). */
 export const UI_SOUNDS: Record<UiSound, Layer[]> = {
   tok: [{ at: 0, segments: [seg('triangle', 880, 660, 0.025, 0.12)] }],
   toggleOn: [{ at: 0, segments: [seg('sine', D5, D5, 0.045, 0.5, 0.4), seg('sine', A5, A5, 0.045, 0.45, 0)] }],
@@ -63,6 +79,12 @@ export const UI_SOUNDS: Record<UiSound, Layer[]> = {
   pick: [{ at: 0, segments: [seg('square', 520, 520, 0.03, 0.06, 0)] }],
   put: [{ at: 0, segments: [seg('square', 390, 390, 0.03, 0.06, 0)] }],
   oops: [{ at: 0, segments: [seg('triangle', D4, D4, 0.09, 0.5, 0.3), seg('triangle', A3, A3, 0.09, 0.4, 0)] }],
+  boing: [{ at: 0, segments: [seg('triangle', 300, 500, 0.09, 0.6, 0)] }],
+  chime: [
+    { at: 0, segments: [seg('sine', D5, D5, 0.16, 0.45, 0)] },
+    { at: 0.09, segments: [seg('sine', FS5, FS5, 0.16, 0.45, 0)] },
+    { at: 0.18, segments: [seg('sine', A5, A5, 0.2, 0.45, 0)] },
+  ],
 };
 
 /** Peak levels: −18 dBFS (on) and −26 dBFS (soft). */

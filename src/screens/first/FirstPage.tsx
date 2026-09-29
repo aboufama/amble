@@ -17,7 +17,6 @@ import { bringToLife } from '../../draw/api';
 import { t } from '../../i18n';
 import { openSeed } from '../../home/createWorld';
 import { renderPose, type PoseImage } from '../../home/seedThumbs';
-import { homeSoundsGesture } from '../../home/sounds';
 import type { ArtRecord, Facing, StarterId } from '../../model/types';
 import { announce, showToast } from '../../state/app';
 import { refreshLibrary } from '../../state/library';
@@ -168,7 +167,6 @@ export function FirstPage() {
     let warmed = false;
     const firstTouch = () => {
       setTouched(true);
-      homeSoundsGesture();
       // Start the rig worker while the student draws, so Bring it to life never waits for it to load.
       if (!warmed) {
         warmed = true;

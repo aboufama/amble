@@ -14,7 +14,6 @@ import type { Route, RouteOf } from '../../app/routes';
 import { useServices } from '../../app/services';
 import { transitionName } from '../../app/transitions';
 import { t } from '../../i18n';
-import { playHomeSound } from '../../home/sounds';
 import { sweepStarterCopies } from '../../home/starterCopies';
 import {
   DESIGN_H,
@@ -94,7 +93,7 @@ export function Trail({ route }: { route: RouteOf<'trail'> }) {
   }, [store]);
 
   useEffect(() => {
-    if (firstLoad && route.view === 'trail') playHomeSound('chime');
+    if (firstLoad && route.view === 'trail') playUiSound('chime');
   }, [firstLoad, route.view]);
 
   const extra = (

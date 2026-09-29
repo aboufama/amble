@@ -8,8 +8,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { createRigPreview, type RigData, type RigPreview } from '../../cores/rig';
 import { t } from '../../i18n';
-import { homeSoundsGesture, playHomeSound } from '../../home/sounds';
 import { cx } from '../../ui/cx';
+import { playUiSound } from '../../ui/sounds';
 
 /** Where the drawing stood on the paper, in CSS px of the stage box. */
 export interface AliveGeometry {
@@ -133,7 +133,7 @@ export const AliveStage = forwardRef<AliveStageHandle, AliveStageProps>(function
     const tx = Math.max(minX, Math.min(maxX, x));
     s.busyUntil = now + HOP_MS + 60;
     p.hop(tx * s.dpr, (s.groundY - HOP_ARC * h) * s.dpr);
-    playHomeSound('boing');
+    playUiSound('boing');
     const from = s.x;
     const groundY = s.groundY;
     setShadow((sh) => ({ x: tx, y: groundY, from, hop: sh.hop + 1, on: true }));
@@ -159,7 +159,6 @@ export const AliveStage = forwardRef<AliveStageHandle, AliveStageProps>(function
   }));
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    homeSoundsGesture();
     const r = e.currentTarget.getBoundingClientRect();
     hopTo(e.clientX - r.left);
   };
@@ -171,7 +170,6 @@ export const AliveStage = forwardRef<AliveStageHandle, AliveStageProps>(function
     else if (e.key === 'ArrowRight') hopTo(s.x + step);
     else if (e.key === ' ' || e.key === 'Enter') hopTo(s.x);
     else return;
-    homeSoundsGesture();
     e.preventDefault();
   };
 
