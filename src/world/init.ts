@@ -96,6 +96,12 @@ async function drawnArt(world: World, store: Store): Promise<DrawnArt[]> {
       }
       art.layers = layers;
     }
+    // A flipbook replaces one move (§7.12): its pages go in on every load, not only with the Desk's hot swap.
+    const frames = record.export.frames;
+    if (frames) {
+      const atlas = await store.blobs.get(frames.atlas);
+      if (atlas) art.frames = { atlas, json: frames.json, move: frames.move, fps: frames.fps };
+    }
     out.push(art);
   }
   return out;
