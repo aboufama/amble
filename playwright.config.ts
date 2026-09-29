@@ -30,6 +30,8 @@ const env = { OPENAI_API_KEY: '' };
 
 export default defineConfig({
   testDir: 'e2e',
+  // The player core's own spec runs against its harness server: npx playwright test -c dev/player/playwright.config.ts
+  testIgnore: /player\.spec\.ts$/,
   timeout: 90_000,
   expect: { timeout: 20_000 },
   fullyParallel: false,
