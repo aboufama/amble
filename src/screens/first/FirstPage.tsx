@@ -15,7 +15,7 @@ import { createArtSurface, newArtDoc, type ArtSurface } from '../../cores/art';
 import { rigWorker, setFacing as setRigFacing, type CharacterKind, type RigData } from '../../cores/rig';
 import { bringToLife } from '../../draw/api';
 import { t } from '../../i18n';
-import { openSeed } from '../../home/createWorld';
+import { createAssignmentWorld, openSeed } from '../../home/createWorld';
 import { renderPose, type PoseImage } from '../../home/seedThumbs';
 import type { ArtRecord, Facing, StarterId } from '../../model/types';
 import { announce, showToast } from '../../state/app';
@@ -421,7 +421,8 @@ export function FirstPage() {
     if (!alive || busySeed) return;
     setBusySeed(seed);
     try {
-      const world = await openSeed(seed, alive.record.id);
+      // The "From your teacher" card starts the assignment itself (Hand in, its goals), with this hero.
+      const world = assignment?.starter === seed ? (await createAssignmentWorld(assignment, alive.record.id)).world : await openSeed(seed, alive.record.id);
       // The creature flies from the paper into its place in the running world (M2 plays the flight).
       const exp = alive.record.export;
       const from = stageRef.current?.box() ?? null;

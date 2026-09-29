@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setServices, type Services } from '../../src/app/services';
 import type { FilesApi } from '../../src/files/api';
 import { createHistory } from '../../src/history/api';
-import { copyWorld, createPlanWorld, firstToDraw, openSeed, planHeroKey, renameWorld, startBuild } from '../../src/home/createWorld';
+import { copyWorld, createAssignmentWorld, createPlanWorld, firstToDraw, openSeed, planHeroKey, renameWorld, startBuild } from '../../src/home/createWorld';
 import { getPlanSession, planSeconds, resetPlanSession, startPlan, stopPlan } from '../../src/home/planSession';
 import { isUntouchedStarterCopy, routeWorldId } from '../../src/home/starterCopies';
 import type { AiOutcome, PlanOutcome } from '../../src/model/types';
@@ -18,7 +18,7 @@ import { createStarterCatalog } from '../../src/starters/api';
 import { getState, resetState } from '../../src/state/store';
 import { MemoryStore } from '../../src/store/memory';
 import { readStatics } from '../../src/pipeline/manifest';
-import { sampleArt, samplePlan, sampleWorld } from '../foundation/samples';
+import { sampleArt, sampleAssignment, samplePlan, sampleWorld } from '../foundation/samples';
 
 function services(over: Partial<Services> = {}): Services {
   const s: Services = {
@@ -99,6 +99,24 @@ describe('seeds, renames and copies', () => {
     expect(world.origin).toMatchObject({ kind: 'starter', starter: 'moon-king', withArt: false });
     expect(world.cast.hero.art).toBe('a_hero000001');
     expect(await store.worlds.get(world.id)).not.toBeNull();
+  });
+
+  it("starts an assignment's world with the hero the student just drew, carrying the assignment", async () => {
+    const { store, starters } = services();
+    await store.commit({ art: [sampleArt({ id: 'a_hero000001', name: 'Zara' })] });
+    const asg = sampleAssignment();
+    const { world, heroKey } = await createAssignmentWorld(asg, 'a_hero000001');
+    expect(heroKey).toBe(starters.info('moon-king').heroKey);
+    expect(world.assignment).toEqual(asg);
+    expect(world.origin).toEqual({ kind: 'assignment', assignmentId: asg.id, starter: 'moon-king' });
+    expect(world.title).toBe('Boss Battle Week');
+    expect(world.cast[heroKey]).toMatchObject({ art: 'a_hero000001', madeBy: 'student' });
+    expect(readStatics(world.code).art[heroKey].name).toBe('Zara');
+    expect(await store.worlds.get(world.id)).toEqual(world);
+    // From the Trail's note, nothing is drawn yet (draw first).
+    const fromNote = await createAssignmentWorld(asg);
+    expect(fromNote.world.cast[heroKey].art).toBeNull();
+    expect(fromNote.world.assignment).toEqual(asg);
   });
 
   it('calls the hero by the name the student gave it, not the starter’s', async () => {

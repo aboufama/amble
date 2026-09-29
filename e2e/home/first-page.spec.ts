@@ -123,6 +123,43 @@ test('"Or play one first." opens a starter, and leaving it untouched keeps the F
   await expect.poll(() => page.evaluate(async () => (await (window as unknown as { __amble: { store: { worlds: { list(): Promise<unknown[]> } } } }).__amble.store.worlds.list()).length)).toBe(0);
 });
 
+test('with a class assignment, the "From your teacher" card starts that assignment with the new hero', async ({ page }) => {
+  test.setTimeout(240_000);
+  await mockAi(page);
+  const asg = {
+    id: 'as_boss',
+    title: 'Boss Battle Week',
+    text: 'Make a boss fight. Draw your own hero and a giant boss.',
+    starter: 'moon-king',
+    require: ['hero', 'moonKing'],
+    goals: [{ id: 'g1', label: 'Hero drawn by the student', kind: 'auto', check: { type: 'drawn', key: 'hero' } }],
+    ai: 'on',
+    level: null,
+    due: 'Friday',
+    locked: {},
+  };
+  await openAmble(page, { ai: 'mock', clean: true, classLink: { asg } });
+  const first = page.getByTestId('screen-first');
+  await expect(page.getByTestId('first-column')).toContainText('Boss Battle Week');
+  const board = page.getByTestId('first-board');
+  await expect(board.locator('canvas').first()).toBeVisible();
+  await drawPerson(page, board);
+  await page.getByTestId('bring-to-life').click();
+  await expect(first).toHaveAttribute('data-awake', 'true', { timeout: 90_000 });
+  const doodle = await page.evaluate(() => (window as unknown as { __amble: Amble }).__amble.getState().library.characters[0]);
+
+  const card = page.getByTestId('first-column').getByRole('button', { name: new RegExp(`^Boss fight with ${doodle.name}`) });
+  await expect(card).toContainText(/from your teacher/i);
+  await card.click();
+  await expect(page).toHaveURL(/#\/w\/w_[A-Za-z0-9_-]+$/, { timeout: 60_000 });
+  // It is the assignment's world: Hand in in the top bar, the assignment's goals, and the new hero in it.
+  await expect(page.getByTestId('handin-button')).toBeVisible({ timeout: 30_000 });
+  const world = await page.evaluate(() => (window as unknown as { __amble: { getState(): { session: { world: { title: string; assignment: { id: string } | null; cast: Record<string, { art: string | null }> } } } } }).__amble.getState().session.world);
+  expect(world.assignment?.id).toBe('as_boss');
+  expect(world.title).toBe('Boss Battle Week');
+  expect(world.cast.hero.art).toBe(doodle.id);
+});
+
 test('the waiting Bring it to life says what it needs: a drawing, then a bigger or bolder one', async ({ page }) => {
   await openAmble(page, { clean: true });
   const board = page.getByTestId('first-board');
