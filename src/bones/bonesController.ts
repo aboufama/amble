@@ -30,7 +30,8 @@ import {
 import { addDynamic } from '../cores/rig';
 import type { ArtId, ArtRecord, CastKey, Facing, World, WorldId } from '../model/types';
 import { showToast } from '../state/app';
-import { getState, setState } from '../state/store';
+import { adoptWorld } from '../state/session';
+import { getState } from '../state/store';
 import { confirmUser } from '../ui/dialogs';
 import { aiHintsAllowed, createConsentMemory, type ConsentMemory } from './consent';
 import { keyboardWiggly, mirrorBones, newestTip, removeWithCount } from './edits';
@@ -113,11 +114,9 @@ function stepOf(r: Pick<RigReply, 'rig' | 'confidence' | 'issues' | 'notes'>, ma
 }
 
 /** Keeps the open world's session in step with a world this screen committed (M2's autosave writes it). */
+/** The footstep goes into the open world's session copy too (its autosave would otherwise write over it). */
 function syncSession(world: World): void {
-  if (getState().session.world?.id !== world.id) return;
-  setState((s) => {
-    if (s.session.world?.id === world.id) s.session.world = world;
-  });
+  adoptWorld(world, () => undefined);
 }
 
 export class BonesController {
@@ -589,7 +588,9 @@ export class BonesController {
     const { store, history, player } = this.services;
     if (getState().session.world?.id === worldId) player.swapArt(drawnArtOf(key, this.source, rig));
     try {
-      const world = await store.worlds.get(worldId);
+      // The session's copy of the open world is the newest (changes the autosave has not written yet).
+      const open = getState().session.world;
+      const world = open?.id === worldId ? open : await store.worlds.get(worldId);
       if (!world) return;
       const next = await history.record(world, { kind: 'bones', by: 'student', text: t('bones.stepFixed', { name: this.record.name }), cast: key });
       await store.commit({ worlds: [next] });

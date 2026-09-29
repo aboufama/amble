@@ -8,6 +8,7 @@
  * their result is written to the stored world here (with the ladder's cast when the build fell back to its
  * starter), and the open world is updated if it is the same one.
  */
+import type { Draft } from 'immer';
 import { getServices } from '../app/services';
 import { navigate } from '../app/router';
 import type { ArtNeed } from '../cores/play';
@@ -28,7 +29,7 @@ import type {
 } from '../model/types';
 import { announce, showToast } from './app';
 import { markSeen } from './prefs';
-import { applyAccepted, setDial, setTwist } from './session';
+import { adoptWorld, applyAccepted, loadGame, setDial, setTwist } from './session';
 import { getState, setState } from './store';
 
 export interface SteerRecord {
@@ -215,16 +216,20 @@ async function currentWorld(id: WorldId): Promise<World | null> {
   return getServices().store.worlds.get(id);
 }
 
-/** Writes a new version of a world: a footstep, one commit, and the open world if it is this one. */
-async function commitWorld(next: World, step: StepInput): Promise<World> {
+/**
+ * Writes a new version of a world: a footstep and one commit; when it is the open world, what `keep` copies
+ * (and the footstep) goes into the session, whose own newer edits stay.
+ */
+async function commitWorld(next: World, step: StepInput, keep: (w: Draft<World>, committed: World) => void = () => undefined): Promise<World> {
   const { store, history } = getServices();
   const recorded = await history.record(next, step);
   await store.commit({ worlds: [recorded] });
-  setState((s) => {
-    if (s.session.world?.id === recorded.id) s.session.world = recorded;
-  });
-  return recorded;
+  return adoptWorld(recorded, keep) ?? recorded;
 }
+
+const keepCode = (w: Draft<World>, c: World): void => {
+  w.code = c.code;
+};
 
 function stepFor(outcome: Extract<AiOutcome, { kind: 'accepted' }>, task: AiJobView['task'], words: string): StepInput {
   const files = outcome.files.map((f) => f.path);
@@ -260,7 +265,7 @@ async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind:
     doneToast(worldId, outcome, files);
     return;
   }
-  await commitWorld({ ...before, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, task, words));
+  await commitWorld({ ...before, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, task, words), keepCode);
   if (getState().session.world?.id === worldId) {
     setState((s) => {
       s.session.manifest = outcome.manifest;
@@ -276,13 +281,21 @@ async function applyBuild(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 
   const world = await currentWorld(worldId);
   if (!world) return;
   if (outcome.kind === 'accepted') {
-    await commitWorld({ ...world, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, 'build', words));
+    await commitWorld({ ...world, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, 'build', words), keepCode);
   } else {
     const plan = world.plan;
     const cast = plan ? await ladderCastOf(world, plan, outcome.files) : world.cast;
     const starter = world.origin.kind === 'plan' ? world.origin.starter : null;
     const title = starter ? getServices().starters.info(starter).title : '';
-    await commitWorld({ ...world, code: outcome.files, cast, title: plan?.title || world.title, updatedAt: Date.now() }, { kind: 'code', by: 'ai', text: t('ai.stepLadder', { starter: title }), request: words, files: outcome.files.map((f) => f.path) });
+    await commitWorld(
+      { ...world, code: outcome.files, cast, title: plan?.title || world.title, updatedAt: Date.now() },
+      { kind: 'code', by: 'ai', text: t('ai.stepLadder', { starter: title }), request: words, files: outcome.files.map((f) => f.path) },
+      (w, c) => {
+        w.code = c.code;
+        w.cast = c.cast;
+        w.title = c.title;
+      },
+    );
   }
   if (getState().session.world?.id === worldId) {
     setState((s) => {
@@ -443,8 +456,9 @@ export async function goBackBefore(worldId: WorldId): Promise<void> {
   if (!to) return;
   const back = await history.goBack(world, to.id);
   await store.commit({ worlds: [back] });
+  // The world goes back, and so does the game playing it.
+  if (adoptWorld(back)) void loadGame(back, { autostart: true });
   setState((s) => {
-    if (s.session.world?.id === back.id) s.session.world = back;
     s.ai.lastOutcome = null;
     s.ai.outcomeFor = null;
   });

@@ -117,6 +117,7 @@ export const school = {
   turnedIn: 'I turned it in',
   turnedInAgain: 'I turned it in again',
   handedIn: 'Handed in ✓ {time}',
+  turnInFailed: "Amble couldn't mark it as turned in here. Try again.",
   handedInButton: 'Handed in {time}',
   stepHandedIn: 'You handed in {name}.',
 

@@ -7,15 +7,17 @@ import { playerPrefsFrom } from '../app/player/prefs';
 import { getServices } from '../app/services';
 import type { GameManifest } from '../cores/play';
 import type { World } from '../model/types';
+import { adoptWorld } from '../state/session';
 import { getState, setState } from '../state/store';
 import { deriveCast } from '../world/cast';
 import { toInitMessage } from '../world/init';
 
-/** Replaces the session's world with a newer copy of the same world (no reload). */
+/**
+ * Replaces the session's world with a newer copy of the same world (no reload), one already committed: the
+ * autosave then holds it too, so an older copy waiting to be saved never writes over it.
+ */
 export function setSessionWorld(world: World): void {
-  setState((s) => {
-    if (s.session.world?.id === world.id) s.session.world = world;
-  });
+  adoptWorld(world);
 }
 
 /** Whether a world is the one open in the session (the one the player runs). */
