@@ -26,6 +26,7 @@ import { createHistory } from '../../../src/history/api';
 import { playWorld } from '../../../src/history/live';
 import { attribute } from '../../../src/history/provenance';
 import type { ArtRecord, BlobRef, CodeFile, StepInput, World } from '../../../src/model/types';
+import { FIXTURE_GAME } from '../../../src/starters/fixtureGame';
 import { FootstepsPanel } from '../../../src/screens/footsteps/FootstepsPanel';
 import { setPrefs } from '../../../src/state/prefs';
 import { getState, setState } from '../../../src/state/store';
@@ -134,8 +135,16 @@ async function seed(services: Services): Promise<World> {
   const now = Date.now();
   let clock = now - (many ? 2 * 24 * 60 : 40) * MIN;
   const history = createHistory({ store: () => services.store, now: () => clock });
+  // The fixture boss game (the steps below edit its lines), in a world made the way a starter makes one.
   const opened = await services.starters.open('moon-king', { withArt: false });
-  let world: World = { ...opened.world, createdAt: clock, steps: opened.world.steps.map((s) => ({ ...s, at: clock })) };
+  const keys = ['hero', 'boss', 'minion', 'ground', 'ledge', 'shot', 'orb', 'bomb'];
+  let world: World = {
+    ...opened.world,
+    code: [{ path: 'game.js', source: FIXTURE_GAME, authors: [['starter', FIXTURE_GAME.split('\n').length]], locked: [] }],
+    cast: Object.fromEntries(keys.map((key) => [key, { key, art: null, madeBy: null, extra: null, laterUntil: 0 }])),
+    createdAt: clock,
+    steps: opened.world.steps.map((s) => ({ ...s, at: clock })),
+  };
   await services.store.commit({ worlds: [world] });
   await history.ensureHead(world);
   if (params.has('fresh')) return world;

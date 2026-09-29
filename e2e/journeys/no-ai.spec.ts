@@ -154,10 +154,10 @@ test('Look inside: a changed number runs; a syntax error shows on its line and t
   await (await revealLine(page, 'gravity: 1200')).click();
   await page.keyboard.press('End');
   await page.keyboard.type(' )(');
-  await expect(page.locator('.problem--error').first()).toContainText(`Line ${line}`);
+  await expect(page.locator('.problem--error').first()).toContainText(new RegExp(`line ${line}(?!\\d)`, 'i'));
   const framesBefore = await firstFrames(page);
   await page.getByTestId('run-it').click();
-  await expect(runBar).toContainText(new RegExp(`Not running your changes yet: \\d+ problems? on line ${line}\\.`));
+  await expect(runBar).toContainText(new RegExp(`Not running your changes yet: \\d+ problems? on line ${line}( of game\\.js)?\\.`));
   const kept = (await storedWorld(page, worldId))!;
   expect(kept.code).toEqual(ran.code);
   expect(kept.steps).toEqual(ran.steps);

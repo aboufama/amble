@@ -696,8 +696,8 @@
   flex-direction: column;
   gap: var(--s3);
   width: 100%;
+  min-height: 0;
   padding: 20px 22px;
-  overflow: auto;
 }
 
 .dialog__head {
@@ -715,10 +715,17 @@
   margin: -8px -10px 0 0;
 }
 
+/* The content scrolls; the title and the actions stay in view on a short window (1280x600). The inset
+ * keeps focus rings at its edges from being clipped. */
 .dialog__content {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: var(--s3);
+  min-height: 0;
+  margin: -8px;
+  padding: 8px;
+  overflow: auto;
 }
 
 .dialog__text {

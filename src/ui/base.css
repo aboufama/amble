@@ -46,10 +46,13 @@ body,
   margin: 0;
 }
 
-/* The page itself never scrolls at 1280x600 and up (lists scroll inside their panels); portrait may. */
+/* The page itself never scrolls at 1280x600 and up (lists scroll inside their panels); portrait may.
+ * A sideways finger or touchpad swipe never turns into the browser's Back: a stroke that starts on the
+ * Desk's note, or a swipe across a panel, must not leave the drawing (the app has its own way back). */
 html,
 body {
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 :root[data-layout='portrait'] :is(html, body) {

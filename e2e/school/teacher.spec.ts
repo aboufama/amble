@@ -48,8 +48,8 @@ test('an assignment goes into the class link', async ({ page }) => {
   await editor.getByLabel('Due', { exact: true }).fill('Friday');
   // The cast offers characters to draw, not tiles or shots.
   await expect(editor.getByRole('checkbox', { name: /^Pip/ })).toBeVisible();
-  await expect(editor.getByRole('checkbox', { name: /^Ledge/ })).toHaveCount(0);
-  await editor.getByRole('checkbox', { name: /^Moon King/ }).check();
+  await expect(editor.getByRole('checkbox', { name: /^Moon rock/ })).toHaveCount(0);
+  await editor.getByRole('checkbox', { name: /^The Moon King/ }).check();
   await editor.getByRole('checkbox', { name: /^Boss has 2\+ attacks/ }).check();
   await editor.getByPlaceholder('A creative twist (you decide)').fill('A surprise in phase two');
   await editor.getByRole('button', { name: 'Add', exact: true }).click();

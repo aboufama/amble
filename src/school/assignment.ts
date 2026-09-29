@@ -78,7 +78,7 @@ export function drawableCast(cast: readonly CastInfo[]): CastInfo[] {
 
 const castCache = new Map<string, Promise<CastInfo[]>>();
 
-/** A built-in starter's cast (the stub catalog and M8's both open a world copy, which is never stored). */
+/** A built-in starter's cast (the catalog opens a world copy, which is never stored). */
 export function castOfStarter(catalog: StarterCatalog, id: StarterId): Promise<CastInfo[]> {
   let p = castCache.get(id);
   if (!p) {

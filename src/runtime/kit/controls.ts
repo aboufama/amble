@@ -39,6 +39,8 @@ export class Controls {
   private state: Partial<Record<Action, boolean>> = {};
   private prev: Partial<Record<Action, boolean>> = {};
   private anyLatch = false;
+  /** A press seen between two polls: a quick tap goes down and up inside one slow frame. */
+  private pointerLatch = false;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -55,6 +57,11 @@ export class Controls {
       kb.on('keydown', onAny);
       scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => kb.off('keydown', onAny));
     }
+    const onPointer = () => {
+      this.pointerLatch = true;
+    };
+    scene.input.on(Phaser.Input.Events.POINTER_DOWN, onPointer);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => scene.input.off(Phaser.Input.Events.POINTER_DOWN, onPointer));
   }
 
   private addKey(name: string): Phaser.Input.Keyboard.Key | undefined {
@@ -180,6 +187,7 @@ export class Controls {
     this.pointer.x = p.worldX;
     this.pointer.y = p.worldY;
     this.pointer.down = p.isDown;
-    this.pointer.justDown = p.isDown && !wasDown;
+    this.pointer.justDown = (p.isDown && !wasDown) || this.pointerLatch;
+    this.pointerLatch = false;
   }
 }

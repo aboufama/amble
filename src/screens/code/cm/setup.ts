@@ -72,7 +72,8 @@ export function fileExtensions(o: FileEditorOptions): Extension {
     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...completionKeymap, ...lintKeymap, indentWithTab]),
     EditorView.lineWrapping,
     wrapIndent,
-    EditorView.contentAttributes.of({ 'aria-label': o.labels.editor }),
+    // tabindex: the code is one tab stop, and the scroll area around it counts as keyboard-reachable.
+    EditorView.contentAttributes.of({ 'aria-label': o.labels.editor, tabindex: '0' }),
     EditorView.updateListener.of(o.onUpdate),
   ];
 }

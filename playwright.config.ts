@@ -18,6 +18,8 @@ if (wantsProd) process.env.E2E_PROD = '1';
 
 const use: PlaywrightTestConfig['use'] = {
   viewport: { width: 1366, height: 768 },
+  // CI keeps a trace of each failing test (uploaded with the run); local runs stay light.
+  trace: process.env.CI ? 'retain-on-failure' : 'off',
   launchOptions: {
     executablePath,
     // Software WebGL, so games render on machines without a GPU (CI).
