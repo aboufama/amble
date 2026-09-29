@@ -29,11 +29,13 @@ describe('parseFromPlayer', () => {
 
   it('validates errors with the student file and line', () => {
     const msg = parseFromPlayer({ type: 'error', error: { phase: 'update', message: 'boom', file: 'game.js', line: 12.2, column: 5, count: 3 } });
-    expect(msg).toEqual({ type: 'error', error: { phase: 'update', message: 'boom', file: 'game.js', line: 12, column: 5, count: 3 } });
+    expect(msg).toEqual({ type: 'error', error: { phase: 'update', message: 'boom', file: 'game.js', line: 12, column: 5, count: 3, fatal: true } });
+    const twist = parseFromPlayer({ type: 'error', error: { phase: 'callback', message: 'x', fatal: false, twist: 'moonGravity' } });
+    expect(twist).toEqual({ type: 'error', error: { phase: 'callback', message: 'x', count: 1, fatal: false, twist: 'moonGravity' } });
     expect(parseFromPlayer({ type: 'error', error: { phase: 'nope', message: 'boom' } })).toBeNull();
     expect(parseFromPlayer({ type: 'error', error: { phase: 'create', message: 'x', line: -4 } })).toEqual({
       type: 'error',
-      error: { phase: 'create', message: 'x', count: 1 },
+      error: { phase: 'create', message: 'x', count: 1, fatal: true },
     });
   });
 
@@ -136,15 +138,13 @@ describe('prefs and transferables', () => {
     expect(parsePrefs('nonsense')).toEqual(DEFAULT_PREFS);
   });
 
-  it('transfers runtime scripts, PCM and fonts', () => {
+  it('transfers only the runtime bytes (the editor keeps drawings and sounds for restarts)', () => {
     const a = new ArrayBuffer(8);
-    const pcm = new Float32Array(4);
-    const font = new ArrayBuffer(2);
     expect(transferablesOf({ type: 'runtime', scripts: [a] })).toEqual([a]);
     const init: ToPlayer = {
-      type: 'init', mode: 'play', files: [], art: [], sounds: [{ key: 's', pcm: [pcm], sampleRate: 22050 }], fonts: [{ family: 'F', bytes: font }],
+      type: 'init', mode: 'play', files: [], art: [], sounds: [{ key: 's', pcm: [new Float32Array(4)], sampleRate: 22050 }], fonts: [{ family: 'F', bytes: new ArrayBuffer(2) }],
       dials: {}, twists: [], storage: {}, prefs: DEFAULT_PREFS, autostart: true,
     };
-    expect(transferablesOf(init)).toEqual([pcm.buffer, font]);
+    expect(transferablesOf(init)).toEqual([]);
   });
 });

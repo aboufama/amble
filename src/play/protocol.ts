@@ -186,6 +186,10 @@ export interface DialSpec {
   live: boolean;
   /** Extra words a student might say for it ("hop bounce float"). */
   words: string;
+  /** The art key it belongs to (shown on that thing's card); absent for world dials. */
+  for?: string;
+  /** Shown after the value: "%", "px". */
+  unit?: string;
 }
 
 export interface DialInfo extends DialSpec {
@@ -241,6 +245,10 @@ export interface PlayerError {
   /** How many times this same error happened in this run. */
   count: number;
   stack?: string;
+  /** The error stopped the game (false: reported, and the game kept running without that callback). */
+  fatal: boolean;
+  /** Thrown inside a twist's code: the editor offers to switch that twist off instead of a fix. */
+  twist?: string;
 }
 
 export interface RuntimeStats {
@@ -322,6 +330,23 @@ export type FromPlayer =
 
 export type FromPlayerType = FromPlayer['type'];
 
+// ------------------------------------------------------------------ exported pages
+
+/** Element ids inside an exported game page (see src/play/standalone.ts). */
+export const STANDALONE_RUNTIME_ID = 'amble-runtime';
+export const STANDALONE_DATA_ID = 'amble-standalone';
+
+/** The game inside an exported page, as JSON (binary data as base64, drawings as data URLs). */
+export interface StandaloneGame {
+  title: string;
+  files: GameFile[];
+  art: Array<{ key: string; image: string; rig?: unknown; layers?: Record<string, string> }>;
+  sounds: Array<{ key: string; caption?: string; bytes?: string; pcm?: string[]; sampleRate?: number }>;
+  fonts: Array<{ family: string; weight?: number; bytes: string }>;
+  dials: Record<string, number>;
+  twists: string[];
+}
+
 // ------------------------------------------------------------------ validation helpers
 
 type Obj = Record<string, unknown>;
@@ -398,8 +423,10 @@ export function parsePlayerError(v: unknown): PlayerError | null {
   const phase = oneOf(v.phase, ERROR_PHASES);
   const message = text(v.message);
   if (!phase || message === undefined) return null;
-  const out: PlayerError = { phase, message, count: Math.max(1, Math.round(nonNeg(v.count) ?? 1)) };
+  const out: PlayerError = { phase, message, count: Math.max(1, Math.round(nonNeg(v.count) ?? 1)), fatal: v.fatal !== false };
   const file = text(v.file, 120);
+  const twist = text(v.twist, MAX_KEY);
+  if (twist !== undefined) out.twist = twist;
   const line = num(v.line);
   const column = num(v.column);
   const stack = text(v.stack, 2000);
@@ -486,7 +513,7 @@ function parseDialInfo(v: unknown): DialInfo | null {
   const max = num(v.max);
   const current = num(v.current);
   if (!key || value === undefined || min === undefined || max === undefined || current === undefined || !(min < max)) return null;
-  return {
+  const out: DialInfo = {
     key,
     label: text(v.label, 40) ?? key,
     value,
@@ -498,6 +525,11 @@ function parseDialInfo(v: unknown): DialInfo | null {
     current,
     source: v.source === 'tune' ? 'tune' : 'static',
   };
+  const forKey = text(v.for, MAX_KEY);
+  const unit = text(v.unit, 8);
+  if (forKey) out.for = forKey;
+  if (unit) out.unit = unit;
+  return out;
 }
 
 function parseTwistInfo(v: unknown): TwistInfo | null {
@@ -841,25 +873,11 @@ function pickPrefs(v: Obj): Partial<PlayerPrefs> {
   return out;
 }
 
-/** Objects to transfer (not copy) with a message to the player. The sender gives up these buffers. */
+/**
+ * Objects to transfer (not copy) with a message to the player: only the runtime bytes, which are always a
+ * fresh copy. Drawings, sounds and fonts are structured-cloned, because the editor keeps them to restart
+ * the game later (a transferred buffer or ImageBitmap would be emptied on the editor side).
+ */
 export function transferablesOf(msg: ToPlayer): Transferable[] {
-  const out: Transferable[] = [];
-  const image = (src: ImageSource) => {
-    if (typeof ImageBitmap !== 'undefined' && src instanceof ImageBitmap) out.push(src);
-  };
-  const art = (a: DrawnArt) => {
-    image(a.image);
-    if (a.layers) Object.values(a.layers).forEach(image);
-  };
-  if (msg.type === 'runtime') out.push(...msg.scripts);
-  if (msg.type === 'art') art(msg.art);
-  if (msg.type === 'init') {
-    msg.art.forEach(art);
-    for (const s of msg.sounds) {
-      if ('pcm' in s) s.pcm.forEach((ch) => out.push(ch.buffer as ArrayBuffer));
-      else out.push(s.bytes);
-    }
-    msg.fonts.forEach((f) => out.push(f.bytes));
-  }
-  return [...new Set(out)];
+  return msg.type === 'runtime' ? [...msg.scripts] : [];
 }
