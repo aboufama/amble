@@ -2,7 +2,8 @@
  * The running game's frame, across the player and the kit: a game torn down mid-run leaves no page error
  * (its closed audio stays quiet), a robot test in the spare holds the frozen-game watchdog and leaves the
  * visible game running, the title card's keys never count as the game's controls, a heal right after
- * a hit leaves the heart full, a level restart keeps its level, and a shake's camera kick keeps the game's turn.
+ * a hit leaves the heart full, a level restart keeps its level and skips the title card once the game has
+ * started, and a shake's camera kick keeps the game's turn.
  */
 import type { Frame, Page } from '@playwright/test';
 import { expect, gotoRoute, openAmble, test } from '../helpers/app';
@@ -159,6 +160,22 @@ test('a level restart keeps the level setLevel chose, and playing again after a 
 }
 `;
   expect(await robotErrors(page, LEVELS)).toContainEqual(expect.stringContaining('levels 1 2 1'));
+});
+
+test('once the game has started, a level restart plays at once: no title card between levels', async ({ page }) => {
+  test.setTimeout(150_000);
+  await openWorld(page);
+  const frame = await gameFrame(page);
+  const state = () => frame.evaluate(() => (window as unknown as { __ambleGame: { state: string } }).__ambleGame.state);
+  const creates = () => frame.evaluate(() => (window as unknown as { __ambleGame: { createCount: number } }).__ambleGame.createCount);
+  expect(await state()).toBe('title');
+  await startGame(page, frame);
+  const before = await creates();
+  // Level 2 the documented way; the game's own "LEVEL 2" banner is the title the student sees.
+  await inScene(frame, '(s) => { s.setLevel(2); s.restart(); }');
+  await expect.poll(creates, { timeout: 20_000 }).toBeGreaterThan(before);
+  await expect.poll(state, { timeout: 20_000 }).toBe('running');
+  expect(await inScene<number>(frame, '(s) => s.levelNumber')).toBe(2);
 });
 
 test("a big shake kicks the camera and eases back to the game's own turn, so a flipped screen stays flipped", async ({ page }) => {
