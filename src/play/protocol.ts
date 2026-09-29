@@ -52,7 +52,38 @@ export interface DrawnArt {
   image: ImageSource;
   rig?: unknown;
   layers?: Record<string, ImageSource>;
+  /**
+   * A flipbook that replaces one move (§7.12): the pages packed into `atlas`, where they sit in `json` (a
+   * `FlipbookSheet`), the kit's move they replace ('attack', 'walk'...) and the pages per second (4-12).
+   */
+  frames?: DrawnFrames;
 }
+
+export interface DrawnFrames {
+  atlas: ImageSource;
+  json: string;
+  move: string;
+  fps: number;
+}
+
+/**
+ * Where a flipbook's pages are in its atlas. All pages share one box (`w` x `h`, the drawing's pixels at
+ * the flat image's scale) with the anchor (the feet) at `anchor`; each page is the atlas rect `x, y, w, h`
+ * placed at `ox, oy` in that box, shown for `hold` beats.
+ */
+export interface FlipbookSheet {
+  v: 1;
+  w: number;
+  h: number;
+  anchor: [number, number];
+  /** Page pixels per pixel of the flat picture (below 1 when the atlas had to shrink to fit). */
+  k?: number;
+  frames: Array<{ x: number; y: number; w: number; h: number; ox: number; oy: number; hold: number }>;
+}
+
+/** The most pages a flipbook can have (§7.12), and the atlas's longest side. */
+export const FLIPBOOK_MAX_PAGES = 24;
+export const FLIPBOOK_ATLAS_MAX = 2048;
 
 /** Student sounds: raw PCM (no decoding at all) or encoded bytes (decodeAudioData, never a fetch). */
 export type SoundAsset =
@@ -794,6 +825,43 @@ function isImageSource(v: unknown): v is ImageSource {
   return typeof ImageBitmap !== 'undefined' && v instanceof ImageBitmap;
 }
 
+/** A flipbook's sheet from its JSON, checked (null when it is not one). */
+export function parseFlipbookSheet(json: string): FlipbookSheet | null {
+  if (typeof json !== 'string' || json.length > 20_000) return null;
+  let v: unknown;
+  try {
+    v = JSON.parse(json);
+  } catch {
+    return null;
+  }
+  if (!isObj(v) || v.v !== 1 || !Array.isArray(v.frames) || !Array.isArray(v.anchor)) return null;
+  const w = num(v.w);
+  const h = num(v.h);
+  const ax = num(v.anchor[0]);
+  const ay = num(v.anchor[1]);
+  if (!w || !h || w <= 0 || h <= 0 || w > FLIPBOOK_ATLAS_MAX * 2 || h > FLIPBOOK_ATLAS_MAX * 2 || ax === undefined || ay === undefined) return null;
+  const frames: FlipbookSheet['frames'] = [];
+  for (const f of v.frames.slice(0, FLIPBOOK_MAX_PAGES)) {
+    if (!isObj(f)) return null;
+    const r = [f.x, f.y, f.w, f.h, f.ox, f.oy].map(num);
+    if (r.some((n) => n === undefined) || (r[2] as number) <= 0 || (r[3] as number) <= 0) return null;
+    const [x, y, fw, fh, ox, oy] = r as number[];
+    if (x < 0 || y < 0 || x + fw > FLIPBOOK_ATLAS_MAX || y + fh > FLIPBOOK_ATLAS_MAX) return null;
+    frames.push({ x, y, w: fw, h: fh, ox, oy, hold: Math.max(1, Math.min(8, Math.round(num(f.hold) ?? 1))) });
+  }
+  if (frames.length < 2) return null;
+  const k = num(v.k);
+  return { v: 1, w, h, anchor: [ax, ay], ...(k && k > 0 && k <= 1 ? { k } : {}), frames };
+}
+
+function parseFrames(v: unknown): DrawnFrames | undefined {
+  if (!isObj(v) || !isImageSource(v.atlas)) return undefined;
+  const move = text(v.move, 24);
+  const fps = num(v.fps);
+  if (!move || !/^[a-z]+$/i.test(move) || fps === undefined || typeof v.json !== 'string' || !parseFlipbookSheet(v.json)) return undefined;
+  return { atlas: v.atlas, json: v.json, move, fps: Math.max(1, Math.min(30, fps)) };
+}
+
 function parseDrawnArt(v: unknown): DrawnArt | null {
   if (!isObj(v)) return null;
   const key = text(v.key, MAX_KEY);
@@ -805,6 +873,8 @@ function parseDrawnArt(v: unknown): DrawnArt | null {
     for (const [name, img] of Object.entries(v.layers)) if (isImageSource(img)) layers[name] = img;
     out.layers = layers;
   }
+  const frames = parseFrames(v.frames);
+  if (frames) out.frames = frames;
   return out;
 }
 

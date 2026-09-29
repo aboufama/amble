@@ -98,6 +98,8 @@ export interface DeskState {
   frame: string;
   onion: boolean;
   playing: boolean;
+  /** The flipbook's move ("Pages for Attack"; null: none yet) and its pages per second (4-12). */
+  flip: { move: string | null; fps: number };
   selection: SelectionInfo | null;
   inked: number;
   dirty: boolean;
@@ -123,6 +125,8 @@ export interface DeskOpen {
   partBones: Record<string, string[]>;
   /** The paper and the desk around it (the theme's tokens). */
   colors?: { paper: string; workspace: string };
+  /** The flipbook's move and speed as saved (or the move Bones asked to draw). */
+  flip?: { move: string | null; fps: number };
 }
 
 type Listener = () => void;
@@ -252,6 +256,7 @@ export class DeskController {
       frame: '',
       onion: false,
       playing: false,
+      flip: o.flip ?? { move: null, fps: 8 },
       selection: null,
       inked: 0,
       dirty: false,
@@ -743,6 +748,14 @@ export class DeskController {
     this.stopFlipbook();
     this.stopPlay = await this.surface.playFrames(fps);
     this.set({ playing: true });
+  }
+
+  /** "Pages for …" and how fast the pages go. */
+  setFlip(o: Partial<DeskState['flip']>): void {
+    const flip = { ...this.state.flip, ...o };
+    flip.fps = Math.max(4, Math.min(12, Math.round(flip.fps)));
+    this.set({ flip });
+    if (this.stopPlay) void this.playFlipbook(flip.fps);
   }
 
   stopFlipbook(): void {

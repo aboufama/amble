@@ -21,6 +21,7 @@ import { blobRefOf, hexOfRef, uid } from '../model/ids';
 import type { ArtExport, ArtId, ArtKind, ArtRecord, BlobRef, CastKey, Facing, PartLayers, RigKind, Role, World, WorldId } from '../model/types';
 import type { Store } from '../store/api';
 import { keepStrokeLog } from './drafts';
+import type { PackedFlipbook } from './flipbook';
 import { rigFacing } from './parts';
 import { makeSticker } from './sticker';
 
@@ -46,6 +47,8 @@ export interface BringToLifeInput {
   role?: Role | null;
   /** On the bones: the template's joints and tips (board px), the hints the parts are fitted with. */
   partHints?: { joints: JointHints; tips: JointHints } | null;
+  /** A flipbook that replaces one move (§7.12), packed by the Desk; undefined keeps the saved one. */
+  frames?: PackedFlipbook | null;
 }
 
 export interface BringToLifeResult {
@@ -170,6 +173,9 @@ export async function bringToLife(input: BringToLifeInput, deps: BringDeps = def
   const thumbRef = await blobRefOf(exported.thumb.png);
   const stickerRef = await blobRefOf(sticker);
   const maskRef = exported.linesMask ? await blobRefOf(exported.linesMask.png) : null;
+  const flip = input.frames ?? null;
+  const flipRef = flip ? await blobRefOf(flip.atlas) : null;
+  const frames: ArtExport['frames'] = flip && flipRef ? { atlas: flipRef, json: flip.json, move: flip.move, fps: flip.fps } : input.frames === null ? null : (prev?.export?.frames ?? null);
   const partBlobs: Blob[] = [];
   const parts: ArtExport['parts'] = {};
   for (const p of exported.parts ?? []) {
@@ -199,7 +205,7 @@ export async function bringToLife(input: BringToLifeInput, deps: BringDeps = def
       parts,
       sticker: stickerRef,
       thumb: thumbRef,
-      frames: prev?.export?.frames ?? null,
+      frames,
     },
     rigData: rigged?.rig ?? null,
     rigInfo: rigged ? { made: rigged.made, confidence: rigged.confidence, notes: rigged.notes } : null,
@@ -224,6 +230,7 @@ export async function bringToLife(input: BringToLifeInput, deps: BringDeps = def
   // One commit: every blob first, then the JSON that points at them, and the draft goes in the same step.
   const blobs: Blob[] = [serialized.docBlob, ...serialized.cels.map((c) => c.blob), exported.flat.png, exported.thumb.png, sticker, ...partBlobs];
   if (exported.linesMask) blobs.push(exported.linesMask.png);
+  if (flip) blobs.push(flip.atlas);
   await store.commit({ blobs, art: [record], worlds: world ? [world] : [], clearDrafts: [record.id] });
   // The stroke log stays on this device ("Watch it drawn"): never in files, never sent.
   if (serialized.strokeLog) await keepStrokeLog(store, record.id, serialized.strokeLog).catch(() => undefined);
@@ -247,6 +254,10 @@ export async function bringToLife(input: BringToLifeInput, deps: BringDeps = def
     drawn = { key, image: exported.flat.png };
     if (record.rigData) drawn.rig = record.rigData;
     if (partBlobs.length) drawn.layers = Object.fromEntries((exported.parts ?? []).map((p) => [`part:${p.name}`, p.png]));
+    if (frames) {
+      const atlas = flip?.atlas ?? (await store.blobs.get(frames.atlas).catch(() => null));
+      if (atlas) drawn.frames = { atlas, json: frames.json, move: frames.move, fps: frames.fps };
+    }
     deps.player?.swapArt(drawn);
   }
   return {
@@ -261,5 +272,5 @@ export async function bringToLife(input: BringToLifeInput, deps: BringDeps = def
 
 /** Refs a record's export needs (for tests and checks). */
 export function exportRefs(e: ArtExport): BlobRef[] {
-  return [e.flat, e.thumb, e.sticker, ...(e.inkMask ? [e.inkMask] : []), ...Object.values(e.parts).map((p) => p.blob)];
+  return [e.flat, e.thumb, e.sticker, ...(e.inkMask ? [e.inkMask] : []), ...Object.values(e.parts).map((p) => p.blob), ...(e.frames ? [e.frames.atlas] : [])];
 }

@@ -13,6 +13,7 @@ import { env } from './env';
 import { Puppet } from './ghost/puppet';
 import { templateFor, type Template } from './ghost/templates';
 import { riggedFactory, type RiggedCharacter } from './rigged';
+import { withFlipbook } from './flipbook';
 import type { ArtSpec } from './spec';
 import type { Kit } from './state';
 import { CLIP_NAMES, resolveClip } from '../../play/kit/synonyms';
@@ -154,6 +155,7 @@ export class Character extends Phaser.GameObjects.Container implements ArtListen
         puppet.runSpeed = this.runSpeed;
         visual = puppet;
       }
+      visual = withFlipbook(this.scene, visual, d, this.fit === 1 ? spec.h / Math.max(1, pixelSize(d.image).h) : 1);
     } else {
       const puppet = new Puppet(this.scene, templateFor(spec.rig, spec.w, spec.h), spec.rig, reg.ghostParts(this.key), spec.h);
       puppet.runSpeed = this.runSpeed;

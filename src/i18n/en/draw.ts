@@ -240,7 +240,9 @@ export const draw = {
   playPages: 'Play the pages',
   stopPages: 'Stop',
   onionSkin: 'See the pages around this one',
-  pagesSpeed: '{n} pages a second',
+  pagesSpeed: '{n} a second',
+  pagesSpeedLabel: 'Speed',
+  flipbookFor: 'Draw the pages for {move}. Add a page to start.',
   pagesFor: 'Pages for',
   pagesForNone: 'No move yet',
 

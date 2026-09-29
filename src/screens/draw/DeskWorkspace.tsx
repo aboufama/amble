@@ -14,6 +14,7 @@ import { navigate } from '../../app/router';
 import type { Route } from '../../app/routes';
 import { useServices } from '../../app/services';
 import { bringToLife, pairsOf } from '../../draw/api';
+import { packFlipbook, type PackedFlipbook } from '../../draw/flipbook';
 import { DeskController } from '../../draw/deskController';
 import type { DeskSetup } from '../../draw/load';
 import { hasBones } from '../../draw/request';
@@ -22,7 +23,7 @@ import type { CharacterKind, Facing } from '../../model/types';
 import { announce, showToast } from '../../state/app';
 import { setComeAlive } from '../../state/session';
 import { setDraw } from '../../state/draw';
-import { useStore } from '../../state/store';
+import { getState, useStore } from '../../state/store';
 import { isTextField, useReducedMotion } from '../../ui/a11y';
 import { Button, IconButton, Menu, Tag } from '../../ui/components';
 import { cx } from '../../ui/cx';
@@ -70,6 +71,11 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
   const [photo, setPhoto] = useState<'lines' | 'trace' | null>(null);
   const brought = useRef(false);
   const memoryWarned = useRef(false);
+  // "Draw this move yourself?" from Bones: the Flipbook opens on that move (read once, then cleared).
+  const [flipIntent] = useState(() => getState().draw.flipbookMove);
+  useEffect(() => {
+    if (flipIntent) setDraw({ flipbookMove: null });
+  }, [flipIntent]);
   const request = setup.request;
   const free = request.key === null;
   const touch = layout === 'touch';
@@ -90,6 +96,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
       heroImage: setup.heroImage,
       partBones: setup.partBones,
       colors: { paper: PAPER.paper, workspace: THEMES[prefs.theme].bg },
+      flip: { move: flipIntent ?? setup.record?.export?.frames?.move ?? null, fps: setup.record?.export?.frames?.fps ?? 8 },
     });
     setCtrl(c);
     setStage(stageRef.current);
@@ -233,6 +240,15 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
         setToast(t('draw.drawFirst'));
         return;
       }
+      // The flipbook: its pages packed for the move they replace (none: the saved one goes).
+      let frames: PackedFlipbook | null = null;
+      if (st.frames.length >= 2 && st.flip.move && r.kind === 'character') {
+        const pages = await ctrl.surface.exportFrames({ scale: exported.scale });
+        if (pages) {
+          const anchor: [number, number] = [(exported.anchorBoard[0] - pages.box[0]) * pages.scale, (exported.anchorBoard[1] - pages.box[1]) * pages.scale];
+          frames = await packFlipbook(pages.frames, anchor, st.flip.move, st.flip.fps);
+        }
+      }
       const doc = await ctrl.surface.doc();
       const hints = ctrl.rigHints();
       const res = await bringToLife({
@@ -252,6 +268,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
         facing: r.facing,
         role: r.role,
         partHints: hints.partHints,
+        frames,
       });
       brought.current = true;
       saving.broughtToLife(res.record);
@@ -389,7 +406,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
         {ctrl && s && <ViewBarSlot ctrl={ctrl} />}
       </main>
       <aside className="desk__side" aria-label={t('draw.openPanel')}>
-        {ctrl && s && <SidePanel ctrl={ctrl} s={s} setup={setup} player={player} store={store} options={!touch} brought={() => brought.current} />}
+        {ctrl && s && <SidePanel ctrl={ctrl} s={s} setup={setup} player={player} store={store} options={!touch} brought={() => brought.current} flipFocus={!!flipIntent} />}
       </aside>
       {ctrl && <TimeLapse open={watching} onClose={() => setWatching(false)} ctrl={ctrl} name={name} />}
       {ctrl && photo && <PhotoImport open={photo !== null} onClose={() => setPhoto(null)} ctrl={ctrl} mode={photo} onDone={setToast} />}

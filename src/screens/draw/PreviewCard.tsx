@@ -185,7 +185,7 @@ function WorldView({ ctrl, setup, player, store, art, rigged, brought }: { ctrl:
   const slot = useRef<HTMLDivElement>(null);
   const key = setup.request.key ?? '';
   const world = setup.world;
-  const [ready, setReady] = useState(() => !!world && worldLoaded(player, world.id));
+  const [ready, setReady] = useState(false);
   const [trying, setTrying] = useState(false);
   const swapped = useRef(false);
   const tryTimer = useRef(0);
@@ -195,8 +195,11 @@ function WorldView({ ctrl, setup, player, store, art, rigged, brought }: { ctrl:
   useEffect(() => {
     if (!world) return;
     let live = true;
-    player.pause();
-    if (!worldLoaded(player, world.id)) {
+    // Paused only once a game is up: a game paused while it loads never shows its first frame.
+    if (worldLoaded(player, world.id)) {
+      player.pause();
+      setReady(true);
+    } else {
       void (async () => {
         const init = await toInitMessage(world, { mode: 'play', prefs: playerPrefsFrom(getState().prefs) });
         await player.load(init);

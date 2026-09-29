@@ -3,7 +3,7 @@
  * createImageBitmap, data URLs with Image.decode; never premultiplyAlpha 'none', which broke colours in the
  * probe), with their rig data and part layers for the rigged factory.
  */
-import type { DrawnArt, ImageSource } from '../../play/protocol';
+import { parseFlipbookSheet, type DrawnArt, type FlipbookSheet, type ImageSource } from '../../play/protocol';
 
 export type DrawnPixels = ImageBitmap | HTMLImageElement | HTMLCanvasElement;
 
@@ -12,6 +12,8 @@ export interface DrawnImage {
   image: DrawnPixels;
   rig: unknown;
   layers: Record<string, HTMLCanvasElement | ImageBitmap> | undefined;
+  /** A flipbook that replaces one move (src/runtime/kit/flipbook.ts). */
+  frames?: { atlas: HTMLCanvasElement | ImageBitmap; sheet: FlipbookSheet; move: string; fps: number };
   /** Bumps every time this key gets a new drawing. */
   version: number;
 }
@@ -58,7 +60,16 @@ export class DrawnStore {
         }
       }
     }
-    return { key: art.key, image, rig: art.rig ?? null, layers, version: ++this.versions };
+    let frames: DrawnImage['frames'];
+    const sheet = art.frames ? parseFlipbookSheet(art.frames.json) : null;
+    if (art.frames && sheet) {
+      try {
+        frames = { atlas: toCanvas(await decode(art.frames.atlas)), sheet, move: art.frames.move, fps: art.frames.fps };
+      } catch {
+        /* a broken flipbook is skipped; the bones play that move */
+      }
+    }
+    return { key: art.key, image, rig: art.rig ?? null, layers, ...(frames ? { frames } : {}), version: ++this.versions };
   }
 
   set(d: DrawnImage): void {

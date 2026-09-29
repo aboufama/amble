@@ -1512,3 +1512,20 @@ body:has(.screen.desk) .toast-region {
 :root[data-layout='portrait'] .desk__side {
   padding: 0 14px 14px;
 }
+
+/* the flipbook's move and speed */
+.flip__for {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.flip__for .side__label {
+  margin: 0;
+}
+
+.flip__speed {
+  margin-top: 6px;
+  grid-template-columns: 64px minmax(0, 1fr) 72px;
+}
