@@ -4,7 +4,7 @@
  * student-facing string (`staff_` keys are for teachers and IT; `legacy_` keys may name the old editor).
  */
 import { describe, expect, it } from 'vitest';
-import { format, lookup, t, TABLES } from '../../src/i18n';
+import { format, lookup, midSentence, t, TABLES } from '../../src/i18n';
 
 const SOURCES = import.meta.glob<string>('/src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true });
 
@@ -63,5 +63,14 @@ describe('i18n', () => {
     expect(t('common.counter', { n: 1, max: 3 })).toBe('1 of 3');
     expect(lookup('common.nope')).toBeUndefined();
     expect(lookup('nope')).toBeUndefined();
+  });
+
+  it('puts a name with "The" inside a sentence in lower case', () => {
+    expect(t('draw.drawingTitle', { name: midSentence('The Moon King') })).toBe('Drawing the Moon King');
+    expect(t('draw.youDrew', { name: midSentence('The Moon King') })).toBe('You drew the Moon King');
+    expect(midSentence('Pip')).toBe('Pip');
+    expect(midSentence('Theo')).toBe('Theo');
+    expect(midSentence('The')).toBe('The');
+    expect(midSentence('Star shard')).toBe('Star shard');
   });
 });

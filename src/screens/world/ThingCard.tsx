@@ -4,7 +4,7 @@
  * game gave this member, and "Dials change the game right away. No AI needed."
  */
 import { useEffect, useMemo, useRef } from 'react';
-import { t } from '../../i18n';
+import { midSentence, t } from '../../i18n';
 import type { CastMember } from '../../model/types';
 import { closeThing } from '../../state/session';
 import { useStore } from '../../state/store';
@@ -70,7 +70,7 @@ export function ThingCard({ member, anchor, onDraw, onBones }: ThingCardProps) {
           ))}
         </div>
       ) : (
-        <p className="thing-card__none">{t('world.noThingDials', { name: member.name })}</p>
+        <p className="thing-card__none">{t('world.noThingDials', { name: midSentence(member.name) })}</p>
       )}
       <p className="thing-card__note">{t('world.dialsNote')}</p>
     </Popover>

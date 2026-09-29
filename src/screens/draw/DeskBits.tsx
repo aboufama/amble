@@ -4,7 +4,7 @@
  */
 import { useEffect, useId, useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import type { DeskController } from '../../draw/deskController';
-import { t } from '../../i18n';
+import { midSentence, t } from '../../i18n';
 import { Icon } from '../../ui/icons';
 
 /**
@@ -68,7 +68,7 @@ export function PivotPin({ ctrl, pin, name, stage }: { ctrl: DeskController; pin
       ref={el}
       type="button"
       className="pin"
-      aria-label={t('draw.pivot', { name })}
+      aria-label={t('draw.pivot', { name: midSentence(name) })}
       aria-describedby={hintId}
       title={t('draw.pivotHint')}
       onKeyDown={onKey}

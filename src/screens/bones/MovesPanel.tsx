@@ -9,7 +9,7 @@ import { navigate } from '../../app/router';
 import type { BonesController, BonesStep } from '../../bones/bonesController';
 import type { BoundRig } from '../../cores/rig';
 import { firstMove, moveWord, movesFor } from '../../bones/words';
-import { t } from '../../i18n';
+import { midSentence, t } from '../../i18n';
 import { useReducedMotion } from '../../ui/a11y';
 import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
@@ -46,7 +46,7 @@ export const MovesPanel = memo(function MovesPanel({ ctl, step, bound, name, bus
       <section className="bones-side__section" aria-labelledby="bones-watch-title">
         <div className="bones-side__head">
           <h2 id="bones-watch-title" className="bones-side__title">
-            {t('bones.watchTitle', { name })}
+            {t('bones.watchTitle', { name: midSentence(name) })}
           </h2>
           <span className="bones-side__sub">{t('bones.watchSub')}</span>
         </div>
