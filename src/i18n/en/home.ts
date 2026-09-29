@@ -74,7 +74,6 @@ export const home = {
   ideaAiOffSchool: 'Your teacher can turn it on.',
   setUpAi: 'Set up AI',
   ideaAiBlocked: "Amble can't reach {host} right now. Your school's filter may be blocking it. Everything else works.",
-  ideaAiBusy: 'The AI helper is busy right now. Pick a world above, or try again soon.',
   aiHostFallback: 'the AI helper',
 
   fromTeacher: 'From your teacher',
@@ -110,7 +109,6 @@ export const home = {
   editedDate: 'Edited {date}',
   dueRibbon: 'Due {due}',
   handedIn: 'Handed in ✓',
-  assignmentWorld: 'From your teacher',
   countStarters: '{n} starter worlds',
   countMine: '{n} of your worlds',
   countOneMine: '1 of your worlds',
@@ -121,11 +119,8 @@ export const home = {
   playTrail: 'Play the trail',
   walkerLabel: 'Draw {name}',
   lampEmpty: 'Your character goes here. Draw one!',
-  lampCharacter: '{name}, your newest character',
   giveNameWorld: 'Give {name} a world.',
   landed: '{name} is on the Trail!',
-  updated: "Amble was updated · What's new",
-  spaceLow: 'Space is getting low · Tidy up',
 
   signMenu: 'More for {title}',
   menuOpen: 'Open',
@@ -160,7 +155,6 @@ export const home = {
   lostEmpty: 'Nothing here. Worlds you put away wait here for 30 days.',
   daysLeft: '{n} days left',
   lastDay: 'Last day',
-  putAwayOn: 'Put away {date}',
 
   asgYouDraw: 'You draw: {list}',
   asgAi: 'AI helper: {mode}',
@@ -187,8 +181,6 @@ export const home = {
   stop: 'Stop',
   fallback: "The AI helper can't answer right now. Let's start from a world close to your idea: {starter} ({type}). You can change it later.",
   startIt: 'Start it',
-  planFailed: 'Amble could not plan that this time. Your idea is still here.',
-  tryAgain: 'Try again',
 
   // ---------------------------------------------------------------- the plan card (§2.5)
   youSaid: 'You said',
@@ -217,6 +209,5 @@ export const home = {
   planLabel: 'Your world plan',
   noIdea: 'Tell Amble your idea first.',
   buildStarted: 'Amble is building {title}.',
-  built: 'Amble built {title}.',
   startedStep: 'You started {title}',
 } satisfies Strings;

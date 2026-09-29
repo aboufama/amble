@@ -31,6 +31,7 @@ import {
   type PlacedStop,
 } from '../../home/trailData';
 import type { ArtId, WorldMeta } from '../../model/types';
+import { announce } from '../../state/app';
 import { refreshLibrary } from '../../state/library';
 import { setPrefs } from '../../state/prefs';
 import { setComeAlive } from '../../state/session';
@@ -202,6 +203,7 @@ function TrailScene({ still, lit }: SceneProps) {
       window.setTimeout(() => setFlight(null), 900);
     }
     setLanding({ id: comeAlive.artId, name });
+    if (name) announce(t('home.landed', { name }));
   }, [comeAlive, characters, still]);
 
   const scrollBySigns = (dir: 1 | -1) => {
