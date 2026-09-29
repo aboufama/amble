@@ -176,6 +176,8 @@ export interface ArtSurface {
   pickColor(x: number, y: number): string;
   /** Fills at a board point with the current colour and fill settings (like a tap with Fill). */
   fillAt(x: number, y: number): Promise<boolean>;
+  /** Resolves when no fill is being worked out and the screen shows the final pixels. */
+  settled(): Promise<void>;
 
   // Undo
   undo(): Promise<boolean>;

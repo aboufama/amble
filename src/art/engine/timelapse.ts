@@ -190,7 +190,7 @@ class Player implements Timelapse {
       await frame();
       if (this.run !== run) {
         const r = s.cancel();
-        comp.upload(op.layer, r);
+        comp.layerChanged(op.layer, r);
         comp.invalidateDoc(r);
         return;
       }

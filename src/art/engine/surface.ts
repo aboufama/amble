@@ -581,7 +581,7 @@ class Surface implements ArtSurface {
     const layer = st.session.spec.layer;
     if (cancelled) {
       const r = st.session.cancel();
-      this.comp.upload(layer, r);
+      this.comp.layerChanged(layer, r);
       this.comp.invalidateDoc(r);
       this.comp.flush();
       return;
@@ -708,6 +708,7 @@ class Surface implements ArtSurface {
       const q = this.queued;
       this.queued = [];
       for (const f of q) f();
+      this.checkSettled();
     }
   }
 
@@ -763,9 +764,10 @@ class Surface implements ArtSurface {
       if (this.pouring !== job) return;
       this.pouring = null;
       if (this.destroyed) return;
-      this.comp.upload(layer, b);
+      this.comp.layerChanged(layer, b);
       this.comp.invalidateDoc(b);
       this.comp.flush();
+      this.checkSettled();
     };
     const job = { finish: done };
     this.pouring = job;
@@ -809,6 +811,23 @@ class Surface implements ArtSurface {
 
   private finishPour(): void {
     this.pouring?.finish();
+  }
+
+  private settledWaiters: Array<() => void> = [];
+
+  /** Resolves when no fill is being worked out and the screen shows the final pixels (tests, exports). */
+  settled(): Promise<void> {
+    return new Promise((resolve) => {
+      this.settledWaiters.push(resolve);
+      this.checkSettled();
+    });
+  }
+
+  private checkSettled(): void {
+    if (this.busy || this.pouring || this.queued.length) return;
+    const w = this.settledWaiters;
+    this.settledWaiters = [];
+    for (const f of w) f();
   }
 
   pickColor(x: number, y: number): string {
@@ -896,7 +915,8 @@ class Surface implements ArtSurface {
   }
 
   async undo(): Promise<boolean> {
-    if (!this.b || this.stroke || this.busy) return false;
+    if (this.busy) return new Promise((resolve) => this.queued.push(() => void this.undo().then(resolve)));
+    if (!this.b || this.stroke) return false;
     this.finishPour();
     if (this.sel.floating) {
       this.sel.cancel();
@@ -911,7 +931,8 @@ class Surface implements ArtSurface {
   }
 
   async redo(): Promise<boolean> {
-    if (!this.b || this.stroke || this.busy) return false;
+    if (this.busy) return new Promise((resolve) => this.queued.push(() => void this.redo().then(resolve)));
+    if (!this.b || this.stroke) return false;
     this.finishPour();
     const e = await this.hist.redo();
     if (!e) return false;

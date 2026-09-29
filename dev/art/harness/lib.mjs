@@ -18,7 +18,7 @@ export async function launch({ dpr = 1, throttle = 1, width = 1280, height = 900
   const page = await context.newPage();
   page.on('pageerror', (e) => console.log('[pageerror]', e.message));
   page.on('console', (m) => {
-    if (m.type() === 'error' || m.type() === 'warning') console.log('[page]', m.text());
+    if (m.type() === 'error' || m.type() === 'warning' || process.env.ART_LOG) console.log('[page]', m.text());
   });
   await page.goto(`${BASE}?${query}`);
   await page.waitForFunction(() => !!window.__art);
@@ -225,4 +225,9 @@ export function saveJson(obj, name) {
   const file = resolve(OUT, name);
   writeFileSync(file, JSON.stringify(obj, null, 2));
   return file;
+}
+
+/** Waits until fills are worked out and the screen shows the final pixels. */
+export async function settle(page) {
+  await page.evaluate(() => window.__art.surface.settled());
 }

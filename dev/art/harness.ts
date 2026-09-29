@@ -263,6 +263,58 @@ const api = {
     await new Promise<void>((r) => p.on('end', () => r()));
     return performance.now() - t0;
   },
+  /**
+   * Checks that the screen shows exactly the document: renders the expected composite in JS (paper plus
+   * visible layers) and compares it with the view canvas at 1:1 over the visible part. Returns the number
+   * of pixels off by more than `tol` and the first one.
+   */
+  async checkView(tol = 6): Promise<{ bad: number; checked: number; first: number[] | null }> {
+    await surface.settled();
+    const v = surface.view();
+    const panX = Math.round((v.cssW - surface.width) / 2);
+    const panY = Math.round((v.cssH - surface.height) / 2);
+    surface.setView({ zoom: 1, rot: 0, panX, panY });
+    const canvas = host.querySelector('canvas') as HTMLCanvasElement;
+    const dpr = canvas.width / v.cssW;
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    const x0 = Math.max(0, -panX);
+    const y0 = Math.max(0, -panY);
+    const x1 = Math.min(surface.width, Math.floor(v.cssW) - panX);
+    const y1 = Math.min(surface.height, Math.floor(v.cssH) - panY);
+    const w = x1 - x0;
+    const h = y1 - y0;
+    const shown = ctx.getImageData(Math.round((panX + x0) * dpr), Math.round((panY + y0) * dpr), Math.round(w * dpr), Math.round(h * dpr)).data;
+    const paper = [255, 253, 247];
+    const exp = new Float64Array(w * h * 3);
+    for (let i = 0; i < w * h; i++) exp.set(paper, i * 3);
+    for (const l of surface.layers()) {
+      if (!l.visible) continue;
+      const px = surface.readPixels(l.id, x0, y0, w, h);
+      for (let i = 0; i < w * h; i++) {
+        const a = (px[i * 4 + 3] / 255) * l.opacity;
+        if (!a) continue;
+        for (let k = 0; k < 3; k++) {
+          const d = exp[i * 3 + k];
+          const s = l.blend === 'multiply' ? (px[i * 4 + k] * d) / 255 : px[i * 4 + k];
+          exp[i * 3 + k] = s * a + d * (1 - a);
+        }
+      }
+    }
+    let bad = 0;
+    let first: number[] | null = null;
+    const sw = Math.round(w * dpr);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const j = (Math.round(y * dpr) * sw + Math.round(x * dpr)) * 4;
+        const i = (y * w + x) * 3;
+        const off = Math.max(Math.abs(shown[j] - exp[i]), Math.abs(shown[j + 1] - exp[i + 1]), Math.abs(shown[j + 2] - exp[i + 2]));
+        if (off > tol) {
+          bad++;
+          first ??= [x0 + x, y0 + y, shown[j], shown[j + 1], shown[j + 2], Math.round(exp[i]), Math.round(exp[i + 1]), Math.round(exp[i + 2])];
+        }
+      }
+    return { bad, checked: w * h, first };
+  },
   stats: () => surface.stats(),
   resetStats: (): void => (surface as unknown as { resetStats(): void }).resetStats(),
   info: () => ({ secure: isSecureContext, dpr: devicePixelRatio, raw: 'onpointerrawupdate' in window, ua: navigator.userAgent }),

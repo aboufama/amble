@@ -589,16 +589,22 @@ export function fillRegion(a: Analysis, sx: number, sy: number, prm: FillParams)
   const under = new Uint8Array(bw * bh);
   let area = 0;
   if (prm.soften) {
+    // The board's own edge is not an edge of the fill: neighbours beyond it count as the pixel itself.
     const hs = new Uint8Array(bw * bh);
     for (let y = Y0; y <= Y1; y++) {
       const ro = y * W;
       const ho = (y - Y0) * bw - X0;
-      for (let x = X0; x <= X1; x++) hs[ho + x] = (x > 0 && region[ro + x - 1] ? 1 : 0) + (region[ro + x] ? 1 : 0) + (x < W - 1 && region[ro + x + 1] ? 1 : 0);
+      for (let x = X0; x <= X1; x++) {
+        const c = region[ro + x] ? 1 : 0;
+        hs[ho + x] = (x > 0 ? (region[ro + x - 1] ? 1 : 0) : c) + c + (x < W - 1 ? (region[ro + x + 1] ? 1 : 0) : c);
+      }
     }
     for (let y = Y0; y <= Y1; y++) {
       const ho = (y - Y0) * bw - X0;
       for (let x = X0; x <= X1; x++) {
-        const sum = hs[ho + x] + (y > Y0 ? hs[ho - bw + x] : 0) + (y < Y1 ? hs[ho + bw + x] : 0);
+        const up = y > Y0 ? hs[ho - bw + x] : y === 0 ? hs[ho + x] : 0;
+        const down = y < Y1 ? hs[ho + bw + x] : y === H - 1 ? hs[ho + x] : 0;
+        const sum = hs[ho + x] + up + down;
         if (!sum) continue;
         mask[ho + x] = Math.round((sum / 9) * 255);
         if (wall[y * W + x]) under[ho + x] = 1;

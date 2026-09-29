@@ -233,7 +233,7 @@ export class SelectionTool {
   remove(): void {
     if (this.phase !== 'floating' || !this.fl || !this.before) return;
     const fl = this.fl;
-    if (this.lastRect) this.host.comp.upload(fl.layer, this.lastRect);
+    if (this.lastRect) this.host.comp.layerChanged(fl.layer, this.lastRect);
     this.host.commit('Delete', [{ pixels: this.before }], { op: 'transform', layer: fl.layer, frame: fl.frame, polygon: fl.polygon.map((p) => [p.x, p.y]), matrix: [1, 0, 0, 1, 0, 0], action: 'delete' });
     this.reset();
   }
@@ -254,7 +254,7 @@ export class SelectionTool {
     const add = addLayer(board, meta, index);
     const dest = history.snapshot(fl.frame, meta.id, tilesOf(stampRect(fl, m, board.W, board.H), board.W, board.H));
     stamp(board, fl.frame, meta.id, fl, m);
-    if (this.lastRect) this.host.comp.upload(fl.layer, this.lastRect);
+    if (this.lastRect) this.host.comp.layerChanged(fl.layer, this.lastRect);
     this.host.commit('Make a part', [{ pixels: this.before }, { struct: add }, { pixels: dest }], {
       op: 'transform',
       layer: fl.layer,
