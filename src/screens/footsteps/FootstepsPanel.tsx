@@ -21,6 +21,7 @@ import { cx } from '../../ui/cx';
 import { playUiSound } from '../../ui/sounds';
 import { DiffSheet } from './DiffSheet';
 import { FootstepItem } from './FootstepItem';
+import { stepsBelow } from './moreBelow';
 import { onSeeChange } from './seeChange';
 import { useFootstepsWorld, useNow } from './useFootsteps';
 import './footsteps.css';
@@ -39,11 +40,9 @@ function useMoreBelow(scroller: RefObject<HTMLDivElement | null>, layout: string
   const measure = useCallback(() => {
     const el = scroller.current;
     if (!el) return;
-    // Steps not fully above the "more steps" button at the bottom count as hidden.
-    const bottom = el.getBoundingClientRect().bottom - MORE_BUTTON_ZONE;
-    let n = 0;
-    for (const li of el.querySelectorAll<HTMLElement>('.step')) if (li.getBoundingClientRect().bottom > bottom) n++;
-    setBelow(n);
+    const atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+    const steps = [...el.querySelectorAll<HTMLElement>('.step')].map((li) => li.getBoundingClientRect());
+    setBelow(stepsBelow(el.getBoundingClientRect(), steps, MORE_BUTTON_ZONE, atEnd));
   }, [scroller]);
   useLayoutEffect(() => {
     measure();
