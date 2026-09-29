@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Art engine harness</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, sans-serif;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #d9d4ca;
+      }
+      body {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        grid-template-columns: 1fr 200px;
+        grid-template-areas: 'bar bar' 'desk side';
+      }
+      #bar {
+        grid-area: bar;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+        padding: 6px 8px;
+        background: #2a2438;
+        color: #fff;
+        font-size: 13px;
+      }
+      #bar button {
+        font: inherit;
+        padding: 5px 9px;
+        border-radius: 6px;
+        border: 0;
+        background: #433a58;
+        color: #fff;
+        cursor: pointer;
+      }
+      #bar button[aria-pressed='true'] {
+        background: #f5d76e;
+        color: #2a2438;
+      }
+      #bar .sw {
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: 2px solid #fff4;
+      }
+      #desk {
+        grid-area: desk;
+        position: relative;
+        min-height: 0;
+        outline: none;
+      }
+      #side {
+        grid-area: side;
+        background: #f3efe7;
+        padding: 8px;
+        font-size: 12px;
+        overflow: auto;
+      }
+      #side li {
+        list-style: none;
+        padding: 4px 6px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      #side li[aria-selected='true'] {
+        background: #f5d76e;
+      }
+      #side ul {
+        padding: 0;
+        margin: 4px 0 10px;
+      }
+      #hud {
+        white-space: pre;
+        font: 11px ui-monospace, monospace;
+        color: #333;
+      }
+      #toast {
+        position: fixed;
+        left: 50%;
+        bottom: 18px;
+        transform: translateX(-50%);
+        background: #2a2438;
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 14px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+      }
+      #toast.on {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+    <div id="desk" tabindex="0"></div>
+    <aside id="side">
+      <strong>Layers</strong>
+      <ul id="layers" role="listbox"></ul>
+      <strong>Pages</strong>
+      <ul id="frames"></ul>
+      <div id="hud"></div>
+    </aside>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./harness.ts"></script>
+  </body>
+</html>

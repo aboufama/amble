@@ -62,7 +62,7 @@ A game is up to 8 small files (each under 400 lines). game.js is required and lo
 first in alphabetical order and may only declare classes, functions and constants. game.js declares:
 class Game extends Amble.Scene {
   static config = { title, subtitle, physics: 'arcade' | 'matter' | 'none', gravity, background, controls };
-  static art = { key: { kind, rig, role, w, h, facing, name, ask, about, pronoun, priority, required }, ... };
+  static art = { key: { kind, rig, role, w, h, facing, name, ask, about, pronoun, priority, required, spare }, ... };
   static dials = { key: { label, value, min, max, step, live, words, for }, ... };
   static sounds = { key: { caption, segments: [...] }, ... };          (optional)
   create() { ... }
@@ -100,6 +100,8 @@ grumpy boss") and a size (w, h in game pixels; the hero is about 40x64).
 Until the student draws a key, Amble shows it as "just bones": a dashed, tinted outline that already moves.
 Your game must be fun and playable that way.
 Keep every key you are given: renaming or removing a key loses the student's drawing. Add new art with new keys.
+A key with spare: true is a bonus the student may draw later: use it only inside if (this.hasArt('kite')) so
+the game plays the same without it.
 Effects are not art: fx.*, particles, glows, energy bullets, stars, rain and shockwaves are fine.
 If the student asks you to draw something, add it to static art and say in @@summary that they can draw it now.`;
 

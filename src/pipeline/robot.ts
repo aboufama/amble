@@ -4,7 +4,7 @@
  * Loops are guarded first (`Amble.__loop()` at the top of every loop body, line numbers unchanged).
  */
 import { instrument } from '../cores/ai';
-import { DEFAULT_PLAYER_PREFS, judgeRobot, PLAYER_CORE, type InitMessage, type PlayerError, type RobotRaw } from '../cores/play';
+import { DEFAULT_PLAYER_PREFS, judgeRobot, PLAYER_CORE, type InitMessage, type PlayerError, type RobotRaw, type RobotVerdict } from '../cores/play';
 import { NotBuiltYet } from '../model/notBuilt';
 import type { CodeFile, World } from '../model/types';
 import type { FixError } from './userMessage';
@@ -40,8 +40,9 @@ export function robotSummary(raw: RobotRaw, pass: boolean): string {
   return `${pass ? 'passed' : 'failed'} · ${secs} s · ${hero} · ${errors}`;
 }
 
-export function outcomeOf(raw: RobotRaw): RobotOutcome {
-  const verdict = judgeRobot(raw);
+/** The pipeline's reading of a robot run: the host's verdict when it sent one, else `judgeRobot`'s. */
+export function outcomeOf(raw: RobotRaw, given?: RobotVerdict): RobotOutcome {
+  const verdict = given ?? judgeRobot(raw);
   const errors = raw.errors.map(fixErrorOf);
   // A verdict without a thrown error (blank, frozen, nothing moved) still needs words the model can act on.
   if (!verdict.pass && !errors.length) for (const r of verdict.reasons) errors.push({ file: 'game.js', line: 0, column: 0, phase: 'robot', message: r, count: 1 });
@@ -54,7 +55,7 @@ export interface RobotRunner {
 }
 
 interface HostLike {
-  robot(init: InitMessage): Promise<{ raw: RobotRaw }>;
+  robot(init: InitMessage): Promise<{ raw: RobotRaw; verdict?: RobotVerdict }>;
 }
 
 /** The robot test through the app's PlayerHost and M2's `toInitMessage`. */
@@ -69,8 +70,8 @@ export function playerRobot(host: HostLike, world: () => World, toInit: (w: Worl
       const limit = new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new Error('The robot test took too long.')), WALL_LIMIT_MS);
       });
-      const { raw } = await Promise.race([host.robot(init), limit]);
-      return outcomeOf(raw);
+      const { raw, verdict } = await Promise.race([host.robot(init), limit]);
+      return outcomeOf(raw, verdict);
     } catch (err) {
       if (err instanceof NotBuiltYet) return null;
       if (o.signal.aborted) throw err;

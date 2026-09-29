@@ -51,7 +51,7 @@ describe('e2e AI fixtures', () => {
     expect(result.files.map((f) => f.path)).toEqual(['game.js']);
     expect(errorsOf(result.files)).toEqual([]);
     const art = validateGame(result.files, { manifest: kitManifest(), fix: false }).art.declared;
-    expect(art).toEqual(expect.arrayContaining(['hero', 'moonKing', 'grumble', 'orb']));
+    expect(art).toEqual(expect.arrayContaining(['hero', 'boss', 'minion', 'orb', 'bomb']));
   });
 
   it('change-stomp.patch edits the game cleanly', () => {

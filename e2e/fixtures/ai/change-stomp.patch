@@ -1,17 +1,17 @@
 @@amble-patch 1
-@@summary Now your hero can stomp on Grumbles to squash them.
-@@play Jump on a Grumble's head to squash it.
-@@next Make Grumbles faster|Give the Moon King a stomp too
+@@summary Now your hero can stomp on minions to squash them.
+@@play Jump on a minion's head to squash it.
+@@next Make minions faster|Give the Moon King a stomp too
 @@safety ok
 @@file game.js edit
 @@find
-      .platformer({ speed: 330, jump: () => this.dial.jump, jumps: 2, dash: true })
+      .platformer({ speed: 330, jump: () => this.dials.jump, jumps: 2, dash: true })
 @@replace
-      .platformer({ speed: 330, jump: () => this.dial.jump, jumps: 2, dash: true, stomp: true })
+      .platformer({ speed: 330, jump: () => this.dials.jump, jumps: 2, dash: true, stomp: true })
 @@done
 @@find
-    const g = this.spawnEnemy(this.rand(260, 820), -30, 'grumble', { hp: 3 });
+    const m = this.spawnEnemy(this.rand(260, 820), -30, 'minion', { hp: 3 });
 @@replace
-    const g = this.spawnEnemy(this.rand(260, 820), -30, 'grumble', { hp: 3, stompDamage: 3 });
+    const m = this.spawnEnemy(this.rand(260, 820), -30, 'minion', { hp: 3, stompDamage: 3 });
 @@done
 @@end

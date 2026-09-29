@@ -10,6 +10,22 @@ export const SCREEN = { w: 960, h: 540 } as const;
 
 export const SIZE_SCALE = { tiny: 0.4, small: 0.7, hero: 1, big: 2, huge: 3.5 } as const;
 
+/** The size the kit gives a picture that declares none (its own table, by kind). */
+export const KIND_SIZES: Record<ArtKind, { w: number; h: number }> = {
+  character: { w: 40, h: 64 },
+  projectile: { w: 16, h: 16 },
+  item: { w: 28, h: 28 },
+  prop: { w: 44, h: 44 },
+  terrain: { w: 32, h: 32 },
+  background: { w: 960, h: 540 },
+  decor: { w: 48, h: 48 },
+};
+
+/** A declared kind's default size (a character's for anything unknown). */
+export function kindSize(kind: string): { w: number; h: number } {
+  return KIND_SIZES[kind as ArtKind] ?? KIND_SIZES.character;
+}
+
 export type PlanSize = PlanCastItem['size'];
 
 export function sizeOf(size: PlanSize, kind: ArtKind = 'character'): { w: number; h: number } {

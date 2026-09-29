@@ -1,10 +1,10 @@
 /**
  * The kit cheat sheet in the build prompt (§5.3): one line per member, grouped by where it lives, made
- * from the kit's own docs (`KIT_API`). Neighbouring properties with the same type and doc share a line
- * (`controls.left, right, up: boolean`). Generated once per app version, so the system prompt stays
- * byte-stable.
+ * from the kit's own reference (`KIT_REFERENCE`, plus `KIT_API.docs.actor` for what spawn helpers return).
+ * Neighbouring properties with the same type and doc share a line (`controls.left, right, up: boolean`).
+ * Generated once per app version, so the system prompt stays byte-stable.
  */
-import type { KitApi } from '../../cores/play';
+import { KIT_API, KIT_REFERENCE, type KitReference } from '../../cores/play';
 import { kitDocs, type KitDoc } from '../kit';
 
 /** `name: type` properties (not methods): their type, else null. */
@@ -29,8 +29,8 @@ function lines(prefix: string, members: readonly KitDoc[]): string[] {
 /** Namespaces in the order a game uses them. */
 const ORDER = ['fx', 'ui', 'pattern', 'controls', 'music', 'combo', 'twists'];
 
-export function kitSheet(api?: KitApi): string {
-  const d = kitDocs(api);
+export function kitSheet(api: KitReference = KIT_REFERENCE, actor: readonly KitDoc[] = KIT_API.docs.actor): string {
+  const d = kitDocs(api, actor);
   const out: string[] = ['this (your Game scene):', ...lines('  this.', d.scene)];
   out.push('Actor (what spawn, spawnHero, spawnEnemy, spawnBoss and spawnItem return; behaviours chain):', ...lines('  actor.', d.actor));
   const names = [...ORDER.filter((n) => d.namespaces[n]), ...Object.keys(d.namespaces).filter((n) => !ORDER.includes(n)).sort()];

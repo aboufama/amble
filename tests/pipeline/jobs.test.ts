@@ -18,11 +18,11 @@ const BREAK = `@@amble-patch 1
 @@safety ok
 @@file game.js edit
 @@find
-    this.ui.bossBar(this.boss, 'THE MOON KING');
     this.rage = 0;
+    const orb = () => this.dials.orbSpeed;
 @@replace
-    this.ui.bossBar(this.boss, 'THE MOON KING');
     this.rage = ;
+    const orb = () => this.dials.orbSpeed;
 @@done
 @@end
 `;
@@ -31,11 +31,11 @@ const MEND = `@@amble-patch 1
 @@safety ok
 @@file game.js edit
 @@find
-    this.ui.bossBar(this.boss, 'THE MOON KING');
     this.rage = ;
+    const orb = () => this.dials.orbSpeed;
 @@replace
-    this.ui.bossBar(this.boss, 'THE MOON KING');
     this.rage = 0;
+    const orb = () => this.dials.orbSpeed;
 @@done
 @@end
 `;
@@ -58,7 +58,7 @@ describe('the job state machine', () => {
     if (r.kind !== 'accepted') return;
     expect(r.repairs).toBe(0);
     expect(r.tested).toBe(true);
-    expect(r.meta.summary).toBe('Now your hero can stomp on Grumbles to squash them.');
+    expect(r.meta.summary).toBe('Now your hero can stomp on minions to squash them.');
     expect(r.files.find((f) => f.path === 'game.js')?.content).toContain('stomp: true');
     expect(calls).toHaveLength(1);
     expect(calls[0].user.startsWith('Task: change\nContent level: middle\n')).toBe(true);

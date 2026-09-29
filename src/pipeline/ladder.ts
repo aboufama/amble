@@ -3,13 +3,14 @@
  * plan's starter with the plan's ideas written in. The plan's title goes in `static config.title`; each
  * plan member lands on the starter slot it plays (`mapsTo`, else the same role): that slot's name, ask,
  * about, size, rig and facing are rewritten in `static art` (acorn + magic-string, keys kept), so the
- * student draws "the Salt King", not "the boss". Dial labels follow the plan where keys match; members with
- * no slot rest on the cast line.
+ * student draws "the Salt King", not "the boss". Dial labels follow the plan where keys match, else where
+ * the plan's dial measures the same thing as exactly one starter dial (`bossHp` and `bossHealth`); members
+ * with no slot rest on the cast line.
  */
 import { parse, type ClassDeclaration, type Node, type ObjectExpression, type Program, type Property } from 'acorn';
 import MagicString from 'magic-string';
 import type { CastKey, CastSlot, CodeFile, PlanCastItem, PlanReply, World } from '../model/types';
-import { readStatics, type Spec } from './manifest';
+import { artNeedOf, readStatics, type Spec } from './manifest';
 import { sizeOf } from './sizes';
 
 export interface LadderResult {
@@ -55,15 +56,43 @@ export function ladderMapping(plan: PlanReply, starterArt: Record<string, Spec>)
       taken.add(c.mapsTo);
     } else pending.push(c);
   }
+  // Roles as the kit reads them: the declared role, else the one its kind implies.
+  const roles = Object.fromEntries(Object.entries(starterArt).map(([k, spec], i) => [k, artNeedOf(k, spec, i).role]));
   for (const c of pending) {
     const role = c === plan.cast[0] ? 'hero' : c.role;
-    const slot = Object.entries(starterArt).find(([k, spec]) => !taken.has(k) && (spec.role === role || (role === 'hero' && k === 'hero')));
+    const slot = Object.keys(starterArt).find((k) => !taken.has(k) && (roles[k] === role || (role === 'hero' && k === 'hero')));
     if (slot) {
-      mapping[c.key] = slot[0];
-      taken.add(slot[0]);
+      mapping[c.key] = slot;
+      taken.add(slot);
     } else resting.push(c);
   }
   return { mapping, resting };
+}
+
+/** Words that measure the same thing (`bossHp` and `bossHealth` are both health). */
+const MEASURES: Record<string, string> = { hp: 'health', life: 'health', lives: 'health', hearts: 'health', spd: 'speed', velocity: 'speed', rate: 'speed', height: 'jump', strength: 'power', scale: 'size' };
+
+/** The last word of a camelCase key, as a measure. */
+function measureOf(key: string): string {
+  const words = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const last = words[words.length - 1] ?? '';
+  return MEASURES[last] ?? last;
+}
+
+/** Which plan label each starter dial takes: the same key, else the one starter dial measuring the same thing. */
+export function ladderDialLabels(plan: PlanReply, starterDials: readonly string[]): Record<string, string> {
+  const labels: Record<string, string> = {};
+  const left = plan.dials.filter((d) => {
+    if (!d.label || !starterDials.includes(d.key)) return true;
+    labels[d.key] = d.label.slice(0, 24);
+    return false;
+  });
+  for (const d of left) {
+    if (!d.label) continue;
+    const same = starterDials.filter((k) => !(k in labels) && measureOf(k) === measureOf(d.key));
+    if (same.length === 1) labels[same[0]] = d.label.slice(0, 24);
+  }
+  return labels;
 }
 
 /** The starter's files with the plan written into its statics. */
@@ -106,10 +135,11 @@ export function ladderFiles(plan: PlanReply, starterFiles: readonly CodeFile[]):
       setField(ms, entry, 'pronoun', quote(c.pronoun));
     }
     const dials = objectField(game, 'dials');
+    const labels = ladderDialLabels(plan, (dials?.properties ?? []).map((p) => (p.type === 'Property' ? keyOf(p) : '')).filter(Boolean));
     for (const p of dials?.properties ?? []) {
       if (p.type !== 'Property' || p.value.type !== 'ObjectExpression') continue;
-      const planDial = plan.dials.find((d) => d.key === keyOf(p));
-      if (planDial?.label) setField(ms, p.value, 'label', quote(planDial.label.slice(0, 24)));
+      const label = labels[keyOf(p)];
+      if (label) setField(ms, p.value, 'label', quote(label));
     }
     const source = ms.toString();
     return { ...f, source, authors: [['starter', source.split('\n').length]] };

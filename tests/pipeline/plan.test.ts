@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyPatch, parsePatch } from '../../src/cores/ai';
 import { FIXTURE_GAME } from '../../src/starters/fixtureGame';
-import { ladderCast, ladderFiles, ladderMapping } from '../../src/pipeline/ladder';
+import { ladderCast, ladderDialLabels, ladderFiles, ladderMapping } from '../../src/pipeline/ladder';
 import { readStatics } from '../../src/pipeline/manifest';
 import { flaggedPlanStrings, normalizePlan, planUserMessage, toKey, type PlanWire } from '../../src/pipeline/plan';
 import { progressPercent } from '../../src/pipeline/progress';
@@ -103,11 +103,22 @@ describe('the ladder', () => {
   const starter = [code('game.js', FIXTURE_GAME)];
 
   it('maps the plan onto the starter slots by mapsTo, then by role', () => {
+    // plan-snail.json names the spec's Moon King keys; the fixture starter has others, so roles decide.
     const { mapping, resting } = ladderMapping(PLAN_SNAIL, readStatics(starter).art);
-    expect(mapping).toEqual({ hero: 'hero', saltKing: 'moonKing', crumb: 'grumble', leaf: 'star' });
-    expect(resting).toEqual([]);
+    expect(mapping).toEqual({ hero: 'hero', saltKing: 'boss', crumb: 'minion' });
+    expect(resting.map((c) => c.key)).toEqual(['leaf']);
+    const byMapsTo = { ...PLAN_SNAIL, cast: PLAN_SNAIL.cast.map((c) => (c.key === 'crumb' ? { ...c, role: 'npc' as const, mapsTo: 'minion' } : c)) };
+    expect(ladderMapping(byMapsTo, readStatics(starter).art).mapping.crumb).toBe('minion');
     const lonely = { ...PLAN_SNAIL, cast: [...PLAN_SNAIL.cast, { ...PLAN_SNAIL.cast[3], key: 'npcFriend', role: 'npc' as const, mapsTo: '' }] };
-    expect(ladderMapping(lonely, readStatics(starter).art).resting.map((c) => c.key)).toEqual(['npcFriend']);
+    expect(ladderMapping(lonely, readStatics(starter).art).resting.map((c) => c.key)).toEqual(['leaf', 'npcFriend']);
+    // Terrain and shots have no declared role in the fixture: their kind gives it.
+    const ground = { ...PLAN_SNAIL, cast: [...PLAN_SNAIL.cast, { ...PLAN_SNAIL.cast[3], key: 'saltFloor', role: 'terrain' as const, kind: 'terrain' as const, mapsTo: '' }] };
+    expect(ladderMapping(ground, readStatics(starter).art).mapping.saltFloor).toBe('ground');
+  });
+
+  it('relabels starter dials by key, else by what they measure', () => {
+    expect(ladderDialLabels(PLAN_SNAIL, ['jump', 'orbSpeed', 'bossHealth'])).toEqual({ jump: 'Jump height', bossHealth: 'Salt King health', orbSpeed: 'Salt speed' });
+    expect(ladderDialLabels(PLAN_SNAIL, ['jump', 'orbSpeed', 'minionSpeed'])).toEqual({ jump: 'Jump height' });
   });
 
   it('writes the title, names, asks and sizes into static art, keeps the keys, and still validates', () => {
@@ -115,10 +126,10 @@ describe('the ladder', () => {
     const statics = readStatics(files);
     expect(statics.config.title).toBe("Shelly's Big Rescue");
     expect(Object.keys(statics.art)).toEqual(Object.keys(readStatics(starter).art));
-    expect(statics.art.moonKing).toMatchObject({ name: 'The Salt King', ask: 'Draw the Salt King, a grumpy salt shaker', about: 'The boss. Throws salt in three phases.', w: 140, h: 224, rig: 'biped', facing: 'left', pronoun: 'him' });
+    expect(statics.art.boss).toMatchObject({ name: 'The Salt King', ask: 'Draw the Salt King, a grumpy salt shaker', about: 'The boss. Throws salt in three phases.', w: 140, h: 224, rig: 'biped', facing: 'left', pronoun: 'him' });
     expect(statics.art.hero).toMatchObject({ name: 'Shelly', rig: 'blob', pronoun: 'her' });
-    expect(statics.art.star).toMatchObject({ name: 'Lettuce leaf', w: 28, h: 28 });
-    expect(statics.dials.bossHp.label).toBe('Salt King health');
+    expect(statics.art.minion).toMatchObject({ name: 'Salt crumb', w: 28, h: 45 });
+    expect(statics.dials.bossHealth.label).toBe('Salt King health');
     const r = check(files.map((f) => ({ path: f.path, content: f.source })), worldFacts(world({ code: starter })));
     expect(r.errors).toEqual([]);
   });
@@ -131,8 +142,8 @@ describe('the ladder', () => {
         npcFriend: { key: 'npcFriend', art: 'a_friend0001', madeBy: 'student', extra: null, laterUntil: 0 },
       },
     });
-    const cast = ladderCast(w, { hero: 'hero', saltKing: 'moonKing' }, [{ ...PLAN_SNAIL.cast[3], key: 'npcFriend', role: 'npc', name: 'Pal' }]);
-    expect(cast.moonKing).toMatchObject({ key: 'moonKing', art: 'a_salty00001', extra: null });
+    const cast = ladderCast(w, { hero: 'hero', saltKing: 'boss' }, [{ ...PLAN_SNAIL.cast[3], key: 'npcFriend', role: 'npc', name: 'Pal' }]);
+    expect(cast.boss).toMatchObject({ key: 'boss', art: 'a_salty00001', extra: null });
     expect(cast.hero.art).toBe('a_shelly0001');
     expect(cast.npcFriend).toMatchObject({ art: 'a_friend0001', extra: { name: 'Pal', role: 'npc' } });
     expect(cast.saltKing).toBeUndefined();

@@ -115,7 +115,7 @@ describe('the world the code belongs to', () => {
     const w = world({ code: [{ ...code('game.js', MOON_KING), locked: [[2, 3]] }] });
     const moved = `// A new first line.\n${MOON_KING}`;
     expect(check([{ path: 'game.js', content: moved }], worldFacts(w)).ok).toBe(true);
-    const changed = MOON_KING.replace("title: 'The Moon King'", "title: 'Mine now'");
+    const changed = MOON_KING.replace("title: 'MOON KING'", "title: 'Mine now'");
     const r = check([{ path: 'game.js', content: changed }], worldFacts(w));
     expect(r.errors.map((e) => e.rule)).toContain('locked-lines');
   });

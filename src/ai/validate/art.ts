@@ -216,7 +216,13 @@ function checkArtEntry(ctx: FileContext, e: Entry): void {
   }
   const kind = stringValue(e.fields.get('kind')) ?? kindFromRole(role);
   const requiredProp = e.fields.get('required');
-  const required = requiredProp ? requiredProp.value.type === 'Literal' && requiredProp.value.value === true : kind === 'character' || role === 'hero' || role === 'boss' || role === 'enemy';
+  const spareProp = e.fields.get('spare');
+  const spare = spareProp !== undefined && spareProp.value.type === 'Literal' && spareProp.value.value === true;
+  const required = spare
+    ? false
+    : requiredProp
+      ? requiredProp.value.type === 'Literal' && requiredProp.value.value === true
+      : kind === 'character' || role === 'hero' || role === 'boss' || role === 'enemy';
   if (required && !askProp) {
     const text = `Draw the ${name ?? humanize(e.key)}`;
     ctx.add('error', 'art-manifest', e.prop, `Art \`${e.key}\` is required, so it needs an \`ask\` line for the student ("${text}").`, { name: e.key, fixed: ctx.fix });

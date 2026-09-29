@@ -7,6 +7,7 @@ import { extractManifest, sourceFilesOf } from '../cores/ai';
 import type { Action, ArtKind, ArtNeed, ArtShape, DialInfo, Facing, GameManifest, Pronoun, RigKind, Role } from '../cores/play';
 import type { CodeFile } from '../model/types';
 import { kitManifestFor } from './kit';
+import { kindSize } from './sizes';
 
 export type Literal = string | number | boolean | null | Literal[] | { [key: string]: Literal };
 export type Spec = Record<string, Literal>;
@@ -82,15 +83,16 @@ export function artNeedOf(key: string, spec: Spec, index: number, drawn = false)
     rig: oneOf(spec.rig, RIGS) ?? (character ? 'blob' : 'none'),
     role,
     shape: oneOf(spec.shape, SHAPES) ?? (character ? 'capsule' : kind === 'item' ? 'ellipse' : 'box'),
-    w: num(spec.w) ?? (character ? 40 : kind === 'background' ? 960 : 32),
-    h: num(spec.h) ?? (character ? 64 : kind === 'background' ? 540 : 32),
+    w: num(spec.w) ?? kindSize(kind).w,
+    h: num(spec.h) ?? kindSize(kind).h,
     color: str(spec.color) ?? ROLE_TINT[role],
     ask: str(spec.ask) ?? `Draw the ${name}`,
     about: str(spec.about) ?? '',
     pronoun: (oneOf(spec.pronoun, ['him', 'her', 'them', 'it'] as const) ?? (character ? 'them' : 'it')) as Pronoun,
     facing: (oneOf(spec.facing, ['viewer', 'right', 'left'] as const) ?? (role === 'hero' ? 'right' : character ? 'left' : 'viewer')) as Facing,
     priority: num(spec.priority) ?? (role === 'hero' ? 1 : 10 + index),
-    required: typeof spec.required === 'boolean' ? spec.required : role === 'hero' || role === 'boss' || role === 'enemy',
+    required: spec.spare === true ? false : typeof spec.required === 'boolean' ? spec.required : character && (role === 'hero' || role === 'boss' || role === 'enemy'),
+    spare: spec.spare === true,
     declared: true,
     used: false,
     drawn,

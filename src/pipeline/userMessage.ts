@@ -7,7 +7,7 @@
 import { t } from '../i18n';
 import type { CastKey, CodeFile, Level, LineRange, PlanReply, StarterId, World } from '../model/types';
 import { humanKey, readStatics, type Spec, type Statics } from './manifest';
-import { sizeOf } from './sizes';
+import { kindSize, sizeOf } from './sizes';
 
 export type CodeTask = 'build' | 'change' | 'fix' | 'resend' | 'continue';
 
@@ -226,7 +226,8 @@ export function castLines(world: World, statics: Statics): CastLine[] {
   const text = (v: unknown) => (typeof v === 'string' ? v : null);
   for (const [key, spec] of Object.entries(statics.art)) {
     const kind = text(spec.kind) ?? 'character';
-    out.push({ key, name: text(spec.name) ?? humanKey(key), kind, rig: text(spec.rig), drawn: Boolean(world.cast[key]?.art), w: num(spec.w, 40), h: num(spec.h, 64), facing: text(spec.facing) });
+    const size = kindSize(kind);
+    out.push({ key, name: text(spec.name) ?? humanKey(key), kind, rig: text(spec.rig), drawn: Boolean(world.cast[key]?.art), w: num(spec.w, size.w), h: num(spec.h, size.h), facing: text(spec.facing) });
   }
   for (const slot of Object.values(world.cast)) {
     if (statics.art[slot.key] || !slot.art || !slot.extra) continue;

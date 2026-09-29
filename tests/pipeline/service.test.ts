@@ -112,10 +112,10 @@ describe('a change, over the wire', () => {
     expect(out.kind).toBe('accepted');
     if (out.kind !== 'accepted') return;
     expect(out.tested).toBe(true);
-    expect(out.summary).toBe('Now your hero can stomp on Grumbles to squash them.');
+    expect(out.summary).toBe('Now your hero can stomp on minions to squash them.');
     expect(out.files.find((f) => f.path === 'game.js')?.source).toContain('stomp: true');
     expect(out.files.find((f) => f.path === 'game.js')?.authors.some(([a]) => a === 'ai')).toBe(true);
-    expect(out.next).toEqual(['Make Grumbles faster', 'Give the Moon King a stomp too']);
+    expect(out.next).toEqual(['Make minions faster', 'Give the Moon King a stomp too']);
 
     const req = h.sent[0];
     expect(req.headers['x-amble-class']).toBe('MAPLE-7Q2K');
@@ -260,8 +260,8 @@ describe('builds and the ladder', () => {
     expect(h.sent).toHaveLength(3);
     const game = out.files.find((f) => f.path === 'game.js')?.source ?? '';
     expect(game).toContain("title: 'Shelly\\'s Big Rescue'");
-    expect(game).toMatch(/moonKing: \{[^\n]*name: 'The Salt King'/);
-    expect(game).toMatch(/moonKing: \{[^\n]*ask: 'Draw the Salt King, a grumpy salt shaker'/);
+    expect(game).toMatch(/boss: \{[^\n]*name: 'The Salt King'/);
+    expect(game).toMatch(/boss: \{[^\n]*ask: 'Draw the Salt King, a grumpy salt shaker'/);
     expect(out.message).toMatch(/^Amble couldn't build all of it, so it started you from .+ with your ideas\. Your other characters are waiting on the cast line\./);
   });
 

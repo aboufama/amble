@@ -33,14 +33,15 @@ function clean(text: string): void {
 
 describe('the user message', () => {
   it('change', () => {
-    const text = buildUserMessage(input('change', { scope: 'moonKing' }));
+    const text = buildUserMessage(input('change', { scope: 'boss' }));
     expect(text).toMatchSnapshot();
-    expect(text).toContain('About: moonKing');
+    expect(text).toContain('About: boss');
     expect(text).toContain('World: "Pop the Moon" · physics: arcade · files: boss.js (5 lines), game.js (');
-    expect(text).toContain('- hero "Pip" · character · biped · drawn · 40x64 · faces right');
-    expect(text).toContain('- moonKing "The Moon King" · character · blob · JUST BONES (not drawn yet) · 200x180 · faces left');
-    expect(text).toContain('jump = 780 [400..1100] "Jump height" live (student changed it), for hero');
-    expect(text).toContain('bossHp = 150 [50..400] "Moon King health" restarts, for moonKing');
+    expect(text).toContain('- hero "Pip" · character · biped · drawn · 38x64');
+    expect(text).toContain('- boss "Moon King" · character · blob · JUST BONES (not drawn yet) · 220x190');
+    expect(text).toContain('- ledge · terrain · JUST BONES (not drawn yet) · 32x32');
+    expect(text).toContain('jump = 780 [400..1100] "Jump power" live (student changed it), for hero');
+    expect(text).toContain('bossHealth = 150 [40..400] restarts, for boss');
     expect(text).toContain('Twists on (kit, do not re-code): moonGravity');
     expect(text).toContain("The student's own edits (keep them): game.js lines 40-42");
     expect(text).toContain('Locked by the teacher (never change): game.js lines 1-3');
@@ -102,7 +103,7 @@ describe('the user message', () => {
   it('sends a big game in part: game.js, files the words name, and the rest by their declarations', () => {
     const big = 'x'.repeat(21_000);
     const files = [code('game.js', MOON_KING), code('boss.js', `function stomp() {}\n// ${big}`), code('level.js', `const LEVELS = [];\n// ${big}`)];
-    const { whole, listed } = filesToSend(files, 'make the boss stomp harder', [], ['moonKing']);
+    const { whole, listed } = filesToSend(files, 'make the boss stomp harder', [], ['boss']);
     expect(whole.map((f) => f.path)).toEqual(['game.js', 'boss.js']);
     expect(listed.map((f) => f.path)).toEqual(['level.js']);
     const text = buildUserMessage({ ...input('change', { words: 'make the boss stomp harder' }), files });

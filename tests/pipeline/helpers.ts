@@ -44,7 +44,7 @@ export function world(over: Partial<World> = {}): World {
     code: [code('game.js', MOON_KING)],
     cast: {
       hero: { key: 'hero', art: 'a_hero000001', madeBy: 'student', extra: null, laterUntil: 0 },
-      moonKing: { key: 'moonKing', art: null, madeBy: null, extra: null, laterUntil: 0 },
+      boss: { key: 'boss', art: null, madeBy: null, extra: null, laterUntil: 0 },
     },
     sounds: {},
     dials: { jump: 780 },
