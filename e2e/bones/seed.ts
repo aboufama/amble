@@ -16,6 +16,10 @@ export interface SeedOptions {
   notes?: string[];
   /** Put it in a world as this cast member. */
   castKey?: string;
+  /** With `rigged`: pretend the bones were placed on a drawing of this size (a redraw since). */
+  bonesSize?: [number, number];
+  /** The drawing's rig kind ('none': an item with no bones yet). */
+  rigKind?: string;
 }
 
 export interface Seeded {
@@ -67,13 +71,13 @@ export async function seedDrawing(page: Page, o: SeedOptions = {}): Promise<Seed
     if (opts.rigged) {
       const rig = (await import(/* @vite-ignore */ rigUrl)) as { rigWorker: { autoRig(src: unknown, req: unknown): Promise<{ rig: unknown; confidence: number; notes: string[] }> } };
       const r = await rig.rigWorker.autoRig({ image: flat, layers: lines ? { lines } : undefined }, { kind });
-      rigData = r.rig;
+      rigData = opts.bonesSize ? { ...(r.rig as Record<string, unknown>), artHash: `${opts.bonesSize[0]}x${opts.bonesSize[1]}:00000000` } : r.rig;
       rigInfo = { made: 'auto', confidence: opts.confidence ?? r.confidence, notes: opts.notes ?? r.notes };
     }
     const now = Date.now();
     const artId = `a_${Math.random().toString(36).slice(2, 12).padEnd(10, '0')}`;
     const record = {
-      id: artId, name: opts.name ?? 'Pip', kind: 'character', rig: kind, facing: 'viewer', role: opts.castKey ? 'hero' : null, mode: 'free',
+      id: artId, name: opts.name ?? 'Pip', kind: 'character', rig: opts.rigKind ?? kind, facing: 'viewer', role: opts.castKey ? 'hero' : null, mode: 'free',
       board: { w: 1024, h: 1024, pixelArt: false }, doc: docRef, cels: [], parts: {},
       export: {
         hash: flatRef.slice(7), flat: flatRef, w: s.image.width, h: s.image.height, anchor: s.anchor?.at ?? [s.image.width / 2, s.image.height - 2],

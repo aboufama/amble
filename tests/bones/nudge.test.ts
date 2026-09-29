@@ -1,6 +1,6 @@
 /** Keyboard nudges, the drawing's fit in the sky, and the AI helper's hints in art px. */
 import { describe, expect, it } from 'vitest';
-import { clampTo, fitArt, isArrowKey, nudge, nudgeStep, scaleHints, starBounds, toArt, toSky, MAX_ZOOM } from '../../src/bones/geometry';
+import { bonesAreStale, clampTo, fitArt, isArrowKey, nudge, nudgeStep, scaleHints, starBounds, toArt, toSky, MAX_ZOOM } from '../../src/bones/geometry';
 
 describe('keyboard nudge maths', () => {
   it('moves a star 1 art px per arrow, 10 with Shift', () => {
@@ -81,5 +81,15 @@ describe("the AI helper's hints", () => {
     const out = scaleHints({ armL2: [Number.NaN, 3], legL1: [10, 10] }, 100, 100, 100, 100);
     expect(out.armL2).toBeUndefined();
     expect(out.legL1).toEqual([10, 10]);
+  });
+});
+
+describe('Redo bones after a redraw', () => {
+  it('offers new bones only when the drawing grew or shrank by more than a fifth', () => {
+    expect(bonesAreStale([260, 310], [260, 310])).toBe(false);
+    expect(bonesAreStale([260, 310], [300, 340])).toBe(false);
+    expect(bonesAreStale([260, 310], [330, 310])).toBe(true);
+    expect(bonesAreStale([260, 310], [260, 240])).toBe(true);
+    expect(bonesAreStale(null, [260, 310])).toBe(false);
   });
 });

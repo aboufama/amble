@@ -101,3 +101,9 @@ export function scaleHints(hints: JointHints, outW: number, outH: number, w: num
   }
   return out;
 }
+
+/** Whether bones fitted to a drawing of `was` px no longer fit one of `now` px (§7.9: more than 20 %). */
+export function bonesAreStale(was: [number, number] | null, now: [number, number]): boolean {
+  if (!was) return false;
+  return Math.abs(now[0] - was[0]) > 0.2 * was[0] || Math.abs(now[1] - was[1]) > 0.2 * was[1];
+}

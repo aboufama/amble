@@ -245,3 +245,38 @@ test('a free drawing returns to the Trail on Done; undrawn and missing drawings 
   await expect(page.getByTestId('screen-bones')).toBeVisible();
   await expect(page.getByRole('heading', { name: "This drawing isn't here." })).toBeVisible();
 });
+
+test('under reduced motion the preview waits, still, until Play', async ({ page }) => {
+  await page.evaluate(() => (window as unknown as { __amble: { setPrefs(p: unknown): void } }).__amble.setPrefs({ reduceMotion: 'on' }));
+  const { artId } = await seedDrawing(page, { sample: 'hero', name: 'Pip' });
+  await openBones(page, `#/bones/${artId}`);
+  const preview = page.getByTestId('bones-preview');
+  await expect(preview).toHaveAttribute('data-playing', 'no');
+  await expect(preview).toContainText('Paused');
+  await page.getByRole('button', { name: 'Play' }).click();
+  await expect(preview).toHaveAttribute('data-playing', 'yes');
+  await expect(preview).toContainText('Walking');
+});
+
+test('a drawing that changed a lot since its bones offers Redo bones', async ({ page }) => {
+  const { artId } = await seedDrawing(page, { sample: 'hero', name: 'Pip', rigged: true, bonesSize: [120, 140] });
+  await openBones(page, `#/bones/${artId}`);
+  const note = page.getByTestId('bones-stale');
+  await expect(note).toContainText('Your drawing changed');
+  await note.getByRole('button', { name: 'Redo bones' }).click();
+  await expect(note).toHaveCount(0);
+  await expect(page.getByTestId('bones-status')).toContainText(/Amble found \d+ bones/);
+  const art = await savedRig(page, artId, (a) => !!a.rigData && !/^120x140:/.test((a.rigData as unknown as { artHash: string }).artHash));
+  expect(art.rigData?.kind).toBe('biped');
+});
+
+test('a drawing with no kind yet asks what it is, then finds its bones', async ({ page }) => {
+  const { artId } = await seedDrawing(page, { sample: 'slime', name: 'Blorp', rigKind: 'none' });
+  await gotoRoute(page, `#/bones/${artId}`);
+  await expect(page.getByTestId('bones-status')).toHaveText('Pick what it is, and Amble will find its bones.');
+  const card = page.getByRole('dialog', { name: 'What is it?' });
+  await expect(card).toBeVisible();
+  await card.getByRole('radio', { name: 'Blob' }).click();
+  await expect(page.getByTestId('bones-status')).toContainText(/Amble found \d+ bone/);
+  await savedRig(page, artId, (a) => a.rigData?.kind === 'blob' && a.rig === 'blob');
+});

@@ -143,7 +143,7 @@ export function KindPicker({ value, facing, onChange, compact = false, open, onO
           })}
         </div>
         <div className="kind-card__foot">
-          <Button variant="ghost" size={38} icon="check" onClick={() => setOpen(false)}>
+          <Button variant="ghost" size={44} icon="check" onClick={() => setOpen(false)}>
             {t('bones.kindDone')}
           </Button>
         </div>

@@ -16,10 +16,11 @@ import { Keycap } from '../../ui/components';
 import { useReducedMotion } from '../../ui/a11y';
 import { cx } from '../../ui/cx';
 import { playUiSound } from '../../ui/sounds';
+import { ArtSticker } from './ArtSticker';
 import { BoneCard } from './BoneCard';
 import { BoneLines } from './BoneLines';
 import { BoneTree } from './BoneTree';
-import { GuessNote } from './GuessNote';
+import { GuessNote, RedoNote } from './GuessNote';
 import { JointLayer } from './JointLayer';
 
 export interface ConstellationProps {
@@ -244,7 +245,7 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
       </svg>
       {ready && (
         <>
-          <img className="bones-sky__art" src={image.url} alt="" draggable={false} style={artBox} />
+          <ArtSticker url={image.url} left={artBox.left} top={artBox.top} width={artBox.width} height={artBox.height} />
           {pieces && view.bound && <PiecesCanvas bound={view.bound} fit={fit} w={size.w} h={size.h} />}
           {busy && !reduced && <div className="bones-sky__shimmer" style={artBox} aria-hidden="true" />}
           {rig && (
@@ -280,7 +281,11 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
               onFocused={focused}
             />
           )}
-          {reasons && !guessHidden && !busy && <GuessNote reasons={reasons} fit={fit} sky={size} onClose={() => setGuessHidden(true)} />}
+          {view.stale && !busy ? (
+            <RedoNote fit={fit} sky={size} onRedo={() => void ctl.redoBones()} />
+          ) : (
+            reasons && !guessHidden && !busy && <GuessNote reasons={reasons} fit={fit} sky={size} onClose={() => setGuessHidden(true)} />
+          )}
         </>
       )}
       <div className="bones-sky__foot">

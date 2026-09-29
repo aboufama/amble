@@ -15,11 +15,14 @@ export interface MovePreviewProps {
   tweak: AnimTweak;
   name: string;
   reduced: boolean;
+  /** Hold still while a star is dragged: the preview shows the new bones on the drop, and a weak
+   *  Chromebook keeps its frames for the drag. */
+  hold: boolean;
 }
 
 const GROUND = 0.84;
 
-export function MovePreview({ bound, clip, tweak, name, reduced }: MovePreviewProps) {
+export function MovePreview({ bound, clip, tweak, name, reduced, hold }: MovePreviewProps) {
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const preview = useRef<RigPreview | null>(null);
@@ -84,6 +87,13 @@ export function MovePreview({ bound, clip, tweak, name, reduced }: MovePreviewPr
   useEffect(() => {
     if (reduced) setPlaying(false);
   }, [reduced]);
+
+  useEffect(() => {
+    const p = preview.current;
+    if (!p || !playing) return;
+    if (hold) p.pause();
+    else p.resume();
+  }, [hold, playing]);
 
   const toggle = () => {
     const p = preview.current;
@@ -153,7 +163,7 @@ export function MovePreview({ bound, clip, tweak, name, reduced }: MovePreviewPr
           {pill}
         </span>
       </div>
-      <IconButton className="move-stage__play" icon={playing ? 'pause' : 'play'} label={playing ? t('bones.pause') : t('bones.play')} variant="ghost" size={38} onClick={toggle} />
+      <IconButton className="move-stage__play" icon={playing ? 'pause' : 'play'} label={playing ? t('bones.pause') : t('bones.play')} variant="ghost" size={44} onClick={toggle} />
     </div>
   );
 }

@@ -75,7 +75,9 @@ export const bones = {
   // ---------------------------------------------------------------- Amble's guess
   guessTitle: "Amble's guess",
   guessClose: "Hide Amble's guess",
-  guessCheck: 'Check the stars, then press Done.',
+  staleTitle: 'Your drawing changed',
+  staleBody: 'These bones were placed on an older drawing. Amble can place them again and keep the stars you moved.',
+  staleRedo: 'Redo bones',
 
   // ---------------------------------------------------------------- a bone's card and the bone list
   boneCard: 'The {bone}',

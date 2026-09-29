@@ -3,10 +3,11 @@
  * Fall, Ouch, Attack, Wave, plus Fly, Swim or Wiggle for those kinds), **Feel** for the move that plays,
  * **Draw this move yourself?**, and the note that bones are made on this Chromebook.
  */
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { RouteOf } from '../../app/routes';
 import { navigate } from '../../app/router';
-import type { BonesController, BonesView } from '../../bones/bonesController';
+import type { BonesController, BonesStep } from '../../bones/bonesController';
+import type { BoundRig } from '../../cores/rig';
 import { firstMove, moveWord, movesFor } from '../../bones/words';
 import { t } from '../../i18n';
 import { useReducedMotion } from '../../ui/a11y';
@@ -17,22 +18,27 @@ import { MovePreview } from './MovePreview';
 
 export interface MovesPanelProps {
   ctl: BonesController;
-  view: BonesView;
+  /** The newest step (its kind and the moves' Feel), not the bones mid-drag: the panel sits out drags. */
+  step: BonesStep | null;
+  bound: BoundRig | null;
+  name: string;
+  busy: boolean;
+  dragging: boolean;
+  aiHelped: boolean;
   route: RouteOf<'bones'> | RouteOf<'bonesFree'>;
 }
 
-export function MovesPanel({ ctl, view, route }: MovesPanelProps) {
+export const MovesPanel = memo(function MovesPanel({ ctl, step, bound, name, busy, dragging, aiHelped, route }: MovesPanelProps) {
   const reduced = useReducedMotion();
-  const kind = view.rig?.kind ?? 'biped';
+  const kind = step?.rig.kind ?? 'biped';
   const moves = movesFor(kind);
   const [picked, setMove] = useState<string | null>(null);
   // a new kind brings its own moves: the pick stays when the kind has it too
   const move = picked && moves.includes(picked) ? picked : firstMove(kind);
 
-  const tweak = view.step?.rig.anims?.[move] ?? {};
+  const tweak = step?.rig.anims?.[move] ?? {};
   const amount = tweak.amount ?? 1;
   const speed = tweak.speed ?? 1;
-  const name = view.name;
   const drawRoute = route.name === 'bones' ? ({ name: 'draw', worldId: route.worldId, key: route.key } as const) : ({ name: 'drawFree', artId: route.artId } as const);
 
   return (
@@ -44,7 +50,7 @@ export function MovesPanel({ ctl, view, route }: MovesPanelProps) {
           </h2>
           <span className="bones-side__sub">{t('bones.watchSub')}</span>
         </div>
-        <MovePreview bound={view.bound} clip={move} tweak={{ amount, speed }} name={name} reduced={reduced} />
+        <MovePreview bound={bound} clip={move} tweak={{ amount, speed }} name={name} reduced={reduced} hold={dragging} />
       </section>
       <section className="bones-side__section" aria-labelledby="bones-moves-title">
         <div className="bones-side__head">
@@ -61,7 +67,7 @@ export function MovesPanel({ ctl, view, route }: MovesPanelProps) {
           ))}
         </div>
       </section>
-      <FeelSliders moveName={moveWord(move)} amount={amount} speed={speed} disabled={!view.step || !!view.busy} onChange={(which, v) => ctl.setTweak(move, { [which]: v }, which)} />
+      <FeelSliders moveName={moveWord(move)} amount={amount} speed={speed} disabled={!step || busy} onChange={(which, v) => ctl.setTweak(move, { [which]: v }, which)} />
       <button type="button" className="draw-move" onClick={() => navigate(drawRoute)}>
         <Icon name="frame" size={22} />
         <span className="draw-move__text">
@@ -69,12 +75,12 @@ export function MovesPanel({ ctl, view, route }: MovesPanelProps) {
           <span>{t('bones.drawMoveHint', { move: moveWord(move) })}</span>
         </span>
       </button>
-      <p className={cx('bones-local', view.aiHelped && 'bones-local--ai')}>
-        <Icon name={view.aiHelped ? 'sparkle' : 'lock'} size={20} />
+      <p className={cx('bones-local', aiHelped && 'bones-local--ai')}>
+        <Icon name={aiHelped ? 'sparkle' : 'lock'} size={20} />
         <span>
-          <b>{t('bones.localTitle')}</b> {view.aiHelped ? t('bones.localAiBody') : t('bones.localBody')}
+          <b>{t('bones.localTitle')}</b> {aiHelped ? t('bones.localAiBody') : t('bones.localBody')}
         </span>
       </p>
     </aside>
   );
-}
+});

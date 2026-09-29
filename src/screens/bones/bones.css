@@ -114,34 +114,34 @@
   white-space: nowrap;
 }
 
-/* the kind sits over the facing, so long kinds ("An animal on 4 legs") still fit the row */
-.bones-tools .kind-pill__text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.05rem;
-}
-
-.bones-tools .kind-pill__kind,
-.bones-tools .kind-pill__facing {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.bones-tools .kind-pill__join {
-  display: none;
-}
-
-.bones-tools .kind-pill__facing {
-  font: var(--type-meta);
-  font-size: 0.8125rem;
-  line-height: 0.95rem;
-  color: var(--ink-2);
-}
-
-/* a narrower sky (1280 wide): the tools keep their words and drop their icons */
+/* a narrower sky (1280 wide): the tools keep their words and drop their icons, and the kind sits over
+   the facing, so long kinds ("An animal on 4 legs") still fit the row */
 @container bones-main (max-width: 860px) {
   .bones-tools .btn .icon {
     display: none;
+  }
+
+  .bones-tools .kind-pill__text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.05rem;
+  }
+
+  .bones-tools .kind-pill__kind,
+  .bones-tools .kind-pill__facing {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bones-tools .kind-pill__join {
+    display: none;
+  }
+
+  .bones-tools .kind-pill__facing {
+    font: var(--type-meta);
+    font-size: 0.8125rem;
+    line-height: 0.95rem;
+    color: var(--ink-2);
   }
 
   .bones-tools .btn {
@@ -189,6 +189,7 @@
 .bones-sky {
   --sky-edge: color-mix(in srgb, var(--line-control) 60%, transparent);
   position: relative;
+  contain: layout paint;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -221,12 +222,6 @@
   position: absolute;
   opacity: 0.92;
   pointer-events: none;
-  filter:
-    drop-shadow(2.5px 0 0 var(--paper))
-    drop-shadow(-2.5px 0 0 var(--paper))
-    drop-shadow(0 2.5px 0 var(--paper))
-    drop-shadow(0 -2.5px 0 var(--paper))
-    drop-shadow(0 10px 18px color-mix(in srgb, var(--bg-deep) 70%, transparent));
 }
 
 .bones-sky__pieces {
@@ -327,6 +322,17 @@
   stroke-linecap: round;
 }
 
+/* on the Day sky (cream) the middle bones and links are drawn in ink */
+:root[data-theme='day'] .bone-mid,
+:root[data-theme='day'] .bone-wiggly--C {
+  stroke: var(--ink);
+}
+
+:root[data-theme='day'] .bone-links line,
+:root[data-theme='day'] .bone-glow__line--C {
+  stroke: var(--ink-2);
+}
+
 .bone-side {
   stroke: color-mix(in srgb, var(--ink) 55%, transparent);
   stroke-width: 1;
@@ -395,6 +401,10 @@
   stroke-linecap: round;
   pointer-events: stroke;
   cursor: grab;
+}
+
+:root[data-layout='touch'] .bone-hits line {
+  stroke-width: 26;
 }
 
 .bones-sky--busy .bone-hits line,
@@ -593,6 +603,7 @@
 }
 
 .guess-note__close {
+  position: relative;
   display: grid;
   place-items: center;
   width: 32px;
@@ -606,11 +617,11 @@
   cursor: pointer;
 }
 
+/* a 44 px target around the small close mark */
 .guess-note__close::before {
   content: '';
   position: absolute;
-  width: var(--target);
-  height: var(--target);
+  inset: -6px;
 }
 
 .guess-note__close:hover {
@@ -628,6 +639,10 @@
 
 .guess-note__text + .guess-note__text {
   margin-top: 6px;
+}
+
+.guess-note__action {
+  margin-top: 10px;
 }
 
 /* the foot of the sky: key hints (left) and the legend (right) */

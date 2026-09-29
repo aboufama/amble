@@ -81,6 +81,42 @@ for (const size of SIZES) {
       await shot(`09-${sample}`);
     }
 
+    // no kind yet: What is it? opens by itself
+    const item = await seedDrawing(page, { sample: 'slime', name: 'Blorp', rigKind: 'none' });
+    await page.evaluate((h) => (location.hash = h), `#/bones/${item.artId}`);
+    await expect(page.getByRole('dialog', { name: 'What is it?' })).toBeVisible();
+    await page.waitForTimeout(700);
+    await shot('12-pick-kind');
+    await page.keyboard.press('Escape');
+
+    // the drawing changed since its bones: Redo bones
+    const stale = await seedDrawing(page, { sample: 'hero', name: 'Pip', rigged: true, bonesSize: [120, 140] });
+    await page.evaluate((h) => (location.hash = h), `#/bones/${stale.artId}`);
+    await expect(page.getByTestId('bones-stale')).toBeVisible();
+    await page.waitForTimeout(900);
+    await shot('13-redo');
+
+    // Day theme, the touch layout, reduced motion
+    const setPrefs = (p: Record<string, unknown>) => page.evaluate((x) => (window as unknown as { __amble: { setPrefs(p: unknown): void } }).__amble.setPrefs(x), p);
+    await setPrefs({ theme: 'day' });
+    await page.evaluate((h) => (location.hash = h), `#/w/${hero.worldId}/bones/hero`);
+    await expect(page.getByTestId('bones-status')).toContainText(/bones/);
+    await page.waitForTimeout(900);
+    await shot('14-day');
+    await setPrefs({ theme: 'contrast' });
+    await page.waitForTimeout(300);
+    await shot('15-contrast');
+    await setPrefs({ theme: 'night', reduceMotion: 'on' });
+    await page.evaluate(() => {
+      document.documentElement.dataset.layout = 'touch';
+    });
+    await page.waitForTimeout(600);
+    await shot('16-touch-reduced');
+    await page.evaluate(() => {
+      delete document.documentElement.dataset.layout;
+    });
+    await setPrefs({ reduceMotion: 'system' });
+
     // just bones (undrawn) and missing
     await page.evaluate((h) => (location.hash = h), `#/w/${hero.worldId}/bones/boss`);
     await expect(page.getByText(/only bones so far/)).toBeVisible();

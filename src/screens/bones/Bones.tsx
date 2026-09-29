@@ -4,11 +4,11 @@
  * bit, Show pieces, and the live Watch {name} move preview with the Moves and their Feel. ✓ Done
  * returns to where the student came from; the bones save as they change, so leaving never asks.
  */
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { AiChip } from '../../app/frame/AiChip';
 import { Link } from '../../app/Link';
 import type { Route, RouteOf } from '../../app/routes';
-import { useCommand } from '../../app/keys';
+import { useCommand, useEscape } from '../../app/keys';
 import { useServices } from '../../app/services';
 import { BonesController, type BonesTarget, type BonesView } from '../../bones/bonesController';
 import { goBackTo, leaveBones } from '../../bones/leave';
@@ -128,9 +128,21 @@ function BonesScreen({ ctl, route }: { ctl: BonesController; route: BonesRoute }
     if (view.needsKind && !view.busy) setKindOpen(true);
   }, [view.needsKind, view.busy]);
 
+  // say when Amble starts looking, and what it found when it is done
+  const wasBusy = useRef(false);
+  const status = statusOf(view);
   useEffect(() => {
     if (view.busy) announce(view.busy === 'asking' ? t('bones.statusAsking') : t('bones.statusFinding'));
+    else if (wasBusy.current) announce(status);
+    wasBusy.current = !!view.busy;
+    // the status words follow the busy change; only a busy change announces
   }, [view.busy]);
+
+  // Esc leaves wiggly mode (a picked-up star and open cards answer Esc first)
+  useEscape(() => {
+    setWiggly(false);
+    return true;
+  }, wiggly);
 
   useCommand('undo', () => {
     if (!view.canUndo) return false;
@@ -156,7 +168,6 @@ function BonesScreen({ ctl, route }: { ctl: BonesController; route: BonesRoute }
     }
   };
 
-  const status = statusOf(view);
   const ready = view.phase === 'ready';
   const kind: CharacterKind = rig?.kind ?? (ctl.art?.rig && ctl.art.rig !== 'none' ? ctl.art.rig : 'biped');
   const facing = rig ? facingWord(rig.facing) : ctl.art?.facing ?? 'viewer';
@@ -190,7 +201,18 @@ function BonesScreen({ ctl, route }: { ctl: BonesController; route: BonesRoute }
       status={status}
       actions={actions}
       onBack={() => void ctl.finish()}
-      aside={<MovesPanel ctl={ctl} view={view} route={route} />}
+      aside={
+        <MovesPanel
+          ctl={ctl}
+          step={view.step}
+          bound={view.bound}
+          name={view.name}
+          busy={busy}
+          dragging={view.dragging}
+          aiHelped={view.aiHelped}
+          route={route}
+        />
+      }
     >
       <div className="bones-tools" role="toolbar" aria-label={t('bones.toolbar')}>
         <KindPicker

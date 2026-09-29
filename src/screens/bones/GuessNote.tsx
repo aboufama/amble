@@ -6,16 +6,19 @@
  */
 import type { Fit } from '../../bones/geometry';
 import { t } from '../../i18n';
+import { Button } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 
 const NOTE_W = 232;
 
-export function GuessNote({ reasons, fit, sky, onClose }: { reasons: string[]; fit: Fit; sky: { w: number; h: number }; onClose(): void }) {
+/** Beside the drawing when there is room, else in the sky's top-right corner. */
+function placeNote(fit: Fit, sky: { w: number; h: number }): { left?: number; right?: number; top: number } {
   const right = fit.ox + fit.w * fit.k + 28;
-  const beside = right + NOTE_W <= sky.w - 16;
-  const style = beside
-    ? { left: right, top: Math.max(16, fit.oy + fit.h * fit.k * 0.36) }
-    : { right: 16, top: 16 };
+  return right + NOTE_W <= sky.w - 16 ? { left: right, top: Math.max(16, fit.oy + fit.h * fit.k * 0.36) } : { right: 16, top: 16 };
+}
+
+export function GuessNote({ reasons, fit, sky, onClose }: { reasons: string[]; fit: Fit; sky: { w: number; h: number }; onClose(): void }) {
+  const style = placeNote(fit, sky);
   return (
     <aside className="guess-note" style={{ ...style, width: NOTE_W }} aria-labelledby="bones-guess-title" data-testid="bones-guess">
       <div className="guess-note__head">
@@ -31,6 +34,21 @@ export function GuessNote({ reasons, fit, sky, onClose }: { reasons: string[]; f
           {r}
         </p>
       ))}
+    </aside>
+  );
+}
+
+/** The drawing changed a lot since its bones were placed (§7.9): offer Redo bones. */
+export function RedoNote({ fit, sky, onRedo }: { fit: Fit; sky: { w: number; h: number }; onRedo(): void }) {
+  return (
+    <aside className="guess-note" style={{ ...placeNote(fit, sky), width: NOTE_W }} aria-labelledby="bones-stale-title" data-testid="bones-stale">
+      <h2 id="bones-stale-title" className="guess-note__title">
+        {t('bones.staleTitle')}
+      </h2>
+      <p className="guess-note__text">{t('bones.staleBody')}</p>
+      <Button variant="ghost" size={44} icon="sparkle" className="guess-note__action" onClick={onRedo}>
+        {t('bones.staleRedo')}
+      </Button>
     </aside>
   );
 }

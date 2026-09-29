@@ -10,6 +10,7 @@ import type { Services } from '../app/services';
 import { t } from '../i18n';
 import {
   RigWorkerError,
+  artSizeOf,
   hashRig,
   rigWorker,
   setFacing,
@@ -33,7 +34,7 @@ import { getState, setState } from '../state/store';
 import { confirmUser } from '../ui/dialogs';
 import { aiHintsAllowed, createConsentMemory, type ConsentMemory } from './consent';
 import { keyboardWiggly, mirrorBones, newestTip, removeWithCount } from './edits';
-import { scaleHints } from './geometry';
+import { bonesAreStale, scaleHints } from './geometry';
 import { canRedo, canUndo, commit, createStack, redo, settle, undo, type UndoStack } from './rigHistory';
 import { decodePixels, drawnArtOf, encodePng, loadDrawingSource, type DrawingSource } from './source';
 import { facingWord, rigFacing } from './kindWords';
@@ -66,6 +67,8 @@ export interface BonesView {
   step: BonesStep | null;
   /** The bones on screen: a drag in progress, else the newest step's. */
   rig: RigData | null;
+  /** A star or bone is being dragged (or carried with the keyboard): the preview waits for the drop. */
+  dragging: boolean;
   /** The latest bind of the shown bones (the preview, Show pieces). */
   bound: BoundRig | null;
   /** finding: the first bones; refit: Magic bones or a new kind; asking: waiting for the AI helper. */
@@ -77,12 +80,14 @@ export interface BonesView {
   canRedo: boolean;
   /** The AI helper's hints were used in this visit. */
   aiHelped: boolean;
+  /** The drawing's box changed by more than a fifth since these bones were placed: offer Redo bones. */
+  stale: boolean;
   saveError: boolean;
 }
 
 const INITIAL: BonesView = {
-  phase: 'loading', name: '', worldId: null, castKey: null, artId: null, image: null, step: null, rig: null, bound: null,
-  busy: null, needsKind: false, failed: false, canUndo: false, canRedo: false, aiHelped: false, saveError: false,
+  phase: 'loading', name: '', worldId: null, castKey: null, artId: null, image: null, step: null, rig: null, dragging: false, bound: null,
+  busy: null, needsKind: false, failed: false, canUndo: false, canRedo: false, aiHelped: false, stale: false, saveError: false,
 };
 
 /** Re-bind this long after an edit lands (§7.11). */
@@ -160,6 +165,7 @@ export class BonesController {
     this.set({
       step: s?.present ?? null,
       rig: this.live ?? s?.present.rig ?? null,
+      dragging: this.live !== null,
       canUndo: !!s && canUndo(s),
       canRedo: !!s && canRedo(s),
       ...patch,
@@ -208,7 +214,7 @@ export class BonesController {
         });
         this.openedRig = JSON.stringify(record.rigData);
         this.savedStep = this.stack.present;
-        this.refresh();
+        this.refresh({ stale: bonesAreStale(artSizeOf(record.rigData), [source.w, source.h]) });
         this.scheduleBind(0);
       } else if (record.rig !== 'none') {
         await this.findBones(record.rig, record.facing);
@@ -312,6 +318,29 @@ export class BonesController {
     const prev = this.stack.present.rig;
     this.stack = redo(this.stack);
     this.changed(prev);
+  }
+
+  /**
+   * Redo bones (§7.9): the drawing changed a lot, so Amble places the bones again for it, keeping the
+   * stars the student placed by hand as hints.
+   */
+  async redoBones(): Promise<void> {
+    const src = this.source;
+    const current = this.stack?.present.rig;
+    if (!src || !current || this.view.busy) return;
+    this.set({ busy: 'refit', stale: false });
+    try {
+      const r = await rigWorker.autoRig(src.rig, { kind: current.kind, facing: current.facing, previous: current, lane: 'bones-fit' });
+      if (this.disposed) return;
+      this.set({ busy: null });
+      this.commitReply(r, r.rig.made === 'hand' ? 'hand' : 'auto');
+    } catch (err) {
+      if (isSuperseded(err)) return;
+      console.warn('Bones could not redo the bones:', err);
+      showToast(t('bones.statusFailed'), { kind: 'error' });
+    } finally {
+      this.set({ busy: null });
+    }
   }
 
   /** Mirror sides: false when there was nothing to copy. */
