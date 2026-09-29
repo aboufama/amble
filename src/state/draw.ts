@@ -10,10 +10,15 @@ export interface DrawSlice {
   dirty: boolean;
   tool: string;
   mode: 'bones' | 'free' | null;
+  /**
+   * Set before opening a drawing's Desk to draw one move as a flipbook ("Draw this move yourself?" in
+   * Bones): the kit's move name ('attack', 'walk'...). The Desk opens its Flipbook on that move, then clears it.
+   */
+  flipbookMove: string | null;
 }
 
 export function initialDraw(): DrawSlice {
-  return { artId: null, dirty: false, tool: 'ink', mode: null };
+  return { artId: null, dirty: false, tool: 'ink', mode: null, flipbookMove: null };
 }
 
 export function setDraw(patch: Partial<DrawSlice>): void {

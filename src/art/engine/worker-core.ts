@@ -78,7 +78,7 @@ export async function handle(req: WorkerRequest, cache: AnalysisCache): Promise<
         cache.set(req.key, a);
       }
       const result = fillRegion(a, req.x, req.y, req.params);
-      return { res: { type: 'fill', result, analyzeMs }, transfer: result ? [result.mask.buffer as ArrayBuffer, result.under.buffer as ArrayBuffer] : [] };
+      return { res: { type: 'fill', result, analyzeMs }, transfer: result ? [result.mask.buffer as ArrayBuffer, result.under.buffer as ArrayBuffer, result.over.buffer as ArrayBuffer] : [] };
     }
     case 'fillColor': {
       const x = Math.max(0, Math.min(req.W - 1, Math.floor(req.x)));
@@ -87,7 +87,7 @@ export async function handle(req: WorkerRequest, cache: AnalysisCache): Promise<
       const maxGap = Math.max(...req.params.gaps, req.params.fallbackGap);
       const a = analyze(wallsFromColor(req.rgba, req.W, req.H, sx, sy, req.tolerance), req.W, req.H, maxGap);
       const result = fillRegion(a, sx, sy, req.params);
-      return { res: { type: 'fill', result, analyzeMs: a.ms }, transfer: result ? [result.mask.buffer as ArrayBuffer, result.under.buffer as ArrayBuffer] : [] };
+      return { res: { type: 'fill', result, analyzeMs: a.ms }, transfer: result ? [result.mask.buffer as ArrayBuffer, result.under.buffer as ArrayBuffer, result.over.buffer as ArrayBuffer] : [] };
     }
     case 'pack': {
       const z = await deflate(req.data);

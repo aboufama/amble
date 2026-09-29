@@ -13,7 +13,8 @@ import type { Compositor, SelectionOverlay } from './compositor';
 import { copyIn } from './blend';
 import { type History, type PixelChange, type Step, tilesOf } from './history';
 import type { Affine6, LogTransform } from './log';
-import { makeLayer, uid } from './model';
+import { isPartRole, makeLayer, uid } from './model';
+import { pairOf } from './pairs';
 import { type Floating, IDENTITY, type SelectionTransform, apply, lift, matrixOf, mergeFloating, polygonMask, rectPolygon, stamp, stampInto, stampRect } from './select';
 import { addLayer } from './structure';
 import type { SelectionInfo } from './surface-types';
@@ -25,12 +26,19 @@ export type SelectScope = 'drawing' | 'layer';
 
 const DRAWING_ROLES: ReadonlySet<string> = new Set(['lines', 'colors', 'paint']);
 
-/** The layers a selection lifts, bottom to top (visible and unlocked ones only). */
+/**
+ * The layers a selection lifts, bottom to top (visible and unlocked ones only). A body part's pair (its
+ * colours and its lines) moves together and alone: moving an arm never drags the torso's ink with it.
+ */
 export function selectionLayers(board: Board, active: string, scope: SelectScope): string[] {
   const a = board.layer(active);
   if (!a) return [];
-  if (scope === 'layer' || !DRAWING_ROLES.has(a.role)) return a.visible && !a.locked ? [active] : [];
-  return board.layers.filter((l) => DRAWING_ROLES.has(l.role) && l.visible && !l.locked).map((l) => l.id);
+  const usable = (l: { visible: boolean; locked: boolean }): boolean => l.visible && !l.locked;
+  const pair = scope === 'layer' ? null : pairOf(board.layers, active);
+  if (pair) return board.layers.filter((l) => pair.includes(l.id) && usable(l)).map((l) => l.id);
+  if (scope === 'layer' || !DRAWING_ROLES.has(a.role)) return usable(a) ? [active] : [];
+  // The whole drawing: its lines, colours and paint, and any body parts drawn on the bones.
+  return board.layers.filter((l) => (DRAWING_ROLES.has(l.role) || isPartRole(l.role)) && usable(l)).map((l) => l.id);
 }
 
 export interface SelectionHost {

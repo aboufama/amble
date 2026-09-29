@@ -48,13 +48,21 @@ export interface LogFill {
   sample: FillSample;
   gaps: number[];
   fallbackGap: number;
+  /**
+   * 'lines' fills on a body part: the one lines layer that walled it (the part's pair). Absent: every
+   * visible lines layer, or the pair when the target is a part layer that has one (older logs, scripts).
+   */
+  lines?: string;
+  /** "Fill all of this colour": every pixel of the tapped colour on the layer, wherever it is. */
+  all?: true;
 }
 
 export interface LogShape {
   op: 'shape';
   layer: string;
   frame: string;
-  shape: 'line' | 'ellipse' | 'rect' | 'triangle';
+  /** polygon: its corners, closed (lasso fill); curve: a smooth curve through the points. */
+  shape: 'line' | 'ellipse' | 'rect' | 'triangle' | 'polygon' | 'curve';
   brush: BrushId;
   size: number;
   color: string;
@@ -62,6 +70,8 @@ export interface LogShape {
   points: [number, number][];
   filled: boolean;
   mirror: Symmetry | null;
+  /** Draw the outline with the brush (default true); false = only the fill (lasso fill, filled shapes). */
+  outline?: boolean;
 }
 
 export type Affine6 = [number, number, number, number, number, number];
@@ -128,7 +138,19 @@ export interface LogTrace {
   index: number;
 }
 
-export type LogOp = LogInit | LogStroke | LogFill | LogShape | LogTransform | LogLayer | LogFrame | LogTrace | { op: 'undo' } | { op: 'redo' };
+/**
+ * Layers copied onto other layers through a transform, replacing what was there ("Copy it to the other
+ * side": a body part's colours and lines mirrored onto the opposite part).
+ */
+export interface LogCopy {
+  op: 'copy';
+  frame: string;
+  /** [from, to] layer ids. */
+  pairs: [string, string][];
+  matrix: Affine6;
+}
+
+export type LogOp = LogInit | LogStroke | LogFill | LogShape | LogTransform | LogLayer | LogFrame | LogTrace | LogCopy | { op: 'undo' } | { op: 'redo' };
 
 // ---------------------------------------------------------------------------------------------- quantization
 

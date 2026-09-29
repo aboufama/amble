@@ -14,12 +14,13 @@ import { defaultFillParams, type FillParams, type FillResult } from './fill';
 import { PressureCalibrator } from './filters';
 import { grainFor } from './grain';
 import type { Guide } from './guide';
-import { History, type Step } from './history';
+import { History, type Step, tilesOf } from './history';
 import { InputController, type DownInfo, type InputSink, type PointerKind, type Sample } from './input';
-import { type FillSample, type LogOp, type LogStroke, SampleBuffer, logSamples } from './log';
+import { type FillSample, type LogOp, type LogShape, type LogStroke, SampleBuffer, logSamples } from './log';
 import { type ArtDoc, type ArtLayer, EXPORTED_ROLES, LIMITS, type LayerRole, isPartRole, makeLayer, uid } from './model';
 import { Painter, type StrokeSession, type StrokeSpec } from './paint';
-import { recognize, type PerfectKind } from './shape';
+import { recognize, simplifyPath, type PerfectKind } from './shape';
+import { ShapeTool } from './shape-tool';
 import { SelectionTool } from './selection-tool';
 import { type CelCache, type DocMeta, artDocToBoard, boardToArtDoc, newDocMeta, readLog } from './serialize';
 import { addFrame, addLayer, clearLayer, duplicateLayer, mergeDown, moveFrame, moveLayer, removeFrame, removeLayer, setFrameHold, setLayer, type Snapshotter } from './structure';
@@ -29,7 +30,8 @@ import { type ViewState, clampZoom, docToView, fitView, snapRotation, viewToDoc,
 import { type BoardCopy, type WorkerResponse } from './worker-core';
 import { EngineWorker, engineWorker } from './worker-client';
 import { isSoftwareGL } from './platform';
-import type { SelectionTransform } from './select';
+import { type SelectionTransform, apply as applyAffine, copyLayer } from './select';
+import { alphaBounds } from './blend';
 
 const DEFAULT_LAYERS: LayerRole[] = ['sketch', 'colors', 'lines'];
 const HOLD_MS = 450;
@@ -97,6 +99,13 @@ class Surface implements ArtSurface {
   private pending: Step[] = [];
   private suppressUpload: string | null = null;
   private lastStroke: { op: LogStroke; points: Point[] } | null = null;
+  /** Where the last brush stroke ended (Shift-click draws a straight line from there). */
+  private lastEnd: Point | null = null;
+  /** A finger held still at the start of a stroke picks a colour instead (long press). */
+  private pressTimer = 0;
+  private shapes!: ShapeTool;
+  /** The outline being drawn with Lasso fill, board px. */
+  private lassoFill: Point[] | null = null;
   private linesTimer = 0;
   private idleTimer = 0;
   private resizeObs: ResizeObserver | null = null;
@@ -127,9 +136,11 @@ class Surface implements ArtSurface {
       brushes: defaultBrushes(pixelArt),
       mirror: { x: null, y: null },
       holdToPerfect: !pixelArt,
-      fill: { gaps: 'auto', tolerance: 40 },
+      fill: { gaps: 'auto', tolerance: 40, all: false },
       pressure: { feel: 'normal', calibrate: true },
       select: { scope: 'drawing' },
+      shape: { kind: 'line', filled: false },
+      tapToInk: false,
     };
     if (doc) {
       this.ready = (async () => {
@@ -180,7 +191,7 @@ class Surface implements ArtSurface {
     this.host.style.overflow = 'hidden';
     this.host.style.background = this.o.workspace ?? '#e6e1d8';
     if (!this.host.hasAttribute('tabindex')) this.host.tabIndex = 0;
-    this.host.setAttribute('role', 'img');
+    this.host.setAttribute('role', this.o.a11y?.role ?? 'img');
     this.comp = new Compositor(this.host, board, this.frameId, this.layerId, { paper: this.o.paper ?? '#fffdf7', workspace: this.o.workspace ?? '#e6e1d8', desynchronized: this.o.desynchronized ?? !isSoftwareGL() });
     this.comp.forceRaster = !!this.o.perfProbe;
     this.sel = new SelectionTool({
@@ -201,8 +212,30 @@ class Surface implements ArtSurface {
         this.em.emit('change', { reason: 'selection' });
       },
     });
+    this.shapes = new ShapeTool({
+      comp: this.comp,
+      view: () => this.comp.view,
+      frame: () => this.frameId,
+      size: () => ({ W: board.W, H: board.H }),
+      style: () => {
+        const b = this.state.brushes.ink;
+        return { brush: board.pixelArt ? 'pixel' : 'ink', size: board.pixelArt ? this.state.brushes.pixel.size : b.size, opacity: b.opacity, color: this.state.color };
+      },
+      mirror: () => this.symmetry(),
+      outlineLayer: () => this.editableLayer()?.id ?? null,
+      fillLayer: () => this.fillTarget()?.layer.id ?? null,
+      commit: (op) => {
+        this.painter.paintShape(op);
+        this.record(op.filled ? 'Filled shape' : 'Shape', this.takePending(), op, op.layer);
+        this.comp.flush();
+      },
+      undo: () => this.undoStep(),
+      changed: () => this.comp.flush(),
+    });
+    this.shapes.setState(this.state.shape);
     this.input = new InputController(this.host, this.sink());
     this.input.rotate = this.o.rotate !== false;
+    this.input.tapToInk = this.state.tapToInk;
     this.layerSig = this.sigOf();
     board.listen((kind, frame, layer, rect) => this.onBoard(kind, frame, layer, rect));
     this.comp.reload();
@@ -292,7 +325,11 @@ class Surface implements ArtSurface {
 
   private describe(): void {
     const b = this.board;
-    this.host.setAttribute('aria-label', `${this.meta.name}, drawing, ${b.layers.length} layers, ${b.frames.length} ${b.frames.length === 1 ? 'page' : 'pages'}`);
+    const summary = `${this.meta.name}, drawing, ${b.layers.length} layers, ${b.frames.length} ${b.frames.length === 1 ? 'page' : 'pages'}`;
+    if (this.o.a11y) {
+      this.host.setAttribute('aria-label', this.o.a11y.label);
+      this.host.setAttribute('aria-description', summary);
+    } else this.host.setAttribute('aria-label', summary);
   }
 
   on<K extends keyof SurfaceEvents>(type: K, fn: (e: SurfaceEvents[K]) => void): () => void {
@@ -385,6 +422,7 @@ class Surface implements ArtSurface {
       undo: () => void this.undo(),
       redo: () => void this.redo(),
       key: (e, down) => (down ? this.key(e) : false),
+      isStroke: () => this.stroke !== null,
     };
   }
 
@@ -400,7 +438,7 @@ class Surface implements ArtSurface {
     this.hover(null, info.kind);
     switch (tool) {
       case 'fill':
-        void this.fillAt(s.x, s.y);
+        void this.fillAt(s.x, s.y, { all: this.state.fill.all });
         return true;
       case 'eyedropper':
         this.setColor(this.pickColor(s.x, s.y));
@@ -409,14 +447,102 @@ class Surface implements ArtSurface {
       case 'lasso':
       case 'select':
         return this.sel.down(s, tool);
+      case 'shape':
+        if (this.sel.active) this.sel.commit();
+        return this.shapes.down(s, !!info.shift);
+      case 'lassofill':
+        if (this.sel.active) this.sel.commit();
+        this.lassoFill = [{ x: s.x, y: s.y }];
+        this.showLasso(this.lassoFill);
+        return true;
       case 'pan':
         this.panDrag = { x: s.vx, y: s.vy, start: { ...this.comp.view } };
         this.comp.startGesture();
         return true;
       default:
         if (this.sel.active) this.sel.commit();
-        return this.beginStroke(s, info, tool);
+        if (info.shift && this.lastEnd && info.kind !== 'touch') {
+          this.straightStroke(this.lastEnd, s, info, tool);
+          return false;
+        }
+        if (!this.beginStroke(s, info, tool)) return false;
+        if (info.kind === 'touch') this.watchLongPress(s);
+        return true;
     }
+  }
+
+  /** Shift-click: a straight stroke from where the last one ended, with the current brush. */
+  private straightStroke(from: Point, to: Sample, info: DownInfo, tool: BrushId): void {
+    const n = Math.max(2, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 2));
+    const z = this.comp.view.zoom;
+    const at = (k: number): Sample => {
+      const x = from.x + ((to.x - from.x) * k) / n;
+      const y = from.y + ((to.y - from.y) * k) / n;
+      return { x, y, vx: to.vx + (x - to.x) * z, vy: to.vy + (y - to.y) * z, p: 0.5, t: to.t - (n - k) * 8 };
+    };
+    if (!this.beginStroke(at(0), { ...info, shift: false }, tool)) return;
+    for (let k = 1; k <= n; k++) this.addSample(at(k));
+    this.endStroke(at(n), false);
+  }
+
+  /** Long press (a finger held still ~0.6 s where a stroke starts): pick the colour there instead. */
+  private watchLongPress(s: Sample): void {
+    clearTimeout(this.pressTimer);
+    const st = this.stroke;
+    this.pressTimer = window.setTimeout(() => {
+      if (!st || this.stroke !== st || Math.hypot(st.lastVx - s.vx, st.lastVy - s.vy) > 6) return;
+      this.endStroke(null, true);
+      this.setColor(this.pickColor(s.x, s.y));
+      this.em.emit('color', { color: this.state.color });
+    }, 600);
+  }
+
+  /** Shows (or hides) the lasso fill's outline. */
+  private showLasso(pts: Point[] | null): void {
+    const c = this.comp;
+    const before = c.overlayViewBounds();
+    c.overlays.lasso = pts;
+    const after = c.overlayViewBounds();
+    for (const r of [before, after]) if (r) c.invalidateView(r.x0 - 2, r.y0 - 2, r.x1 + 2, r.y1 + 2);
+  }
+
+  /** Lasso fill: whatever was drawn around fills with the current colour, under the lines. */
+  private endLassoFill(): void {
+    const pts = this.lassoFill;
+    this.lassoFill = null;
+    this.showLasso(null);
+    this.comp.flush();
+    if (!pts || pts.length < 3) return;
+    let area = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      area += a.x * b.y - b.x * a.y;
+    }
+    if (Math.abs(area) / 2 < 16) {
+      this.em.emit('toast', { message: 'Draw all the way around what to fill', kind: 'fill' });
+      return;
+    }
+    const target = this.fillTarget();
+    if (!target) return;
+    const simple = simplifyPath(pts, 0.75);
+    const op: LogShape = {
+      op: 'shape',
+      layer: target.layer.id,
+      frame: this.frameId,
+      shape: 'polygon',
+      brush: 'ink',
+      size: 1,
+      color: this.state.color,
+      opacity: 1,
+      points: simple.map((p) => [Math.round(p.x * 8) / 8, Math.round(p.y * 8) / 8]),
+      filled: true,
+      mirror: this.symmetry(),
+      outline: false,
+    };
+    const box = this.painter.paintShape(op);
+    this.record('Lasso fill', this.takePending(), op, op.layer);
+    this.startPour(op.layer, box, pts[0].x, pts[0].y);
   }
 
   private move(samples: Sample[]): void {
@@ -429,6 +555,18 @@ class Surface implements ArtSurface {
       return;
     }
     const last = samples[samples.length - 1];
+    if (this.state.tool === 'shape') {
+      this.shapes.move(samples);
+      return;
+    }
+    if (this.lassoFill) {
+      for (const s of samples) {
+        const p = this.lassoFill[this.lassoFill.length - 1];
+        if (Math.hypot(s.x - p.x, s.y - p.y) * this.comp.view.zoom >= 1.5) this.lassoFill.push({ x: s.x, y: s.y });
+      }
+      this.showLasso(this.lassoFill);
+      return;
+    }
     if (this.panDrag && last) {
       const st = this.panDrag.start;
       this.moveView({ ...st, panX: st.panX + last.vx - this.panDrag.x, panY: st.panY + last.vy - this.panDrag.y });
@@ -445,6 +583,16 @@ class Surface implements ArtSurface {
     }
     if (this.stroke) {
       this.endStroke(s, cancelled);
+      return;
+    }
+    if (this.state.tool === 'shape') {
+      this.shapes.up(cancelled ? null : s);
+      return;
+    }
+    if (this.lassoFill) {
+      if (s && !cancelled) this.lassoFill.push({ x: s.x, y: s.y });
+      if (cancelled) this.lassoFill = null;
+      this.endLassoFill();
       return;
     }
     if (this.panDrag) {
@@ -498,10 +646,21 @@ class Surface implements ArtSurface {
   private hover(s: Sample | null, kind: PointerKind): void {
     const c = this.comp;
     if (!c) return;
+    if (this.state.tool === 'shape') this.shapes.hover(s);
     const old = c.overlays.cursor;
     const tool = this.state.tool;
     const brush = (BRUSH_IDS as readonly string[]).includes(tool) ? this.state.brushes[tool as BrushId] : null;
     const next = s && brush && kind !== 'touch' ? { x: s.vx, y: s.vy, r: (brush.size / 2) * c.view.zoom } : null;
+    if (!old && !next) return;
+    c.overlays.cursor = next;
+    for (const q of [old, next]) if (q) c.invalidateView(q.x - q.r - 3, q.y - q.r - 3, q.x + q.r + 3, q.y + q.r + 3);
+  }
+
+  previewBrush(id: BrushId | null): void {
+    const c = this.comp;
+    if (!c) return;
+    const old = c.overlays.cursor;
+    const next = id ? { x: c.cssW / 2, y: c.cssH / 2, r: Math.max(1, (this.state.brushes[id].size / 2) * c.view.zoom) } : null;
     if (!old && !next) return;
     c.overlays.cursor = next;
     for (const q of [old, next]) if (q) c.invalidateView(q.x - q.r - 3, q.y - q.r - 3, q.x + q.r + 3, q.y + q.r + 3);
@@ -613,6 +772,7 @@ class Surface implements ArtSurface {
     const st = this.stroke;
     if (!st) return;
     this.stroke = null;
+    clearTimeout(this.pressTimer);
     if (st.holdTimer) clearInterval(st.holdTimer);
     const layer = st.session.spec.layer;
     if (cancelled) {
@@ -638,6 +798,7 @@ class Surface implements ArtSurface {
     st.session.commit(this.previewBuf);
     this.suppressUpload = null;
     const { xyp, dts } = st.buf.take();
+    if (dts.length) this.lastEnd = { x: xyp[(dts.length - 1) * 3], y: xyp[(dts.length - 1) * 3 + 1] };
     const op: LogStroke = {
       op: 'stroke',
       layer,
@@ -679,10 +840,16 @@ class Surface implements ArtSurface {
 
   // ------------------------------------------------------------------------------------------ fill
 
-  /** Fill lands under the lines: tapping Fill on a lines layer paints on the colors layer below it. */
-  private fillTarget(): { layer: ArtLayer; sample: FillSample } | null {
+  /**
+   * Where a fill lands (§7.3, §7.4): under the lines. Tapping Fill on a plain lines layer paints on the
+   * colors layer below it (created if missing); on a part's lines layer, on that part's colours; a body part
+   * is walled by its own pair's lines, anything else by every visible lines layer.
+   */
+  private fillTarget(): { layer: ArtLayer; sample: FillSample; lines: string | null } | null {
     const board = this.board;
-    let layer = board.layer(this.layerId);
+    const plan = this.painter.fillPlan(this.frameId, this.layerId);
+    if (!plan) return null;
+    let layer = board.layer(plan.target);
     if (!layer) return null;
     if (layer.role === 'lines') {
       const i = board.layerIndex(layer.id);
@@ -701,13 +868,17 @@ class Surface implements ArtSurface {
       this.em.emit('toast', { message: 'This layer is hidden', kind: 'info' });
       return null;
     }
-    const lines = layer.role !== 'lines' && this.painter.hasVisibleLines(this.frameId);
-    const sample: FillSample = lines ? 'lines' : isPartRole(layer.role) ? 'layer' : 'all';
-    return { layer, sample };
+    if (layer.id === plan.target) return { layer, sample: plan.sample, lines: plan.lines };
+    const lines = this.painter.hasVisibleLines(this.frameId);
+    return { layer, sample: lines ? 'lines' : isPartRole(layer.role) ? 'layer' : 'all', lines: null };
   }
 
-  async fillAt(x: number, y: number): Promise<boolean> {
-    if (this.busy) return new Promise((resolve) => this.queued.push(() => void this.fillAt(x, y).then(resolve)));
+  /**
+   * Fills at a board point with the current colour: the gap-closing fill, or with `all`, every pixel of the
+   * tapped colour on the target layer ("Fill all of this colour").
+   */
+  async fillAt(x: number, y: number, o: { all?: boolean } = {}): Promise<boolean> {
+    if (this.busy) return new Promise((resolve) => this.queued.push(() => void this.fillAt(x, y, o).then(resolve)));
     if (this.stroke) return false;
     this.finishPour();
     if (this.sel.active) this.sel.commit();
@@ -715,13 +886,14 @@ class Surface implements ArtSurface {
     if (!(x >= 0 && y >= 0 && x < board.W && y < board.H)) return false;
     const target = this.fillTarget();
     if (!target) return false;
+    if (o.all) return this.fillAll(target.layer.id, x, y);
     // While the worker works, input is queued (not dropped) so the log stays in order.
     this.busy = true;
     const t0 = performance.now();
     try {
       const params = defaultFillParams(this.state.fill.gaps, board.W, board.H, board.pixelArt);
-      const req = { frame: this.frameId, layer: target.layer.id, x, y, tolerance: this.state.fill.tolerance, sample: target.sample, params };
-      const { result, analyzeMs } = await this.computeFill(req.sample, req.layer, x, y, req.tolerance, params);
+      const req = { frame: this.frameId, layer: target.layer.id, x, y, tolerance: this.state.fill.tolerance, sample: target.sample, params, lines: target.lines };
+      const { result, analyzeMs } = await this.computeFill(req.sample, req.layer, x, y, req.tolerance, params, req.lines);
       if (!result) {
         this.em.emit('toast', { message: 'Tap inside a shape to fill it', kind: 'fill' });
         return false;
@@ -730,7 +902,7 @@ class Surface implements ArtSurface {
       this.suppressUpload = req.layer;
       this.painter.applyFill(req, result, this.rgb());
       this.suppressUpload = null;
-      this.record('Fill', this.takePending(), { op: 'fill', layer: req.layer, frame: req.frame, x, y, color: this.state.color, tolerance: req.tolerance, sample: req.sample, gaps: params.gaps, fallbackGap: params.fallbackGap }, req.layer);
+      this.record('Fill', this.takePending(), { op: 'fill', layer: req.layer, frame: req.frame, x, y, color: this.state.color, tolerance: req.tolerance, sample: req.sample, gaps: params.gaps, fallbackGap: params.fallbackGap, ...(req.lines ? { lines: req.lines } : {}) }, req.layer);
       this.startPour(req.layer, result.box, x, y);
       this.st.fills.push({ ms: performance.now() - t0, analyzeMs, gap: result.gap, background: result.background, split: result.split, area: result.area, mode: req.sample });
       if (this.st.fills.length > 50) this.st.fills.shift();
@@ -748,13 +920,27 @@ class Surface implements ArtSurface {
     }
   }
 
-  private async computeFill(sample: FillSample, layer: string, x: number, y: number, tolerance: number, params: FillParams): Promise<{ result: FillResult | null; analyzeMs: number }> {
+  /** "Fill all of this colour" on `layer` at a board point (one undo step). */
+  private fillAll(layer: string, x: number, y: number): boolean {
+    const tolerance = this.board.pixelArt ? 0 : this.state.fill.tolerance;
+    const box = this.painter.recolorAll(this.frameId, layer, x, y, tolerance, this.rgb());
+    if (!box) {
+      this.em.emit('toast', { message: 'Tap a colour to change all of it', kind: 'fill' });
+      return false;
+    }
+    const params = defaultFillParams(this.state.fill.gaps, this.board.W, this.board.H, this.board.pixelArt);
+    this.record('Fill', this.takePending(), { op: 'fill', layer, frame: this.frameId, x, y, color: this.state.color, tolerance, sample: 'layer', gaps: params.gaps, fallbackGap: params.fallbackGap, all: true }, layer);
+    this.comp.flush();
+    return true;
+  }
+
+  private async computeFill(sample: FillSample, layer: string, x: number, y: number, tolerance: number, params: FillParams, only: string | null = null): Promise<{ result: FillResult | null; analyzeMs: number }> {
     const board = this.board;
     const maxGap = Math.max(...params.gaps, params.fallbackGap);
     if (sample === 'lines') {
-      const key = this.painter.linesKey(this.frameId, maxGap);
+      const key = this.painter.linesKey(this.frameId, maxGap, only);
       const send = async (withWalls: boolean): Promise<WorkerResponse> => {
-        const walls = withWalls ? this.painter.linesWalls(this.frameId) : undefined;
+        const walls = withWalls ? this.painter.linesWalls(this.frameId, only) : undefined;
         const res = await this.worker.call({ type: 'fillLines', key, x, y, params, walls, W: board.W, H: board.H, maxGap }, walls ? [walls.buffer as ArrayBuffer] : []);
         this.worker.known.add(key);
         return res;
@@ -774,17 +960,21 @@ class Surface implements ArtSurface {
     return { result: res.result, analyzeMs: res.analyzeMs };
   }
 
-  /** Precomputes the lines analysis in the worker ~300 ms after the lines change, so a tap only pays for its region. */
+  /**
+   * Precomputes the lines analysis in the worker ~300 ms after the lines change, so a tap only pays for its
+   * region: the active part's own lines when drawing on the bones, every lines layer otherwise.
+   */
   private scheduleLinesAnalysis(): void {
     clearTimeout(this.linesTimer);
     this.linesTimer = window.setTimeout(() => {
       if (!this.b || this.destroyed || !this.worker.threaded) return;
-      if (!this.painter.hasVisibleLines(this.frameId)) return;
+      const only = this.painter.fillPlan(this.frameId, this.layerId)?.lines ?? null;
+      if (!this.painter.hasVisibleLines(this.frameId, only)) return;
       const p = defaultFillParams(this.state.fill.gaps, this.board.W, this.board.H, this.board.pixelArt);
       const maxGap = Math.max(...p.gaps, p.fallbackGap);
-      const key = this.painter.linesKey(this.frameId, maxGap);
+      const key = this.painter.linesKey(this.frameId, maxGap, only);
       if (this.worker.known.has(key)) return;
-      const walls = this.painter.linesWalls(this.frameId);
+      const walls = this.painter.linesWalls(this.frameId, only);
       this.worker.known.add(key);
       this.worker.call({ type: 'analyze', key, W: this.board.W, H: this.board.H, maxGap, walls }, [walls.buffer as ArrayBuffer]).catch(() => this.worker.known.delete(key));
     }, 300);
@@ -899,8 +1089,96 @@ class Surface implements ArtSurface {
   setTool(tool: ToolId): void {
     if (tool === this.state.tool) return;
     if (this.b && this.sel.active && tool !== 'lasso' && tool !== 'select') this.sel.commit();
+    if (this.b) {
+      this.input.endTapInk(null);
+      this.shapes.end();
+    }
     this.state.tool = tool;
     this.emitTool();
+  }
+
+  setShape(o: Partial<ToolState['shape']>): void {
+    this.state.shape = { kind: o.kind ?? this.state.shape.kind, filled: o.filled ?? this.state.shape.filled };
+    if (this.b) this.shapes.setState(this.state.shape);
+    this.emitTool();
+  }
+
+  setTapToInk(on: boolean): void {
+    this.state.tapToInk = on;
+    if (this.b) {
+      this.input.tapToInk = on;
+      if (!on) this.input.endTapInk(null);
+    }
+    this.emitTool();
+  }
+
+  /**
+   * Draws a shape with the current colour and Ink size (keyboard shapes, scripted drawing): an outline on the
+   * active layer, or a filled shape on the fill layer (under the lines). One undo step.
+   */
+  drawShape(o: { shape: LogShape['shape']; points: Array<[number, number]>; filled?: boolean }): boolean {
+    const filled = !!o.filled && o.shape !== 'line';
+    const layer = filled ? this.fillTarget()?.layer : this.editableLayer();
+    if (!layer) return false;
+    const b = this.state.brushes.ink;
+    const op: LogShape = {
+      op: 'shape',
+      layer: layer.id,
+      frame: this.frameId,
+      shape: o.shape,
+      brush: this.board.pixelArt ? 'pixel' : 'ink',
+      size: this.board.pixelArt ? this.state.brushes.pixel.size : b.size,
+      color: this.state.color,
+      opacity: b.opacity,
+      points: o.points.map(([x, y]) => [x, y]),
+      filled,
+      mirror: this.symmetry(),
+      ...(filled ? { outline: false } : {}),
+    };
+    const box = this.painter.paintShape(op);
+    if (isEmpty(box)) return false;
+    this.record(filled ? 'Filled shape' : 'Shape', this.takePending(), op, op.layer);
+    this.comp.flush();
+    return true;
+  }
+
+  /**
+   * Copies layers onto other layers through a board transform, replacing them (one undo step): "Copy it to
+   * the other side" mirrors a body part's colours and lines onto the opposite part's pair.
+   */
+  copyLayers(pairs: Array<[string, string]>, matrix: [number, number, number, number, number, number]): boolean {
+    const b = this.board;
+    const ok = pairs.filter(([from, to]) => b.layer(from) && b.layer(to) && from !== to);
+    if (!ok.length) return false;
+    if (this.sel.active) this.sel.commit();
+    // Undo keeps the tiles each copy can touch: what the target held and where the copy lands.
+    const steps: Step[] = [];
+    for (const [from, to] of ok) {
+      const r = emptyRect();
+      const old = b.pixels(this.frameId, to);
+      const had = old ? alphaBounds(old, b.W, b.H) : null;
+      if (had) unionInto(r, had);
+      const src = b.pixels(this.frameId, from);
+      const box = src ? alphaBounds(src, b.W, b.H) : null;
+      if (box)
+        for (const [x, y] of [
+          [box.x0, box.y0],
+          [box.x1, box.y0],
+          [box.x0, box.y1],
+          [box.x1, box.y1],
+        ]) {
+          const q = applyAffine(matrix, x, y);
+          unionInto(r, { x0: Math.floor(q.x) - 2, y0: Math.floor(q.y) - 2, x1: Math.ceil(q.x) + 2, y1: Math.ceil(q.y) + 2 });
+        }
+      const clip: Rect = { x0: Math.max(0, r.x0), y0: Math.max(0, r.y0), x1: Math.min(b.W, r.x1), y1: Math.min(b.H, r.y1) };
+      if (!isEmpty(clip)) steps.push({ pixels: this.hist.snapshot(this.frameId, to, tilesOf(clip, b.W, b.H)) });
+    }
+    let any = false;
+    for (const [from, to] of ok) if (copyLayer(b, this.frameId, from, to, matrix)) any = true;
+    if (!any) return false;
+    this.record('Copy to the other side', steps, { op: 'copy', frame: this.frameId, pairs: ok.map(([f, t]) => [f, t]), matrix }, ok[0][1]);
+    this.comp.flush();
+    return true;
   }
 
   setBrush(patch: Partial<BrushSettings>, brush?: BrushId): void {
@@ -932,7 +1210,7 @@ class Surface implements ArtSurface {
   }
 
   setFill(o: Partial<ToolState['fill']>): void {
-    this.state.fill = { gaps: o.gaps ?? this.state.fill.gaps, tolerance: Math.max(0, Math.min(255, o.tolerance ?? this.state.fill.tolerance)) };
+    this.state.fill = { gaps: o.gaps ?? this.state.fill.gaps, tolerance: Math.max(0, Math.min(255, o.tolerance ?? this.state.fill.tolerance)), all: o.all ?? this.state.fill.all };
     this.emitTool();
   }
 
@@ -957,6 +1235,15 @@ class Surface implements ArtSurface {
 
   async undo(): Promise<boolean> {
     if (this.busy) return new Promise((resolve) => this.queued.push(() => void this.undo().then(resolve)));
+    if (!this.b || this.stroke) return false;
+    // The shape being edited is the step an undo takes back: it stops being editable.
+    this.shapes.end();
+    return this.undoStep();
+  }
+
+  /** One undo step (the Shapes tool uses this to take a shape back while its handles move). */
+  private async undoStep(): Promise<boolean> {
+    if (this.busy) return new Promise((resolve) => this.queued.push(() => void this.undoStep().then(resolve)));
     if (!this.b || this.stroke) return false;
     this.finishPour();
     if (this.sel.floating) {
@@ -1018,6 +1305,8 @@ class Surface implements ArtSurface {
     this.layerId = id;
     this.comp.setActive(id);
     this.em.emit('layers', this.layers());
+    // A body part fills against its own lines: warm that analysis up for the new part.
+    this.scheduleLinesAnalysis();
   }
 
   private layerOp(label: string, step: ReturnType<typeof addLayer> | null, op: Extract<LogOp, { op: 'layer' }>): void {
@@ -1025,14 +1314,14 @@ class Surface implements ArtSurface {
     this.record(label, [{ struct: step }], op, op.id);
   }
 
-  addLayer(role: LayerRole, o: { name?: string; index?: number; blend?: ArtLayer['blend'] } = {}): string | null {
+  addLayer(role: LayerRole, o: { name?: string; index?: number; blend?: ArtLayer['blend']; id?: string } = {}): string | null {
     const b = this.board;
     const limit = isPartRole(role) ? LIMITS.maxLayersWithParts : b.maxLayers();
     if (b.layers.length >= limit) {
       this.em.emit('toast', { message: 'That is a lot of layers! Merge some to add more.', kind: 'limit' });
       return null;
     }
-    const layer = makeLayer(uid('l'), role, o.name);
+    const layer = makeLayer(o.id && !b.layer(o.id) ? o.id : uid('l'), role, o.name);
     if (o.blend) layer.blend = o.blend;
     const index = o.index ?? b.layerIndex(this.layerId) + 1;
     this.layerOp('Add layer', addLayer(b, layer, index), { op: 'layer', action: 'add', id: layer.id, layer: { ...layer }, index });
@@ -1097,7 +1386,7 @@ class Surface implements ArtSurface {
     if (steps.length) this.record('Clear layer', steps, { op: 'layer', action: 'clear', id: lid, ...(allFrames ? {} : { frame: this.frameId }) }, lid);
   }
 
-  async importTrace(image: ImageBitmap | HTMLImageElement | HTMLCanvasElement | Blob): Promise<string | null> {
+  async importTrace(image: ImageBitmap | HTMLImageElement | HTMLCanvasElement | OffscreenCanvas | Blob, o: { role?: 'trace' | 'lines'; name?: string } = {}): Promise<string | null> {
     const b = this.board;
     if (b.layers.length >= b.maxLayers()) {
       this.em.emit('toast', { message: 'That is a lot of layers! Merge some to add more.', kind: 'limit' });
@@ -1116,9 +1405,12 @@ class Surface implements ArtSurface {
     if (!ctx) return null;
     ctx.drawImage(src, Math.round((b.W - w) / 2), Math.round((b.H - h) / 2), w, h);
     const photo = new Uint8ClampedArray(ctx.getImageData(0, 0, b.W, b.H).data);
-    const layer = makeLayer(uid('l'), 'trace', 'Photo to trace');
+    // A photo to trace goes at the bottom; a photo's lines (paper removed on the device) go on top.
+    const lines = o.role === 'lines';
+    const layer = makeLayer(uid('l'), lines ? 'lines' : 'trace', o.name ?? (lines ? 'Photo lines' : 'Photo to trace'));
     const frame = this.frameId;
-    const add = addLayer(b, layer, 0);
+    const index = lines ? b.layers.length : 0;
+    const add = addLayer(b, layer, index);
     const put = (): void => {
       b.setPixels(frame, layer.id, photo.slice());
       b.changed(frame, layer.id, null);
@@ -1133,7 +1425,8 @@ class Surface implements ArtSurface {
       },
       bytes: photo.length,
     };
-    this.record('Add photo', [{ struct: step }], { op: 'trace', layer: { ...layer }, index: 0 }, layer.id);
+    this.record('Add photo', [{ struct: step }], { op: 'trace', layer: { ...layer }, index }, layer.id);
+    if (lines) this.setActiveLayer(layer.id);
     return layer.id;
   }
 
@@ -1431,6 +1724,7 @@ class Surface implements ArtSurface {
       void this.redo();
       return true;
     }
+    if (this.state.tool === 'shape' && !mod && this.shapes.key(e)) return true;
     if (this.sel.floating) {
       if (e.key === 'Enter') return this.commitSelection(), true;
       if (e.key === 'Escape') return this.cancelSelection(), true;
@@ -1446,7 +1740,7 @@ class Surface implements ArtSurface {
       }
     }
     if (mod || e.altKey || this.o.keyboard === false) return false;
-    const tools: Record<string, ToolId> = { b: 'ink', p: 'pencil', m: 'marker', c: 'crayon', a: 'airbrush', e: 'eraser', g: 'fill', i: 'eyedropper', l: 'lasso', v: 'select', h: 'pan' };
+    const tools: Record<string, ToolId> = { b: 'ink', p: 'pencil', m: 'marker', c: 'crayon', a: 'airbrush', e: 'eraser', g: 'fill', i: 'eyedropper', l: 'lasso', v: 'select', h: 'pan', u: 'shape' };
     if (tools[k]) {
       this.setTool(this.board.pixelArt && k === 'b' ? 'pixel' : tools[k]);
       return true;

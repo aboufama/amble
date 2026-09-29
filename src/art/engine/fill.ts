@@ -6,14 +6,16 @@
  *                  border, O(N) with a bucket queue). A region is sealed by gap-closing radius G iff
  *                  escape(seed) <= G: no disc wider than the escape level can get out.
  * fillRegion(seed): pick the smallest G that seals the seed from the border; then, if closing a larger gap
- *                  splits the tapped region from a sizeable neighbour (two inner regions touching through a
- *                  gap, like a face inside a helmet), use that smallest splitting G instead. Flood the pixels
- *                  farther than G from walls, let the seed's core and its neighbouring cores grow back up to
- *                  G px competitively (a sealed gap splits at its midline instead of bulging), expand under
- *                  the lines, and soften the edge.
+ *                  splits the tapped region from a sizeable neighbour at a real gap (two inner regions
+ *                  touching through an opening with a line end at it, like a face inside a helmet), cut
+ *                  the neighbour off along the gap's midline (fill-split.ts); a narrow neck of one closed
+ *                  shape never splits it. Flood the pixels farther than G from walls, let the seed's core
+ *                  and its neighbouring cores grow back up to G px competitively (a sealed gap splits at its
+ *                  midline instead of bulging), expand under the lines, and soften the edge.
  * All pure TypeScript on typed arrays: it runs in the fill worker, on the main thread, or in Node.
  */
 import type { Rect } from './geom';
+import { type Flood, splitAtGaps } from './fill-split';
 
 /** Distances are stored in thirds of a pixel (chamfer 3-4). */
 const UNIT = 3;
@@ -57,6 +59,12 @@ export interface FillResult {
   mask: Uint8Array;
   /** Pixels in the mask that are walls (the part tucked under the lines), 1 per pixel, same layout. */
   under: Uint8Array;
+  /**
+   * Open pixels of the region along its walls, within the reach of a neighbouring fill's spill (its
+   * expansion under a shared line, its soft edge, its grow-back through a gap), same layout. A fill poured
+   * behind existing paint still paints over these, so an earlier fill's spill never stays on top.
+   */
+  over: Uint8Array;
   seedMoved: number;
   ms: number;
 }
@@ -330,15 +338,6 @@ function reseed(a: Analysis, s: number, thr: number, rad: number, within: Uint8A
   return -1;
 }
 
-interface Flood {
-  area: number;
-  maxDist: number;
-  x0: number;
-  y0: number;
-  x1: number;
-  y1: number;
-}
-
 /** Scanline flood of pixels with dist > thr from `seed`, writing `mark` into `lab` (0 = unvisited). */
 function floodCore(a: Analysis, seed: number, thr: number, lab: Uint8Array, mark: number, stack: IntStack): Flood {
   const { W, H, dist } = a;
@@ -380,10 +379,11 @@ function floodCore(a: Analysis, seed: number, thr: number, lab: Uint8Array, mark
 
 /**
  * The smallest-enclosing-region check. `region` (value 1) is the seed's core at the chosen gap. For each
- * larger gap, re-flood the seed's core; if some other part of the old region is now a separate, sizeable
- * core, the tap was in one of two regions touching through a gap: use that gap.
+ * larger gap, re-flood the seed's core; when some other part of the old region is now a separate, sizeable
+ * core, the region is split among its cores at that gap and the parts beyond REAL gaps (a line end at the
+ * opening) are cut off (`splitAtGaps`). Narrow necks of one closed shape never split it.
  */
-function innerSplit(a: Analysis, seed: number, chosen: number, region: Uint8Array, reg: Flood, gaps: number[], stack: IntStack): { gap: number; seed: number; lab: Uint8Array; flood: Flood } | null {
+function innerSplit(a: Analysis, seed: number, chosen: number, region: Uint8Array, reg: Flood, gaps: number[], stack: IntStack): { gap: number; lab: Uint8Array; flood: Flood } | null {
   const { W, dist } = a;
   const lab = new Uint8Array(a.W * a.H);
   for (const G of gaps) {
@@ -391,7 +391,7 @@ function innerSplit(a: Analysis, seed: number, chosen: number, region: Uint8Arra
     const thr = UNIT * G;
     const s = reseed(a, seed, thr, G * 2 + 4, region);
     if (s < 0) continue;
-    const mine = floodCore(a, s, thr, lab, 1, stack);
+    floodCore(a, s, thr, lab, 1, stack);
     let found = false;
     for (let y = reg.y0; y <= reg.y1 && !found; y++) {
       for (let x = reg.x0; x <= reg.x1; x++) {
@@ -404,12 +404,10 @@ function innerSplit(a: Analysis, seed: number, chosen: number, region: Uint8Arra
         }
       }
     }
-    if (found) {
-      // Keep only the seed's component as the new region.
-      for (let y = reg.y0; y <= reg.y1; y++) for (let x = reg.x0; x <= reg.x1; x++) if (lab[y * W + x] === 2) lab[y * W + x] = 0;
-      return { gap: G, seed: s, lab, flood: mine };
-    }
     for (let y = reg.y0; y <= reg.y1; y++) lab.fill(0, y * W + reg.x0, y * W + reg.x1 + 1);
+    if (!found) continue;
+    const cut = splitAtGaps(a, region, reg, s, G);
+    if (cut) return { gap: G, lab: cut.lab, flood: cut.flood };
   }
   return null;
 }
@@ -452,12 +450,13 @@ export function fillRegion(a: Analysis, sx: number, sy: number, prm: FillParams)
   if (core.x1 < 0 || (chosen === 0 && core.maxDist < 4 && prm.expand > 0)) return null; // nothing, or a sliver along a line
 
   let split = false;
+  let reported = chosen;
   if (!background && prm.innerCheck) {
     const r = innerSplit(a, seed, chosen, region, core, gaps, stack);
     if (r) {
+      // The seed's side of the old region, cut along the gaps' midlines; it still grows back at `chosen`.
       split = true;
-      chosen = r.gap;
-      seed = r.seed;
+      reported = r.gap;
       region = r.lab;
       core = r.flood;
     }
@@ -587,6 +586,9 @@ export function fillRegion(a: Analysis, sx: number, sy: number, prm: FillParams)
   const bh = Y1 - Y0 + 1;
   const mask = new Uint8Array(bw * bh);
   const under = new Uint8Array(bw * bh);
+  const over = new Uint8Array(bw * bh);
+  // How far past a shared line a neighbouring fill reaches: its expansion, soft edge and grow-back.
+  const rim = UNIT * Math.max(prm.expand + 2, reported);
   let area = 0;
   if (prm.soften) {
     // The board's own edge is not an edge of the fill: neighbours beyond it count as the pixel itself.
@@ -606,8 +608,10 @@ export function fillRegion(a: Analysis, sx: number, sy: number, prm: FillParams)
         const down = y < Y1 ? hs[ho + bw + x] : y === H - 1 ? hs[ho + x] : 0;
         const sum = hs[ho + x] + up + down;
         if (!sum) continue;
+        const i = y * W + x;
         mask[ho + x] = Math.round((sum / 9) * 255);
-        if (wall[y * W + x]) under[ho + x] = 1;
+        if (wall[i]) under[ho + x] = 1;
+        else if (region[i] === 1 && dist[i] <= rim) over[ho + x] = 1;
         area++;
       }
     }
@@ -619,17 +623,19 @@ export function fillRegion(a: Analysis, sx: number, sy: number, prm: FillParams)
         const k = (y - Y0) * bw + (x - X0);
         mask[k] = 255;
         if (wall[i]) under[k] = 1;
+        else if (region[i] === 1 && dist[i] <= rim) over[k] = 1;
         area++;
       }
   }
   return {
-    gap: chosen,
+    gap: reported,
     background,
     split,
     area,
     box: { x0: X0, y0: Y0, x1: X1 + 1, y1: Y1 + 1 },
     mask,
     under,
+    over,
     seedMoved: Math.hypot((s0 % W) - sx, ((s0 / W) | 0) - sy),
     ms: now() - t0,
   };

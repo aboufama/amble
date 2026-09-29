@@ -33,6 +33,8 @@ export interface Guide {
   onTop?: boolean;
   /** Line and label colour (default a soft pencil blue). */
   color?: string;
+  /** A picture drawn over the drawing, whatever `onTop` says (the bones to draw on, their labels). */
+  above?: GuideItem | null;
 }
 
 const DEFAULT_COLOR = '#6f8fd8';

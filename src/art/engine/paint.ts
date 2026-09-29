@@ -11,7 +11,8 @@ import type { Board } from './board';
 import { type Analysis, type FillParams, type FillResult, analyze, fillRegion, uniformSeed, wallsFromColor } from './fill';
 import { grainFor } from './grain';
 import { type LogFill, type LogShape, type LogStroke, sampleTimes } from './log';
-import { EXPORTED_ROLES } from './model';
+import { type ArtLayer, EXPORTED_ROLES, isPartRole } from './model';
+import { pairedLines, pairedPart } from './pairs';
 import { PixelStroke } from './pixel';
 import { type Target, fillPolygon } from './raster';
 import { type PerfectShape, recognize, shapeOutline } from './shape';
@@ -214,6 +215,8 @@ export interface FillRequest {
   tolerance: number;
   sample: LogFill['sample'];
   params: FillParams;
+  /** 'lines' fills: the one lines layer that walls it (a part's pair); otherwise every visible lines layer. */
+  lines?: string | null;
 }
 
 export class Painter {
@@ -259,12 +262,19 @@ export class Painter {
 
   // ------------------------------------------------------------------------------------------ fill
 
-  /** Walls for "fill under the lines": the visible lines layers of the frame (alpha > ~30%). */
-  linesWalls(frame: string): Uint8Array {
+  /** The visible lines layers that wall a fill: `only` (a part's own lines), or all of them. */
+  private wallLayers(only?: string | null): ArtLayer[] {
+    return this.board.layers.filter((l) => l.role === 'lines' && l.visible && (!only || l.id === only));
+  }
+
+  /**
+   * Walls for "fill under the lines": the visible lines layers of the frame (alpha > ~30%), or just `only`,
+   * the lines layer paired with a part (a fill on a body part is walled by that part's own ink).
+   */
+  linesWalls(frame: string, only?: string | null): Uint8Array {
     const { W, H } = this.board;
     const wall = new Uint8Array(W * H);
-    for (const l of this.board.layers) {
-      if (l.role !== 'lines' || !l.visible) continue;
+    for (const l of this.wallLayers(only)) {
       const d = this.board.pixels(frame, l.id);
       if (!d) continue;
       for (let i = 0, j = 3; i < wall.length; i++, j += 4) if (d[j] > 80) wall[i] = 1;
@@ -272,17 +282,17 @@ export class Painter {
     return wall;
   }
 
-  /** Cache key of the lines analysis (changes whenever a visible lines layer changes). */
-  linesKey(frame: string, maxGap: number): string {
-    const parts = this.board.layers.filter((l) => l.role === 'lines' && l.visible).map((l) => `${l.id}:${this.board.version(frame, l.id)}`);
-    return `${frame}|${maxGap}|${parts.join(',')}`;
+  /** Cache key of the lines analysis (changes whenever a wall layer changes). */
+  linesKey(frame: string, maxGap: number, only?: string | null): string {
+    const parts = this.wallLayers(only).map((l) => `${l.id}:${this.board.version(frame, l.id)}`);
+    return `${frame}|${maxGap}|${only ? 'only:' : ''}${parts.join(',')}`;
   }
 
   /** The lines analysis, cached until the lines change. */
-  linesAnalysis(frame: string, maxGap: number): Analysis {
-    const key = this.linesKey(frame, maxGap);
+  linesAnalysis(frame: string, maxGap: number, only?: string | null): Analysis {
+    const key = this.linesKey(frame, maxGap, only);
     if (this.linesCache?.key === key) return this.linesCache.a;
-    const a = analyze(this.linesWalls(frame), this.board.W, this.board.H, maxGap);
+    const a = analyze(this.linesWalls(frame, only), this.board.W, this.board.H, maxGap);
     this.linesCache = { key, a };
     return a;
   }
@@ -292,8 +302,38 @@ export class Painter {
     this.linesCache = { key, a };
   }
 
-  hasVisibleLines(frame: string): boolean {
-    return this.board.layers.some((l) => l.role === 'lines' && l.visible && this.board.hasCel(frame, l.id));
+  hasVisibleLines(frame: string, only?: string | null): boolean {
+    return this.wallLayers(only).some((l) => this.board.hasCel(frame, l.id));
+  }
+
+  /** The lines layer that walls a fill on part layer `layer` (its pair), or null. */
+  partWalls(layer: string): string | null {
+    const l = this.board.layer(layer);
+    return l && isPartRole(l.role) ? pairedLines(this.board.layers, layer) : null;
+  }
+
+  /**
+   * Where a fill on `layer` lands and what walls it: a fill tapped on a part's lines layer paints that
+   * part's colours; a part layer is walled by its pair's lines; anything else by every lines layer. Returns
+   * the target, the sample mode and the wall layer (null = all lines). The Colours layer for a plain lines
+   * layer is the surface's business (it may create one).
+   */
+  fillPlan(frame: string, layer: string): { target: string; sample: LogFill['sample']; lines: string | null } | null {
+    const layers = this.board.layers;
+    const l = this.board.layer(layer);
+    if (!l) return null;
+    let target = l.id;
+    let lines: string | null = null;
+    if (l.role === 'lines') {
+      const part = pairedPart(layers, l.id);
+      if (part) {
+        target = part;
+        lines = l.id;
+      }
+    } else if (isPartRole(l.role)) lines = pairedLines(layers, l.id);
+    const t = this.board.layer(target)!;
+    const walls = t.role !== 'lines' && (lines ? this.hasVisibleLines(frame, lines) : this.hasVisibleLines(frame));
+    return { target, sample: walls ? 'lines' : isPartRole(t.role) ? 'layer' : 'all', lines: walls ? lines : null };
   }
 
   /** Visible layers (never trace) composited on transparency: what a colour fill sees. */
@@ -315,7 +355,7 @@ export class Painter {
     const y = Math.floor(req.y);
     if (x < 0 || y < 0 || x >= W || y >= H) return null;
     const maxGap = Math.max(...req.params.gaps, req.params.fallbackGap);
-    if (req.sample === 'lines') return fillRegion(this.linesAnalysis(req.frame, maxGap), x, y, req.params);
+    if (req.sample === 'lines') return fillRegion(this.linesAnalysis(req.frame, maxGap, req.lines), x, y, req.params);
     const rgba = this.composite(req.frame, req.sample === 'layer' ? req.layer : undefined);
     const tol = this.board.pixelArt ? 0 : req.tolerance;
     const [sx, sy] = this.board.pixelArt ? [x, y] : uniformSeed(rgba, W, H, x, y, tol);
@@ -334,7 +374,8 @@ export class Painter {
     const target = board.layer(req.layer);
     const sameLayer = req.sample !== 'lines' || target?.role === 'lines';
     this.hooks.before?.(req.frame, req.layer, tilesOf(res.box, board.W, board.H));
-    blendMask(data, board.W, res.box, res.mask, sameLayer ? res.under : null, rgb, behind);
+    // Walls on another layer: the rim along them is where a neighbouring fill spilled; paint over it.
+    blendMask(data, board.W, res.box, res.mask, sameLayer ? res.under : null, rgb, behind, sameLayer ? null : res.over);
     board.changed(req.frame, req.layer, res.box);
     return res.box;
   }
@@ -342,6 +383,10 @@ export class Painter {
   /** Replays a logged fill; returns the result or null when there was nothing to fill. */
   paintLogFill(op: LogFill): FillResult | null {
     if (!this.board.layer(op.layer)) return null;
+    if (op.all) {
+      this.recolorAll(op.frame, op.layer, op.x, op.y, op.tolerance, parseColor(op.color) ?? [0, 0, 0]);
+      return null;
+    }
     const req: FillRequest = {
       frame: op.frame,
       layer: op.layer,
@@ -350,10 +395,54 @@ export class Painter {
       tolerance: op.tolerance,
       sample: op.sample,
       params: { gaps: op.gaps, fallbackGap: op.fallbackGap, expand: this.board.pixelArt ? 0 : 2, soften: !this.board.pixelArt, innerCheck: !this.board.pixelArt },
+      lines: op.sample === 'lines' ? (op.lines ?? this.partWalls(op.layer)) : null,
     };
     const res = this.computeFill(req);
     if (res) this.applyFill(req, res, parseColor(op.color) ?? [0, 0, 0]);
     return res;
+  }
+
+  /**
+   * "Fill all of this colour": every pixel of the layer within `tolerance` of the tapped pixel's colour
+   * takes the new colour (its alpha kept), wherever it is. Returns the changed box, or null when the tap is
+   * on an empty pixel or nothing would change.
+   */
+  recolorAll(frame: string, layer: string, x: number, y: number, tolerance: number, rgb: RGB): Rect | null {
+    const board = this.board;
+    const { W, H } = board;
+    const data = board.pixels(frame, layer);
+    const tx = Math.floor(x);
+    const ty = Math.floor(y);
+    if (!data || tx < 0 || ty < 0 || tx >= W || ty >= H) return null;
+    const t = (ty * W + tx) * 4;
+    if (data[t + 3] < 8) return null;
+    const [r0, g0, b0] = [data[t], data[t + 1], data[t + 2]];
+    const [R, G, B] = rgb;
+    const hit = (j: number): boolean => data[j + 3] >= 8 && Math.max(Math.abs(data[j] - r0), Math.abs(data[j + 1] - g0), Math.abs(data[j + 2] - b0)) <= tolerance && (data[j] !== R || data[j + 1] !== G || data[j + 2] !== B);
+    let x0 = W;
+    let y0 = H;
+    let x1 = -1;
+    let y1 = -1;
+    for (let yy = 0; yy < H; yy++)
+      for (let xx = 0, j = yy * W * 4; xx < W; xx++, j += 4)
+        if (hit(j)) {
+          if (xx < x0) x0 = xx;
+          if (xx > x1) x1 = xx;
+          if (yy < y0) y0 = yy;
+          y1 = yy;
+        }
+    if (x1 < 0) return null;
+    const box: Rect = { x0, y0, x1: x1 + 1, y1: y1 + 1 };
+    this.hooks.before?.(frame, layer, tilesOf(box, W, H));
+    for (let yy = box.y0; yy < box.y1; yy++)
+      for (let xx = box.x0, j = (yy * W + box.x0) * 4; xx < box.x1; xx++, j += 4)
+        if (hit(j)) {
+          data[j] = R;
+          data[j + 1] = G;
+          data[j + 2] = B;
+        }
+    board.changed(frame, layer, box);
+    return box;
   }
 
   // ------------------------------------------------------------------------------------------ shapes
@@ -378,12 +467,20 @@ export class Painter {
     };
     const first = o.outline[0];
     const s = this.begin(spec, first.x, first.y, 1, 0);
-    const t = this.shapeTarget(s, o.outline, spec);
+    const t = op.outline === false ? this.emptyTarget(s) : this.shapeTarget(s, o.outline, spec);
     if (op.filled && o.polygon) {
       for (const m of symmetryMaps(op.mirror)) fillPolygon(t, o.polygon.map((p) => ({ x: m[0] * p.x + m[2] * p.y + m[4], y: m[1] * p.x + m[3] * p.y + m[5] })), 1);
       if (board.pixelArt) hardenCoverage(t);
     }
     return s.commit();
+  }
+
+  /** A session's coverage target with nothing drawn yet (a shape that is only filled). */
+  private emptyTarget(s: StrokeSession): Target {
+    if (s.isPixel) return this.pixelStroke().prefix;
+    const e = this.strokeEngine();
+    e.lockEmpty();
+    return e.prefix;
   }
 
   private shapeTarget(s: StrokeSession, outline: Point[], spec: StrokeSpec): Target {

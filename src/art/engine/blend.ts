@@ -12,6 +12,17 @@ export type BlendMode = 'over' | 'multiply' | 'erase' | 'atop';
 export type LayerBlend = 'normal' | 'multiply';
 
 /**
+ * How much a marker of this colour paints like plain paint instead of multiplying (0..1). Multiply makes
+ * layered dark markers deepen like real ones, but a white or pale marker would vanish on colour (white times
+ * anything is that thing), so highlights lean to plain paint: 0 up to a lightness of 0.6, 1 from 0.95.
+ */
+export function markerLightness(rgb: RGB): number {
+  const L = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+  const t = Math.min(1, Math.max(0, (L - 0.6) / 0.35));
+  return t * t * (3 - 2 * t);
+}
+
+/**
  * Blends a solid colour with coverage max(prefix, tail) * opacity into `src` over rect r, writing to `out`
  * (which may be `src` itself). Buffers are W pixels wide; coverage buffers are one float per pixel.
  */
@@ -28,6 +39,7 @@ export function blendCoverage(
 ): void {
   const [R, G, B] = rgb;
   const copy = out !== src;
+  const light = mode === 'multiply' ? markerLightness(rgb) : 0;
   for (let y = r.y0; y < r.y1; y++) {
     let i = y * W + r.x0;
     let j = i * 4;
@@ -75,15 +87,26 @@ export function blendCoverage(
         out[j + 2] = B * a + src[j + 2] * (1 - a);
         out[j + 3] = src[j + 3];
       } else {
-        // multiply (W3C separable blend, then source-over)
+        // multiply (W3C separable blend, then source-over); light markers lean to plain paint (below)
         const ao = a + ad * (1 - a);
         const s1 = a * (1 - ad);
         const s2 = a * ad;
         const s3 = (1 - a) * ad;
         const inv = 1 / ao;
-        out[j] = (s1 * R + (s2 * R * src[j]) / 255 + s3 * src[j]) * inv;
-        out[j + 1] = (s1 * G + (s2 * G * src[j + 1]) / 255 + s3 * src[j + 1]) * inv;
-        out[j + 2] = (s1 * B + (s2 * B * src[j + 2]) / 255 + s3 * src[j + 2]) * inv;
+        const r0 = (s1 * R + (s2 * R * src[j]) / 255 + s3 * src[j]) * inv;
+        const g0 = (s1 * G + (s2 * G * src[j + 1]) / 255 + s3 * src[j + 1]) * inv;
+        const b0 = (s1 * B + (s2 * B * src[j + 2]) / 255 + s3 * src[j + 2]) * inv;
+        if (light > 0) {
+          const ks = a * inv;
+          const kd = ad * (1 - a) * inv;
+          out[j] = r0 + (R * ks + src[j] * kd - r0) * light;
+          out[j + 1] = g0 + (G * ks + src[j + 1] * kd - g0) * light;
+          out[j + 2] = b0 + (B * ks + src[j + 2] * kd - b0) * light;
+        } else {
+          out[j] = r0;
+          out[j + 1] = g0;
+          out[j + 2] = b0;
+        }
         out[j + 3] = ao * 255;
       }
     }
@@ -191,11 +214,12 @@ export function alphaBounds(src: Uint8ClampedArray, W: number, H: number, thresh
 
 /**
  * Paints a solid colour through a fill mask (coverage 0..255 over `box`, row-major) into dst (W wide).
- * `behind`: the whole fill goes under existing pixels (filling empty space never covers what is there).
- * Otherwise pixels flagged in `under` go behind (the fill tucked under same-layer ink) and the rest are
- * painted over (recolouring).
+ * `behind`: the fill goes under existing pixels (filling empty space never covers a detail drawn there),
+ * except the pixels flagged in `over`: the region's rim along its walls, where only a neighbouring fill's
+ * spill can be, is painted over so that spill never stays on top. Pixels flagged in `under` always go
+ * behind (the fill tucked under same-layer ink). Without `behind`, the rest is painted over (recolouring).
  */
-export function blendMask(dst: Uint8ClampedArray, W: number, box: Rect, mask: Uint8Array, under: Uint8Array | null, rgb: RGB, behind: boolean): void {
+export function blendMask(dst: Uint8ClampedArray, W: number, box: Rect, mask: Uint8Array, under: Uint8Array | null, rgb: RGB, behind: boolean, over: Uint8Array | null = null): void {
   const [R, G, B] = rgb;
   const bw = box.x1 - box.x0;
   for (let y = box.y0; y < box.y1; y++) {
@@ -206,7 +230,7 @@ export function blendMask(dst: Uint8ClampedArray, W: number, box: Rect, mask: Ui
       if (m === 0) continue;
       const a = m / 255;
       const ad = dst[j + 3] / 255;
-      if (behind || (under !== null && under[k] === 1)) {
+      if ((under !== null && under[k] === 1) || (behind && !(over !== null && over[k] === 1))) {
         // destination-over: existing pixels stay on top.
         const ao = ad + a * (1 - ad);
         if (ao <= 0) continue;

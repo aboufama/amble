@@ -10,9 +10,15 @@ import type { SelectionTransform } from './select';
 import type { SelectScope } from './selection-tool';
 import type { ViewState } from './view';
 
-export type ToolId = BrushId | 'fill' | 'eyedropper' | 'lasso' | 'select' | 'pan';
+/**
+ * Tools. lasso/select: lasso and box selection; shape: the Shapes tool (Line, Box, Circle, Curve);
+ * lassofill: draw around an area and it fills.
+ */
+export type ToolId = BrushId | 'fill' | 'eyedropper' | 'lasso' | 'select' | 'pan' | 'shape' | 'lassofill';
 
-export const TOOL_IDS: readonly ToolId[] = ['ink', 'pencil', 'marker', 'crayon', 'airbrush', 'eraser', 'pixel', 'fill', 'eyedropper', 'lasso', 'select', 'pan'];
+export const TOOL_IDS: readonly ToolId[] = ['ink', 'pencil', 'marker', 'crayon', 'airbrush', 'eraser', 'pixel', 'fill', 'eyedropper', 'lasso', 'select', 'pan', 'shape', 'lassofill'];
+
+export type ShapeKindTool = 'line' | 'rect' | 'ellipse' | 'curve';
 
 export interface BrushSettings {
   /** Diameter, board px. */
@@ -35,10 +41,15 @@ export interface ToolState {
   /** Mirror axes in board px (null = off). */
   mirror: { x: number | null; y: number | null };
   holdToPerfect: boolean;
-  fill: { gaps: GapsMode; tolerance: number };
+  /** all: a Fill tap changes every pixel of the tapped colour ("Fill all of this colour"). */
+  fill: { gaps: GapsMode; tolerance: number; all: boolean };
   pressure: { feel: PressureFeel; calibrate: boolean };
   /** What lasso and box selections lift: the drawing (lines, colors and paint together) or the active layer. */
   select: { scope: SelectScope };
+  /** The Shapes tool: which shape, and filled or outline. */
+  shape: { kind: ShapeKindTool; filled: boolean };
+  /** Tap to ink: click to start a stroke, move, click to end it (trackpads, motor accessibility). */
+  tapToInk: boolean;
 }
 
 export interface LayerInfo {
@@ -137,6 +148,11 @@ export interface ArtSurfaceOptions {
   historyBytes?: number;
   /** Measurement only: force the canvas raster inside each render so timings include it (slow). */
   perfProbe?: boolean;
+  /**
+   * The host's accessible role and name (default: role `img`, named by the drawing's summary). With a
+   * label, the summary ("Moon King, drawing, 3 layers, 1 page") goes to `aria-description` instead.
+   */
+  a11y?: { role: string; label: string };
 }
 
 export interface PerfStats {
@@ -175,8 +191,24 @@ export interface ArtSurface {
   setColor(color: string): void;
   /** Mirror: true = through the board's centre, a number = at that board coordinate, false/null = off. */
   setMirror(m: { x?: boolean | number | null; y?: boolean | number | null } | null): void;
+  /** Shows a brush's size as a ring in the middle of the view (while its Size slider moves); null hides it. */
+  previewBrush(id: BrushId | null): void;
   setHoldToPerfect(on: boolean): void;
   setFill(o: Partial<ToolState['fill']>): void;
+  /** The Shapes tool's shape and fill (the shape being edited is finished first). */
+  setShape(o: Partial<ToolState['shape']>): void;
+  /** Tap to ink on or off. */
+  setTapToInk(on: boolean): void;
+  /**
+   * Draws a shape with the current colour and Ink size: an outline on the active layer, or a filled shape
+   * (no outline) on the fill layer under the lines. Returns false when nothing was drawn.
+   */
+  drawShape(o: { shape: 'line' | 'ellipse' | 'rect' | 'triangle' | 'polygon' | 'curve'; points: Array<[number, number]>; filled?: boolean }): boolean;
+  /**
+   * Copies layers onto others through a board transform `[a, b, c, d, e, f]` (x' = a x + c y + e), replacing
+   * them: "Copy it to the other side" (one undo step). Returns false when there was nothing to copy.
+   */
+  copyLayers(pairs: Array<[string, string]>, matrix: [number, number, number, number, number, number]): boolean;
   /** Selection scope: 'drawing' (default) lifts lines, colors and paint layers together; 'layer' just the active one. */
   setSelect(o: Partial<ToolState['select']>): void;
   setPressure(o: Partial<ToolState['pressure']>): void;
@@ -184,8 +216,11 @@ export interface ArtSurface {
   makeLastStrokePerfect(): Promise<PerfectKind | null>;
   /** Picks the displayed colour at a board point ('#rrggbb'). */
   pickColor(x: number, y: number): string;
-  /** Fills at a board point with the current colour and fill settings (like a tap with Fill). */
-  fillAt(x: number, y: number): Promise<boolean>;
+  /**
+   * Fills at a board point with the current colour and fill settings (like a tap with Fill). `all`: every
+   * pixel of the tapped colour on the fill's layer instead ("Fill all of this colour").
+   */
+  fillAt(x: number, y: number, o?: { all?: boolean }): Promise<boolean>;
   /** Resolves when no fill is being worked out and the screen shows the final pixels. */
   settled(): Promise<void>;
 
@@ -198,8 +233,11 @@ export interface ArtSurface {
   layers(): LayerInfo[];
   activeLayer(): string;
   setActiveLayer(id: string): void;
-  /** Adds a layer (default above the active one); returns its id, or null at the layer limit. */
-  addLayer(role: LayerRole, o?: { name?: string; index?: number; blend?: LayerBlendMode }): string | null;
+  /**
+   * Adds a layer (default above the active one) and makes it active; returns its id, or null at the layer
+   * limit. `id` names it (a part's lines layer is `<part id>-lines`) unless that id is taken.
+   */
+  addLayer(role: LayerRole, o?: { name?: string; index?: number; blend?: LayerBlendMode; id?: string }): string | null;
   removeLayer(id: string): void;
   moveLayer(id: string, index: number): void;
   duplicateLayer(id: string): string | null;
@@ -207,8 +245,11 @@ export interface ArtSurface {
   setLayer(id: string, patch: Partial<Pick<LayerInfo, 'name' | 'visible' | 'locked' | 'opacity' | 'blend' | 'alphaLock'>>): void;
   /** Clears a layer in the active frame (or all frames). */
   clearLayer(id?: string, allFrames?: boolean): Promise<void>;
-  /** Places a photo on a new trace layer (30%, locked, never exported, never sent anywhere). */
-  importTrace(image: ImageBitmap | HTMLImageElement | HTMLCanvasElement | Blob): Promise<string | null>;
+  /**
+   * Places a photo on a new trace layer (30%, locked, never exported, never sent anywhere), or with role
+   * 'lines' on a new Lines layer on top ("Use a photo of my drawing", the paper already taken out).
+   */
+  importTrace(image: ImageBitmap | HTMLImageElement | HTMLCanvasElement | OffscreenCanvas | Blob, o?: { role?: 'trace' | 'lines'; name?: string }): Promise<string | null>;
 
   // Frames (flipbook)
   frames(): FrameInfo[];

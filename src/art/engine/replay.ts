@@ -10,7 +10,7 @@ import { PROBE_GAPS } from './fill';
 import { type LogFill, type LogInit, type LogOp, type LogStroke, effectiveOps, qdt, qp, qxy } from './log';
 import { type ArtDoc, type ArtLayer, type ArtOp, type ArtScript, ART_KINDS, LIMITS, RIG_KINDS, isLayerRole, makeLayer, uid } from './model';
 import { Painter } from './paint';
-import { type Floating, lift, mergeFloating, polygonMask, stamp } from './select';
+import { type Floating, copyLayer, lift, mergeFloating, polygonMask, stamp } from './select';
 import { addFrame, addLayer, clearLayer, duplicateLayer, mergeDown, moveFrame, moveLayer, noSnapshot, removeFrame, removeLayer, setFrameHold, setLayer } from './structure';
 import { boardToArtDoc } from './serialize';
 
@@ -239,6 +239,10 @@ export async function applyOp(painter: Painter, op: LogOp): Promise<void> {
       return;
     case 'trace':
       if (!board.layer(op.layer.id)) addLayer(board, op.layer, op.index);
+      return;
+    case 'copy':
+      await board.ensureFrame(op.frame);
+      for (const [from, to] of op.pairs) if (board.layer(from) && board.layer(to)) copyLayer(board, op.frame, from, to, op.matrix);
       return;
     case 'undo':
     case 'redo':

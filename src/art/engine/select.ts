@@ -3,9 +3,9 @@
  * (move, scale, rotate, flip) and stamp them back with bilinear filtering in premultiplied space (nearest
  * for pixel art). The same stamp renders the live preview and the commit.
  */
-import { type Point, type Rect, emptyRect, isEmpty, toPixels } from './geom';
+import { type Point, type Rect, emptyRect, isEmpty, toPixels, union } from './geom';
 import { fillPolygon, makeTarget } from './raster';
-import { compositeLayer } from './blend';
+import { alphaBounds, compositeLayer } from './blend';
 import type { Board } from './board';
 import type { Affine6 } from './log';
 
@@ -294,4 +294,29 @@ export function stamp(board: Board, frame: string, layer: string, fl: Floating, 
   const r = stampInto(data, board.W, board.H, fl, m, board.pixelArt, null);
   if (!isEmpty(r)) board.changed(frame, layer, r);
   return r;
+}
+
+/**
+ * Copies layer `from` onto layer `to` through `m`, replacing what `to` held (the source is untouched).
+ * Returns the rect of `to` that changed, or null when both were empty. The caller snapshots `to` first.
+ */
+export function copyLayer(board: Board, frame: string, from: string, to: string, m: Affine6): Rect | null {
+  const W = board.W;
+  const src = board.pixels(frame, from);
+  const box = src ? alphaBounds(src, W, board.H) : null;
+  const dst = board.pixels(frame, to);
+  const old = dst ? alphaBounds(dst, W, board.H) : null;
+  if (!box && !old) return null;
+  const out = board.pixels(frame, to, true);
+  out.fill(0);
+  let changed: Rect = old ? { ...old } : { x0: W, y0: board.H, x1: 0, y1: 0 };
+  if (src && box) {
+    const bw = box.x1 - box.x0;
+    const rgba = new Uint8ClampedArray(bw * (box.y1 - box.y0) * 4);
+    for (let y = box.y0; y < box.y1; y++) rgba.set(src.subarray((y * W + box.x0) * 4, (y * W + box.x1) * 4), (y - box.y0) * bw * 4);
+    const fl: Floating = { frame, layer: from, polygon: rectPolygon(box.x0, box.y0, box.x1, box.y1), box, rgba };
+    changed = union(changed, stampInto(out, W, board.H, fl, m, board.pixelArt, null));
+  }
+  board.changed(frame, to, changed);
+  return changed;
 }
