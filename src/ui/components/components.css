@@ -311,7 +311,8 @@
   padding: 0 12px;
 }
 
-.segmented__option:hover {
+/* Only the options on the dark well light up; the chosen one is on paper and keeps its ink. */
+.segmented__option:hover:not(.segmented__option--on) {
   color: var(--text);
 }
 
