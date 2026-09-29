@@ -253,13 +253,18 @@ export function FirstPage() {
 
   // ------------------------------------------------------------ Bring it to life
   const canBring = phase === 'drawing' && ready && inked >= INK_MIN;
+  /**
+   * Why the button still waits: nothing drawn yet, or a drawing too small or thin to wake (a thin stick
+   * figure). The ink share is counted a moment after each stroke, so a stroke to undo counts as drawn too.
+   */
+  const notEnoughInk = (drawn: boolean) => showToast(t(drawn ? 'home.moreInk' : 'home.noInkYet'));
 
   const bring = async () => {
     const s = surfaceRef.current;
     const host = boardRef.current;
     if (!s || !host || phase !== 'drawing') return;
     if (s.inked() < INK_MIN) {
-      showToast(t('home.noInkYet'));
+      notEnoughInk(s.inked() > 0);
       return;
     }
     setPhase('rigging');
@@ -512,7 +517,7 @@ export function FirstPage() {
                   className={cx('first__life-button', canBring && 'first__life-button--ready')}
                   aria-disabled={!canBring || undefined}
                   busy={phase === 'rigging'}
-                  onClick={() => (canBring ? void bring() : phase === 'drawing' && showToast(t('home.noInkYet')))}
+                  onClick={() => (canBring ? void bring() : phase === 'drawing' && notEnoughInk(inked > 0 || canUndo))}
                   data-testid="bring-to-life"
                 >
                   {phase === 'rigging' ? t('home.findingBones') : t('home.bringItToLife')}

@@ -25,6 +25,7 @@ export const home = {
   cameAlive: '{name} came alive!',
   trustFirst: 'No account. Your drawings stay on this Chromebook until you save them to your Drive.',
   noInkYet: 'Draw something first!',
+  moreInk: 'Keep going! Make it a bit bigger or bolder.',
   lifeFailed: 'Amble could not wake your drawing this time. Try again?',
 
   pens: 'Pens',

@@ -123,6 +123,27 @@ test('"Or play one first." opens a starter, and leaving it untouched keeps the F
   await expect.poll(() => page.evaluate(async () => (await (window as unknown as { __amble: { store: { worlds: { list(): Promise<unknown[]> } } } }).__amble.store.worlds.list()).length)).toBe(0);
 });
 
+test('the waiting Bring it to life says what it needs: a drawing, then a bigger or bolder one', async ({ page }) => {
+  await openAmble(page, { clean: true });
+  const board = page.getByTestId('first-board');
+  await expect(board.locator('canvas').first()).toBeVisible();
+  const bring = page.getByTestId('bring-to-life');
+  const toasts = page.getByTestId('toasts');
+  // Nothing drawn yet.
+  await bring.click({ force: true });
+  await expect(toasts).toContainText('Draw something first!');
+  // A small thin line: something is drawn, but not enough to wake.
+  await page.getByTestId('pen-size').click();
+  await page.getByTestId('pen-size').click();
+  await expect(page.getByTestId('pen-size')).toHaveAccessibleName(/small/i);
+  const box = (await board.boundingBox())!;
+  await stroke(page, board, humanStroke(line(box.width * 0.4, box.height * 0.5, box.width * 0.55, box.height * 0.5)), { pointer: 'pen' });
+  await expect(page.getByTestId('pen-undo')).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(bring).toHaveAttribute('aria-disabled', 'true');
+  await bring.click({ force: true });
+  await expect(toasts).toContainText('Keep going! Make it a bit bigger or bolder.');
+});
+
 test('a pen on the paper while it slides in lands it at once, so the line stays under the pen', async ({ page }) => {
   await openAmble(page, { clean: true });
   const first = page.getByTestId('screen-first');
