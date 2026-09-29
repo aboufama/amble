@@ -89,7 +89,7 @@ export function StorageSection() {
   };
 
   const wipe = async () => {
-    const typed = await askUser({ title: t('school.setDeleteTitle'), body: t('school.setDeleteBody'), label: t('school.setDeleteType'), ok: t('school.setDeleteOk'), maxLength: 20 });
+    const typed = await askUser({ title: t('school.setDeleteTitle'), body: t('school.setDeleteBody'), label: t('school.setDeleteType'), ok: t('school.setDeleteOk'), maxLength: 20, danger: true });
     if (typed === null) return;
     if (typed.trim().toUpperCase() !== 'DELETE') {
       showToast(t('school.setDeleteNot'));

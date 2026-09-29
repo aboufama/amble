@@ -32,7 +32,7 @@ function Entry({ entry }: { entry: DialogEntry }) {
               {entry.cancel}
             </Button>
           )}
-          <Button ref={okRef} variant={entry.kind === 'confirm' && entry.danger ? 'danger' : 'lantern'} onClick={ok}>
+          <Button ref={okRef} variant={entry.kind !== 'alert' && entry.danger ? 'danger' : 'lantern'} onClick={ok}>
             {entry.ok}
           </Button>
         </>

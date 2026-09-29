@@ -50,6 +50,8 @@ test('Delete everything empties Amble after typing DELETE', async ({ page }) => 
   await page.getByTestId('delete-everything').click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Type DELETE').fill('delete');
+  // A destructive button, not the lantern (§3.1: --warn is for destructive actions).
+  await expect(dialog.getByRole('button', { name: 'Delete everything' })).toHaveClass(/\bbtn--danger\b/);
   await dialog.getByRole('button', { name: 'Delete everything' }).click();
   await page.waitForURL(/#\/$/);
   await waitForApp(page);
