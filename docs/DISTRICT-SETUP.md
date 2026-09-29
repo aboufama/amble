@@ -293,7 +293,7 @@ This is the format the Teacher desk writes (`ClassLinkV1` in `src/model/types.ts
 | `v` | Always `1` |
 | `cls` | The class name students see (up to 40 characters). Required. |
 | `district` | Your district's name, or `null`. The Join card shows "Class link from ..." |
-| `ai` | `null` for a class without AI, or: `baseUrl` (https), `model` (required), optionally `fastModel`, `visionModel` and `caps` (a comma list, section 4.1), and `auth`, either `{"type": "class-code", "header": "X-Amble-Class", "code": "..."}` or `{"type": "none"}` |
+| `ai` | `null` for a class without AI, or: `baseUrl` (https), `model` (required), optionally `fastModel`, `visionModel` and `caps` (a comma list, section 4.1), and `auth`, either `{"type": "class-code", "header": "X-Amble-Class", "code": "..."}` or `{"type": "none"}`. It may also carry the policy fields of the flat format below: `visionAllowed`, `moderation`, `lock`, `safetyIdentifier` and `requestsMayBeReviewed`. |
 | `mode` | `on`, `explain` (the AI helper only explains code) or `off`. Default `on`. |
 | `level` | `elementary`, `middle` or `high`. Default `middle`. |
 | `exp` | The last day the link works (`YYYY-MM-DD`, through the end of that day), or `null` for no end date |
@@ -313,14 +313,14 @@ Amble also reads the flat format that its AI core defines (`src/ai/config/classL
 https://<amble>/#class=<base64url({ v: 1, baseUrl, model, fastModel, visionModel, visionAllowed, code, header, name, district, policy })>
 ```
 
-Here `policy` can hold `enabled`, `ageBand`, `caps`, `expires`, `moderation`, `lock`, `safetyIdentifier` and `requestsMayBeReviewed`. When a student joins, though, Amble converts the link to the Teacher desk's format and stores that, so only the address, the models, `caps`, `code` and `header`, `name`, `district`, `enabled`, `ageBand` and `expires` take effect. `visionAllowed`, `moderation`, `lock`, `safetyIdentifier` and `requestsMayBeReviewed` are dropped. Set those in managed configuration or your build instead.
+Here `policy` can hold `enabled`, `mode` (`on`, `explain` or `off`), `ageBand`, `caps`, `expires`, `moderation`, `lock`, `safetyIdentifier` and `requestsMayBeReviewed`. When a student joins, Amble converts the link to the Teacher desk's format and back without losing a field, so every one of them takes effect. A few things change on the way: `name` is cut to 40 characters and `district` to 60, a link with no `name` shows its `district` as the class name, and a `header` without a `code` is dropped (it has nothing to carry). A missing `mode` means `on`, and a missing `ageBand` means `middle`, as in the Teacher desk's format.
 
 Rules for every class link:
 
 - Only https addresses work (http only for `localhost`).
 - A link never carries a provider key. Amble won't make or open a link with a value that looks like one, or (in the flat format) with a field named like a credential. The student sees "This link doesn't look safe, so Amble ignored it."
 - An expired link shows "This class link has expired. Ask your teacher for a new one. Amble still works without it."
-- The Teacher desk's live test always sends the class code in `X-Amble-Class`. If you configure another header name, the teacher's test won't match what your proxy expects, even though students' requests use your header. Keep the default unless you have a reason not to.
+- The class code travels in `X-Amble-Class`, or in the header your build (`VITE_AMBLE_AI_AUTH_HEADER`) or managed configuration (`auth.header`) names. The Teacher desk writes that header into its links and sends its live test with it.
 
 ### 4.5 Manual settings (home use)
 

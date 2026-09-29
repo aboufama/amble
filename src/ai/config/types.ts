@@ -137,5 +137,11 @@ export interface AiConfig {
    * and in school mode, which never takes a key.
    */
   userKeyFor: string | null;
+  /**
+   * The header the endpoint takes a class code in, when its source names one: a build's
+   * `VITE_AMBLE_AI_AUTH_HEADER` with `class-code`, a managed configuration's `auth.header`, or a class link's.
+   * The Teacher desk writes it into class links and uses it for the live test.
+   */
+  classCodeHeader: string | null;
   problems: string[];
 }

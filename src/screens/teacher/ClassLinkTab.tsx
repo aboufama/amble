@@ -10,7 +10,7 @@ import { useServices } from '../../app/services';
 import { t } from '../../i18n';
 import type { AiMode, ClassLinkV1, Level } from '../../model/types';
 import { fitsInLink } from '../../school/assignment';
-import { capLink, classLinkHref, DEFAULT_CLASS_HEADER, DEFAULT_MODEL, payloadFits, shortHref } from '../../school/classLink';
+import { capLink, classCodeHeaderFor, classLinkHref, DEFAULT_MODEL, payloadFits, shortHref } from '../../school/classLink';
 import { qrScannable } from '../../school/qr';
 import { setReadyTick, updateTeacherData, useReadyTicks, useTeacherData, type ReadyItem } from '../../school/teacherData';
 import { formatSeconds, hostOf, testEndpoint, type TestResult } from '../../school/testConnection';
@@ -84,6 +84,8 @@ export function ClassLinkTab() {
   const address = districtEndpoint?.baseUrl ?? draft.ai?.baseUrl ?? '';
   const code = draft.ai?.auth.type === 'class-code' ? draft.ai.auth.code : '';
   const model = districtEndpoint?.model || draft.ai?.model || DEFAULT_MODEL;
+  // The header the district's AI address takes the class code in (the default X-Amble-Class otherwise).
+  const header = classCodeHeaderFor(districtEndpoint);
   const caps = draft.ai?.caps ?? '';
   const [addressText, setAddressText] = useState(address);
   const [test, setTest] = useState<{ state: 'idle' | 'testing' } | { state: 'done'; result: TestResult }>({ state: 'idle' });
@@ -108,7 +110,7 @@ export function ClassLinkTab() {
               baseUrl,
               model: modelNow || DEFAULT_MODEL,
               ...(capsNow ? { caps: capsNow } : {}),
-              auth: codeNow ? { type: 'class-code', header: DEFAULT_CLASS_HEADER, code: codeNow } : { type: 'none' },
+              auth: codeNow ? { type: 'class-code', header, code: codeNow } : { type: 'none' },
             }
           : null;
       }
@@ -118,10 +120,10 @@ export function ClassLinkTab() {
 
   // The link students get: the district's address and model when it set them, capped to its ceiling.
   const link: ClassLinkV1 = useMemo(() => {
-    const aiPart = address && validAddress(address) ? { baseUrl: address.replace(/\/+$/, ''), model, ...(caps && !districtEndpoint ? { caps } : {}), auth: code ? ({ type: 'class-code', header: DEFAULT_CLASS_HEADER, code } as const) : ({ type: 'none' } as const) } : null;
+    const aiPart = address && validAddress(address) ? { baseUrl: address.replace(/\/+$/, ''), model, ...(caps && !districtEndpoint ? { caps } : {}), auth: code ? ({ type: 'class-code', header, code } as const) : ({ type: 'none' } as const) } : null;
     const asg = draft.asg ? (teacher.assignments.find((a) => a.id === draft.asg?.id) ?? draft.asg) : null;
     return capLink({ ...draft, district: districtName ?? draft.district, ai: aiPart, asg }, { levelMax, aiAllowed: !districtAiOff });
-  }, [address, model, caps, code, draft, teacher.assignments, districtName, levelMax, districtAiOff, districtEndpoint]);
+  }, [address, model, caps, code, header, draft, teacher.assignments, districtName, levelMax, districtAiOff, districtEndpoint]);
 
   const nameMissing = !link.cls.trim();
   const addressBad = addressText.trim() !== '' && !validAddress(addressText.trim());
@@ -144,7 +146,7 @@ export function ClassLinkTab() {
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setTest({ state: 'testing' });
-      void testEndpoint({ baseUrl: address, model, auth: { type: 'class-code', header: DEFAULT_CLASS_HEADER, code } }, { signal: controller.signal, store }).then((result) => {
+      void testEndpoint({ baseUrl: address, model, auth: { type: 'class-code', header, code } }, { signal: controller.signal, store }).then((result) => {
         if (!controller.signal.aborted) setTest({ state: 'done', result });
       });
     }, 700);
@@ -152,7 +154,7 @@ export function ClassLinkTab() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [address, code, model, store]);
+  }, [address, code, header, model, store]);
 
   const copy = async () => {
     if (!ready) return;

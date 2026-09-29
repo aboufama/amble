@@ -7,11 +7,20 @@
  * Reading is the AI barrel's `parseClassLink` (https only, nothing key-like, expiry); this file makes links
  * (Teacher desk), caps them to the district's ceiling, and decides between Join and Switch.
  */
-import { loadClassLink, looksLikeProviderKey, parseClassLink } from '../cores/ai';
+import { loadClassLink, looksLikeProviderKey, parseClassLink, type AiConfig } from '../cores/ai';
 import type { AiMode, ClassLinkIntake, ClassLinkV1, Level } from '../model/types';
 import { lowerLevel, lowerMode } from '../state/config';
 
 export const DEFAULT_CLASS_HEADER = 'X-Amble-Class';
+
+/**
+ * The header a class code travels in, for the Teacher desk's links and live test: the one the district set
+ * for its AI address (a build's `VITE_AMBLE_AI_AUTH_HEADER`, or the managed configuration's `auth.header`),
+ * else `X-Amble-Class`.
+ */
+export function classCodeHeaderFor(ai: Pick<AiConfig, 'source' | 'classCodeHeader'> | null): string {
+  return ai && (ai.source === 'managed' || ai.source === 'build') && ai.classCodeHeader ? ai.classCodeHeader : DEFAULT_CLASS_HEADER;
+}
 /** The proxy alias most district setups map to their real model (map-school §2.3). */
 export const DEFAULT_MODEL = 'amble-default';
 /** §4.2: a class link payload is at most 2 KB. */

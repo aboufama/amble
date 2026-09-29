@@ -149,6 +149,7 @@ export function mergeLayers(input: ReadonlyArray<ConfigLayer | null | undefined>
     requestsMayBeReviewed: layers.some((l) => isSchool(l) && l.requestsMayBeReviewed === true),
     manualAllowed: !schoolMode && !locked.includes('ai') && !endpointIsSchool,
     userKeyFor: endpoint?.userKey && !schoolMode ? (endpoint.baseUrl ?? null) : null,
+    classCodeHeader: endpoint?.classCodeHeader ?? (endpoint?.auth?.type === 'class-code' ? endpoint.auth.header : null),
     problems,
   };
 }

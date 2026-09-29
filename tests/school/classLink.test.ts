@@ -3,11 +3,14 @@
  * only, never a key; expiry through the end of the day; Join or Switch; the QR code stays scannable; and
  * joining or leaving keeps the store and the config slice in step.
  */
-import { afterEach, describe, expect, it } from 'vitest';
-import { parseClassLink } from '../../src/cores/ai';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { layerFromClassLink, layerFromEnv, layerFromManaged } from '../../src/ai';
+import { classLinkFromCore, classLinkToCore, encodeClassLink, loadClassLink, mergeLayers, parseClassLink, resolveAiConfig, validateClassLink, type ClassLink } from '../../src/cores/ai';
+import { isClassLinkV1 } from '../../src/model/guards';
 import type { ClassLinkV1 } from '../../src/model/types';
 import { createSchool } from '../../src/school/api';
-import { classLinkHref, encodeClassLinkV1, MAX_PAYLOAD, payloadFits, readIntake, semesterEnd, shortHref, toBase64Url, UnsafeLinkError } from '../../src/school/classLink';
+import { classCodeHeaderFor, classLinkHref, encodeClassLinkV1, MAX_PAYLOAD, payloadFits, readIntake, semesterEnd, shortHref, toBase64Url, UnsafeLinkError } from '../../src/school/classLink';
+import { testEndpoint } from '../../src/school/testConnection';
 import { makeQr, qrPath, qrScannable } from '../../src/school/qr';
 import { getState, resetState } from '../../src/state/store';
 import { MemoryStore } from '../../src/store/memory';
@@ -15,6 +18,11 @@ import { sampleAssignment, sampleClassLink } from '../foundation/samples';
 
 const fragment = (v: unknown) => `#class=${toBase64Url(JSON.stringify(v))}`;
 const NOW = new Date('2026-10-01T12:00:00');
+
+function memoryStorage() {
+  const m = new Map<string, string>();
+  return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
+}
 
 describe('making and reading a class link', () => {
   it('reads back exactly what the Teacher desk made, assignment and all', () => {
@@ -93,6 +101,138 @@ describe('payload size and the QR code', () => {
   it('uses medium error correction for short links and low for long ones', () => {
     expect(makeQr('https://amble.sau99.org/#class=abc').level).toBe('M');
     expect(makeQr(`https://amble.sau99.org/#class=${'a'.repeat(600)}`).level).toBe('L');
+  });
+});
+
+describe("the AI core's flat format and the app's", () => {
+  const BASE = 'https://amble-ai.sau99.org/v1';
+  /** A flat-format link with every field set. */
+  const flat: ClassLink = {
+    v: 1,
+    baseUrl: BASE,
+    model: 'amble-default',
+    fastModel: 'amble-fast',
+    visionModel: 'amble-vision',
+    visionAllowed: true,
+    code: 'MAPLE-7Q2K',
+    header: 'X-Class',
+    name: 'Room 12 · Period 3',
+    district: 'SAU 99',
+    policy: {
+      enabled: true,
+      mode: 'explain',
+      ageBand: 'high',
+      moderation: 'endpoint',
+      lock: ['content', 'vision'],
+      safetyIdentifier: true,
+      caps: ['json_schema', 'stream'],
+      expires: '2027-01-31',
+      requestsMayBeReviewed: true,
+    },
+  };
+  /** An app-format link with every field the flat format holds (the assignment stays in the app's copy). */
+  const app: ClassLinkV1 = {
+    v: 1,
+    cls: 'Room 9 · Period 1',
+    district: 'SAU 99',
+    ai: {
+      baseUrl: BASE,
+      model: 'amble-default',
+      fastModel: 'amble-fast',
+      visionModel: 'amble-vision',
+      caps: 'json_schema,reasoning',
+      auth: { type: 'class-code', header: 'X-Class', code: 'OAK-44' },
+      visionAllowed: false,
+      moderation: 'provider',
+      lock: ['ai'],
+      safetyIdentifier: false,
+      requestsMayBeReviewed: false,
+    },
+    mode: 'explain',
+    level: 'elementary',
+    exp: '2027-06-30',
+    asg: null,
+  };
+
+  it('keeps every field of a flat link through joining: flat → app → flat', () => {
+    expect(validateClassLink(flat)).toEqual({ ok: true, link: flat });
+    const joined = classLinkFromCore(flat);
+    expect(joined.ai).toMatchObject({ visionAllowed: true, moderation: 'endpoint', lock: ['content', 'vision'], safetyIdentifier: true, requestsMayBeReviewed: true });
+    expect(joined).toMatchObject({ mode: 'explain', level: 'high', exp: '2027-01-31' });
+    expect(isClassLinkV1(joined)).toBe(true);
+    expect(classLinkToCore(joined)).toEqual(flat);
+  });
+
+  it('keeps every field of an app link: app → flat → app, in each AI mode', () => {
+    for (const mode of ['on', 'explain', 'off'] as const) {
+      const link = { ...app, mode };
+      expect(classLinkFromCore(classLinkToCore(link)!)).toEqual(link);
+    }
+    expect(classLinkFromCore(classLinkToCore({ ...app, ai: { ...app.ai!, auth: { type: 'none' } } })!)).toEqual({ ...app, ai: { ...app.ai!, auth: { type: 'none' } } });
+  });
+
+  it('joins a flat link from the address bar with its policy, and the AI config follows it', async () => {
+    const read = parseClassLink(`#class=${encodeClassLink(flat)}`, NOW);
+    expect(read?.ok).toBe(true);
+    if (!read?.ok) return;
+    const store = new MemoryStore();
+    const local = memoryStorage();
+    vi.stubGlobal('localStorage', local);
+    try {
+      await createSchool(store).join(read.link);
+      // The copy the AI core reads is the link the teacher's district made, field for field.
+      expect(loadClassLink(local)).toEqual(flat);
+      expect(await store.settings.get('classLink')).toEqual(read.link);
+      const ai = await resolveAiConfig({ env: {}, managed: null, local, session: null, dev: false, devServer: null, now: NOW });
+      expect(ai).toMatchObject({ source: 'class-link', enabled: true, visionAllowed: true, moderation: 'endpoint', locked: ['content', 'vision'], safetyIdentifier: true, requestsMayBeReviewed: true, ageBand: 'high' });
+      expect(ai.auth).toEqual({ type: 'class-code', header: 'X-Class', code: 'MAPLE-7Q2K' });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("reads the same policy from the Teacher desk's format, dropping values it doesn't know", () => {
+    const withPolicy = { ...sampleClassLink(), ai: { baseUrl: BASE, model: 'm', auth: { type: 'none' }, visionAllowed: true, moderation: 'maybe', lock: ['ai', 'art', 'bogus'], safetyIdentifier: 'yes', requestsMayBeReviewed: true } };
+    const read = readIntake(fragment(withPolicy), null, NOW);
+    expect(read).toMatchObject({ ok: true });
+    if (!read?.ok) return;
+    expect(read.link.ai).toEqual({ baseUrl: BASE, model: 'm', auth: { type: 'none' }, visionAllowed: true, lock: ['ai', 'vision'], requestsMayBeReviewed: true });
+  });
+});
+
+describe("the class code's header on the Teacher desk", () => {
+  const BASE = 'https://amble-ai.sau99.org/v1';
+
+  it("follows the district's header from a build or a managed configuration, else X-Amble-Class", () => {
+    const built = mergeLayers([layerFromEnv({ VITE_AMBLE_AI_BASE_URL: BASE, VITE_AMBLE_AI_AUTH: 'class-code', VITE_AMBLE_AI_AUTH_HEADER: 'X-District-Class' })]);
+    expect(built.classCodeHeader).toBe('X-District-Class');
+    expect(classCodeHeaderFor(built)).toBe('X-District-Class');
+    const managed = mergeLayers([layerFromManaged({ ai: { baseUrl: BASE, auth: { type: 'class-code', header: 'X-Sau99-Code' } } })]);
+    expect(classCodeHeaderFor(managed)).toBe('X-Sau99-Code');
+    const districtWide = mergeLayers([layerFromManaged({ ai: { baseUrl: BASE, auth: { type: 'class-code', header: 'X-Sau99-Code', code: 'ALL-SCHOOLS' } } })]);
+    expect(classCodeHeaderFor(districtWide)).toBe('X-Sau99-Code');
+    // No district header: the default. A class link's own header is not the district's.
+    expect(classCodeHeaderFor(mergeLayers([layerFromEnv({ VITE_AMBLE_AI_BASE_URL: BASE, VITE_AMBLE_AI_AUTH: 'class-code' })]))).toBe('X-Amble-Class');
+    expect(classCodeHeaderFor(mergeLayers([layerFromEnv({ VITE_AMBLE_AI_BASE_URL: BASE, VITE_AMBLE_AI_AUTH: 'none' })]))).toBe('X-Amble-Class');
+    expect(classCodeHeaderFor(mergeLayers([layerFromClassLink({ v: 1, baseUrl: BASE, code: 'OAK-1', header: 'X-Teacher' })]))).toBe('X-Amble-Class');
+    expect(classCodeHeaderFor(null)).toBe('X-Amble-Class');
+  });
+
+  it("sends the live test's class code in that header", async () => {
+    const seen: Array<Record<string, string>> = [];
+    const fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      seen.push(Object.fromEntries(new Headers(init?.headers).entries()));
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'OK' }, finish_reason: 'stop' }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof globalThis.fetch;
+    vi.stubGlobal('fetch', fetch);
+    try {
+      const result = await testEndpoint({ baseUrl: BASE, model: 'amble-default', auth: { type: 'class-code', header: 'X-District-Class', code: 'MAPLE-7Q2K' } });
+      expect(result.ok).toBe(true);
+      expect(seen[0]['x-district-class']).toBe('MAPLE-7Q2K');
+      expect(seen[0]['x-amble-class']).toBeUndefined();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
