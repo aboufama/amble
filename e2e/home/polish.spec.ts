@@ -102,3 +102,28 @@ test.describe('large text on 1280x600', () => {
     expect(gap.subToHint).toBeGreaterThanOrEqual(8);
   });
 });
+
+test('with storage blocked, the First page banner clears the tapes and the paper makes room for it', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'indexedDB', {
+      configurable: true,
+      get() {
+        throw new DOMException('Blocked by policy', 'SecurityError');
+      },
+    });
+  });
+  await openAmble(page);
+  await expect(page.getByTestId('storage-banner')).toBeVisible();
+  const g = await page.evaluate(() => {
+    for (const a of document.getAnimations()) if (Number.isFinite(a.effect?.getComputedTiming().endTime as number)) a.finish();
+    const box = (el: Element) => el.getBoundingClientRect();
+    return {
+      bannerBottom: box(document.querySelector('[data-testid="storage-banner"]')!).bottom,
+      tapesTop: Math.min(...[...document.querySelectorAll('.first__tape')].map((t) => box(t).top)),
+      trustBottom: box(document.querySelector('.first__trust')!).bottom,
+    };
+  });
+  expect(g.tapesTop, 'the tapes stay below the banner (they covered Why?)').toBeGreaterThanOrEqual(g.bannerBottom);
+  // The trust line stays where it is without the banner (696 at 1366x768), off the lit path.
+  expect(g.trustBottom).toBeLessThanOrEqual(700);
+});

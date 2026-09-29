@@ -24,12 +24,15 @@
   --cap: 44px;
   --card-h: 160px;
   --inset: 10px;
+  /* The lit path's room under the trust line: when a banner takes height above the paper, the paper gives it
+   * up instead of pushing the trust line onto the path. */
+  --path-room: 72px;
   position: absolute;
   inset: var(--header) 0 0 0;
   z-index: 1;
   display: grid;
   grid-template-columns: var(--pad-l) var(--dock-w) var(--gap-a) minmax(0, var(--paper-w)) minmax(16px, var(--gap-b)) minmax(0, var(--col-w)) minmax(8px, 1fr);
-  grid-template-rows: minmax(var(--top), auto) minmax(0, var(--paper-h)) auto minmax(0, 1fr);
+  grid-template-rows: minmax(var(--top), auto) minmax(0, var(--paper-h)) auto minmax(var(--path-room), 1fr);
   grid-template-areas:
     '. . . banner . col .'
     '. dock . paper . col .'
@@ -43,6 +46,7 @@
 }
 
 :root[data-layout='tab'] .first__main {
+  --path-room: 54px;
   --paper-h: min(574px, calc(100vh - var(--header) - 26px - 84px));
   --col-w: 430px;
   --gap-b: 36px;
@@ -57,6 +61,7 @@
   --gap-b: 84px;
   --col-w: 420px;
   --top: 18px;
+  --path-room: 80px;
   --paper-h: min(600px, calc(100vh - var(--header) - 18px - 64px));
   --cap: 48px;
   --card-h: 150px;
@@ -70,6 +75,7 @@
   --gap-b: 20px;
   --col-w: min(400px, 37vw);
   --top: 14px;
+  --path-room: 60px;
   --paper-h: calc(100vh - var(--header) - 14px - 96px);
   --dock-align: start;
   --cap: 34px;
@@ -187,8 +193,10 @@
   align-self: end;
 }
 
-.first__banner .storage-banner {
-  margin: 0 0 10px;
+/* The paper's tapes reach about 44 px above it: the banner stays clear of them (they covered Why?). */
+.first__banner .files-banner {
+  width: 100%;
+  margin: 10px 0 48px;
 }
 
 /* ---------- the pen dock ---------- */
