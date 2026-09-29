@@ -1,47 +1,77 @@
 /**
  * The IndexedDB `Store` (§4.3). `commit` writes blobs, art records, steps, worlds and their metas in one
  * readwrite transaction: if any write fails, nothing is written. Blobs are hashed before it opens.
+ * Every write reports to the store's health, which becomes `library.storage` ('full' on a quota error).
  */
-import { blobRefOf } from '../model/ids';
-import { KEEP } from '../model/limits';
-import type { AiLogEntry, ArtId, ArtRecord, BlobRef, DeskDraft, SettingsKey, SettingsMap, StepId, StepSnapshot, World, WorldId, WorldMeta } from '../model/types';
-import type { Commit, Store, StoreChange } from './api';
-import { done, prefixRange, req, strokeKey, type StoreName } from './idb';
-import { deriveMeta, sortMetas } from './meta';
+import type { ArtId, ArtRecord, BlobRef, DeskDraft, StepSnapshot, World, WorldId, WorldMeta } from '../model/types';
+import type { Commit, GcReport, Store, StoreChange, StoreHealth, StoreUpkeep } from './api';
+import { idbAiLog } from './ailog';
+import { idbArt } from './art';
+import { BlobUrls, hashBlobs, idbBlobs, putBlobsInTx, type BlobRecord } from './blobs';
+import { idbDrafts } from './drafts';
+import { GC_GRACE_MS, markArt, markDeep, markDraft, markMeta, markSet, markStep, markWorld } from './gc';
+import { idbHandles } from './handles';
+import { abortQuietly, Connection, done, req, STORE_NAMES, type IdbCtx, type StoreName } from './idb';
+import { deriveMeta } from './meta';
+import { healthOf } from './quota';
+import { idbCache, idbSettings } from './settings';
+import { idbSteps } from './steps';
+import { idbStrokes } from './strokes';
+import { idbWorlds } from './worlds';
 
-interface BlobRecord {
-  blob: Blob;
-  size: number;
-  type: string;
-  at: number;
+/** Walks every record of a store with a cursor (one record in memory at a time). */
+function eachRecord(tx: IDBTransaction, name: StoreName, fn: (value: unknown, key: IDBValidKey) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const cursor = tx.objectStore(name).openCursor();
+    cursor.onsuccess = () => {
+      const c = cursor.result;
+      if (!c) return resolve();
+      fn(c.value, c.key);
+      c.continue();
+    };
+    cursor.onerror = () => reject(cursor.error ?? new Error(`Could not read ${name}.`));
+  });
 }
 
-export class IdbStore implements Store {
+export class IdbStore implements Store, StoreUpkeep {
   readonly mode = 'idb' as const;
   private readonly listeners = new Set<(e: StoreChange) => void>();
-  private readonly urls = new Map<BlobRef, string>();
+  private readonly healthListeners = new Set<(h: StoreHealth, err: unknown) => void>();
+  private readonly urls = new BlobUrls();
+  private readonly conn: Connection;
+  private readonly ctx: IdbCtx;
+  private state: StoreHealth = 'ok';
 
-  constructor(private readonly db: IDBDatabase) {}
+  readonly worlds: Store['worlds'];
+  readonly art: Store['art'];
+  readonly blobs: Store['blobs'];
+  readonly steps: Store['steps'];
+  readonly drafts: Store['drafts'];
+  readonly strokes: Store['strokes'];
+  readonly cache: Store['cache'];
+  readonly settings: Store['settings'];
+  readonly handles: Store['handles'];
+  readonly ailog: Store['ailog'];
 
-  private tx(names: StoreName | StoreName[], mode: IDBTransactionMode = 'readonly'): IDBTransaction {
-    return this.db.transaction(names, mode);
-  }
-
-  private async read<T>(name: StoreName, key: IDBValidKey): Promise<T | null> {
-    const v = await req(this.tx(name).objectStore(name).get(key));
-    return (v as T | undefined) ?? null;
-  }
-
-  private async write(name: StoreName, value: unknown, key?: IDBValidKey): Promise<void> {
-    const tx = this.tx(name, 'readwrite');
-    tx.objectStore(name).put(value, key);
-    await done(tx);
-  }
-
-  private async remove(name: StoreName, key: IDBValidKey | IDBKeyRange): Promise<void> {
-    const tx = this.tx(name, 'readwrite');
-    tx.objectStore(name).delete(key);
-    await done(tx);
+  /** `reopen` opens a fresh connection when the browser closed this one (default: fail). */
+  constructor(
+    db: IDBDatabase,
+    reopen: () => Promise<IDBDatabase> = () => Promise.reject(new DOMException('The database was closed.', 'InvalidStateError')),
+    health: StoreHealth = 'ok',
+  ) {
+    this.state = health;
+    this.conn = new Connection(db, reopen);
+    this.ctx = { conn: this.conn, emit: (e) => this.emit(e), wrote: (err) => this.wrote(err) };
+    this.worlds = idbWorlds(this.ctx);
+    this.art = idbArt(this.ctx);
+    this.blobs = idbBlobs(this.conn, this.urls, (err) => this.wrote(err));
+    this.steps = idbSteps(this.ctx);
+    this.drafts = idbDrafts(this.ctx);
+    this.strokes = idbStrokes(this.ctx);
+    this.cache = idbCache(this.ctx);
+    this.settings = idbSettings(this.ctx);
+    this.handles = idbHandles(this.ctx);
+    this.ailog = idbAiLog(this.ctx);
   }
 
   private emit(e: StoreChange): void {
@@ -54,145 +84,21 @@ export class IdbStore implements Store {
     }
   }
 
-  private async setPutAway(id: WorldId, at: number | null): Promise<void> {
-    const tx = this.tx('meta', 'readwrite');
-    const store = tx.objectStore('meta');
-    const get = store.get(id);
-    get.onsuccess = () => {
-      const meta = get.result as WorldMeta | undefined;
-      if (meta) store.put({ ...meta, putAwayAt: at });
-    };
-    await done(tx);
-    this.emit({ worlds: [id] });
+  private wrote(err?: unknown): void {
+    const next = err === undefined ? 'ok' : healthOf(err);
+    if (next === this.state && next === 'ok') return;
+    this.state = next;
+    for (const fn of this.healthListeners) {
+      try {
+        fn(next, err);
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }
 
-  worlds: Store['worlds'] = {
-    list: async () => sortMetas((await req(this.tx('meta').objectStore('meta').getAll())) as WorldMeta[]),
-    get: (id) => this.read<World>('worlds', id),
-    putAway: (id) => this.setPutAway(id, Date.now()),
-    restore: (id) => this.setPutAway(id, null),
-    purge: async (id) => {
-      const tx = this.tx(['worlds', 'meta', 'steps', 'handles'], 'readwrite');
-      tx.objectStore('worlds').delete(id);
-      tx.objectStore('meta').delete(id);
-      tx.objectStore('handles').delete(id);
-      const steps = tx.objectStore('steps');
-      const keys = steps.index('byWorld').getAllKeys(id);
-      keys.onsuccess = () => {
-        for (const k of keys.result) steps.delete(k);
-      };
-      await done(tx);
-      this.emit({ worlds: [id] });
-    },
-  };
-
-  art: Store['art'] = {
-    get: (id) => this.read<ArtRecord>('art', id),
-    list: async (q) => {
-      const all = (await req(this.tx('art').objectStore('art').getAll())) as ArtRecord[];
-      return q?.shelf === undefined ? all : all.filter((a) => a.shelf === q.shelf);
-    },
-    remove: async (id) => {
-      await this.remove('art', id);
-      this.emit({ art: [id] });
-    },
-  };
-
-  blobs: Store['blobs'] = {
-    put: async (b) => {
-      const ref = await blobRefOf(b);
-      const tx = this.tx('blobs', 'readwrite');
-      const store = tx.objectStore('blobs');
-      const has = store.getKey(ref);
-      has.onsuccess = () => {
-        if (has.result === undefined) store.put({ blob: b, size: b.size, type: b.type, at: Date.now() } satisfies BlobRecord, ref);
-      };
-      await done(tx);
-      return ref;
-    },
-    get: async (r) => (await this.read<BlobRecord>('blobs', r))?.blob ?? null,
-    url: async (r) => {
-      const known = this.urls.get(r);
-      if (known) return known;
-      const blob = await this.blobs.get(r);
-      if (!blob) throw new Error(`Missing picture ${r}`);
-      const url = URL.createObjectURL(blob);
-      this.urls.set(r, url);
-      return url;
-    },
-  };
-
-  steps: Store['steps'] = {
-    get: (id) => this.read<StepSnapshot>('steps', id),
-    forWorld: async (id) => (await req(this.tx('steps').objectStore('steps').index('byWorld').getAllKeys(id))) as StepId[],
-  };
-
-  drafts: Store['drafts'] = {
-    get: (artId) => this.read<DeskDraft>('drafts', artId),
-    put: (d) => this.write('drafts', d),
-    clear: (artId) => this.remove('drafts', artId),
-  };
-
-  strokes: Store['strokes'] = {
-    append: async (artId, chunk) => {
-      const tx = this.tx('strokes', 'readwrite');
-      const store = tx.objectStore('strokes');
-      const count = store.count(prefixRange(artId));
-      count.onsuccess = () => {
-        store.put(chunk, strokeKey(artId, count.result));
-      };
-      await done(tx);
-    },
-    read: async (artId) => (await req(this.tx('strokes').objectStore('strokes').getAll(prefixRange(artId)))) as Uint8Array[],
-    clear: (artId) => this.remove('strokes', prefixRange(artId)),
-  };
-
-  cache: Store['cache'] = {
-    get: <T>(key: string) => this.read<T>('cache', key),
-    put: (key, value) => this.write('cache', value, key),
-  };
-
-  settings: Store['settings'] = {
-    get: <K extends SettingsKey>(k: K) => this.read<SettingsMap[K]>('settings', k),
-    put: (k, v) => this.write('settings', v, k),
-    remove: (k) => this.remove('settings', k),
-  };
-
-  handles: Store['handles'] = {
-    get: (worldId) => this.read<FileSystemFileHandle>('handles', worldId),
-    put: (worldId, h) => this.write('handles', h, worldId),
-  };
-
-  ailog: Store['ailog'] = {
-    add: async (e) => {
-      const tx = this.tx('ailog', 'readwrite');
-      const store = tx.objectStore('ailog');
-      store.add(e);
-      const count = store.count();
-      count.onsuccess = () => {
-        let extra = count.result - KEEP.aiLogEntries;
-        if (extra <= 0) return;
-        const cursor = store.openCursor();
-        cursor.onsuccess = () => {
-          const c = cursor.result;
-          if (!c || extra <= 0) return;
-          c.delete();
-          extra--;
-          c.continue();
-        };
-      };
-      await done(tx);
-    },
-    list: async () => ((await req(this.tx('ailog').objectStore('ailog').getAll())) as AiLogEntry[]).reverse(),
-    clear: async () => {
-      const tx = this.tx('ailog', 'readwrite');
-      tx.objectStore('ailog').clear();
-      await done(tx);
-    },
-  };
-
   async commit(c: Commit): Promise<void> {
-    const blobs = await Promise.all((c.blobs ?? []).map(async (blob) => ({ ref: await blobRefOf(blob), blob })));
+    const blobs = await hashBlobs(c.blobs ?? []);
     const names = new Set<StoreName>();
     if (blobs.length) names.add('blobs');
     if (c.art?.length) names.add('art');
@@ -204,38 +110,32 @@ export class IdbStore implements Store {
     if (c.clearDrafts?.length) names.add('drafts');
     if (!names.size) return;
 
-    const tx = this.tx([...names], 'readwrite');
-    const finished = done(tx);
-    const now = Date.now();
     try {
-      this.writeCommit(tx, c, blobs, now);
-    } catch (err) {
-      // A write that throws (a record without its key, a value that can't be stored) must not let the
-      // earlier writes commit: abort, so nothing is written.
+      // Strict: the student's work is on disk before the save says so (a lid closed next is fine).
+      const tx = await this.conn.tx([...names], 'readwrite', 'strict');
+      const finished = done(tx);
       try {
-        tx.abort();
-      } catch {
-        // Already finished.
+        this.writeCommit(tx, c, blobs, Date.now());
+      } catch (err) {
+        // A write that throws (a record without its key, a value that can't be stored) must not let the
+        // earlier writes commit: abort, so nothing is written.
+        abortQuietly(tx);
+        await finished.catch(() => undefined);
+        throw err;
       }
-      await finished.catch(() => undefined);
+      await finished;
+      this.wrote();
+    } catch (err) {
+      this.wrote(err);
       throw err;
     }
-    await finished;
     const worlds = [...new Set([...(c.worlds ?? []).map((w) => w.id), ...Object.keys(c.snapshots ?? {})])];
     const artIds = [...new Set((c.art ?? []).map((a) => a.id))];
     if (worlds.length || artIds.length) this.emit({ ...(worlds.length ? { worlds } : {}), ...(artIds.length ? { art: artIds } : {}) });
   }
 
   private writeCommit(tx: IDBTransaction, c: Commit, blobs: Array<{ ref: BlobRef; blob: Blob }>, now: number): void {
-    if (blobs.length) {
-      const store = tx.objectStore('blobs');
-      for (const { ref, blob } of blobs) {
-        const has = store.getKey(ref);
-        has.onsuccess = () => {
-          if (has.result === undefined) store.put({ blob, size: blob.size, type: blob.type, at: now } satisfies BlobRecord, ref);
-        };
-      }
-    }
+    putBlobsInTx(tx, blobs, now);
     const art = new Map((c.art ?? []).map((a) => [a.id, a]));
     for (const a of art.values()) tx.objectStore('art').put(a);
     for (const s of c.steps ?? []) tx.objectStore('steps').put(s);
@@ -261,6 +161,73 @@ export class IdbStore implements Store {
     for (const id of c.clearDrafts ?? []) tx.objectStore('drafts').delete(id);
   }
 
+  async collectGarbage(o: { now?: number; graceMs?: number } = {}): Promise<GcReport> {
+    const now = o.now ?? Date.now();
+    const grace = o.graceMs ?? GC_GRACE_MS;
+    const { refs, mark } = markSet();
+    // One transaction for mark and sweep: no commit can land a new reference between the two.
+    const tx = await this.conn.tx(['meta', 'worlds', 'art', 'steps', 'drafts', 'cache', 'blobs'], 'readwrite');
+    const finished = done(tx);
+    let kept = 0;
+    let removed = 0;
+    let bytes = 0;
+    try {
+      await eachRecord(tx, 'meta', (v) => markMeta(v as WorldMeta, mark));
+      await eachRecord(tx, 'worlds', (v) => markWorld(v as World, mark));
+      await eachRecord(tx, 'art', (v) => markArt(v as ArtRecord, mark));
+      await eachRecord(tx, 'steps', (v) => markStep(v as StepSnapshot, mark));
+      await eachRecord(tx, 'drafts', (v) => markDraft(v as DeskDraft, mark));
+      await eachRecord(tx, 'cache', (v) => markDeep(v, mark));
+      await new Promise<void>((resolve, reject) => {
+        const cursor = tx.objectStore('blobs').openCursor();
+        cursor.onsuccess = () => {
+          const c = cursor.result;
+          if (!c) return resolve();
+          const rec = c.value as BlobRecord;
+          if (refs.has(c.key as BlobRef) || !(rec.at <= now - grace)) kept++;
+          else {
+            removed++;
+            bytes += rec.size ?? 0;
+            c.delete();
+          }
+          c.continue();
+        };
+        cursor.onerror = () => reject(cursor.error ?? new Error('Could not read the blobs.'));
+      });
+    } catch (err) {
+      abortQuietly(tx);
+      await finished.catch(() => undefined);
+      throw err;
+    }
+    await finished;
+    return { kept, removed, bytes };
+  }
+
+  async blobBytes(refs: Iterable<BlobRef>): Promise<number> {
+    const tx = await this.conn.tx('blobs');
+    const store = tx.objectStore('blobs');
+    const sizes = await Promise.all([...new Set(refs)].map(async (r) => ((await req(store.get(r))) as BlobRecord | undefined)?.size ?? 0));
+    return sizes.reduce((a, b) => a + b, 0);
+  }
+
+  async wipe(): Promise<void> {
+    const tx = await this.conn.tx([...STORE_NAMES], 'readwrite');
+    for (const name of STORE_NAMES) tx.objectStore(name).clear();
+    await done(tx);
+    this.urls.revokeAll();
+    this.wrote();
+    this.emit({ worlds: [], art: [] });
+  }
+
+  health(): StoreHealth {
+    return this.state;
+  }
+
+  onHealth(fn: (h: StoreHealth, err: unknown) => void): () => void {
+    this.healthListeners.add(fn);
+    return () => this.healthListeners.delete(fn);
+  }
+
   async estimate(): Promise<{ usage: number; quota: number; persisted: boolean }> {
     const storage = typeof navigator === 'undefined' ? undefined : navigator.storage;
     const est = (await storage?.estimate?.().catch(() => undefined)) ?? {};
@@ -275,8 +242,7 @@ export class IdbStore implements Store {
 
   /** Closes the connection (tests, and "Delete everything"). */
   close(): void {
-    for (const url of this.urls.values()) URL.revokeObjectURL(url);
-    this.urls.clear();
-    this.db.close();
+    this.urls.revokeAll();
+    this.conn.close();
   }
 }
