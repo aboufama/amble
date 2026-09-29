@@ -287,6 +287,8 @@ test('Bones has no WCAG 2.1 A/AA problems (axe), with its cards open too', async
   await openBones(page, `#/bones/${artId}`);
   await page.waitForTimeout(600);
   const scan = async (what: string) => {
+    // A card fading in is not what a student reads: axe checks it once its entrance is over.
+    await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || (a.effect?.getComputedTiming().endTime ?? 0) === Infinity), null, { timeout: 5_000 }).catch(() => undefined);
     const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
     expect(r.violations.map((v) => `${what}: ${v.id} (${v.nodes.length}) ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(', ')}`)).toEqual([]);
   };
