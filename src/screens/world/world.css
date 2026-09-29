@@ -1,6 +1,9 @@
 /*
- * The world screen (§2.6, §2.7): the game at the centre, the controls row and the Cast line under it, the
- * notebook beside it; Change mode's layer, the request tag, the problem and new-version cards, the flights.
+ * The world screen (§2.6, §2.7) in Scratch 3's look: the game in a flat frame at the centre, the controls
+ * row and the Cast pane of tiles under it, flat white panels beside it; Change mode's tags, the cards over
+ * the game, the sheets and the flights. Nothing tilts, glows or carries a texture: surfaces are flat with a
+ * 1 px --line, corners are 4 px (tags) or 8 px (everything else), and what is chosen gets Scratch's purple
+ * edge and halo. A 2 px edge is a 1 px border plus a 1 px shadow, so choosing never moves the layout.
  * Tokens only. Sizes follow §2.2's layout classes (full, tab, touch, small, portrait).
  */
 
@@ -12,9 +15,12 @@
   --wv-w: 880px;
   --wv-h: calc(var(--wv-w) * 9 / 16);
   --ctl-h: var(--control);
-  --cast-h: 140px;
-  --card-w: 116px;
-  --card-h: 112px;
+  /* The Cast pane: its tiles are as tall as the room under the controls row allows, up to --tile-max. */
+  --strip-pad: 10px;
+  --cast-foot: 12px;
+  --tile-max: 104px;
+  --tile-h: clamp(62px, calc(100vh - var(--topbar) - 6px - var(--wv-h) - 12px - var(--ctl-h) - 8px - 2px - 2 * var(--strip-pad) - var(--cast-foot)), var(--tile-max));
+  --tile-w: max(var(--tile-h), 92px);
   position: relative;
   grid-template-columns: var(--gut) var(--wv-w) var(--gap) minmax(0, 1fr) var(--edge);
   grid-template-rows: var(--topbar) minmax(0, 1fr);
@@ -22,32 +28,11 @@
     'top top top top top'
     '. main . aside .';
   overflow: hidden;
-  background:
-    radial-gradient(900px 500px at 30% 45%, var(--bg-lift) 0%, transparent 70%),
-    var(--bg);
-}
-
-/* The night hill behind the Cast line (as on the Trail). */
-.world-screen::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: calc(var(--gut) + var(--wv-w) + var(--gap));
-  height: 92px;
-  pointer-events: none;
-  background: color-mix(in srgb, var(--bg-deep) 70%, transparent);
-  clip-path: path('M0 24 C160 -8 300 0 460 14 C620 28 760 -4 920 0 L920 92 L0 92 Z');
-  opacity: 0.75;
+  background: var(--bg);
 }
 
 .world-screen > .topbar {
   grid-column: 1 / -1;
-}
-
-:root[data-layout='small'] .world-screen::before,
-:root[data-layout='portrait'] .world-screen::before {
-  display: none;
 }
 
 :root[data-layout='tab'] .world-screen {
@@ -57,18 +42,8 @@
 @media (max-height: 739px) {
   :root[data-layout='tab'] .world-screen {
     --wv-w: min(880px, calc(100vw - 488px), calc((100vh - 220px) * 16 / 9));
-    --cast-h: max(84px, calc(100vh - var(--topbar) - 6px - var(--wv-h) - 12px - var(--ctl-h) - 7px));
-    --card-w: 96px;
-    --card-h: 72px;
-  }
-
-  :root[data-layout='tab'] .cast-line__cards {
-    padding-top: 11px;
-  }
-
-  :root[data-layout='tab'] .cast-card__pin {
-    top: -7px;
-    height: 14px;
+    --strip-pad: 6px;
+    --cast-foot: 8px;
   }
 }
 
@@ -77,14 +52,7 @@
   --gap: 16px;
   --edge: 16px;
   --wv-w: min(792px, calc(100vw - 488px), calc((100vh - 250px) * 16 / 9));
-  --ctl-h: var(--control);
-}
-
-@media (max-height: 759px) {
-  :root[data-layout='touch'] .world-screen {
-    --card-w: 100px;
-    --card-h: 96px;
-  }
+  --tile-max: 116px;
 }
 
 :root[data-layout='small'] .world-screen {
@@ -101,6 +69,7 @@
 :root[data-layout='portrait'] .world-screen {
   --gut: 16px;
   --wv-w: calc(100vw - 32px);
+  --tile-h: var(--tile-max);
   grid-template-columns: var(--gut) minmax(0, 1fr) var(--gut);
   grid-template-rows: var(--topbar) auto auto;
   grid-template-areas:
@@ -128,27 +97,10 @@
   overflow: visible;
 }
 
-/* ---------- the top bar ---------- */
-.world-top.topbar {
-  gap: 10px;
-  padding: 0 16px 0 14px;
-  border-bottom: 0;
-  background: transparent;
-}
-
-.world-top .topbar__start {
-  gap: 10px;
-}
-
-.world-top .topbar__back {
-  min-height: 40px;
-  padding: 0 12px 0 8px;
-}
-
+/* ---------- the world's own pieces in the top bar (the bar itself is the shared one) ---------- */
 .world-top__hero {
   display: inline-flex;
   flex: none;
-  margin-left: 6px;
 }
 
 .world-top__hero .sticker img {
@@ -163,22 +115,20 @@
 .world-top__name {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
   min-height: var(--target);
-  padding: 0 6px;
+  padding: 0 8px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-btn);
   font: var(--type-title);
-  font-size: 1.4375rem;
-  letter-spacing: -0.005em;
   color: var(--text);
   background: transparent;
   cursor: text;
 }
 
 .world-top__name:hover {
-  background: color-mix(in srgb, var(--text) 6%, transparent);
+  background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
 .world-top__title {
@@ -192,51 +142,44 @@
   color: var(--text-2);
 }
 
+/* A white field, also inside the blue bar (where --text means white words). */
 .world-top__name-input {
+  --text: var(--ink);
   width: min(360px, 32vw);
   height: 40px;
   padding: 0 10px;
-  border: 0;
-  border-radius: 10px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-btn);
   font: var(--type-title);
   color: var(--text);
-  background: var(--well);
-  box-shadow: inset 0 0 0 2px var(--accent);
+  background: var(--surface-top);
 }
 
-.world-top .topbar__end {
-  gap: 10px;
+.world-top__name-input:focus {
+  border-color: var(--brand);
+  box-shadow:
+    inset 0 0 0 1px var(--brand),
+    0 0 0 4px var(--hover-ring);
 }
 
-.world-top .btn--h44 {
-  min-height: 40px;
-}
-
-.world-top .save-state {
-  font: 400 0.875rem/1.25rem var(--font-ui);
-}
-
-.world-top__saved {
-  color: var(--alive);
-}
-
-/* ---------- the world view ---------- */
+/* ---------- the world view: flat, 8 px corners, a 1 px line (purple in Change mode) ---------- */
 .world-view {
   position: relative;
   flex: none;
   width: var(--wv-w);
   height: var(--wv-h);
   border-radius: var(--r-world);
-  box-shadow:
-    0 0 0 7px color-mix(in srgb, var(--accent) 7%, transparent),
-    0 0 60px color-mix(in srgb, var(--accent) 16%, transparent),
-    0 24px 50px color-mix(in srgb, var(--bg-deep) 70%, transparent);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.world-screen[data-mode='change'] .world-view {
+  box-shadow: 0 0 0 2px var(--change-bright);
 }
 
 /*
  * The First page's paper and the Trail's world signs morph into the world view (§2.2, §2.3). It carries the
  * name only while that morph runs: a named element is a stacking context, which would put the overlays above
- * the game (the Ask pill, the tags of Change mode...) under the game's layer.
+ * the game (the tags of Change mode, the cards...) under the game's layer.
  */
 :root[data-morph~='world-view'] .world-view {
   view-transition-name: world-view;
@@ -289,16 +232,43 @@
   height: 100%;
   object-fit: cover;
   opacity: 0.45;
-  filter: saturate(0.7);
 }
 
 .world-view__loading-note {
   position: relative;
   display: inline-flex;
-  padding: 10px 16px;
-  border-radius: var(--r-chip);
-  color: var(--text-2);
-  background: color-mix(in srgb, var(--bg-deep) 70%, transparent);
+  align-items: center;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  font: var(--type-chip);
+  color: var(--text);
+  background: var(--surface-top);
+}
+
+.world-view__loading-note .footprints {
+  color: var(--accent-text);
+}
+
+.world-view__exit {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: calc(var(--z-fullscreen) + 2) !important;
+  transition: opacity var(--t-page) var(--ease-soft);
+}
+
+.world-view__exit--faded:not(:hover):not(:focus-visible) {
+  opacity: 0.2;
+}
+
+/* ---------- cards over the game: flat and square, a 1 px line, lifted off the game ---------- */
+.world-card {
+  color: var(--text);
+  background: var(--surface-top);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--lift);
 }
 
 .world-view__stopped {
@@ -308,6 +278,7 @@
   display: flex;
   align-items: center;
   gap: var(--s4);
+  padding: 14px 14px 14px 18px;
   translate: -50% -50%;
 }
 
@@ -315,77 +286,55 @@
   font: var(--type-heading);
 }
 
-.world-view__notice {
+/* Notes down at the bottom centre, where no game keeps its HUD and the touch stick and buttons aren't. */
+.world-view__notice,
+.world-view__heavy {
   position: absolute;
   left: 50%;
-  top: 64px;
-  display: inline-flex;
+  bottom: 12px;
+  display: flex;
   align-items: center;
-  gap: var(--s2);
-  max-width: calc(100% - 32px);
-  padding: 8px 14px;
-  border: 0;
-  border-radius: 12px;
-  font: var(--type-chip);
-  font-weight: 400;
-  text-align: left;
-  color: var(--text);
-  background: color-mix(in srgb, var(--bg-deep) 85%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line-control);
+  gap: 10px;
+  width: max-content;
+  max-width: min(560px, calc(100% - 24px));
+  padding: 6px 6px 6px 12px;
   translate: -50% 0;
+  animation: tag-in-centred var(--t-move) var(--ease-amble);
 }
 
-.world-view__exit {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: calc(var(--z-fullscreen) + 2) !important;
-  background: color-mix(in srgb, var(--bg-deep) 75%, transparent);
-  transition: opacity var(--t-page) var(--ease-soft);
+.world-view__notice-icon,
+.world-view__heavy-icon {
+  flex: none;
+  color: var(--accent-text);
 }
 
-.world-view__exit--faded:not(:hover):not(:focus-visible) {
-  opacity: 0.2;
+.world-view__notice-text,
+.world-view__heavy-text {
+  font: var(--type-meta);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
-/* The AI progress pill (top right, only while the AI helper works). */
-.ai-pill {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s2);
-  max-width: 60%;
-  min-height: 36px;
-  padding: 0 14px 0 10px;
-  border-radius: var(--r-chip);
-  font: var(--type-chip);
-  color: var(--text);
-  background: color-mix(in srgb, var(--bg-deep) 80%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--ai);
+.world-view__heavy-text strong {
+  font-weight: 700;
 }
 
-.ai-pill .footprints {
-  color: var(--ai);
+.world-view__heavy .btn,
+.world-view__notice .btn {
+  flex: none;
 }
 
-.world-view[data-player-fullscreen] .ai-pill {
-  display: none;
-}
-
-/* ---------- the request tag, coach mark, problem and new-version cards ---------- */
+/* The request tag, the coach mark and the new-version card sit low at the left; the problem card below
+   the middle. */
 .request-tag {
   position: absolute;
-  left: 16px;
-  bottom: 16px;
+  left: 12px;
+  bottom: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
-  max-width: calc(100% - 32px);
-  padding: 10px 10px 10px 12px;
-  border-radius: 16px;
-  rotate: -0.6deg;
+  max-width: calc(100% - 24px);
+  padding: 8px 8px 8px 10px;
   animation: tag-in var(--t-move) var(--ease-amble);
 }
 
@@ -395,8 +344,8 @@
   place-items: center;
   width: 52px;
   height: 48px;
-  border-radius: 12px;
-  background: var(--surface-bottom);
+  border-radius: var(--r-sm);
+  background: var(--bg-lift);
 }
 
 .request-tag__text {
@@ -412,16 +361,7 @@
 
 .request-tag__text span {
   font: var(--type-meta);
-  color: var(--ink-2);
-}
-
-.request-tag__later {
-  color: var(--ink-2);
-}
-
-.request-tag__later:hover:not(:disabled) {
-  color: var(--ink);
-  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--text-2);
 }
 
 .coach-mark {
@@ -431,29 +371,28 @@
   gap: var(--s2);
   width: min(300px, calc(100% - 24px));
   padding: 12px 8px 12px 16px;
-  rotate: 0.8deg;
   animation: tag-in var(--t-move) var(--ease-amble);
 }
 
-/* The arrow, only when the mark sits beside the member it points at (centred, it points at nothing and
-   would otherwise sit at its static position, over the first letter of the text). */
+/* The pointer, only when the mark sits beside the member it points at. */
 .coach-mark--left::after,
 .coach-mark--right::after {
   content: '';
   position: absolute;
-  top: 40px;
-  width: 14px;
-  height: 14px;
-  background: var(--paper);
-  rotate: 45deg;
+  top: 34px;
+  width: 9px;
+  height: 18px;
+  background: var(--surface-top);
 }
 
 .coach-mark--left::after {
-  left: -7px;
+  left: -9px;
+  clip-path: polygon(100% 0, 0 50%, 100% 100%);
 }
 
 .coach-mark--right::after {
-  right: -7px;
+  right: -9px;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
 }
 
 .coach-mark__text {
@@ -471,55 +410,53 @@
 .problem-card {
   position: absolute;
   left: 50%;
-  bottom: 16px;
+  bottom: 12px;
   display: grid;
-  gap: var(--s2);
-  width: min(560px, calc(100% - 32px));
-  padding: 14px 52px 14px 18px;
+  gap: 10px;
+  width: min(560px, calc(100% - 24px));
+  padding: 14px 52px 14px 16px;
   translate: -50% 0;
-  rotate: -0.4deg;
-  animation: tag-in var(--t-move) var(--ease-amble);
+  animation: tag-in-centred var(--t-move) var(--ease-amble);
 }
 
 .problem-card__text {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   font: var(--type-label);
   font-size: 1rem;
+  line-height: 1.375rem;
+}
+
+.problem-card__icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--warn);
 }
 
 .problem-card__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s2);
+  padding-left: 30px;
 }
 
 .problem-card__close {
   position: absolute;
   top: 6px;
   right: 6px;
-  color: var(--ink-2);
 }
 
 .new-version {
   position: absolute;
-  left: 16px;
-  bottom: 16px;
+  left: 12px;
+  bottom: 12px;
   display: flex;
   align-items: center;
   gap: var(--s3);
-  max-width: calc(100% - 32px);
+  max-width: calc(100% - 24px);
   padding: 8px 8px 8px 14px;
-  border-radius: 16px;
-  color: var(--text);
-  background: color-mix(in srgb, var(--bg-deep) 88%, transparent);
-  box-shadow:
-    inset 0 0 0 1.5px var(--ai),
-    var(--lift-sm);
   animation: tag-in var(--t-move) var(--ease-amble);
-}
-
-.new-version__icon {
-  flex: none;
-  color: var(--ai);
 }
 
 .new-version__text {
@@ -529,7 +466,7 @@
 .world-view__steer {
   position: absolute;
   left: 50%;
-  bottom: 16px;
+  bottom: 12px;
   translate: -50% 0;
 }
 
@@ -540,10 +477,6 @@
   }
 }
 
-.problem-card {
-  animation-name: tag-in-centred;
-}
-
 @keyframes tag-in-centred {
   from {
     opacity: 0;
@@ -551,7 +484,7 @@
   }
 }
 
-/* ---------- Change mode ---------- */
+/* ---------- Change mode: a light veil, white tags, the chosen one in Scratch's purple ---------- */
 .change-layer {
   position: absolute;
   inset: 0;
@@ -571,55 +504,52 @@
   animation: fade-in var(--t-ui) var(--ease-soft);
 }
 
+/* The window around the chosen thing, edged like Scratch's selection. */
+.change-layer__hole {
+  fill: none;
+  stroke: var(--change-bright);
+  stroke-width: 2px;
+}
+
 .thing-tag {
   position: absolute;
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
-  min-height: 30px;
-  padding: 4px 10px 5px;
-  border: 0;
-  border-radius: 10px;
-  font: var(--type-label);
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  min-height: 28px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-chip);
+  font: 700 0.875rem/1.25rem var(--font-ui);
   white-space: nowrap;
+  color: var(--text);
+  background: var(--surface-top);
   cursor: pointer;
   animation: thing-tag-in 160ms var(--ease-amble) backwards;
   animation-delay: calc(var(--i, 0) * 20ms);
 }
 
-.thing-tag--cast {
-  --focus-ring: var(--ink);
-  --focus-gap: var(--paper);
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow:
-    0 4px 12px color-mix(in srgb, var(--bg-deep) 45%, transparent),
-    0 0 0 2px color-mix(in srgb, var(--change) 90%, transparent);
+.thing-tag:hover {
+  border-color: var(--change-bright);
 }
 
+/* Scenery (made by the game): the same tag, quieter words. */
 .thing-tag--scenery {
-  color: var(--text);
-  background: color-mix(in srgb, var(--bg-deep) 80%, transparent);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 55%, transparent);
+  font-weight: 400;
 }
 
 .thing-tag__what {
   font: var(--type-meta);
   font-size: 0.78125rem;
   font-style: normal;
-  color: var(--ink-2);
-}
-
-.thing-tag--scenery .thing-tag__what {
   color: var(--text-2);
 }
 
 .thing-tag--on {
+  border-color: var(--change-bright);
   box-shadow:
-    0 4px 12px color-mix(in srgb, var(--bg-deep) 45%, transparent),
-    0 0 0 3px var(--accent);
+    0 0 0 1px var(--change-bright),
+    0 0 0 5px var(--select-ring);
 }
 
 @keyframes thing-tag-in {
@@ -633,13 +563,11 @@
   animation-name: fade-in;
 }
 
-/* The thing card (a Popover with a lantern border). */
+/* The thing card (a Popover). */
 .thing-card.popover {
   width: 282px;
   max-width: 282px;
   padding: 14px;
-  border-radius: var(--r-card);
-  background: var(--surface-bottom);
 }
 
 .thing-card__head {
@@ -654,6 +582,8 @@
   place-items: center;
   width: 54px;
   height: 54px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
 }
 
 .thing-card__title {
@@ -680,36 +610,22 @@
   display: flex;
   gap: var(--s2);
   margin: 12px 0 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
 }
 
 .thing-card__actions .btn {
   flex: 1;
-  min-height: 40px;
   padding: 0 12px;
 }
 
 .thing-card__label {
-  font: var(--type-caps);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-2);
+  font: var(--type-label);
 }
 
 .thing-card__dials {
   display: grid;
   gap: 2px;
-}
-
-.thing-card__dial .slider__range {
-  height: 30px;
-}
-
-.thing-card__dial .slider__head {
-  min-height: 24px;
-}
-
-.thing-card__dial .slider__label {
-  font-size: 0.90625rem;
 }
 
 .thing-card__none,
@@ -719,20 +635,20 @@
   color: var(--text-2);
 }
 
-/* ---------- the controls row ---------- */
+/* ---------- the controls row: Play | Change, Restart, Full screen, and the game's keys ---------- */
 .world-controls {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: var(--wv-w);
   height: var(--ctl-h);
   margin-top: 12px;
 }
 
-.world-controls__mode.segmented {
-  padding: 3px;
-  background: color-mix(in srgb, var(--bg-deep) 45%, transparent);
+.world-controls__mode {
+  flex: none;
+  margin-right: 4px;
 }
 
 .world-controls__end {
@@ -744,12 +660,19 @@
   min-width: 0;
 }
 
+/* The keys that fit, whole: one that doesn't wraps onto a second line, which is out of sight. */
 .world-controls__keys {
   display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-content: flex-start;
   align-items: center;
+  justify-content: flex-end;
   gap: 12px;
+  min-width: 0;
+  height: 30px;
   margin: 0;
-  padding: 0;
+  padding: 1px 0;
   list-style: none;
   overflow: hidden;
 }
@@ -757,66 +680,76 @@
 .world-controls__keys li {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font: var(--type-meta);
   color: var(--text-2);
   white-space: nowrap;
-}
-
-.world-controls__keys .keycap {
-  min-width: 26px;
-  height: 26px;
-  font-size: 0.8125rem;
-  background: var(--surface-top);
 }
 
 .world-controls__hint {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   font: var(--type-meta);
   color: var(--text);
+}
+
+.world-controls__hint > span {
+  overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.world-controls__hint > .icon,
+.world-controls__hint > [aria-hidden] {
+  flex: none;
 }
 
 .world-screen[data-mode='change'] .world-controls__hint .icon {
   color: var(--change);
 }
 
+.world-controls__working .footprints {
+  color: var(--accent-text);
+}
+
 :root[data-layout='tab'] .world-controls__keys li:nth-child(n + 4) {
   display: none;
 }
 
-/* ---------- the Cast line ---------- */
+/* ---------- the Cast pane: Scratch's sprite pane, a strip of square white tiles ---------- */
 .cast-line {
   position: relative;
+  display: flex;
   flex: none;
+  align-items: stretch;
   width: var(--wv-w);
-  height: var(--cast-h);
-  margin-top: 7px;
-}
-
-.cast-line__string {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 40px;
-  pointer-events: none;
-}
-
-.cast-line__string path {
-  fill: none;
-  stroke: var(--paper-3);
-  stroke-opacity: 0.5;
-  stroke-width: 1.6;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface-top);
 }
 
 .cast-line__head {
-  position: absolute;
-  left: 0;
-  top: 18px;
-  width: 96px;
+  container: cast-head / size;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  /* Wider with larger text and extra spacing, so "4 of 8 drawn." stays on one line. */
+  width: calc(var(--head-w) * var(--text-scale, 1));
+  padding: 6px 8px 6px 12px;
+  border-right: 1px solid var(--line);
+}
+
+.cast-line {
+  --head-w: 112px;
+}
+
+:root[data-spacing='extra'] .cast-line {
+  --head-w: 128px;
 }
 
 .cast-line__title {
@@ -825,333 +758,366 @@
 }
 
 .cast-line__progress {
-  margin-top: 2px;
+  font: var(--type-meta);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cast-line__tap {
   font: var(--type-meta);
   color: var(--text-2);
 }
 
+/* A short pane keeps the count and lets the "tap" line go. */
+@container cast-head (max-height: 96px) {
+  .cast-line__tap {
+    display: none;
+  }
+}
+
 .cast-line__cards {
-  position: absolute;
-  left: 104px;
-  right: 0;
-  top: 0;
-  bottom: 0;
   display: flex;
-  gap: 12px;
+  flex: 1 1 0;
+  gap: 8px;
+  min-width: 0;
   margin: 0;
-  padding: 16px 6px 0 6px;
+  padding: var(--strip-pad);
   list-style: none;
   overflow-x: auto;
   overflow-y: hidden;
   overflow-anchor: none;
-  scrollbar-width: thin;
-  mask-image: linear-gradient(90deg, transparent 0, #000 6px, #000 calc(100% - 18px), transparent);
+  scrollbar-width: none;
+}
+
+.cast-line__cards::-webkit-scrollbar {
+  display: none;
 }
 
 .cast-card__slot {
+  display: flex;
   flex: none;
 }
 
-/* Round arrows over the line's ends while cards are out of view there. */
+/* Round arrows over the strip's ends while tiles are out of view there (the wheel scrolls it too). */
 .cast-line__more {
   position: absolute;
-  top: calc(16px + var(--card-h) / 2 - 20px);
+  top: 50%;
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  border: 0;
-  border-radius: 50%;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-round);
   color: var(--text);
-  background: var(--surface-raised);
-  box-shadow: var(--lift-sm), inset 0 0 0 1.5px var(--line-control-panel);
+  background: var(--surface-top);
+  box-shadow: var(--lift-sm);
+  translate: 0 -50%;
   cursor: pointer;
 }
 
 .cast-line__more:hover {
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
+  background: var(--bg);
 }
 
 .cast-line__more--before {
-  left: 96px;
+  left: calc(var(--head-w) * var(--text-scale, 1) + 4px);
 }
 
 .cast-line__more--after {
-  right: -8px;
+  right: 6px;
 }
 
 .cast-line__more--after .icon {
-  rotate: 180deg;
+  scale: -1 1;
 }
 
+/* One tile: the picture, the name, the role (or Draw me). The tile is a size container: a short tile lets
+   its role line go (below). */
 .cast-card {
-  --focus-gap: var(--bg);
+  --focus-gap: var(--surface-top);
+  container-type: size;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: var(--card-w);
-  height: var(--card-h);
-  padding: 6px 6px 0;
-  border: 0;
-  border-radius: 14px;
+  display: block;
+  width: var(--tile-w);
+  height: var(--tile-h);
+  padding: 6px 6px 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   font: inherit;
   text-align: center;
   color: var(--text);
   background: var(--surface-top);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--line-control) 70%, transparent),
-    0 10px 20px color-mix(in srgb, var(--bg-deep) 55%, transparent);
-  rotate: var(--tilt, 0deg);
-  transform-origin: 50% -8px;
   cursor: pointer;
   transition:
-    translate var(--t-ui) var(--ease-amble),
-    box-shadow var(--t-ui) var(--ease-soft);
+    border-color var(--t-micro) var(--ease-soft),
+    box-shadow var(--t-micro) var(--ease-soft);
 }
 
 .cast-card:hover {
-  translate: 0 -2px;
+  border-color: var(--change-bright);
 }
 
-.cast-card__pin {
+.cast-card:focus-visible {
+  outline-offset: 2px;
+}
+
+/* The picked tile: Scratch's selected sprite, a 2 px purple edge and a 4 px halo. */
+.cast-card--picked,
+.cast-card--picked:hover {
+  border-color: var(--change-bright);
+  box-shadow:
+    0 0 0 1px var(--change-bright),
+    0 0 0 5px var(--select-ring);
+}
+
+.cast-card__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+}
+
+/* The picture fills what the words leave (its drawing or glyph is laid over it, fitted and centred). */
+.cast-card__pic {
+  position: relative;
+  display: block;
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
+}
+
+.cast-card__pic > :not(.icon) {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.cast-card__pic > .icon {
   position: absolute;
   left: 50%;
-  top: -9px;
-  width: 9px;
-  height: 18px;
-  margin-left: -4.5px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--paper-line) 55%, var(--paper-3));
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--bg-deep) 60%, transparent);
+  top: 50%;
+  translate: -50% -50%;
 }
 
-.cast-card__ok {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  color: var(--on-alive);
-  background: var(--alive);
-}
-
-.cast-card__pic {
-  display: grid;
-  flex: none;
-  place-items: center;
-  height: 58px;
-}
-
-.cast-card__sticker {
-  width: auto !important;
-  height: auto !important;
+.cast-card__pic > .sticker {
+  display: block;
 }
 
 .cast-card__sticker img {
-  max-width: 94px;
-  max-height: 54px;
-  width: auto;
-  height: auto;
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
 .cast-card__name {
   max-width: 100%;
-  margin-top: 3px;
   overflow: hidden;
-  font: var(--type-label);
-  font-size: 0.9375rem;
-  line-height: 1.2;
+  font: 700 0.875rem/1.25rem var(--font-ui);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .cast-card__sub {
+  max-width: 100%;
+  overflow: hidden;
   font: var(--type-meta);
   font-size: 0.78125rem;
-  line-height: 1.3;
+  line-height: 1rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--text-2);
 }
 
+/* Draw me: a small button inside the tile (the tile is what is pressed). */
 .cast-card__draw.btn {
-  --btn-h: 28px;
-  position: absolute;
-  left: 50%;
-  bottom: -9px;
+  --btn-h: 24px;
+  flex: none;
   gap: 4px;
-  padding: 0 11px;
-  border-radius: 9px;
-  font-size: 0.84375rem;
-  translate: -50% 0;
+  max-width: 100%;
+  padding: 0 8px;
+  font-size: 0.8125rem;
+  line-height: 1rem;
   pointer-events: none;
 }
 
-.cast-card--needed .cast-card__pic {
-  height: 54px;
+/* The green check of a drawn tile. */
+.cast-card__ok {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-round);
+  color: var(--on-alive);
+  background: var(--alive);
 }
 
-.cast-card__draw.btn--paper {
-  box-shadow: inset 0 0 0 1.5px var(--paper-line);
+/* Small tags: Your turn (orange, dark words), New and ×3. */
+.cast-card__tag {
+  padding: 0 6px;
+  border-radius: var(--r-chip);
+  font: 700 0.75rem/1.125rem var(--font-ui);
+  white-space: nowrap;
 }
 
-.cast-card--glow {
-  background: var(--surface-bottom);
-  box-shadow:
-    inset 0 0 0 2px var(--accent),
-    0 0 26px color-mix(in srgb, var(--accent) 35%, transparent),
-    0 10px 20px color-mix(in srgb, var(--bg-deep) 55%, transparent);
+.cast-card__tag--turn {
+  color: var(--on-warm);
+  background: var(--warm);
 }
 
-.cast-card--optional {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+.cast-card__tag--new,
+.cast-card__tag--count {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 1;
+  color: var(--text);
+  background: color-mix(in srgb, var(--brand-bright) 16%, var(--surface-top));
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
+/*
+ * Your turn: a wider tile, the picture beside the tag, the name and a blue Draw me. A short tile (under
+ * 89 px) puts the tag and Draw me side by side under the name, so it is wider still (a step made with
+ * clamp: 48 px more below 89 px, nothing above).
+ */
+.cast-card--turn {
+  width: calc(var(--tile-w) * 1.75 + clamp(0px, (89px - var(--tile-h)) * 1000, 48px));
+  padding: 6px 8px 7px 6px;
+  text-align: left;
+}
+
+.cast-card--turn .cast-card__body {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto auto auto minmax(0, 1fr);
+  grid-template-areas:
+    'pic . .'
+    'pic tag tag'
+    'pic name name'
+    'pic draw draw'
+    'pic . .';
+  align-items: center;
+  justify-items: start;
+  gap: 2px 8px;
+}
+
+.cast-card--turn .cast-card__tag--turn {
+  grid-area: tag;
+  margin-bottom: 2px;
+}
+
+.cast-card--turn .cast-card__pic {
+  grid-area: pic;
+  width: calc(var(--tile-h) - 36px);
+  height: 100%;
+}
+
+.cast-card--turn .cast-card__name {
+  grid-area: name;
+}
+
+.cast-card--turn .cast-card__draw {
+  grid-area: draw;
+}
+
+@container (max-height: 88px) {
+  .cast-card--turn .cast-card__body {
+    grid-template-rows: minmax(0, 1fr) auto auto minmax(0, 1fr);
+    grid-template-areas:
+      'pic . .'
+      'pic name name'
+      'pic tag draw'
+      'pic . .';
+  }
+
+  .cast-card--turn .cast-card__tag--turn {
+    margin-bottom: 0;
+  }
+}
+
+/* Quieter tiles: optional, spare ("Room for Bubbles"), resting ("Not in the game now") and Add someone. */
 .cast-card--spare,
-.cast-card--resting {
+.cast-card--resting,
+.cast-card--add {
+  border-style: dashed;
+  border-color: var(--line-control);
   background: transparent;
-  box-shadow: none;
-  outline: 2px dashed color-mix(in srgb, var(--line-control) 80%, transparent);
-  outline-offset: -2px;
-  opacity: 0.72;
 }
 
-/* "Room for {name}": the name is the point, so it gets two lines (and the glyph, only a hint of the kind,
-   gets smaller) instead of "Room for Bu…". */
+.cast-card--spare .cast-card__pic,
+.cast-card--resting .cast-card__pic {
+  opacity: 0.6;
+}
+
+.cast-card--spare .cast-card__name,
+.cast-card--resting .cast-card__name,
+.cast-card--add .cast-card__name {
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.cast-card--add .cast-card__pic {
+  color: var(--text-2);
+}
+
+/* "Room for {name}": the name is the point, so it gets two lines. */
 .cast-card--spare .cast-card__name {
   display: -webkit-box;
   white-space: normal;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  line-height: 1.12;
+  line-height: 1.1rem;
 }
 
-.cast-card--spare .cast-card__pic {
-  height: 36px;
-}
-
-.cast-card--spare .cast-card__pic .ph-glyph {
-  max-height: 36px;
-}
-
-.cast-card--spare:focus-visible,
-.cast-card--resting:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: 3px;
-  opacity: 1;
-}
-
-.cast-card--selected {
-  box-shadow:
-    inset 0 0 0 2px var(--change),
-    0 10px 20px color-mix(in srgb, var(--bg-deep) 55%, transparent);
-}
-
-.cast-card--add {
-  color: var(--text-2);
-  background: transparent;
-  box-shadow: none;
-  outline: 2px dashed var(--line-control);
-  outline-offset: -2px;
-}
-
-.cast-card--add .cast-card__name {
-  color: color-mix(in srgb, var(--text) 70%, var(--text-2));
-}
-
-.cast-card--add:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: 3px;
-}
-
-.cast-card__ribbon {
-  position: absolute;
-  top: 8px;
-  left: -6px;
-  z-index: 1;
-  padding: 1px 7px;
-  border-radius: 4px;
-  font: var(--type-caps);
-  font-size: 0.625rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--on-accent);
-  background: var(--accent);
-  rotate: -8deg;
-}
-
-.cast-card__ribbon--new {
-  color: var(--ink);
-  background: var(--ai);
-}
-
-.cast-card__count {
-  position: absolute;
-  top: 7px;
-  left: 8px;
-  font: var(--type-caps);
-  color: var(--text-2);
-}
-
-/* Compact cards (a short tab): the drawing and the name. */
-@media (max-height: 739px) {
-  :root[data-layout='tab'] .cast-card__sub,
-  :root[data-layout='tab'] .cast-card__draw {
+/* A short tile keeps its picture and name; the role line goes (Draw me stays on the Your turn tile). */
+@container (max-height: 88px) {
+  .cast-card__sub,
+  .cast-card:not(.cast-card--turn) .cast-card__draw {
     display: none;
   }
 
-  :root[data-layout='tab'] .cast-card__pic {
-    height: 40px;
-  }
-
-  :root[data-layout='tab'] .cast-card__pic .ph-glyph,
-  :root[data-layout='tab'] .cast-card__pic .sticker {
-    max-height: 40px;
-  }
-
-  /* Compact cards have one line for a name. */
-  :root[data-layout='tab'] .cast-card--spare .cast-card__name {
+  .cast-card--spare .cast-card__name {
     display: block;
     white-space: nowrap;
   }
-
-  :root[data-layout='tab'] .cast-card--spare .cast-card__pic {
-    height: 40px;
-  }
-
-  :root[data-layout='tab'] .cast-line__head {
-    top: 8px;
-  }
-
-  :root[data-layout='tab'] .cast-line__progress {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
 }
 
-@media (max-height: 759px) {
-  :root[data-layout='touch'] .cast-card__sub {
+/* Larger words on a short tile: the Your turn tile keeps its tag and name. */
+@container (max-height: 88px) {
+  :root:is([data-text='1.3'], [data-text='1.15']) .cast-card--turn .cast-card__draw {
     display: none;
+  }
+
+  :root:is([data-text='1.3'], [data-text='1.15']) .cast-card--turn .cast-card__body {
+    grid-template-areas:
+      'pic . .'
+      'pic name name'
+      'pic tag tag'
+      'pic . .';
   }
 }
 
 .cast-line--button {
-  height: auto;
+  width: auto;
   margin-top: 10px;
+  border: 0;
+  background: none;
 }
 
 .cast-line--sheet {
-  position: relative;
+  --tile-h: 104px;
+  --tile-w: 104px;
+  --strip-pad: 10px;
   width: auto;
-  height: 150px;
   margin: 0;
 }
 
@@ -1164,21 +1130,21 @@
   min-width: 220px;
 }
 
-/* ---------- the notebook ---------- */
+/* ---------- the side panel: flat white panels with clear headings ---------- */
 .notebook {
   grid-area: aside;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
   min-height: 0;
   padding: 6px 0 16px;
 }
 
-/* When the panels are taller than the screen (Change mode's Dials | Twists card under an Ask card with a
-   scope chip, a world with many dials, a long answer), the notebook scrolls: the page never does (§2.2),
-   and nothing may end up cut off below it. It reaches into the gutters on both sides so the panels'
-   shadows and focus rings are not clipped; the gutter on the right holds the scrollbar. */
+/* When the panels are taller than the screen (Change mode's Dials | Twists panel under a wish box with a
+   scope chip, a world with many dials, a long answer), the side panel scrolls: the page never does (§2.2),
+   and nothing may end up cut off below it. It reaches into the gutters on both sides so the panels' edges
+   and focus rings are not clipped; the gutter on the right holds the scrollbar. */
 aside.notebook {
   margin-inline: calc(-1 * var(--gap)) calc(-1 * var(--edge));
   padding-inline: var(--gap) 0;
@@ -1210,7 +1176,7 @@ aside.notebook > * {
   display: flex;
   flex: 1;
   flex-direction: column;
-  /* The heading and the newest step, whole (the notebook scrolls when there is no room for this). */
+  /* The heading and the newest step, whole (the side panel scrolls when there is no room for this). */
   min-height: 150px;
 }
 
@@ -1224,48 +1190,32 @@ aside.notebook > * {
   padding: 0;
 }
 
-.ask-card {
-  padding: 16px 18px 14px;
-}
-
-.ask-card__head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+:root[data-layout='portrait'] .notebook {
+  padding-top: var(--s4);
 }
 
 .ask-card__title {
+  margin-bottom: 12px;
   font: var(--type-heading);
-  font-size: 1.25rem;
 }
 
-.ask-card__badge {
-  padding: 2px 8px;
-  border-radius: 7px;
-  font: var(--type-caps);
-  letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
-  color: var(--ai);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ai) 50%, transparent);
-}
-
-:root[data-layout='portrait'] .notebook {
-  padding-top: var(--s4);
+/* When the wish box shows nothing here, its panel goes too. */
+.ask-card:has(> .ask-card__body:empty) {
+  display: none;
 }
 
 /* ---------- Dials | Twists ---------- */
 .tune {
   display: grid;
-  gap: 10px;
-  padding: 14px 18px;
+  gap: 12px;
   animation: tag-in var(--t-ui) var(--ease-amble);
 }
 
 .tune__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--s3);
+  gap: 8px var(--s3);
 }
 
 .tune__meta {
@@ -1276,13 +1226,11 @@ aside.notebook > * {
 
 .tune__dials {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   max-height: 240px;
+  margin: -4px;
+  padding: 4px;
   overflow-y: auto;
-}
-
-.tune__dial .slider__range {
-  height: 32px;
 }
 
 .tune__empty,
@@ -1296,86 +1244,66 @@ aside.notebook > * {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   max-height: min(236px, calc(100vh - 480px));
-  min-height: 132px;
-  margin: 0 0 8px;
-  padding: 2px 2px 14px;
+  min-height: 116px;
+  margin: -5px -5px 6px;
+  padding: 5px;
   list-style: none;
   overflow-y: auto;
-  mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent);
 }
 
+/* A twist: its picture, its name and a switch, on a flat white tile. */
 .twist-tile {
   display: grid;
-  gap: 4px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
   width: 100%;
-  min-height: 58px;
-  padding: 8px 10px 7px;
-  border: 0;
-  border-radius: 12px;
+  height: 100%;
+  min-height: 48px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   text-align: left;
   color: var(--text);
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line-control);
+  background: var(--surface-top);
   cursor: pointer;
+  transition:
+    border-color var(--t-micro) var(--ease-soft),
+    background-color var(--t-micro) var(--ease-soft);
 }
 
 .twist-tile:hover {
-  background: color-mix(in srgb, var(--text) 8%, transparent);
-}
-
-.twist-tile__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  border-color: var(--change-bright);
 }
 
 .twist-tile .twist-icon,
 .twist-tile .icon {
-  color: var(--accent);
-}
-
-/* Lantern yellow is 1.4:1 on Day's light tiles (and fades on a projector): Day's darker lantern edge. */
-:root[data-theme='day'] .twist-tile :is(.twist-icon, .icon) {
-  color: var(--accent-border);
-}
-
-.twist-tile__switch {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  border-radius: var(--r-chip);
-  background: var(--well);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
-}
-
-.twist-tile__knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--text-2);
-  transition: translate var(--t-ui) var(--ease-pop);
+  flex: none;
+  color: var(--text-2);
 }
 
 .twist-tile__name {
   font: var(--type-chip);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* The switch is the shared one (square-cornered track, round knob), so twists switch like Settings do. */
+.twist-tile__switch.toggle__switch {
+  display: inline-block;
+  flex: none;
+  margin: 0;
 }
 
 .twist-tile--on {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  border-color: var(--change-bright);
+  box-shadow: 0 0 0 1px var(--change-bright);
+  background: color-mix(in srgb, var(--change-bright) 8%, var(--surface-top));
 }
 
-.twist-tile--on .twist-tile__switch {
-  background: var(--accent);
-  box-shadow: none;
-}
-
-.twist-tile--on .twist-tile__knob {
-  translate: 16px 0;
-  background: var(--on-accent);
+.twist-tile--on .twist-icon,
+.twist-tile--on .icon {
+  color: var(--change);
 }
 
 /* ---------- sheets: Add someone, Sounds, Controls, World info, Problems ---------- */
@@ -1388,6 +1316,8 @@ aside.notebook > * {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--s2);
+  padding: 5px;
+  margin: -5px;
 }
 
 .add-role {
@@ -1396,25 +1326,32 @@ aside.notebook > * {
   gap: 4px;
   min-height: 110px;
   padding: 10px 6px;
-  border: 0;
-  border-radius: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   font: var(--type-chip);
+  font-weight: 700;
   color: var(--text);
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line-control);
+  background: var(--surface-top);
   cursor: pointer;
 }
 
-.add-role--on {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  box-shadow: inset 0 0 0 2px var(--accent);
+.add-role:hover {
+  border-color: var(--change-bright);
+}
+
+.add-role--on,
+.add-role--on:hover {
+  border-color: var(--change-bright);
+  box-shadow:
+    0 0 0 1px var(--change-bright),
+    0 0 0 5px var(--select-ring);
 }
 
 .sound-list,
 .controls-list,
 .problems-list {
   display: grid;
-  gap: var(--s3);
+  gap: var(--s2);
   margin: var(--s3) 0;
   padding: 0;
   list-style: none;
@@ -1424,9 +1361,9 @@ aside.notebook > * {
   display: grid;
   gap: var(--s2);
   padding: 12px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface-top);
 }
 
 .sound-row__head {
@@ -1459,12 +1396,18 @@ aside.notebook > * {
 .sound-row__pick select {
   height: var(--control-sm);
   padding: 0 10px;
-  border: 0;
-  border-radius: 10px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-btn);
   font: var(--type-chip);
   color: var(--text);
-  background: var(--well);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  background: var(--surface-top);
+}
+
+.sound-row__pick select:focus {
+  border-color: var(--brand);
+  box-shadow:
+    inset 0 0 0 1px var(--brand),
+    0 0 0 4px var(--hover-ring);
 }
 
 .controls-row {
@@ -1473,8 +1416,9 @@ aside.notebook > * {
   align-items: center;
   gap: var(--s3);
   padding: 10px 12px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface-top);
 }
 
 .controls-row__action {
@@ -1500,9 +1444,14 @@ aside.notebook > * {
   width: 24px;
   height: 24px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   color: var(--text-2);
   background: transparent;
+}
+
+.controls-row__remove:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--bg);
 }
 
 .controls-row__remove:disabled {
@@ -1511,14 +1460,16 @@ aside.notebook > * {
 
 .world-info {
   display: grid;
-  gap: 6px;
   margin: 0;
+  border-top: 1px solid var(--line);
 }
 
 .world-info__row {
   display: grid;
   grid-template-columns: 150px 1fr;
   gap: var(--s3);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
 }
 
 .world-info dt {
@@ -1533,16 +1484,17 @@ aside.notebook > * {
 }
 
 .world-info__credits {
-  margin-top: var(--s4);
+  margin-top: var(--s3);
   font: var(--type-meta);
   color: var(--text-2);
 }
 
 .problems-list__item {
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--warn) 8%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 45%, transparent);
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--warn);
+  border-radius: var(--r-card);
+  background: var(--surface-top);
 }
 
 .problems-list__message {
@@ -1566,17 +1518,17 @@ aside.notebook > * {
   position: absolute;
   object-fit: contain;
   will-change: transform, opacity;
-  filter: drop-shadow(0 10px 18px color-mix(in srgb, var(--bg-deep) 60%, transparent));
+  filter: drop-shadow(var(--lift));
 }
 
+/* Eight flat green dots rise from the feet when a drawing lands (no glow). */
 .flight__spark {
   position: absolute;
   width: 6px;
   height: 6px;
   margin: -3px 0 0 -3px;
-  border-radius: 50%;
-  background: var(--alive);
-  box-shadow: 0 0 10px var(--alive);
+  border-radius: var(--r-round);
+  background: var(--alive-bright);
   animation: spark-up 650ms var(--ease-amble) forwards;
 }
 
@@ -1593,13 +1545,28 @@ aside.notebook > * {
   }
 }
 
+/* The lift: a white sheet with the member's picture, growing toward the Desk's sheet. */
 .flight__lift {
   position: absolute;
   display: grid;
   place-items: center;
   border-radius: var(--r-paper);
-  box-shadow: var(--lift-paper);
+  background: var(--sheet);
+  box-shadow:
+    0 0 0 1px var(--line),
+    var(--lift);
   will-change: transform, opacity;
+}
+
+.flight__lift > :is(svg, img, .flight__art) {
+  width: 46%;
+  height: 46%;
+  object-fit: contain;
+}
+
+.flight__art > svg {
+  width: 100%;
+  height: 100%;
 }
 
 :root[data-motion='reduced'] .flight__spark {

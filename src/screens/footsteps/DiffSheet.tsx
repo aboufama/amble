@@ -1,14 +1,14 @@
 /**
- * See the change (§2.9): a sheet over the notebook with the step's words, the student's request, the
- * drawings that changed (before and after stickers), dial moves, twists, and a unified diff per changed
- * file (JetBrains Mono 13 px; added lines in `--alive`, removed ones in `--warn` and struck through, ±3
- * lines of context), plus Go back to before this.
+ * What changed (§2.9, opened by See what changed): a sheet over the side panel with who and when, the
+ * student's wish ("You wished: '…'"), the step's words, the drawings that changed (before and after
+ * pictures), dial moves, twists, and a unified diff per changed file (JetBrains Mono 13 px; added lines in
+ * `--alive`, removed ones in `--warn` and struck through, ±3 lines of context), plus Go back to before this.
  */
 import { useEffect, useState } from 'react';
 import { useServices } from '../../app/services';
 import { countHunkChanges, pairChangedLines, parseUnified, twistDiff, wordDiff, type DiffLine, type Hunk, type Segment } from '../../history/diff';
 import { parentOf } from '../../history/record';
-import { fullTime, lookOf, timeAgo, whoOf } from '../../history/summary';
+import { fullTime, timeAgo, whoOf } from '../../history/summary';
 import { t } from '../../i18n';
 import { extractManifest, sourceFilesOf } from '../../cores/ai';
 import type { ArtShape, BlobRef, CodeFile, RigKind, Role, StepDiff, StepSummary, World } from '../../model/types';
@@ -220,12 +220,12 @@ export function DiffSheet({ world, step, canGoBackBefore, busy, onClose, onGoBac
     >
       {step && (
         <div className="diff-sheet__body" data-testid="diff-sheet">
-          <p className={cx('diff-sheet__who', lookOf(step) === 'ai' && 'diff-sheet__who--ai')}>
-            {lookOf(step) === 'ai' ? <Icon name="sparkle" size={14} /> : <Icon name="footprint" size={14} />}
+          <p className="diff-sheet__who">
+            <Icon name="footprint" size={14} />
             <span title={fullTime(step.at)}>{t('history.whenBy', { who: whoOf(step), when: timeAgo(step.at) })}</span>
           </p>
+          {step.request !== undefined && <p className="diff-sheet__request">{t('history.youWished', { request: step.request })}</p>}
           <p className="diff-sheet__summary">{step.text}</p>
-          {step.request !== undefined && <p className="diff-sheet__request">{t('history.youAsked', { request: step.request })}</p>}
           {step.handEdits && (
             <p className="diff-sheet__note">
               <Icon name="info" size={16} />

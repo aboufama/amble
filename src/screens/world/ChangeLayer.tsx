@@ -1,8 +1,9 @@
 /**
- * Change mode over the paused world (§2.7): a 48 % night veil (with a soft opening around the selected
- * thing), a tag above everything in it (paper tags for cast members, quiet ones for scenery; they fade and
- * rise 6 px, 20 ms apart), taps on the things themselves, and the thing card. Keys: Tab moves between the
- * tags, Enter opens one, Esc closes the card, Esc again goes back to Play.
+ * Change mode over the paused world (§2.7): a light veil with a clear window around the selected thing,
+ * edged in Scratch's purple; a white tag above everything in it (the chosen one with the purple edge and
+ * halo; scenery's words are quieter; they fade and rise 6 px, 20 ms apart), taps on the things themselves,
+ * and the thing card. Keys: Tab moves between the tags, Enter opens one, Esc closes the card, Esc again
+ * goes back to Play.
  */
 import { useId, useMemo, type MouseEvent } from 'react';
 import { useEscape } from '../../app/keys';
@@ -72,15 +73,13 @@ export function ChangeLayer({ frame, onDraw, onBones }: ChangeLayerProps) {
     <div className="change-layer" role="application" aria-label={t('world.changeRegion')} aria-describedby={helpId} data-testid="change-layer" onClick={onVeil}>
       <svg className="change-layer__veil" width={frame.width} height={frame.height} aria-hidden="true">
         <defs>
-          <filter id={`${maskId}-soft`}>
-            <feGaussianBlur stdDeviation="10" />
-          </filter>
           <mask id={maskId}>
             <rect width="100%" height="100%" fill="white" />
-            {hole && <rect x={hole.x} y={hole.y} width={hole.w} height={hole.h} rx="22" fill="black" filter={`url(#${maskId}-soft)`} />}
+            {hole && <rect x={hole.x} y={hole.y} width={hole.w} height={hole.h} rx="8" fill="black" />}
           </mask>
         </defs>
         <rect width="100%" height="100%" className="change-layer__night" mask={`url(#${maskId})`} />
+        {hole && <rect x={hole.x} y={hole.y} width={hole.w} height={hole.h} rx="8" className="change-layer__hole" />}
       </svg>
       <p id={helpId} className="sr-only">
         {t('world.changeHelp')}

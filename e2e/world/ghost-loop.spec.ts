@@ -53,9 +53,22 @@ test.describe('the ghost loop', () => {
     expect(await readGame(frame, (g) => g.objects().find((o) => o.key === 'moonKing')?.drawn)).toBe(true);
   });
 
-  test('a needed cast card lifts its member onto the Desk', async ({ page }) => {
+  test('a needed cast card lifts its member onto the Desk, its picture on the lift card', async ({ page }) => {
     const id = await openWorld(page);
+    // What the lift card carries as it grows toward the Desk (it is gone once the Desk is there).
+    await page.evaluate(() => {
+      const w = window as unknown as { liftArt: string | null };
+      w.liftArt = null;
+      new MutationObserver((records) => {
+        for (const r of records) {
+          for (const n of r.addedNodes) {
+            if (n instanceof HTMLElement && n.classList.contains('flight__lift')) w.liftArt = n.querySelector('svg, img')?.tagName.toLowerCase() ?? 'blank';
+          }
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+    });
     await page.getByTestId('cast-card-moonKing').click();
     await expect(page).toHaveURL(new RegExp(`#/w/${id}/draw/moonKing$`), { timeout: 15_000 });
+    expect(await page.evaluate(() => (window as unknown as { liftArt: string | null }).liftArt)).toBe('svg');
   });
 });

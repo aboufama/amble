@@ -44,7 +44,7 @@ export const world = {
   keysLabel: 'Keys for this game',
   touchHint: 'Use the buttons on the screen',
   changeHint: 'Paused. Tap anything to change it.',
-  askAndFootsteps: 'Ask & Footsteps',
+  askAndFootsteps: 'Wishes and footsteps',
   actionMove: 'move',
   actionUpDown: 'up and down',
   actionJump: 'jump',
@@ -59,9 +59,12 @@ export const world = {
   stoppedTitle: 'The world stopped.',
   restartIt: 'Restart it',
   navigated: "Games can't open web pages or use the internet, so Amble restarted it.",
-  heavy: 'This world is heavy for this Chromebook. Try fewer things on screen.',
+  heavyTitle: 'Running slowly.',
+  heavyTwist: 'Close other tabs, or turn off {name}.',
+  heavyPlain: 'Close other tabs, then restart it.',
+  heavyTurnOff: 'Turn off {name}',
   pillBuilding: 'Building {title}…',
-  pillWorking: 'Amble is changing your world…',
+  pillWorking: 'Working on your wish…',
   exitFullscreen: 'Exit full screen',
 
   // ---- the request tag and the ghost loop
@@ -86,8 +89,9 @@ export const world = {
 
   // ---- the Cast line
   castTitle: 'Cast',
-  castProgress: '{drawn} of {total} drawn. Tap to draw or redraw.',
-  castAllDrawn: "Everyone's drawn! ✦",
+  castProgress: '{drawn} of {total} drawn.',
+  castTap: 'Tap to draw or redraw.',
+  castAllDrawn: "Everyone's drawn!",
   castEmpty: 'Your cast shows up when the world starts.',
   castLabel: 'Cast: the drawings this world needs',
   castMore: 'More of the cast',
@@ -97,13 +101,14 @@ export const world = {
   roomFor: 'Room for {name}',
   drawPronoun: 'Draw {pronoun}',
   resting: 'Not in the game now',
-  askToAdd: 'Ask Amble to add {pronoun}',
+  askToAdd: 'Put {pronoun} in the game',
   addSomeone: 'Add someone',
   friendOrFoe: 'Friend or foe',
   newRibbon: 'New',
   countTimes: '×{n}',
   cardDrawn: '{name}, {role}, drawn. Press Enter for more.',
   cardNeeded: '{name}, {role}, not drawn yet. Press Enter to draw.',
+  cardTurn: '{name}, {role}, not drawn yet. Your turn! Press Enter to draw.',
   cardOptional: '{name}, {role}, optional. Press Enter to draw.',
   cardSpare: 'Room for {name}, {role}. Press Enter to draw.',
   cardResting: '{name}, not in the game now. Press Enter for more.',
@@ -163,13 +168,12 @@ export const world = {
   drawIt: 'Draw it',
   bones: 'Bones',
   dialsTitle: 'Dials',
-  dialsNote: 'Dials change the game right away. No AI needed.',
+  dialsNote: 'Dials change the game right away.',
   noThingDials: 'No dials for {name} yet.',
   closeCard: 'Close',
 
-  // ---- the Ask card's shell
+  // ---- the wish box's shell
   askTitle: 'Change your world',
-  askBadge: 'AI helper',
 
   // ---- Dials | Twists
   tuneGroup: 'World dials or twists',
@@ -191,7 +195,7 @@ export const world = {
   problemLine: 'Something in the game broke ({file}, line {line}).',
   problemPlain: 'Something in the game broke.',
   problemTwist: 'The twist {name} broke something in this world.',
-  askFix: 'Ask Amble to fix it',
+  askFix: 'Fix it for me',
   notFound: "This world isn't here. Here's your Trail.",
   showLine: 'Show me the line',
   turnOff: 'Turn {name} off',
@@ -280,7 +284,7 @@ export const world = {
   infoSize: 'Size',
   infoStarter: 'Started from',
   infoNoStarter: 'Its own idea',
-  infoCredits: 'Art by {artBy} · Code by the AI helper and you · Starter: {starter}',
-  infoCreditsNoStarter: 'Art by {artBy} · Code by the AI helper and you',
+  infoCredits: 'Art by {artBy} · Code by {starter}, your wishes and you',
+  infoCreditsNoStarter: 'Art by {artBy} · Code by your wishes and you',
   infoYou: 'you',
 } satisfies Strings;

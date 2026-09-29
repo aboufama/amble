@@ -1,6 +1,6 @@
 /**
- * Twists (§2.7): a 2-column grid of switch tiles (picture, name, switch) for the twists this world can
- * take; the ones it cannot take are hidden, not greyed. They change the running game at once.
+ * Twists (§2.7): a 2-column grid of flat switch tiles (picture, name, the shared switch) for the twists this
+ * world can take; the ones it cannot take are hidden, not greyed. They change the running game at once.
  */
 import { useMemo } from 'react';
 import { t } from '../../i18n';
@@ -27,13 +27,11 @@ export function TwistsCard() {
                 onClick={() => setTwist(tw.id, !tw.on)}
                 data-testid={`twist-${tw.id}`}
               >
-                <span className="twist-tile__top">
-                  <TwistIcon id={tw.id} />
-                  <span className="twist-tile__switch" aria-hidden="true">
-                    <span className="twist-tile__knob" />
-                  </span>
-                </span>
+                <TwistIcon id={tw.id} />
                 <span className="twist-tile__name">{tw.name}</span>
+                <span className={cx('toggle__switch twist-tile__switch', tw.on && 'toggle__switch--on')} aria-hidden="true">
+                  <span className="toggle__knob" />
+                </span>
                 <span id={`twist-${tw.id}-does`} className="sr-only">
                   {tw.does}
                 </span>

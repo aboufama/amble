@@ -1,9 +1,8 @@
 /**
  * The world's top bar (§2.6): ◂ Trail · the hero's sticker and the world's name (click or Enter renames
- * it, 40 characters) · the save state · Save to Drive (Hand in for an assignment) · the AI chip · ⋯.
+ * it, 40 characters) · the save state · Save to Drive (Hand in for an assignment) · ⋯.
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { AiChip } from '../../app/frame/AiChip';
 import { TopBar } from '../../app/frame/TopBar';
 import { t } from '../../i18n';
 import { TEXT_LIMITS } from '../../model/limits';
@@ -121,7 +120,6 @@ export function WorldTopBar({ world, onOpen }: WorldTopBarProps) {
             <SaveStatus />
           )}
           {world.assignment ? <HandInButton world={world} /> : <SaveButton world={world} compact={short} />}
-          <AiChip compact={short} />
           <WorldMenu world={world} onOpen={onOpen} />
         </>
       }
