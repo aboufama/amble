@@ -5,7 +5,7 @@
  * a hit leaves the heart full.
  */
 import type { Frame, Page } from '@playwright/test';
-import { expect, test } from '../helpers/app';
+import { expect, gotoRoute, openAmble, test } from '../helpers/app';
 import { gameFrame, openWorld, startGame } from '../world/world';
 
 interface PlayerLike {
@@ -34,10 +34,15 @@ async function playerState(page: Page): Promise<{ state: string; frozen: number 
   });
 }
 
-/** The hearts row (drawn by the kit's HUD scene): each heart's alpha and whether a tween still runs on it. */
-const HEARTS = `(s) => s.game.scene.getScenes(true).flatMap((scene) => scene.children.list
-  .filter((o) => o.texture && o.texture.key === 'amble-fx' && o.frame && o.frame.name === 'heart')
-  .map((o) => ({ alpha: Math.round(o.alpha * 100) / 100, tweens: scene.tweens.getTweensOf(o).length })))`;
+/**
+ * The hearts row (the kit's HUD: plain hearts, or crops of the hero's head when it was drawn on the bones):
+ * each heart's alpha and whether a tween still runs on it.
+ */
+const HEARTS = `(s) => {
+  const ui = s.__kit.ui;
+  const bar = ui.bars.find((b) => b.kind === 'hearts');
+  return (bar ? bar.icons : []).map((o) => ({ alpha: Math.round(o.alpha * 100) / 100, tweens: ui.s.tweens.getTweensOf(o).length }));
+}`;
 
 test('a game torn down mid-run leaves no page error: its closed audio stays quiet', async ({ page }) => {
   await openWorld(page);
@@ -90,6 +95,20 @@ test("the title card's keys never count as the game's controls", async ({ page }
   expect(playing).not.toContain('pause');
 });
 
+test('Sky Run, a runner that never shoots, shows only its jump key', async ({ page }) => {
+  await openAmble(page);
+  await gotoRoute(page, '#/starter/sky-run');
+  await expect(page).toHaveURL(/#\/w\/[A-Za-z0-9_-]+$/);
+  await expect(page.getByTestId('player-layer')).toHaveAttribute('data-first-frame', /^[1-9]\d*$/, { timeout: 45_000 });
+  const frame = await gameFrame(page);
+  // The title card has been reading its keys for a while, and the delayed manifest has gone out.
+  await page.waitForTimeout(3000);
+  expect(await frame.evaluate(() => (window as unknown as { __ambleGame: { state: string } }).__ambleGame.state)).toBe('title');
+  const keys = page.getByRole('list', { name: 'Keys for this game' }).getByRole('listitem');
+  await expect(keys).toHaveCount(1);
+  await expect(keys.first()).toContainText('jump');
+});
+
 test('a heal right after a hit leaves the heart full', async ({ page }) => {
   await openWorld(page);
   const frame = await gameFrame(page);
@@ -102,14 +121,14 @@ test('a heal right after a hit leaves the heart full', async ({ page }) => {
     frame,
     `(s) => new Promise((done) => {
       const hero = s.__kit.hero;
-      const hud = s.game.scene.getScenes(true).find((scene) => scene.children.list.some((o) => o.texture && o.texture.key === 'amble-fx' && o.frame && o.frame.name === 'heart'));
-      const icons = hud.children.list.filter((o) => o.texture && o.texture.key === 'amble-fx' && o.frame && o.frame.name === 'heart');
+      const ui = s.__kit.ui;
+      const icons = ui.bars.find((b) => b.kind === 'hearts').icons;
       hero.invulnUntil = 0;
       hero.damage(1);
       const lost = icons[hero.hp];
       const t0 = performance.now();
       const wait = () => {
-        const n = hud.tweens.getTweensOf(lost).length;
+        const n = ui.s.tweens.getTweensOf(lost).length;
         if (n > 0 || performance.now() - t0 > 3000) {
           hero.heal(1);
           done(n);

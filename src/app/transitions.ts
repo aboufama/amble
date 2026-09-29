@@ -11,11 +11,6 @@ type StartViewTransition = (update: () => void | Promise<void>) => { finished: P
  * (a screen's first visit shows React's loading fallback for at least 300 ms before the screen itself).
  */
 const PARTNER_WAIT_MS = 800;
-/**
- * The browser drops a transition whose update takes too long (4 s in Chrome, counted with the old picture's
- * capture, which is slow on a busy machine), so the wait for a partner ends within this much of the start.
- */
-const UPDATE_BUDGET_MS = 2500;
 
 /** Whether `transitionName` named an element since the last transition (its partner is on the next screen). */
 let partners = false;
@@ -54,12 +49,11 @@ export function withViewTransition(update: () => void): void {
     return;
   }
   const start = (document as Document & { startViewTransition: StartViewTransition }).startViewTransition.bind(document);
-  const startedAt = performance.now();
   try {
+    // The wait stays far inside the time the browser gives an update (4 s in Chrome, from this callback).
     start(() => {
       update();
-      const wait = waitForPartners ? Math.min(PARTNER_WAIT_MS, UPDATE_BUDGET_MS - (performance.now() - startedAt)) : 0;
-      return wait > 0 ? screenLoaded(wait) : undefined;
+      return waitForPartners ? screenLoaded(PARTNER_WAIT_MS) : undefined;
     }).finished.catch(() => undefined);
   } catch {
     update();
