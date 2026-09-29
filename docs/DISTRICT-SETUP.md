@@ -238,7 +238,7 @@ The variables can also go in a `.env.production` file. Use `true` and `false` fo
 | `VITE_AMBLE_AI_BASE_URL` | https URL | Your proxy. It also narrows the page's content security policy to that origin (below). |
 | `VITE_AMBLE_AI_MODEL` | text | Default `amble-default` |
 | `VITE_AMBLE_AI_FAST_MODEL`, `VITE_AMBLE_AI_VISION_MODEL` | text | Default: the main model |
-| `VITE_AMBLE_AI_AUTH` | `class-code` or `none` | Read only when `VITE_AMBLE_AI_BASE_URL` is set. `class-code`: students join a teacher's class link, which supplies the code. `none` (or any other value): no credential. The code also accepts `user-key`, but this version gives users no place to type the key when the build sets the address, so don't use it. |
+| `VITE_AMBLE_AI_AUTH` | `class-code`, `none` or `user-key` | Read only when `VITE_AMBLE_AI_BASE_URL` is set. `class-code`: students join a teacher's class link, which supplies the code. `none` (or any other value): no credential. `user-key`: Settings → AI helper shows one key field (AI key, for grown-ups) for your address, and Amble sends that key only to your address. School copies (`VITE_AMBLE_SCHOOL_MODE=true`) never take a key, so don't combine the two. |
 | `VITE_AMBLE_AI_AUTH_HEADER` | header name | Default `X-Amble-Class` |
 | `VITE_AMBLE_AI_CAPS` | a comma list, for example `json_schema,stream,moderation` | See section 4.1 |
 | `VITE_AMBLE_AI_MODERATION` | `endpoint`, `provider` or `local-only` | See section 4.1 |
@@ -324,7 +324,7 @@ Rules for every class link:
 
 ### 4.5 Manual settings (home use)
 
-In the public copy, Settings → AI helper → **Set up AI (for grown-ups)** takes a base URL (empty means OpenAI's API), an optional key, a model and a fast model, a Test connection button, and **Remember on this Chromebook** (off keeps the key only until the tab closes). Settings warns: "A key typed here can be read by anyone who uses this browser. Never type a school or paid key on a shared Chromebook." Manual settings are hidden in school builds, on managed devices, and whenever a school source provides the AI or locks it.
+In the public copy, Settings → AI helper → **Set up AI (for grown-ups)** takes a base URL (empty means OpenAI's API), an optional key, a model and a fast model, a Test connection button, and **Remember on this Chromebook** (off keeps the key only until the tab closes). Settings warns: "A key typed here can be read by anyone who uses this browser. Never type a school or paid key on a shared Chromebook." Manual settings are hidden in school builds, on managed devices, and whenever a school source provides the AI or locks it. A build with `VITE_AMBLE_AI_AUTH=user-key` shows only the key field, for the address the build set.
 
 ## 5. Moderation and safety
 

@@ -122,7 +122,7 @@ export function describeAiSource(config: AiConfig): AiSourceDescription {
       expired: 'Ask your teacher for a new class link.',
       'grade-band': 'The AI helper is off for this grade level.',
       'needs-class-link': "Open your teacher's class link to turn it on.",
-      'needs-key': 'Add an AI key in Settings to turn it on.',
+      'needs-key': config.userKeyFor ? 'Add an AI key in Settings to turn it on.' : 'This copy of Amble asks for an AI key, and school copies never take one.',
     };
     detail = off[config.offReason ?? 'not-configured'];
   }

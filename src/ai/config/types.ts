@@ -131,5 +131,11 @@ export interface AiConfig {
   requestsMayBeReviewed: boolean;
   /** Settings may offer the manual endpoint fields. */
   manualAllowed: boolean;
+  /**
+   * The endpoint asks for the user's own key (a build with `VITE_AMBLE_AI_AUTH=user-key`): its address, which
+   * the key is for. Settings then offers a key field for that address, and no other field. Null otherwise,
+   * and in school mode, which never takes a key.
+   */
+  userKeyFor: string | null;
   problems: string[];
 }

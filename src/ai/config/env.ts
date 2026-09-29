@@ -35,8 +35,10 @@ export function layerFromEnv(env: Record<string, unknown>): ConfigLayer | null {
     const auth = F.str(v('AI_AUTH'))?.toLowerCase();
     const header = F.headerName(v('AI_AUTH_HEADER')) ?? F.DEFAULT_CLASS_HEADER;
     if (auth === 'class-code') layer.classCodeHeader = header;
-    else if (auth === 'user-key') layer.userKey = true;
-    else layer.auth = { type: 'none' };
+    else if (auth === 'user-key') {
+      layer.userKey = true;
+      if (layer.schoolMode) problems.push('VITE_AMBLE_AI_AUTH=user-key: school copies never take a key, so the AI helper stays off. Use class-code or none.');
+    } else layer.auth = { type: 'none' };
   }
   layer.model = F.str(v('AI_MODEL'), 120);
   layer.fastModel = F.str(v('AI_FAST_MODEL'), 120);
