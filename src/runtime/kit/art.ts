@@ -235,9 +235,9 @@ export class ArtRegistry {
   refresh(key: string): number {
     const tm = this.game.textures;
     let touched = 0;
+    // Only textures that exist are swapped; the others are made from the new drawing when first needed.
     if (tm.exists(key) && !this.sheets.has(key)) touched += swapTexture(this.game, key, this.rawSource(key));
-    else if (!tm.exists(key) && this.used.has(key)) this.addRaw(key);
-    if (tm.exists(key + HD) || this.used.has(key)) touched += swapTexture(this.game, key + HD, this.hdSource(key));
+    if (tm.exists(key + HD)) touched += swapTexture(this.game, key + HD, this.hdSource(key));
     for (const l of [...this.listeners]) {
       if (l.key !== key) continue;
       l.artChanged();

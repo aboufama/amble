@@ -79,6 +79,15 @@ describe('DialRegistry', () => {
     expect(r.set('count', 5)).toEqual({ key: 'count', value: 5, restart: false });
   });
 
+  it('treats a dial nobody has read yet as live (a function option read on the first jump)', () => {
+    const r = new DialRegistry();
+    r.declareAll({ jump: { value: 720, min: 400, max: 1100 } });
+    r.startBuilding();
+    r.doneBuilding();
+    expect(r.set('jump', 800)).toEqual({ key: 'jump', value: 800, restart: false });
+    expect(r.read('jump')).toBe(800);
+  });
+
   it('tune() declares a dial once and returns the current value', () => {
     const r = new DialRegistry({ speed: 450 });
     expect(r.tune('speed', 300, { min: 100, max: 600, label: 'Run speed' })).toBe(450);

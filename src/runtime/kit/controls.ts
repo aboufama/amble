@@ -27,8 +27,8 @@ export class Controls {
   bind: Record<Action, string[]> = JSON.parse(JSON.stringify(DEFAULT_BINDINGS)) as Record<Action, string[]>;
   /** The touch overlay and the robot bot write here (shared with the runtime). */
   readonly virtual: Partial<Record<Action, boolean>>;
-  x = 0;
-  y = 0;
+  private ax = 0;
+  private ay = 0;
   readonly pointer = { x: 0, y: 0, down: false, justDown: false };
   /** Any key went down this frame (starts the title card). */
   anyKey = false;
@@ -71,6 +71,20 @@ export class Controls {
     key.on('down', () => this.latch.add(name));
     this.keys.set(name, key);
     return key;
+  }
+
+  /** -1..1 left/right (keys, stick, pad). Reading it tells the touch overlay the game moves sideways. */
+  get x(): number {
+    this.used.add('left');
+    this.used.add('right');
+    return this.ax;
+  }
+
+  /** -1..1 up/down. Reading it asks the touch overlay for a stick. */
+  get y(): number {
+    this.used.add('up');
+    this.used.add('down');
+    return this.ay;
   }
 
   held(a: Action): boolean {
@@ -123,7 +137,11 @@ export class Controls {
       const k = this.keys.get(n);
       return !!k && (k.isDown || this.latch.has(n));
     };
-    for (const a of ACTIONS) st[a] = this.bind[a].some(down) || !!this.virtual[a];
+    const taps = env().input.taps;
+    for (const a of ACTIONS) {
+      st[a] = this.bind[a].some(down) || !!this.virtual[a] || !!taps[a];
+      taps[a] = false;
+    }
     this.tappedRestart = down('R');
     this.anyKey = this.anyLatch;
     this.anyLatch = false;
@@ -154,8 +172,8 @@ export class Controls {
     if (ax > 0.3) st.right = true;
     if (ay < -0.5) st.up = true;
     if (ay > 0.5) st.down = true;
-    this.x = Math.max(-1, Math.min(1, ax));
-    this.y = Math.max(-1, Math.min(1, ay));
+    this.ax = Math.max(-1, Math.min(1, ax));
+    this.ay = Math.max(-1, Math.min(1, ay));
     this.state = st;
     const p = this.scene.input.activePointer;
     const wasDown = this.pointer.down;

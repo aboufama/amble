@@ -21,6 +21,8 @@ export function flashPolicy(reducedMotion: boolean): FlashPolicy {
 /** Sliding-window rate limiter shared by every flash source in a game. */
 export class FlashLimiter {
   private times: number[] = [];
+  /** When the last flashes were allowed (for tests and the stats). */
+  readonly allowed: number[] = [];
 
   constructor(private policy: FlashPolicy = FLASH_POLICY) {}
 
@@ -37,6 +39,8 @@ export class FlashLimiter {
     this.times = this.times.filter((t) => now - t < 1000);
     if (this.times.length >= this.policy.maxPerSecond) return false;
     this.times.push(now);
+    this.allowed.push(now);
+    if (this.allowed.length > 64) this.allowed.shift();
     return true;
   }
 

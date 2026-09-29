@@ -33,6 +33,15 @@ const ICONS: Record<string, string> = {
 const DEFAULT_LABELS: Partial<Record<Action, string>> = { jump: 'JUMP', fire: 'FIRE', dash: 'DASH', action: 'ACTION' };
 const BUTTON_ORDER: Action[] = ['jump', 'fire', 'dash', 'action'];
 
+/** Keeps a finger's moves and release on its control even when it slides off (fails for synthetic pointers). */
+function capture(el: HTMLElement, pointerId: number): void {
+  try {
+    el.setPointerCapture(pointerId);
+  } catch {
+    /* not a live pointer: the control still works without capture */
+  }
+}
+
 function icon(name: string): string {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] ?? ''}</svg>`;
 }
@@ -121,11 +130,12 @@ export class TouchOverlay {
     }
     const set = (on: boolean) => {
       this.input.actions[action] = on;
+      if (on) this.input.taps[action] = true;
       b.classList.toggle('down', on);
     };
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      b.setPointerCapture(e.pointerId);
+      capture(b, e.pointerId);
       set(true);
     });
     for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(type, () => set(false));
@@ -160,7 +170,7 @@ export class TouchOverlay {
     pad.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       id = e.pointerId;
-      pad.setPointerCapture(e.pointerId);
+      capture(pad, e.pointerId);
       move(e);
     });
     pad.addEventListener('pointermove', (e) => {

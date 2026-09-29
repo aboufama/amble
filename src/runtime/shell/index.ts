@@ -79,7 +79,7 @@ const audio = new AudioHub((s) => {
 });
 const flash = new FlashLimiter(flashPolicy(false));
 const keys = new KeyInjector();
-const input: VirtualInput = { actions: {}, stick: null };
+const input: VirtualInput = { actions: {}, taps: {}, stick: null };
 const touch = new TouchOverlay(input);
 
 const env: KitEnv = {
@@ -530,6 +530,8 @@ Object.defineProperty(window, '__ambleGame', {
     dial: (name: string) => env.dials.values()[name],
     twists: () => [...env.twistsOn],
     prefs: () => ({ ...env.prefs }),
+    /** When the flash limiter let flashes through (ms, the runtime's clock). */
+    flashes: () => [...flash.allowed],
   }),
 });
 

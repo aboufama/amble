@@ -12,6 +12,8 @@ import type { DialRegistry } from './dials';
 export interface VirtualInput {
   /** Actions held by the touch overlay or the robot bot. */
   actions: Partial<Record<Action, boolean>>;
+  /** Actions pressed since the last frame (a quick tap that was already released still counts once). */
+  taps: Partial<Record<Action, boolean>>;
   /** The touch stick, -1..1, or null when it is not held. */
   stick: { x: number; y: number } | null;
 }

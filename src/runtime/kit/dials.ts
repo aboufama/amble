@@ -6,10 +6,11 @@
  * and `tune()` always return the current value.
  *
  * How a new value reaches the game:
- * - read every frame (in update(), or through a kit option given as a function: `jump: () => this.dials.jump`):
- *   it applies on the next frame;
- * - read only while the level was being built (create()), or declared `live: false`: the level restarts
- *   in place (`scene.restart()`, textures kept) so the new value takes effect.
+ * - read every frame (in update(), or through a kit option given as a function: `jump: () => this.dials.jump`),
+ *   or not read at all yet (a function option read only when the hero first jumps): it applies at the next
+ *   read;
+ * - read while the level was being built (create()) and not since, or declared `live: false`: the level
+ *   restarts in place (`scene.restart()`, textures kept) so the new value takes effect.
  * Pure: no Phaser, no DOM.
  */
 import type { DialInfo, DialSpec } from '../../play/protocol';
@@ -88,6 +89,8 @@ interface DialEntry {
   spec: DialSpec;
   current: number;
   source: 'static' | 'tune';
+  /** Read while the level was being built: that read is baked into the level. */
+  readInBuild: boolean;
   /** Read after the level was built (every frame), so a change applies live. */
   readLive: boolean;
 }
@@ -118,7 +121,7 @@ export class DialRegistry {
     if (known) return known;
     if (this.dials.size >= MAX_DIALS) return null;
     const wanted = this.pending.get(key);
-    const entry: DialEntry = { spec, current: wanted === undefined ? spec.value : clampDial(spec, wanted), source, readLive: false };
+    const entry: DialEntry = { spec, current: wanted === undefined ? spec.value : clampDial(spec, wanted), source, readInBuild: this.building, readLive: false };
     this.dials.set(key, entry);
     this.changed = true;
     return entry;
@@ -140,7 +143,8 @@ export class DialRegistry {
   read(key: string): number | undefined {
     const entry = this.dials.get(key);
     if (!entry) return undefined;
-    if (!this.building) entry.readLive = true;
+    if (this.building) entry.readInBuild = true;
+    else entry.readLive = true;
     return entry.current;
   }
 
@@ -151,7 +155,10 @@ export class DialRegistry {
   /** The level is being built (create()) until `doneBuilding()`; reads during that time are not live. */
   startBuilding(): void {
     this.building = true;
-    for (const entry of this.dials.values()) entry.readLive = false;
+    for (const entry of this.dials.values()) {
+      entry.readInBuild = false;
+      entry.readLive = false;
+    }
   }
 
   doneBuilding(): void {
@@ -168,7 +175,7 @@ export class DialRegistry {
     const next = clampDial(entry.spec, value);
     if (next === entry.current) return { key, value: next, restart: false };
     entry.current = next;
-    return { key, value: next, restart: !entry.spec.live || !entry.readLive };
+    return { key, value: next, restart: !entry.spec.live || (entry.readInBuild && !entry.readLive) };
   }
 
   values(): Record<string, number> {

@@ -5,6 +5,7 @@
 import runtimeUrl from 'virtual:amble-runtime';
 import { buildStandaloneHtml, loadRuntimeText, Player, type DrawnArt, type GameBundle, type PlayerPrefs, type RobotReport } from '../../src/play/index';
 import { FIXTURES, type FixtureName } from '../../src/runtime/fixtures/index';
+import { KIT_API } from '../../src/runtime/kit/manifest';
 
 const stage = document.getElementById('stage') as HTMLDivElement;
 const logEl = document.getElementById('log') as HTMLPreElement;
@@ -182,5 +183,5 @@ window.addEventListener('keyup', (e) => {
 });
 window.addEventListener('blur', () => player.releaseKeys());
 
-const harness = { player, log, load, swap, drawing, robot, exportPage, fixtures: Object.keys(FIXTURES), get current() { return current; } };
+const harness = { player, log, load, swap, drawing, robot, exportPage, kitApi: KIT_API, fixtures: Object.keys(FIXTURES), get current() { return current; } };
 (window as unknown as { harness: typeof harness }).harness = harness;
