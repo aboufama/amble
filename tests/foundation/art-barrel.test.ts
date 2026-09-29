@@ -86,6 +86,46 @@ describe('art barrel', () => {
     expect(Math.max(small!.flat.w, small!.flat.h)).toBeLessThanOrEqual(32);
   });
 
+  it('exports the body parts asked for with pairs (drawing on the bones), each part over its colours', async () => {
+    const ring = (cx: number, cy: number, r: number): [number, number, number][] =>
+      Array.from({ length: 33 }, (_, i) => [cx + r * Math.cos((i / 32) * Math.PI * 2), cy + r * Math.sin((i / 32) * Math.PI * 2), 0.8]);
+    const script: ArtScript = {
+      v: 1,
+      name: 'barrel-parts',
+      kind: 'character',
+      rig: 'blob',
+      width: 128,
+      height: 128,
+      layers: [
+        { id: 'body', role: 'part:body' },
+        { id: 'body-lines', role: 'lines' },
+        { id: 'head', role: 'part:head' },
+        { id: 'head-lines', role: 'lines' },
+      ],
+      ops: [
+        { op: 'stroke', layer: 'body-lines', brush: 'ink', size: 4, color: '#2b1d16', points: ring(64, 88, 26) },
+        { op: 'fill', layer: 'body', x: 64, y: 88, color: '#7cc95a' },
+        { op: 'stroke', layer: 'head-lines', brush: 'ink', size: 4, color: '#2b1d16', points: ring(64, 40, 18) },
+        { op: 'fill', layer: 'head', x: 64, y: 40, color: '#ffd23f' },
+      ],
+    };
+    expect(validateArtScript(script)).toEqual([]);
+    const doc = await replayArtScript(script);
+    const pairs = [
+      { name: 'body', layers: ['body', 'body-lines'] },
+      { name: 'head', layers: ['head', 'head-lines'] },
+    ];
+    const withParts = (await exportArt(doc, { maxSide: 1024, scale: 1, pairs }))!;
+    expect(withParts.parts.map((p) => p.name)).toEqual(['body', 'head']);
+    for (const p of withParts.parts) {
+      expect(p.png.type).toBe('image/png');
+      expect([p.w, p.h]).toEqual([withParts.flat.w, withParts.flat.h]);
+    }
+    expect((await exportArt(doc, { maxSide: 1024, scale: 1 }))!.parts).toEqual([]);
+    // Parts come even with a flat-only export (the rigger reads them).
+    expect((await exportArt(doc, { maxSide: 1024, flatOnly: true, pairs }))!.parts.map((p) => p.name)).toEqual(['body', 'head']);
+  });
+
   it('splits a drawing for storage and rebuilds it (the stroke log kept apart)', async () => {
     const doc = await replayArtScript(blob());
     const stored = await serializeArtDoc(doc);

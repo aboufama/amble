@@ -115,8 +115,8 @@ function defaultDeps(): BringDeps {
     player: s.player,
     rig: (source, req) => rigWorker.autoRig(source, req),
     sticker: (flat) => makeSticker(flat),
-    // The barrel's exportArt has no part composites: the Desk exports those from its surface (in the worker).
-    export: (doc, maxSide) => exportArt(doc, { maxSide, scale: 1, thumbSize: 128 }),
+    // The Desk usually hands in its own export (made in the worker); this one makes the same part composites.
+    export: (doc, maxSide, pairs) => exportArt(doc, { maxSide, scale: 1, thumbSize: 128, ...(pairs.length ? { pairs } : {}) }),
   };
 }
 

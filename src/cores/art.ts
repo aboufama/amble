@@ -243,14 +243,17 @@ export interface ExportArtOptions {
   thumbSize?: number;
   /** Only the flat image (no per-layer images or ink mask): faster previews. */
   flatOnly?: boolean;
+  /** Body parts drawn on the bones to composite (their layer ids, bottom to top), even with `flatOnly`. */
+  pairs?: Array<{ name: string; layers: string[] }>;
 }
 
 /**
- * The trimmed, transparent PNG with its anchor, per-layer PNGs (parts), the lines-only ink mask and a
- * thumbnail. Null when the drawing has nothing exported on it yet. Sketch, trace and guides never export.
+ * The trimmed, transparent PNG with its anchor, per-layer PNGs, the body parts asked for with `pairs`, the
+ * lines-only ink mask and a thumbnail. Null when the drawing has nothing exported on it yet. Sketch, trace
+ * and guides never export.
  */
 export function exportArt(doc: ArtDoc, o: ExportArtOptions = {}): Promise<ArtExport | null> {
-  return exportArtDoc(doc, { frame: o.frame, maxSize: o.maxSide, scale: o.scale, thumbSize: o.thumbSize, flatOnly: o.flatOnly });
+  return exportArtDoc(doc, { frame: o.frame, maxSize: o.maxSide, scale: o.scale, thumbSize: o.thumbSize, flatOnly: o.flatOnly, pairs: o.pairs });
 }
 
 /** Every flipbook frame, trimmed and placed in one common box. */
