@@ -30,6 +30,7 @@ import type {
 import { announce, showToast } from './app';
 import { markSeen } from './prefs';
 import { adoptWorld, applyAcceptedChange, loadGame, patchSession, refreshCast, setDial, setTwist } from './session';
+import { writeWorld } from '../store/worldWrites';
 import { getState, setState } from './store';
 
 export interface SteerRecord {
@@ -223,7 +224,8 @@ async function currentWorld(id: WorldId): Promise<World | null> {
 
 /**
  * Writes a new version of a world: a footstep and one commit; when it is the open world, what `keep` copies
- * (and the footstep) goes into the session, whose own newer edits stay.
+ * (and the footstep) goes into the session, whose own newer edits stay. Callers read the world and commit it
+ * inside `writeWorld`, so Bring to life writing the same stored world never drops their change (or theirs it).
  */
 async function commitWorld(next: World, step: StepInput, keep: (w: Draft<World>, committed: World) => void = () => undefined): Promise<World> {
   const { store, history } = getServices();
@@ -283,30 +285,38 @@ async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind:
   }
   // The pipeline's code tools (acorn and friends) are loaded by now: this outcome came from them.
   const { rebaseChange } = await import('../pipeline/rebase');
-  const before = await currentWorld(worldId);
-  if (!before) return;
-  const r = rebaseChange(outcome, { base, world: before, attribute: getServices().history.attribute });
-  noteChanged(r.files, r.handFile, r.leftOut);
-  if (r.files.length || !r.leftOut.length) {
-    await commitWorld({ ...before, code: r.code, updatedAt: Date.now() }, { ...stepFor(outcome, task, words), files: r.files, ...(task === 'change' ? { handEdits: Boolean(r.handFile) } : {}) }, keepCode);
-    if (getState().session.world?.id === worldId) {
-      setState((s) => {
-        s.session.manifest = r.manifest;
-        s.session.newVersion = { summary: outcome.summary, ready: true };
-      });
-      void getServices().player.promote().catch(() => undefined);
+  const r = await writeWorld(worldId, async () => {
+    const before = await currentWorld(worldId);
+    if (!before) return null;
+    const rebased = rebaseChange(outcome, { base, world: before, attribute: getServices().history.attribute });
+    noteChanged(rebased.files, rebased.handFile, rebased.leftOut);
+    if (rebased.files.length || !rebased.leftOut.length) {
+      const step = { ...stepFor(outcome, task, words), files: rebased.files, ...(task === 'change' ? { handEdits: Boolean(rebased.handFile) } : {}) };
+      await commitWorld({ ...before, code: rebased.code, updatedAt: Date.now() }, step, keepCode);
     }
+    return rebased;
+  });
+  if (!r) return;
+  if (r.files.length && getState().session.world?.id === worldId) {
+    setState((s) => {
+      s.session.manifest = r.manifest;
+      s.session.newVersion = { summary: outcome.summary, ready: true };
+    });
+    void getServices().player.promote().catch(() => undefined);
   }
   doneToast(worldId, outcome, r.files, r.leftOut);
 }
 
 /** A build's result, written to the stored world (the student may be drawing on the Desk). */
 async function applyBuild(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' | 'fallback' }>, words: string): Promise<void> {
-  const world = await currentWorld(worldId);
-  if (!world) return;
-  if (outcome.kind === 'accepted') {
-    await commitWorld({ ...world, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, 'build', words), keepCode);
-  } else {
+  // Bring to life may be writing the same stored world (Draw while it builds): the two take turns.
+  const written = await writeWorld(worldId, async () => {
+    const world = await currentWorld(worldId);
+    if (!world) return false;
+    if (outcome.kind === 'accepted') {
+      await commitWorld({ ...world, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, 'build', words), keepCode);
+      return true;
+    }
     const plan = world.plan;
     const cast = plan ? await ladderCastOf(world, plan, outcome.files) : world.cast;
     const starter = world.origin.kind === 'plan' ? world.origin.starter : null;
@@ -320,7 +330,9 @@ async function applyBuild(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 
         w.title = c.title;
       },
     );
-  }
+    return true;
+  });
+  if (!written) return;
   const s = getState();
   const open = s.session.world;
   if (open?.id !== worldId) return;
@@ -348,9 +360,11 @@ async function ladderCastOf(world: World, plan: PlanReply, files: World['code'])
 
 /** A refusal is kept as a category and a time only, never the words (§5.13). */
 async function recordRefusal(worldId: WorldId, category: 'request' | 'support'): Promise<void> {
-  const world = await currentWorld(worldId);
-  if (!world) return;
-  await commitWorld(world, { kind: 'refused', by: 'ai', text: category === 'support' ? t('ai.stepRefusedSupport') : t('ai.stepRefused', { category }) });
+  await writeWorld(worldId, async () => {
+    const world = await currentWorld(worldId);
+    if (!world) return;
+    await commitWorld(world, { kind: 'refused', by: 'ai', text: category === 'support' ? t('ai.stepRefusedSupport') : t('ai.stepRefused', { category }) });
+  });
 }
 
 /** A refusal or crisis the Ask card caught on the device (nothing was sent): a footstep, never the words. */
@@ -496,14 +510,18 @@ export function stopExplain(): void {
 
 /** Go back (§2.8): the change rewrote the student's own lines, and they want their version back. */
 export async function goBackBefore(worldId: WorldId): Promise<void> {
-  const world = await currentWorld(worldId);
-  if (!world || world.steps.length < 2) return;
-  const { store, history } = getServices();
-  const at = world.steps.findIndex((s) => s.id === world.head);
-  const to = world.steps[(at < 0 ? world.steps.length : at) - 1];
-  if (!to) return;
-  const back = await history.goBack(world, to.id);
-  await store.commit({ worlds: [back] });
+  const back = await writeWorld(worldId, async () => {
+    const world = await currentWorld(worldId);
+    if (!world || world.steps.length < 2) return null;
+    const { store, history } = getServices();
+    const at = world.steps.findIndex((s) => s.id === world.head);
+    const to = world.steps[(at < 0 ? world.steps.length : at) - 1];
+    if (!to) return null;
+    const next = await history.goBack(world, to.id);
+    await store.commit({ worlds: [next] });
+    return next;
+  });
+  if (!back) return;
   // The world goes back, and so does the game playing it.
   if (adoptWorld(back)) void loadGame(back, { autostart: true });
   setState((s) => {

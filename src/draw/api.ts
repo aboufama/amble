@@ -8,7 +8,8 @@
  *   ("parts"); over the star-pose guide, the guide's joints ("guide"); otherwise the kind's template fit
  *   ("auto"). When no limbs are found the drawing moves as one piece (a blob when round, else a thing).
  * - One commit: the blobs, the drawing's record and the world's cast slot, clearing the drawing's draft;
- *   then the footstep ("You drew the Moon King"), then the hot swap into the running world.
+ *   then the footstep ("You drew the Moon King"), then the hot swap into the running world. Reading the world
+ *   through its footstep takes turns with the world's other writes (`writeWorld`: a build landing meanwhile).
  */
 import { getServices } from '../app/services';
 import type { PlayerHost } from '../app/player/host';
@@ -22,6 +23,7 @@ import type { ArtExport, ArtId, ArtKind, ArtRecord, BlobRef, CastKey, Facing, Pa
 import { adoptWorld } from '../state/session';
 import { getState } from '../state/store';
 import type { Store } from '../store/api';
+import { writeWorld } from '../store/worldWrites';
 import { keepStrokeLog } from './drafts';
 import type { PackedFlipbook } from './flipbook';
 import { rigFacing } from './parts';
@@ -244,40 +246,45 @@ export async function bringToLife(input: BringToLifeInput, deps: BringDeps = def
     version: (prev?.version ?? 0) + 1,
   };
 
-  let world: World | null = null;
-  const key = input.castKey;
-  if (input.worldId && key) {
-    const stored = await store.worlds.get(input.worldId);
-    const open = deps.session?.world(input.worldId) ?? null;
-    const w = open && (!stored || open.updatedAt >= stored.updatedAt) ? open : stored;
-    if (w) {
-      const slot = w.cast[key] ?? { key, art: null, madeBy: null, extra: null, laterUntil: 0 };
-      world = { ...w, cast: { ...w.cast, [key]: { ...slot, art: record.id, madeBy: 'student' } }, updatedAt: now };
-    }
-  }
-
   // One commit: every blob first, then the JSON that points at them, and the draft goes in the same step.
   const blobs: Blob[] = [serialized.docBlob, ...serialized.cels.map((c) => c.blob), exported.flat.png, exported.thumb.png, sticker, ...partBlobs];
   if (exported.linesMask) blobs.push(exported.linesMask.png);
   if (flip) blobs.push(flip.atlas);
-  await store.commit({ blobs, art: [record], worlds: world ? [world] : [], clearDrafts: [record.id] });
+  const key = input.castKey;
+  /** Reads the world, commits the drawing with its cast slot, then the footstep. */
+  const commitAll = async (): Promise<World | null> => {
+    let world: World | null = null;
+    if (input.worldId && key) {
+      const stored = await store.worlds.get(input.worldId);
+      const open = deps.session?.world(input.worldId) ?? null;
+      const w = open && (!stored || open.updatedAt >= stored.updatedAt) ? open : stored;
+      if (w) {
+        const slot = w.cast[key] ?? { key, art: null, madeBy: null, extra: null, laterUntil: 0 };
+        world = { ...w, cast: { ...w.cast, [key]: { ...slot, art: record.id, madeBy: 'student' } }, updatedAt: now };
+      }
+    }
+    await store.commit({ blobs, art: [record], worlds: world ? [world] : [], clearDrafts: [record.id] });
+    // The footstep, after the drawing is safe.
+    if (world && key) {
+      const text = t(prev?.export ? 'draw.youRedrew' : 'draw.youDrew', { name: input.name });
+      try {
+        const stepped = await deps.history.record(world, { kind: prev?.export ? 'redraw' : 'draw', by: 'student', text, cast: key });
+        if (stepped !== world) {
+          await store.commit({ worlds: [stepped] });
+          world = stepped;
+        }
+      } catch (err) {
+        console.warn('The footstep was not recorded:', err);
+      }
+      deps.session?.adopt(world, key);
+    }
+    return world;
+  };
+  // A build landing meanwhile (or another change to a world that is not open) reads and writes the same stored
+  // world: they take turns, so neither drops the other's change.
+  const world = input.worldId && key ? await writeWorld(input.worldId, commitAll) : await commitAll();
   // The stroke log stays on this device ("Watch it drawn"): never in files, never sent.
   if (serialized.strokeLog) await keepStrokeLog(store, record.id, serialized.strokeLog).catch(() => undefined);
-
-  // The footstep, after the drawing is safe.
-  if (world && key) {
-    const text = t(prev?.export ? 'draw.youRedrew' : 'draw.youDrew', { name: input.name });
-    try {
-      const stepped = await deps.history.record(world, { kind: prev?.export ? 'redraw' : 'draw', by: 'student', text, cast: key });
-      if (stepped !== world) {
-        await store.commit({ worlds: [stepped] });
-        world = stepped;
-      }
-    } catch (err) {
-      console.warn('The footstep was not recorded:', err);
-    }
-    deps.session?.adopt(world, key);
-  }
 
   let drawn: DrawnArt | null = null;
   if (world && key) {
