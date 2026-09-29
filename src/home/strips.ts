@@ -36,8 +36,11 @@ interface CachedStrip {
 
 export interface StripSource {
   artHash: string;
-  /** The flat drawing in the store, or the picture itself (starter drawings are not in the store). */
-  flat: BlobRef | Blob | null;
+  /**
+   * The flat drawing in the store, the picture itself, or a way to fetch it (starter drawings are not in
+   * the store, and are only fetched when their strip is not cached yet).
+   */
+  flat: BlobRef | Blob | (() => Promise<Blob | null>) | null;
   rig: RigData;
 }
 
@@ -75,7 +78,7 @@ async function makeStrip(store: Store, src: StripSource, clip: StripClip, key: s
   const cached = await store.cache.get<unknown>(key).catch(() => null);
   let entry: CachedStrip | null = isCachedStrip(cached) ? cached : null;
   if (!entry) {
-    const flat = src.flat instanceof Blob ? src.flat : src.flat ? await store.blobs.get(src.flat) : null;
+    const flat = src.flat instanceof Blob ? src.flat : typeof src.flat === 'function' ? await src.flat() : src.flat ? await store.blobs.get(src.flat) : null;
     if (!flat) return null;
     const { rigWorker } = await import('../cores/rigWorker');
     const { meta, frames } = await rigWorker.strip({ image: flat }, src.rig, clip, { frames: STRIP_FRAMES, size: STRIP_SIZE, face: 1, packed: true, lane: `strip:${src.artHash}:${clip}` });

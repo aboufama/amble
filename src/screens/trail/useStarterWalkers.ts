@@ -1,32 +1,51 @@
 /**
- * The starter worlds' heroes walking under their signs (§2.4). Their drawings come with the starter
- * (not the student's store), so the first visit opens each starter once in idle time, finds its hero's
- * drawing and bakes its walk strip; after that a small cache entry per starter (and the strip cache) make
- * it free. A catalog without drawings simply has no walkers.
+ * The starter worlds' heroes walking under their signs (§2.4). Their drawings are the starters' own small
+ * files (`public/starters/<id>/art/<hero>/`): each hero stands on the trail as soon as its `art.json` is
+ * read, drawn from its flat picture (no worker, nothing to open), and starts to walk once its strip is
+ * baked in idle time; the strip cache makes later visits walk at once. A starter without a drawn hero
+ * simply has no walker.
  */
 import { useEffect, useRef, useState } from 'react';
-import { BUILD } from '../../app/env';
 import { useServices } from '../../app/services';
 import { parseRig } from '../../cores/rigData';
 import type { RigData } from '../../cores/rig';
 import { stripFor } from '../../home/strips';
-import { blobRefOf } from '../../model/ids';
 import type { ArtId, SeedId, StarterInfo } from '../../model/types';
-import type { WalkerArt } from './useStrips';
+import type { StarterArtJson } from '../../starters/types';
+import { whenIdle, type WalkerArt } from './useStrips';
 
-interface StarterWalkerEntry {
-  id: ArtId;
-  name: string;
-  artHash: string;
+interface Hero {
+  info: StarterInfo;
+  dir: string;
+  json: StarterArtJson;
+  flat: string;
   rig: RigData;
 }
 
-function cacheKey(id: SeedId): string {
-  return `trail:starter:${id}:${BUILD.version}`;
+/** The folder of a starter's hero drawing, next to its sign (which carries the app's base path). */
+export function heroDir(info: StarterInfo): string | null {
+  const at = info.sign.lastIndexOf('/');
+  return at < 0 ? null : `${info.sign.slice(0, at + 1)}art/${info.heroKey}/`;
+}
+
+async function readHero(info: StarterInfo): Promise<Hero | null> {
+  const dir = heroDir(info);
+  if (!dir) return null;
+  const res = await fetch(`${dir}art.json`, { credentials: 'omit' });
+  if (!res.ok) return null;
+  const json = (await res.json()) as StarterArtJson;
+  const file = json.export ? json.files[json.export.flat] : undefined;
+  if (!json.export || !json.rigData || !file) return null;
+  return { info, dir, json, flat: dir + file, rig: parseRig(json.rigData) };
+}
+
+async function fetchBlob(url: string): Promise<Blob | null> {
+  const res = await fetch(url, { credentials: 'omit' }).catch(() => null);
+  return res?.ok ? res.blob() : null;
 }
 
 export function useStarterWalkers(infos: readonly StarterInfo[]): Map<SeedId, WalkerArt> {
-  const { store, starters } = useServices();
+  const { store } = useServices();
   const [walkers, setWalkers] = useState<Map<SeedId, WalkerArt>>(() => new Map());
   const key = infos.map((i) => i.id).join(',');
   const current = useRef(infos);
@@ -34,47 +53,42 @@ export function useStarterWalkers(infos: readonly StarterInfo[]): Map<SeedId, Wa
 
   useEffect(() => {
     let live = true;
-    const run = async () => {
-      for (const info of current.current) {
+    let cancelIdle: (() => void) | null = null;
+    const heroes: Hero[] = [];
+    const bake = async () => {
+      for (const h of heroes) {
         if (!live) return;
-        let entry = await store.cache.get<StarterWalkerEntry | 'none'>(cacheKey(info.id)).catch(() => null);
-        let flat: Blob | null = null;
-        if (entry === null) {
-          const opened = await starters.open(info.id, { withArt: true }).catch(() => null);
-          const heroArt = opened?.world.cast[info.heroKey]?.art ?? null;
-          const record = heroArt ? opened?.art.find((a) => a.id === heroArt) : undefined;
-          if (opened && record?.export && record.rigData) {
-            for (const b of opened.blobs) {
-              if ((await blobRefOf(b)) === record.export.flat) {
-                flat = b;
-                break;
-              }
-            }
-            entry = { id: record.id, name: record.name, artHash: record.export.hash, rig: record.rigData };
-          } else entry = 'none';
-          await store.cache.put(cacheKey(info.id), entry).catch(() => undefined);
-        }
-        if (!live || entry === 'none' || !entry) continue;
-        let rig: RigData;
-        try {
-          rig = parseRig(entry.rig);
-        } catch {
-          continue;
-        }
-        const strip = await stripFor(store, { artHash: entry.artHash, flat, rig }, 'walk');
-        if (!live || !strip) continue;
-        const art: WalkerArt = { id: entry.id, name: entry.name, strip, still: null };
-        setWalkers((m) => new Map(m).set(info.id, art));
+        const strip = await stripFor(store, { artHash: h.json.export.hash, flat: () => fetchBlob(h.flat), rig: h.rig }, 'walk');
+        if (!live) return;
+        if (!strip) continue;
+        setWalkers((m) => {
+          const had = m.get(h.info.id);
+          return had ? new Map(m).set(h.info.id, { ...had, strip }) : m;
+        });
       }
     };
-    const start = () => void run().catch(() => undefined);
-    const handle = typeof requestIdleCallback === 'function' ? requestIdleCallback(start, { timeout: 2500 }) : window.setTimeout(start, 800);
+    void (async () => {
+      const read = await Promise.all(current.current.map((info) => readHero(info).catch(() => null)));
+      if (!live) return;
+      const stand = new Map<SeedId, WalkerArt>();
+      for (const h of read) {
+        if (!h) continue;
+        heroes.push(h);
+        const exp = h.json.export;
+        stand.set(h.info.id, { id: `starter:${h.info.id}` as ArtId, name: h.json.name, strip: null, still: h.flat, stillAt: { w: exp.w, h: exp.h, footX: exp.anchor[0], footY: exp.anchor[1] } });
+      }
+      setWalkers((m) => {
+        const next = new Map(m);
+        for (const [id, art] of stand) next.set(id, { ...art, strip: m.get(id)?.strip ?? null });
+        return next;
+      });
+      cancelIdle = whenIdle(() => void bake().catch(() => undefined), 2500);
+    })();
     return () => {
       live = false;
-      if (typeof cancelIdleCallback === 'function') cancelIdleCallback(handle);
-      else clearTimeout(handle);
+      cancelIdle?.();
     };
-  }, [key, store, starters]);
+  }, [key, store]);
 
   return walkers;
 }
