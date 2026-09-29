@@ -28,6 +28,13 @@ test('checklist, initials, Save to Drive and I turned it in', async ({ page }) =
 
   await sheet.getByTestId('save-drive').click();
   await expect.poll(() => saves(page)).toEqual(['Moon King - J.R.amble']);
+  // The save is said once, in the file's card; the honesty line counts wishes, and no AI words show.
+  const card = sheet.getByTestId('handin-saved');
+  await expect(card).toContainText('Moon King - J.R.amble');
+  await expect(card).toContainText(/Saved at .+, in the place you picked/);
+  await expect(sheet.getByTestId('screen-handin').getByText(/^Saved /)).toHaveCount(1);
+  await expect(sheet).toContainText(/how you built it: .*\d+ wish(es)?, /);
+  await expect(sheet).not.toContainText(/\bAI\b/);
 
   await sheet.getByTestId('turned-in').click();
   await page.waitForFunction(async (wid) => {

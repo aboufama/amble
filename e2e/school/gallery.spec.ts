@@ -43,9 +43,13 @@ test('a Classroom folder becomes cards, checks and feedback', async ({ page, con
   const attacks = detail.locator('.gchecks__row').filter({ hasText: 'Boss has 2+ attacks' });
   await expect(attacks).toContainText('4 found in code');
   await expect(detail.locator('.gchecks__row').filter({ hasText: 'Hero drawn by the student' })).toContainText('just bones');
+  // The header says what passed, and what is left for the teacher.
+  const summary = detail.getByTestId('checks-summary');
+  await expect(summary).toHaveText(/^Amble: \d of \d passed · 1 for you to check$/);
   const twist = detail.getByRole('checkbox', { name: 'A creative twist' });
   await twist.check();
   await expect(twist).toBeChecked();
+  await expect(summary).toHaveText(/^Amble: \d of \d passed · yours are checked$/);
 
   await detail.getByPlaceholder('Write feedback, then copy it into Classroom.').fill('Great boss! Try a third attack.');
   await detail.getByTestId('copy-feedback').click();

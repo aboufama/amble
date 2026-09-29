@@ -154,6 +154,8 @@ export function ClassLinkTab() {
   const ready = !nameMissing && !addressBad && problem === null && href !== '';
   const scannable = ready && qrScannable(href);
   const dense = scannable && qrVersion(href) >= DENSE_QR_VERSION;
+  // Too long for any QR code (or for a link at all): the card says so; an assignment in the link can come out.
+  const tooLong = (ready && !scannable) || (problem === 'long' && !nameMissing && !addressBad);
 
   // The live test: when the address or the class code changes (after a pause in typing).
   useEffect(() => {
@@ -454,9 +456,9 @@ export function ClassLinkTab() {
                       : t('school.staff_linkTooLong')}
             </p>
           )}
-          {dense && (
+          {(dense || (tooLong && link.asg)) && (
             <div className="linkcard__dense" data-testid="dense-qr">
-              <p>{link.asg ? t('school.staff_qrDenseAsg') : t('school.staff_qrDense')}</p>
+              <p>{problem === 'long' ? t('school.staff_linkLongAsg') : tooLong ? t('school.staff_qrLongAsg') : link.asg ? t('school.staff_qrDenseAsg') : t('school.staff_qrDense')}</p>
               {link.asg && (
                 <Button variant="ghost" size={38} onClick={() => save({ asg: null })}>
                   {t('school.staff_shorterLink')}

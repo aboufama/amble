@@ -826,6 +826,8 @@ export const school = {
   staff_qrTooLong: 'This link is too long for a QR code. Share the link instead.',
   staff_qrDense: 'This link is long, so its code is dense. Show it with Big so phones can read it.',
   staff_qrDenseAsg: 'The assignment makes this link long, so its code is dense. Show it with Big, or make a shorter link and share the assignment as a file.',
+  staff_qrLongAsg: 'The assignment makes this link too long for a QR code. Make a shorter link and share the assignment as a file.',
+  staff_linkLongAsg: 'Or make a shorter link without the assignment, and share the assignment as a file.',
   staff_shorterLink: 'Make a shorter link',
   staff_copyLink: 'Copy link',
   staff_big: 'Big',

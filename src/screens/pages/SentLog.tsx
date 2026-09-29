@@ -46,6 +46,8 @@ function pretty(body: string): string {
 function Entry({ e }: { e: AiLogEntry }) {
   const [open, setOpen] = useState(false);
   const when = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(e.at);
+  // The toggle's name tells entries apart ("Show exactly: Connection test, Sep 29, 10:42:07 AM").
+  const whenExactly = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(e.at);
   return (
     <li className="sent" data-testid="sent-entry">
       <div className="sent__head">
@@ -70,7 +72,7 @@ function Entry({ e }: { e: AiLogEntry }) {
         type="button"
         className="btn btn--quiet btn--h38"
         aria-expanded={open}
-        aria-label={t(open ? 'school.sentHideNamed' : 'school.sentShowNamed', { kind: t(KIND_WORDS[e.kind]), when })}
+        aria-label={t(open ? 'school.sentHideNamed' : 'school.sentShowNamed', { kind: t(KIND_WORDS[e.kind]), when: whenExactly })}
         onClick={() => setOpen((v) => !v)}
       >
         <Icon name={open ? 'eyeOff' : 'eye'} size={18} />
