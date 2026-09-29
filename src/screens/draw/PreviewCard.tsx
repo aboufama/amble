@@ -252,18 +252,21 @@ function WorldView({ ctrl, setup, player, store, art, rigged, brought }: { ctrl:
   };
 
   const moves = requestFacts(ctrl.request).find((f) => f.key === 'moves');
+  // The game's frame sits over the slot, so the bar goes under it, not on it.
   return (
-    <div className="preview__stage preview__stage--world">
-      <div ref={slot} className="preview__slot" data-testid="desk-preview-slot" aria-label={t('draw.inYourWorld')} role="img" />
-      {!ready && <p className="preview__empty">{t('draw.previewLoading')}</p>}
+    <>
+      <div className="preview__stage preview__stage--world">
+        <div ref={slot} className="preview__slot" data-testid="desk-preview-slot" aria-label={t('draw.inYourWorld')} role="img" />
+        {!ready && <p className="preview__empty">{t('draw.previewLoading')}</p>}
+      </div>
       <div className="preview__bar">
-        {moves && <span className="preview__tag">{factText(moves)}</span>}
+        <span className="preview__tag">{moves ? factText(moves) : t('draw.updatesWhenLift')}</span>
         <button type="button" className="preview__try" onClick={tryIt} disabled={!ready || trying}>
           <Icon name="play" size={16} />
           <span>{t('draw.tryIt')}</span>
         </button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -289,7 +292,7 @@ export function PreviewCard({ ctrl, s, setup, player, store, brought }: PreviewC
 
   const total = s.steps.reduce((n, st) => n + st.parts.length, 0);
   const title = shown === 'world' ? t('draw.inYourWorld') : rigged ? t('draw.itMoves') : t('draw.previewMoves');
-  const meta = shown === 'moves' && s.mode === 'bones' ? t('draw.partsDrawn', { n: s.drawn.length, max: total }) : shown === 'world' ? t('draw.updatesWhenLift') : '';
+  const progress = shown === 'moves' && s.mode === 'bones' ? t('draw.partsDrawn', { n: s.drawn.length, max: total }) : '';
 
   return (
     <section className="preview" aria-labelledby="desk-preview">
@@ -298,7 +301,14 @@ export function PreviewCard({ ctrl, s, setup, player, store, brought }: PreviewC
           <Icon name={shown === 'world' ? 'sparkle' : 'play'} size={16} />
           {title}
         </h2>
-        {meta && <span className="side__meta">{meta}</span>}
+        {both ? (
+          <button type="button" className="preview__switch" onClick={() => setPicked(shown === 'world' ? 'moves' : 'world')}>
+            <Icon name={shown === 'world' ? 'bones' : 'sparkle'} size={14} />
+            <span>{shown === 'world' ? t('draw.previewMovesShort') : t('draw.previewWorldShort')}</span>
+          </button>
+        ) : (
+          shown === 'world' && <span className="side__meta">{t('draw.updatesWhenLift')}</span>
+        )}
       </div>
       <div className="preview__body">
         {shown === 'world' ? (
@@ -306,12 +316,7 @@ export function PreviewCard({ ctrl, s, setup, player, store, brought }: PreviewC
         ) : (
           <MovesView ctrl={ctrl} art={art} rigged={bones} bones={s.mode === 'bones'} still={!rigged} />
         )}
-        {both && (
-          <button type="button" className="preview__switch" onClick={() => setPicked(shown === 'world' ? 'moves' : 'world')}>
-            <Icon name={shown === 'world' ? 'bones' : 'sparkle'} size={14} />
-            <span>{shown === 'world' ? t('draw.previewMoves') : t('draw.previewWorld')}</span>
-          </button>
-        )}
+        {progress && <span className="preview__progress">{progress}</span>}
       </div>
     </section>
   );

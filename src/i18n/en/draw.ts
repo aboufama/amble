@@ -223,6 +223,8 @@ export const draw = {
   move_jump: 'Jump',
   move_hurt: 'Ouch',
   previewWorld: 'See it in your world',
+  previewWorldShort: 'In your world',
+  previewMovesShort: 'See it move',
   previewLoading: 'Getting your world…',
   previewMoves: 'See it move',
 

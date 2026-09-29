@@ -330,13 +330,13 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
           </>
         ) : null}
       </span>
-      <Button variant="ghost" icon="undo" onClick={() => void ctrl?.undo()} disabled={!s?.canUndo} aria-keyshortcuts="Control+Z">
+      <Button variant="ghost" icon="undo" className="desk__compact" onClick={() => void ctrl?.undo()} disabled={!s?.canUndo} aria-keyshortcuts="Control+Z">
         {t('draw.undo')}
       </Button>
       <IconButton icon="redo" label={t('draw.redo')} variant="ghost" onClick={() => void ctrl?.redo()} disabled={!s?.canRedo} aria-keyshortcuts="Control+Shift+Z" />
       <Menu label={t('draw.more')} icon="more" variant="ghost" items={moreItems} />
       {bonesKind && inked && (
-        <Button variant="ghost" icon="bones" onClick={() => void toBones()}>
+        <Button variant="ghost" icon="bones" className="desk__compact" onClick={() => void toBones()}>
           {t('draw.bones')}
         </Button>
       )}
