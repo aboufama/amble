@@ -210,11 +210,17 @@ const api = {
     for (let i = 3; i < px.length; i += 4) n += px[i] / 255;
     return n;
   },
-  /** A checksum of a layer's pixels (to compare states exactly). */
+  /** A checksum of a layer's visible pixels (colour bytes of fully transparent pixels count as zero). */
   hash(layer: string | null): number {
     const px = surface.readPixels(layer, 0, 0, surface.width, surface.height);
     let h = 2166136261;
-    for (let i = 0; i < px.length; i++) h = Math.imul(h ^ px[i], 16777619);
+    for (let i = 0; i < px.length; i += 4) {
+      const a = px[i + 3];
+      h = Math.imul(h ^ (a ? px[i] : 0), 16777619);
+      h = Math.imul(h ^ (a ? px[i + 1] : 0), 16777619);
+      h = Math.imul(h ^ (a ? px[i + 2] : 0), 16777619);
+      h = Math.imul(h ^ a, 16777619);
+    }
     return h >>> 0;
   },
   async exportArt(o: Parameters<ArtSurface['export']>[0] = {}): Promise<unknown> {
