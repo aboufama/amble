@@ -1,79 +1,11 @@
 /// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin, type Connect } from 'vite';
 import react from '@vitejs/plugin-react';
-import { build } from 'esbuild';
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-
-/**
- * The game player (Babylon.js + Havok + the Amble engine) runs inside a sandboxed
- * iframe with an opaque origin. It is bundled separately into a classic script,
- * `amble-player.js`, which the iframe loads with a plain <script src> (no CORS
- * needed). The Havok WebAssembly binary is handed to the iframe by the editor.
- */
-function playerRuntime(): Plugin {
-  const entry = path.join(root, 'src/engine/index.ts');
-  const havokWasm = path.join(root, 'node_modules/@babylonjs/havok/lib/esm/HavokPhysics.wasm');
-  let cached: Promise<string> | null = null;
-
-  const bundle = async (minify: boolean): Promise<string> => {
-    const result = await build({
-      entryPoints: [entry],
-      bundle: true,
-      format: 'iife',
-      platform: 'browser',
-      target: 'es2020',
-      minify,
-      write: false,
-      legalComments: 'none',
-      define: { 'import.meta.url': '""' },
-      logLevel: 'error',
-    });
-    return result.outputFiles[0].text;
-  };
-
-  return {
-    name: 'amble-player-runtime',
-    configureServer(server) {
-      server.watcher.on('change', (file) => {
-        if (file.includes(`${path.sep}src${path.sep}engine${path.sep}`) || file.endsWith('protocol.ts')) cached = null;
-      });
-      server.middlewares.use((req, res, next) => {
-        const url = (req.url ?? '').split('?')[0];
-        if (url === '/amble-player.js') {
-          cached ??= bundle(false);
-          cached.then(
-            (js) => {
-              res.setHeader('content-type', 'text/javascript; charset=utf-8');
-              res.setHeader('cache-control', 'no-cache');
-              res.end(js);
-            },
-            (err: Error) => {
-              cached = null;
-              res.statusCode = 500;
-              res.end(`console.error(${JSON.stringify(String(err.message))})`);
-            },
-          );
-          return;
-        }
-        if (url === '/amble-havok.wasm') {
-          res.setHeader('content-type', 'application/wasm');
-          res.end(readFileSync(havokWasm));
-          return;
-        }
-        next();
-      });
-    },
-    async generateBundle() {
-      this.emitFile({ type: 'asset', fileName: 'amble-player.js', source: await bundle(true) });
-      this.emitFile({ type: 'asset', fileName: 'amble-havok.wasm', source: readFileSync(havokWasm) });
-    },
-  };
-}
 
 /**
  * Optional server-side key: if OPENAI_API_KEY is set, `/api/openai/*` is
@@ -162,7 +94,14 @@ export default defineConfig(({ mode }) => {
   return {
     // Relative asset paths, so the build works from any sub-path (e.g. GitHub Pages at /amble/).
     base: './',
-    plugins: [react(), playerRuntime(), openaiProxy(env)],
+    // Each checkout keeps its own dependency cache, even when node_modules is shared.
+    cacheDir: '.vite',
+    plugins: [
+      react(),
+      // The game runtime plugin goes here: it bundles the Phaser player for the sandboxed game
+      // iframe, serves it from the dev server and emits it into the build.
+      openaiProxy(env),
+    ],
     build: {
       chunkSizeWarningLimit: 2500,
     },
