@@ -3,24 +3,72 @@
  * - Below the drawing: the scale ghost (the hero, grey, "Pip, for size"; a door for the hero itself), the
  *   ground line ("GROUND", or "floats here"), which way it faces, and the body ghost: faint shapes of the
  *   parts still to draw (on the bones) or the dashed star-pose outline (Freehand).
- * - Above the drawing: the bones to draw on, as a constellation; the chosen part's bones glow, with a
- *   callout ("Draw an arm on this bone").
- * Drawn once into board-sized canvases and handed to the surface as its guide (it composites them).
+ * - Above the drawing: the bones to draw on, thin, in the bones' green; the chosen part's bones in
+ *   Scratch's chosen purple with its flat halo, and a callout ("Draw an arm on this bone").
+ * Flat and clean on the white sheet: no glows, no stars. Drawn once into board-sized canvases and handed
+ * to the surface as its guide (it composites them).
  */
 import { ghostShapes, templateFor, type CharacterKind, type RigData } from '../cores/rig';
+import { FONTS, PAPER } from '../ui/tokens';
 import type { BoardSpec } from './boards';
 import { rigFacing } from './parts';
 import type { DeskRequest } from './request';
 
-/** Colours on paper (§3.1: pencil ink for guide labels, the paper line for edges). */
-const PENCIL = '#3f5db0';
-const PAPER_LINE = '#8c7b5a';
-const GHOST = '#6f8fd8';
-const BONE = '#7d93cc';
-const GLOW = '#1fa57a';
-const CALLOUT_BG = 'rgba(18, 48, 64, 0.92)';
+/**
+ * The guides' colours on the white sheet. The Desk reads them from its stylesheet's tokens (`--guide-*` on
+ * the sheet, so High contrast gets black marks).
+ */
+export interface GuideColors {
+  /** Words and arrows. */
+  ink: string;
+  /** The ground line, the door, the edges of repeating tiles. */
+  mark: string;
+  /** The bones to draw on. */
+  bone: string;
+  /** The chosen part's bones, and the halo around them. */
+  chosen: string;
+  halo: string;
+  /** The body still to draw, and the star-pose outline. */
+  ghost: string;
+  /** The callout's fill and its words. */
+  callout: string;
+  onCallout: string;
+  /** The sheet itself (the joints' faces). */
+  sheet: string;
+}
 
-const FONT = "'Atkinson Hyperlegible Next', system-ui, sans-serif";
+/** Plain dark marks on white, for when the stylesheet's tokens can't be read. */
+export const GUIDE_COLORS: GuideColors = {
+  ink: PAPER.ink,
+  mark: PAPER.paperLine,
+  bone: PAPER.ink,
+  chosen: PAPER.pencilInk,
+  halo: 'transparent',
+  ghost: PAPER.pencilInk,
+  callout: PAPER.pencilInk,
+  onCallout: PAPER.paper,
+  sheet: PAPER.paper,
+};
+
+/** The guides' colours from the sheet's `--guide-*` tokens (any missing one keeps its Original colour). */
+export function guideColorsOf(el: Element | null): GuideColors {
+  if (!el || typeof getComputedStyle === 'undefined') return GUIDE_COLORS;
+  const cs = getComputedStyle(el);
+  const read = (name: string, fallback: string): string => cs.getPropertyValue(name).trim() || fallback;
+  return {
+    ink: read('--guide-ink', GUIDE_COLORS.ink),
+    mark: read('--guide-mark', GUIDE_COLORS.mark),
+    bone: read('--guide-bone', GUIDE_COLORS.bone),
+    chosen: read('--guide-chosen', GUIDE_COLORS.chosen),
+    halo: read('--guide-halo', GUIDE_COLORS.halo),
+    ghost: read('--guide-ghost', GUIDE_COLORS.ghost),
+    callout: read('--guide-callout', GUIDE_COLORS.callout),
+    onCallout: read('--guide-on-callout', GUIDE_COLORS.onCallout),
+    sheet: read('--guide-sheet', GUIDE_COLORS.sheet),
+  };
+}
+
+const FONT = FONTS.ui;
 
 export interface GuideLabels {
   ground: string;
@@ -51,6 +99,8 @@ export interface GuideInput {
   labels: GuideLabels;
   /** Board px per CSS px when the whole sheet fits the view (so labels read at about 13 px). */
   unit: number;
+  /** The colours on the sheet (default: the Original colours). */
+  colors?: GuideColors;
 }
 
 export interface GuideImages {
@@ -99,22 +149,13 @@ function capsulePath(ctx: Ctx, x1: number, y1: number, x2: number, y2: number, r
   ctx.closePath();
 }
 
-function star(ctx: Ctx, x: number, y: number, r: number): void {
-  ctx.beginPath();
-  for (let i = 0; i < 8; i++) {
-    const a = (i * Math.PI) / 4 - Math.PI / 2;
-    const rr = i % 2 === 0 ? r : r * 0.42;
-    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
-  }
-  ctx.closePath();
-}
-
 /** The body ghost: faint shapes around the template's bones (all of them, or those not drawn yet). */
-function drawGhost(ctx: Ctx, rig: RigData, skip: ReadonlySet<string>, style: 'fill' | 'dashed', u: number): void {
+function drawGhost(ctx: Ctx, rig: RigData, skip: ReadonlySet<string>, style: 'fill' | 'dashed', u: number, c: GuideColors): void {
   const shapes = ghostShapes(rig).filter((s) => !skip.has(s.bone));
   ctx.save();
   if (style === 'fill') {
-    ctx.fillStyle = 'rgba(111, 143, 216, 0.13)';
+    ctx.fillStyle = c.ghost;
+    ctx.globalAlpha = 0.1;
     for (const s of shapes) {
       if (s.shape === 'circle') {
         ctx.beginPath();
@@ -135,11 +176,11 @@ function drawGhost(ctx: Ctx, rig: RigData, skip: ReadonlySet<string>, style: 'fi
       } else capsulePath(m as unknown as Ctx, s.x1, s.y1, s.x2, s.y2, s.r);
       m.fill();
     }
-    // A soft sky fill, then a dashed-looking rim: the mask drawn as rings of dots along its edge.
+    // A faint fill, then a dashed rim: the mask's edge cut into dashes.
     ctx.globalAlpha = 0.05;
-    ctx.drawImage(tint(mask, GHOST), 0, 0);
-    ctx.globalAlpha = 0.75;
-    ctx.drawImage(dashedEdge(mask, GHOST, 2.2 * u, 7 * u), 0, 0);
+    ctx.drawImage(tint(mask, c.ghost), 0, 0);
+    ctx.globalAlpha = 0.8;
+    ctx.drawImage(dashedEdge(mask, c.ghost, 2 * u, 7 * u), 0, 0);
   }
   ctx.restore();
 }
@@ -198,7 +239,7 @@ function dashedEdge(mask: OffscreenCanvas, color: string, width: number, dash: n
 }
 
 /** Draws the scale ghost: the hero's drawing (grey) or its template figure, standing on the ground. */
-function drawScaleGhost(ctx: Ctx, i: GuideInput, u: number): void {
+function drawScaleGhost(ctx: Ctx, i: GuideInput, u: number, c: GuideColors): void {
   const { board, request: r } = i;
   const ground = board.groundY;
   if (ground === null) return;
@@ -209,17 +250,18 @@ function drawScaleGhost(ctx: Ctx, i: GuideInput, u: number): void {
     const dw = dh * 0.4;
     const x = board.w * 0.03;
     ctx.save();
-    ctx.strokeStyle = 'rgba(107, 103, 128, 0.3)';
-    ctx.lineWidth = 2.4 * u;
-    ctx.setLineDash([9 * u, 7 * u]);
+    ctx.strokeStyle = c.mark;
+    ctx.fillStyle = c.mark;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 2 * u;
+    ctx.setLineDash([8 * u, 6 * u]);
     ctx.strokeRect(x, ground - dh, dw, dh);
     ctx.setLineDash([]);
     ctx.beginPath();
     ctx.arc(x + dw * 0.8, ground - dh * 0.48, 4 * u, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(107, 103, 128, 0.3)';
     ctx.fill();
     ctx.restore();
-    label(ctx, i.labels.door, x, ground - dh - 24 * u, 14 * u, PENCIL);
+    label(ctx, i.labels.door, x, ground - dh - 22 * u, 13 * u, c.ink);
     return;
   }
   const hh = r.hero.h * board.perGamePx;
@@ -237,7 +279,7 @@ function drawScaleGhost(ctx: Ctx, i: GuideInput, u: number): void {
   } else {
     const t = templateFor((r.hero.rig === 'none' ? 'biped' : r.hero.rig) as CharacterKind, w, hh, 0);
     ctx.translate(x0, ground - hh);
-    ctx.fillStyle = '#6b6780';
+    ctx.fillStyle = c.mark;
     for (const s of ghostShapes(t)) {
       if (s.shape === 'circle') {
         ctx.beginPath();
@@ -247,32 +289,32 @@ function drawScaleGhost(ctx: Ctx, i: GuideInput, u: number): void {
     }
   }
   ctx.restore();
-  label(ctx, i.labels.forSize, x0 + w / 2, ground - hh - 26 * u, 14 * u, PENCIL, 'center');
+  label(ctx, i.labels.forSize, x0 + w / 2, ground - hh - 24 * u, 13 * u, c.ink, 'center');
 }
 
-function drawGround(ctx: Ctx, i: GuideInput, u: number): void {
+function drawGround(ctx: Ctx, i: GuideInput, u: number, c: GuideColors): void {
   const g = i.board.groundY;
   if (g === null) return;
   const W = i.board.w;
   ctx.save();
-  ctx.strokeStyle = 'rgba(140, 123, 90, 0.75)';
-  ctx.lineWidth = 2.4 * u;
-  ctx.setLineDash([10 * u, 8 * u]);
+  ctx.strokeStyle = c.mark;
+  ctx.lineWidth = 2 * u;
+  ctx.setLineDash([10 * u, 7 * u]);
   ctx.beginPath();
   ctx.moveTo(W * 0.04, g);
   ctx.lineTo(W * 0.96, g);
   ctx.stroke();
   ctx.restore();
   const text = i.request.rig === 'flyer' || i.request.kind === 'projectile' ? i.labels.floats : i.labels.ground;
-  label(ctx, text, W * 0.04, g + 8 * u, 12.5 * u, PAPER_LINE, 'left', true);
+  label(ctx, text, W * 0.04, g + 8 * u, 12 * u, c.ink, 'left', true);
 }
 
-function drawFacing(ctx: Ctx, i: GuideInput, u: number): void {
+function drawFacing(ctx: Ctx, i: GuideInput, u: number, c: GuideColors): void {
   const r = i.request;
   if (r.kind !== 'character' || r.rig === 'none') return;
   const W = i.board.w;
   const y = 22 * u;
-  const size = 13.5 * u;
+  const size = 13 * u;
   const text = r.facing === 'viewer' ? i.labels.facesYou : i.labels.faces;
   ctx.save();
   ctx.font = `600 ${size}px ${FONT}`;
@@ -281,14 +323,14 @@ function drawFacing(ctx: Ctx, i: GuideInput, u: number): void {
   const arrowW = 30 * u;
   const right = W - 24 * u;
   const textX = r.facing === 'right' ? right - arrowW - 8 * u - tw : right - tw;
-  label(ctx, text, textX, y, size, PAPER_LINE);
+  label(ctx, text, textX, y, size, c.ink);
   if (r.facing === 'viewer') return;
   const ax0 = r.facing === 'left' ? textX - 8 * u - arrowW : right - arrowW;
   const ax1 = ax0 + arrowW;
   const ay = y + size * 0.62;
   ctx.save();
-  ctx.strokeStyle = PAPER_LINE;
-  ctx.lineWidth = 2.4 * u;
+  ctx.strokeStyle = c.ink;
+  ctx.lineWidth = 2 * u;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.beginPath();
@@ -303,11 +345,12 @@ function drawFacing(ctx: Ctx, i: GuideInput, u: number): void {
   ctx.restore();
 }
 
-function drawRepeats(ctx: Ctx, i: GuideInput, u: number): void {
+function drawRepeats(ctx: Ctx, i: GuideInput, u: number, c: GuideColors): void {
   if (i.board.kind !== 'platform' && i.board.kind !== 'terrain') return;
   const { w, h } = i.board;
   ctx.save();
-  ctx.strokeStyle = 'rgba(140, 123, 90, 0.55)';
+  ctx.strokeStyle = c.mark;
+  ctx.globalAlpha = 0.7;
   ctx.lineWidth = 2 * u;
   ctx.setLineDash([6 * u, 6 * u]);
   for (const x of [2 * u, w - 2 * u]) {
@@ -317,29 +360,44 @@ function drawRepeats(ctx: Ctx, i: GuideInput, u: number): void {
     ctx.stroke();
   }
   ctx.restore();
-  label(ctx, i.labels.repeats, w - 10 * u, 8 * u, 12 * u, PAPER_LINE, 'right');
+  label(ctx, i.labels.repeats, w - 10 * u, 8 * u, 12 * u, c.ink, 'right');
 }
 
-/** The constellation: every bone thin, the chosen part's bones glowing, stars at the joints. */
-function drawBonesAbove(ctx: Ctx, rig: RigData, current: ReadonlySet<string>, u: number): { x: number; y: number } | null {
+/** A joint: a small round handle on the sheet (the Bones view's joints, smaller). */
+function joint(ctx: Ctx, x: number, y: number, r: number, edge: string, face: string, width: number): void {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = face;
+  ctx.fill();
+  ctx.lineWidth = width;
+  ctx.strokeStyle = edge;
+  ctx.stroke();
+}
+
+/** The bones to draw on: every bone thin in the bones' green, the chosen part's bones purple with a flat halo. */
+function drawBonesAbove(ctx: Ctx, rig: RigData, current: ReadonlySet<string>, u: number, c: GuideColors): { x: number; y: number } | null {
   let tip: { x: number; y: number } | null = null;
   const bones = rig.bones;
   ctx.save();
   ctx.lineCap = 'round';
-  for (const pass of ['dim', 'glow'] as const) {
+  ctx.lineJoin = 'round';
+  // The chosen bones' halo first, then every bone: the dim ones, then the chosen ones on top.
+  ctx.strokeStyle = c.halo;
+  ctx.lineWidth = 13 * u;
+  for (const b of bones) {
+    if (!current.has(b.name)) continue;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(b.x2, b.y2);
+    ctx.stroke();
+  }
+  for (const pass of ['dim', 'chosen'] as const) {
     for (const b of bones) {
       const on = current.has(b.name);
-      if ((pass === 'glow') !== on) continue;
-      if (on) {
-        ctx.shadowColor = 'rgba(31, 165, 122, 0.55)';
-        ctx.shadowBlur = 12 * u;
-        ctx.strokeStyle = GLOW;
-        ctx.lineWidth = 5.5 * u;
-      } else {
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = 'rgba(125, 147, 204, 0.62)';
-        ctx.lineWidth = 2.4 * u;
-      }
+      if ((pass === 'chosen') !== on) continue;
+      ctx.globalAlpha = on ? 1 : 0.6;
+      ctx.strokeStyle = on ? c.chosen : c.bone;
+      ctx.lineWidth = (on ? 5 : 2.4) * u;
       ctx.beginPath();
       ctx.moveTo(b.x, b.y);
       ctx.lineTo(b.x2, b.y2);
@@ -347,21 +405,17 @@ function drawBonesAbove(ctx: Ctx, rig: RigData, current: ReadonlySet<string>, u:
       if (on) tip = { x: b.x2, y: b.y2 };
     }
   }
-  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1;
   const hasChild = new Set(bones.map((b) => b.parent));
-  bones.forEach((b, k) => {
-    const on = current.has(b.name);
-    const pts: Array<[number, number]> = [[b.x, b.y]];
-    if (!hasChild.has(k)) pts.push([b.x2, b.y2]);
-    for (const [x, y] of pts) {
-      star(ctx, x, y, (on ? 10 : 7) * u);
-      ctx.fillStyle = on ? '#ffffff' : 'rgba(255, 255, 255, 0.9)';
-      ctx.fill();
-      ctx.lineWidth = (on ? 2.6 : 1.8) * u;
-      ctx.strokeStyle = on ? GLOW : BONE;
-      ctx.stroke();
-    }
-  });
+  // Dim joints first, so the chosen part's joints sit on top.
+  for (const pass of ['dim', 'chosen'] as const)
+    bones.forEach((b, k) => {
+      const on = current.has(b.name);
+      if ((pass === 'chosen') !== on) return;
+      const pts: Array<[number, number]> = [[b.x, b.y]];
+      if (!hasChild.has(k)) pts.push([b.x2, b.y2]);
+      for (const [x, y] of pts) joint(ctx, x, y, (on ? 6.5 : 4.5) * u, on ? c.chosen : c.bone, c.sheet, (on ? 2.5 : 1.8) * u);
+    });
   ctx.restore();
   return tip;
 }
@@ -387,12 +441,13 @@ export function placeCallout(
   return { x, y, beside };
 }
 
-function drawCallout(ctx: Ctx, text: string, at: { x: number; y: number }, board: BoardSpec, u: number): void {
-  let size = 15 * u;
+/** "Draw an arm on this bone": a flat label with 8 px corners in the chosen purple, joined to the bone. */
+function drawCallout(ctx: Ctx, text: string, at: { x: number; y: number }, board: BoardSpec, u: number, c: GuideColors): void {
+  let size = 14 * u;
   ctx.save();
   ctx.font = `700 ${size}px ${FONT}`;
   let tw = ctx.measureText(text).width;
-  const padX = 12 * u;
+  const padX = 11 * u;
   const room = board.w - 16 * u - padX * 2;
   // Words a little smaller when the paper is narrower than the callout.
   if (tw > room) {
@@ -403,28 +458,28 @@ function drawCallout(ctx: Ctx, text: string, at: { x: number; y: number }, board
   const h = size + 14 * u;
   const w = Math.min(tw, room) + padX * 2;
   const { x, y, beside } = placeCallout(at, { w, h }, board, u);
-  ctx.strokeStyle = CALLOUT_BG;
+  ctx.strokeStyle = c.callout;
   ctx.lineWidth = 2 * u;
+  ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.moveTo(at.x, at.y);
   if (beside) ctx.lineTo(x < at.x ? x + w : x, y + h / 2);
   else ctx.lineTo(Math.min(Math.max(at.x, x + h / 2), x + w - h / 2), y < at.y ? y + h : y);
   ctx.stroke();
-  ctx.fillStyle = CALLOUT_BG;
-  const r = h / 2;
+  ctx.fillStyle = c.callout;
   ctx.beginPath();
-  ctx.roundRect(x, y, w, h, r);
+  ctx.roundRect(x, y, w, h, 8 * u);
   ctx.fill();
-  ctx.fillStyle = '#86f3cb';
+  ctx.fillStyle = c.onCallout;
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x + padX, y + h / 2 + u, w - padX * 2);
   ctx.restore();
 }
 
-function drawStarNote(ctx: Ctx, text: string, rig: RigData, board: BoardSpec, u: number): void {
+function drawStarNote(ctx: Ctx, text: string, rig: RigData, board: BoardSpec, u: number, c: GuideColors): void {
   const ys = rig.bones.flatMap((b) => [b.y, b.y2]);
   const top = Math.min(...ys);
-  const size = 13.5 * u;
+  const size = 13 * u;
   const maxW = Math.min(board.w * 0.36, 230 * u);
   ctx.save();
   ctx.font = `600 ${size}px ${FONT}`;
@@ -440,7 +495,7 @@ function drawStarNote(ctx: Ctx, text: string, rig: RigData, board: BoardSpec, u:
     } else cur = next;
   }
   if (cur) lines.push(cur);
-  ctx.fillStyle = PENCIL;
+  ctx.fillStyle = c.ink;
   ctx.textBaseline = 'top';
   const x = board.w - 24 * u - maxW;
   const y = Math.max(60 * u, top - lines.length * size * 1.3 - 10 * u);
@@ -452,35 +507,36 @@ function drawStarNote(ctx: Ctx, text: string, rig: RigData, board: BoardSpec, u:
 export function renderGuides(i: GuideInput, rig: RigData | null): GuideImages {
   const { w, h } = i.board;
   const u = i.unit;
+  const c = i.colors ?? GUIDE_COLORS;
   const below = new OffscreenCanvas(w, h);
   const ctx = below.getContext('2d');
   if (!ctx) return { below, above: null };
-  drawScaleGhost(ctx, i, u);
-  drawGround(ctx, i, u);
-  drawFacing(ctx, i, u);
-  drawRepeats(ctx, i, u);
+  drawScaleGhost(ctx, i, u, c);
+  drawGround(ctx, i, u, c);
+  drawFacing(ctx, i, u, c);
+  drawRepeats(ctx, i, u, c);
   let above: OffscreenCanvas | null = null;
   if (rig && i.mode === 'bones') {
-    drawGhost(ctx, rig, i.drawnBones, 'fill', u);
+    drawGhost(ctx, rig, i.drawnBones, 'fill', u, c);
     above = new OffscreenCanvas(w, h);
     const a = above.getContext('2d');
     if (a) {
-      const tip = drawBonesAbove(a, rig, new Set(i.currentBones), u);
-      if (tip && i.labels.callout) drawCallout(a, i.labels.callout, tip, i.board, u);
+      const tip = drawBonesAbove(a, rig, new Set(i.currentBones), u, c);
+      if (tip && i.labels.callout) drawCallout(a, i.labels.callout, tip, i.board, u, c);
     }
   } else if (rig && i.starPose) {
-    drawGhost(ctx, rig, new Set(), 'dashed', u);
+    drawGhost(ctx, rig, new Set(), 'dashed', u, c);
     // Joint dots on the star pose.
     ctx.save();
-    ctx.fillStyle = GHOST;
+    ctx.fillStyle = c.ghost;
     for (const b of rig.bones) {
       ctx.beginPath();
-      ctx.arc(b.x, b.y, 4.5 * u, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y, 4 * u, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
     // "Arms a little out": only figures with arms.
-    if (i.labels.starNote && rig.kind === 'biped') drawStarNote(ctx, i.labels.starNote, rig, i.board, u);
+    if (i.labels.starNote && rig.kind === 'biped') drawStarNote(ctx, i.labels.starNote, rig, i.board, u, c);
   }
   return { below, above };
 }

@@ -22,7 +22,9 @@ import { partSteps, templateHints, type CharacterKind, type JointHints, type Rig
 import { midSentence, t, type MessageKey } from '../i18n';
 import type { Facing, PartLayers, Prefs } from '../model/types';
 import type { BoardSpec } from './boards';
-import { renderGuides, templateOnBoard, type GuideLabels } from './guides';
+import { PAPER } from '../ui/tokens';
+import { guideColorsOf, renderGuides, templateOnBoard, type GuideLabels } from './guides';
+import { surroundedByLines } from './leak';
 import { pushRecent, START_COLOR } from './palette';
 import { bonesLayout, FREEHAND_PAIR, mirrorMatrix, nextExtra, otherSide, pairIds, partOfLayer, rigFacing, targetLayer, type BonesStep, type RoutedTool } from './parts';
 import type { DeskRequest } from './request';
@@ -132,7 +134,8 @@ export interface DeskOpen {
 type Listener = () => void;
 export type DeskEvent =
   | { type: 'penup'; layer: string | null; op: string }
-  | { type: 'toast'; text: string }
+  /** The paper's words; `undo`: with an Undo for what just happened ("It leaked through a gap."). */
+  | { type: 'toast'; text: string; undo?: boolean }
   | { type: 'announce'; text: string }
   /** The pen (finger, mouse) went down on the paper, or came up. */
   | { type: 'pen'; down: boolean }
@@ -185,6 +188,8 @@ export class DeskController {
   private destroyed = false;
   private partBones: Record<string, string[]>;
   private readonly heroImage: ImageBitmap | null;
+  /** The sheet's element (its stylesheet gives the guides their colours). */
+  private readonly host: HTMLElement;
   private unit = 1;
   private pen = false;
   private sizeTimer = 0;
@@ -194,19 +199,24 @@ export class DeskController {
   private artBusy = false;
   private artWanted = 0;
   private lastArt: DeskArt | null = null;
+  /** The last fill the leak check looked at, and the undo depth right after a fill that leaked. */
+  private leakSeen: object | null = null;
+  private leakAt: number | null = null;
 
   constructor(o: DeskOpen) {
     this.request = o.request;
     this.board = o.board;
     this.partBones = o.partBones;
     this.heroImage = o.heroImage;
+    this.host = o.host;
     this.rig = templateOnBoard(o.board, o.request);
     this.surface = createArtSurface(o.host, o.doc, {
       pressure: o.prefs.pressure,
       keyboard: false,
       reducedMotion: o.prefs.reducedMotion,
-      paper: o.colors?.paper ?? '#fdf8ec',
-      workspace: o.colors?.workspace ?? '#151843',
+      // The sheet is white in every theme, on Scratch's grey workspace.
+      paper: o.colors?.paper ?? PAPER.paper,
+      workspace: o.colors?.workspace ?? PAPER.paper2,
       a11y: { role: 'application', label: t('draw.sheetLabel') },
     });
     const down = (e: PointerEvent): void => {
@@ -506,10 +516,12 @@ export class DeskController {
   }
 
   async undo(): Promise<void> {
+    this.leakAt = null;
     await this.surface.undo();
   }
 
   async redo(): Promise<void> {
+    this.leakAt = null;
     await this.surface.redo();
   }
 
@@ -787,6 +799,9 @@ export class DeskController {
   // ------------------------------------------------------------------------------------------ events
 
   private onPenUp(e: { op: string; layer: string | null }): void {
+    // Anything new: the leak toast's Undo no longer means that fill.
+    this.leakAt = null;
+    if (e.op === 'fill') window.setTimeout(() => void this.checkLeak(), 0);
     if (e.op === 'stroke' && e.layer && this.state.tool !== 'eraser') this.lastTouched = e.layer;
     const drawnBefore = this.state.drawn.join(',');
     const layers = this.surface.layers();
@@ -796,6 +811,55 @@ export class DeskController {
     if (drawn.join(',') !== drawnBefore) this.scheduleGuides();
     this.emit({ type: 'penup', layer: e.layer, op: e.op });
     this.scheduleArt();
+  }
+
+  /**
+   * After a fill (§7.4): a fill that flooded the open paper from a spot the lines almost surround went out
+   * through a gap too wide to close (wider than about 11 board px, which can look tiny when zoomed out).
+   * The Desk says "It leaked through a gap." with an Undo.
+   */
+  private async checkLeak(): Promise<void> {
+    if (this.destroyed) return;
+    const st = this.surface.stats();
+    const f = st.fills[st.fills.length - 1];
+    if (!f || f === this.leakSeen) return;
+    this.leakSeen = f;
+    if (!f.background || f.mode !== 'lines') return;
+    const log = this.surface.log();
+    let op: (typeof log)[number] | undefined;
+    for (let i = log.length - 1; i >= 0 && !op; i--) if (log[i].op === 'fill') op = log[i];
+    if (!op || op.op !== 'fill' || op.all) return;
+    const steps = st.history.steps;
+    const walls = op.lines ? [op.lines] : this.surface.layers().filter((l) => l.role === 'lines' && l.visible).map((l) => l.id);
+    if (!walls.length) return;
+    // A small copy of the lines is plenty: the gaps that leak are wider than the ones the fill closes.
+    const long = Math.max(this.board.w, this.board.h);
+    const size = Math.min(512, Math.max(160, Math.round(long / 2.5)));
+    const k = Math.min(1, size / long);
+    const W = Math.max(1, Math.round(this.board.w * k));
+    const H = Math.max(1, Math.round(this.board.h * k));
+    const g = new OffscreenCanvas(W, H).getContext('2d', { willReadFrequently: true });
+    if (!g) return;
+    for (const id of walls) {
+      const bmp = await this.surface.thumbnail(id, size);
+      g.drawImage(bmp, 0, 0, W, H);
+      bmp.close();
+      if (this.destroyed) return;
+    }
+    const px = g.getImageData(0, 0, W, H).data;
+    const leaked = surroundedByLines((x, y) => px[(y * W + x) * 4 + 3] > 50, W, H, op.x * k, op.y * k);
+    // Only while that fill is still the last thing done.
+    if (!leaked || this.destroyed || this.surface.stats().history.steps !== steps || this.leakSeen !== f) return;
+    this.leakAt = steps;
+    this.emit({ type: 'toast', text: t('draw.fillLeaked'), undo: true });
+  }
+
+  /** The Undo of "It leaked through a gap.": undoes that fill, unless something happened since. */
+  async undoLeak(): Promise<void> {
+    const at = this.leakAt;
+    this.leakAt = null;
+    if (at === null || this.destroyed || this.surface.stats().history.steps !== at) return;
+    await this.surface.undo();
   }
 
   private onToast(e: { message: string; kind: string; shape?: string; gap?: number }): void {
@@ -935,7 +999,7 @@ export class DeskController {
     };
     const starPose = this.state.starPose && this.state.mode === 'free' && r.kind === 'character' && r.rig !== 'none' && r.rig !== 'object';
     const images = renderGuides(
-      { board: this.board, request: r, mode: this.state.mode, starPose, currentBones, drawnBones, heroImage: this.heroImage, labels, unit: this.unit },
+      { board: this.board, request: r, mode: this.state.mode, starPose, currentBones, drawnBones, heroImage: this.heroImage, labels, unit: this.unit, colors: guideColorsOf(this.host) },
       this.rig,
     );
     const box = { x: 0, y: 0, w: this.board.w, h: this.board.h };

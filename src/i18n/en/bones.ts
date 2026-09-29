@@ -14,9 +14,9 @@ export const bones = {
   statusFound: 'Amble found {n} bones. Drag any star to fix one.',
   statusFoundOne: 'Amble found 1 bone. Drag its star to fix it.',
   statusHand: 'You placed these bones',
-  statusAi: 'The AI helped find these bones',
+  statusAi: 'Amble found these bones',
   statusFinding: 'Finding bones…',
-  statusAsking: 'Asking the AI helper…',
+  statusAsking: 'Finding the joints…',
   statusFailed: "Amble couldn't find bones here. Pick what it is, or add bones yourself.",
   statusPick: 'Pick what it is, and Amble will find its bones.',
   undo: 'Undo',
@@ -169,16 +169,16 @@ export const bones = {
   issueMissingWing: "I couldn't find both wings. Add a wiggly bit, or pick another kind.",
   issueNoTail: "I couldn't find a tail. Add a wiggly bit if it has one.",
   issueShortBody: 'The body is short for a swimmer, so it may not wiggle much.',
-  issueHintDropped: "Some of the AI helper's stars didn't match the drawing, so I placed those myself.",
+  issueHintDropped: "Some of the online helper's stars didn't match the drawing, so I placed those myself.",
   issueThinStrokes: 'The lines are very thin, so I looked extra close. Check the stars.',
   issueUnknown: 'I made my best guess. If a star is in the wrong place, drag it.',
 
-  // ---------------------------------------------------------------- Magic bones with the AI helper
-  consentTitle: 'Ask the AI helper?',
-  consentBody: "Amble can send a plain outline of your drawing (no colours) to your school's AI to help find the joints. OK?",
+  // ---------------------------------------------------------------- Magic bones with the school's online helper (the outline consent)
+  consentTitle: 'Get help finding the joints?',
+  consentBody: "Amble sends a plain black-and-white outline of this drawing (no colours) to your school's online helper. OK?",
   consentSend: 'Send the outline',
   consentHere: 'Just do it here',
-  aiNoHelp: "The AI helper couldn't help this time. Amble made these bones here.",
+  aiNoHelp: "The online helper couldn't help this time, so Amble found these bones here.",
 
   // ---------------------------------------------------------------- the side panel
   sideLabel: 'Moves',
@@ -247,7 +247,7 @@ export const bones = {
   drawMoveHint: 'Flipbook pages for {move} replace its bones move.',
   localTitle: 'Made on this Chromebook.',
   localBody: 'Amble finds bones by itself; your drawing is never sent anywhere to do it.',
-  localAiBody: 'The AI helper saw only a plain outline of this drawing, with your OK.',
+  localAiBody: 'The online helper saw only a plain outline of this drawing, with your OK.',
 
   // ---------------------------------------------------------------- other states
   missingTitle: "This drawing isn't here.",

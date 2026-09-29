@@ -84,7 +84,7 @@ export const MovesPanel = memo(function MovesPanel({ ctl, step, bound, name, bus
         </span>
       </button>
       <p className={cx('bones-local', aiHelped && 'bones-local--ai')}>
-        <Icon name={aiHelped ? 'sparkle' : 'lock'} size={20} />
+        <Icon name={aiHelped ? 'eye' : 'lock'} size={20} />
         <span>
           <b>{t('bones.localTitle')}</b> {aiHelped ? t('bones.localAiBody') : t('bones.localBody')}
         </span>

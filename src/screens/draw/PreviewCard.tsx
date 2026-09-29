@@ -17,6 +17,7 @@ import type { DrawnArt } from '../../cores/play';
 import { createRigPreview, type RigPreview } from '../../cores/rig';
 import type { DeskArt, DeskController, DeskState } from '../../draw/deskController';
 import type { DeskSetup } from '../../draw/load';
+import { GUIDE_COLORS } from '../../draw/guides';
 import { drawnArtOf, previewRig, type PreviewRig } from '../../draw/preview';
 import { t } from '../../i18n';
 import type { CodeFile } from '../../model/types';
@@ -88,7 +89,15 @@ function MovesView({ ctrl, art, rigged, bones, still, hold }: { ctrl: DeskContro
   useEffect(() => {
     const c = canvas.current;
     if (!c || still) return;
-    const p = createRigPreview(c, { ground: 0.84, height: c.height * 0.62, background: null, bones: bones ? { look: 'stars', width: 2, joint: 3, glow: 6 } : false, autoplay: !reduced });
+    // The bones in their own green on the white stage, flat (no glow).
+    const bone = getComputedStyle(c).getPropertyValue('--bones').trim() || GUIDE_COLORS.bone;
+    const p = createRigPreview(c, {
+      ground: 0.84,
+      height: c.height * 0.62,
+      background: null,
+      bones: bones ? { look: 'stars', width: 2, joint: 3, glow: 0, left: bone, right: bone, centre: bone } : false,
+      autoplay: !reduced,
+    });
     preview.current = p;
     return () => {
       p.destroy();
@@ -100,6 +109,13 @@ function MovesView({ ctrl, art, rigged, bones, still, hold }: { ctrl: DeskContro
     const p = preview.current;
     if (!p || !art || !rigged?.rig) return;
     void p.load(art.flat, rigged.rig, rigged.layers ?? undefined).then(() => {
+      // The way it is drawn, at once. A new puppet starts facing right, so a drawing that faces left
+      // turned with the paper flip after every update: a squeezed sliver for a frame.
+      const pup = p.puppet;
+      if (pup) {
+        pup.face(pup.rig.facing || 1);
+        pup.flip = 1;
+      }
       if (reduced && clipRef.current === 'idle') p.pose('idle', 0);
       else p.play(clipRef.current);
     }, () => undefined);
@@ -377,12 +393,12 @@ export function PreviewCard({ ctrl, s, setup, player, store, brought, bringing =
     <section className="preview" aria-labelledby="desk-preview">
       <div className="preview__head">
         <h2 id="desk-preview" className="preview__title">
-          <Icon name={shown === 'world' ? 'sparkle' : 'play'} size={16} />
+          <Icon name={shown === 'world' ? 'eye' : 'play'} size={16} />
           {title}
         </h2>
         {both ? (
           <button type="button" className="preview__switch" onClick={() => setPicked(shown === 'world' ? 'moves' : 'world')}>
-            <Icon name={shown === 'world' ? 'bones' : 'sparkle'} size={14} />
+            <Icon name={shown === 'world' ? 'bones' : 'eye'} size={14} />
             <span>{shown === 'world' ? t('draw.previewMovesShort') : t('draw.previewWorldShort')}</span>
           </button>
         ) : (

@@ -2,12 +2,14 @@
  * Colour (§2.10): the current colour (46 px) with its name and where it came from ("Moon yellow · Recent
  * colour"), the colour picker (I, or hold Alt), 18 kid swatches, 9 skin tones, **From your world** (the
  * colours of this world's other drawings) and **More colours**: a light-and-bright square, a colour
- * slider, a colour code field and the recent colours. Every swatch is a button named by its colour.
+ * slider, a colour code field and the recent colours. Every swatch is a round button named by its
+ * colour, each name different on the panel ("Pebble grey, lighter", "Chocolate, skin tone"); the chosen
+ * one wears Scratch's selection ring.
  */
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { colorId, hexToHsv, hsvToHex, normalizeHex } from '../../draw/colorNames';
 import type { ColorOrigin, DeskController, DeskState } from '../../draw/deskController';
-import { KID_SWATCHES, SKIN_TONES } from '../../draw/palette';
+import { KID_SWATCHES, SKIN_TONES, uniqueSwatchNames, type SwatchGroup, type SwatchWords } from '../../draw/palette';
 import { t, type MessageKey } from '../../i18n';
 import { Popover } from '../../ui/components';
 import { cx } from '../../ui/cx';
@@ -19,20 +21,28 @@ export function colorName(hex: string): string {
   return t(`draw.color_${colorId(hex)}` as MessageKey);
 }
 
-function Swatches({ colors, current, origin, onPick, label }: { colors: readonly string[]; current: string; origin: ColorOrigin; onPick(c: string, o: ColorOrigin): void; label: string }) {
+const SWATCH_WORDS: SwatchWords = {
+  lighter: (name) => t('draw.swatchLighter', { name }),
+  darker: (name) => t('draw.swatchDarker', { name }),
+  nth: (name, n) => t('draw.swatchNth', { name, n }),
+  inGroup: (name, group) => t(`draw.swatchIn_${group}` as MessageKey, { name }),
+};
+
+function Swatches({ colors, names, current, origin, onPick, label }: { colors: readonly string[]; names: readonly string[]; current: string; origin: ColorOrigin; onPick(c: string, o: ColorOrigin): void; label: string }) {
   return (
     <div className="swatches" role="group" aria-label={label}>
-      {colors.map((c) => {
+      {colors.map((c, i) => {
         const on = c.toLowerCase() === current.toLowerCase();
+        const name = names[i] ?? colorName(c);
         return (
           <button
             key={c}
             type="button"
             className={cx('swatch', on && 'swatch--on')}
             style={{ ['--swatch' as string]: c }}
-            aria-label={colorName(c)}
+            aria-label={name}
             aria-pressed={on}
-            title={colorName(c)}
+            title={name}
             onClick={() => onPick(c, origin)}
           />
         );
@@ -42,7 +52,7 @@ function Swatches({ colors, current, origin, onPick, label }: { colors: readonly
 }
 
 /** More colours: a light-and-bright square, a colour slider, the code and the recent colours. */
-function Mixer({ color, recent, onPick }: { color: string; recent: readonly string[]; onPick(c: string, o: ColorOrigin): void }) {
+function Mixer({ color, recent, recentNames, onPick }: { color: string; recent: readonly string[]; recentNames: readonly string[]; onPick(c: string, o: ColorOrigin): void }) {
   const [hsv, setHsv] = useState(() => hexToHsv(color));
   const [code, setCode] = useState(color.toUpperCase());
   const square = useRef<HTMLDivElement>(null);
@@ -116,7 +126,7 @@ function Mixer({ color, recent, onPick }: { color: string; recent: readonly stri
           }}
         />
       </label>
-      {recent.length > 1 && <Swatches colors={recent} current={color} origin="recent" onPick={onPick} label={t('draw.origin_recent')} />}
+      {recent.length > 1 && <Swatches colors={recent} names={recentNames} current={color} origin="recent" onPick={onPick} label={t('draw.origin_recent')} />}
     </div>
   );
 }
@@ -125,10 +135,18 @@ export function ColorPanel({ ctrl, s, worldColors }: { ctrl: DeskController; s: 
   const [mixing, setMixing] = useState(false);
   const moreRef = useRef<HTMLButtonElement>(null);
   const pick = (c: string, o: ColorOrigin) => ctrl.setColor(c, o);
+  // Every swatch the panel shows (the recent ones only while More colours is open), each named once.
+  const rows: Array<{ group: SwatchGroup; colors: readonly string[] }> = [
+    { group: 'box', colors: KID_SWATCHES },
+    { group: 'skin', colors: SKIN_TONES },
+    { group: 'world', colors: worldColors },
+    { group: 'recent', colors: mixing && s.recent.length > 1 ? s.recent : [] },
+  ];
+  const [boxNames, skinNames, worldNames, recentNames] = uniqueSwatchNames(rows, colorName, SWATCH_WORDS);
   return (
     <section className="side__section colour" aria-labelledby="desk-colour">
       <div className="side__head">
-        <h2 id="desk-colour" className="desk-caps">
+        <h2 id="desk-colour" className="side__title">
           {t('draw.colour')}
         </h2>
         <span className="side__meta">{t('draw.brushNow', { tool: toolLabel(s.tool), size: Math.round(s.brush.size) })}</span>
@@ -141,7 +159,7 @@ export function ColorPanel({ ctrl, s, worldColors }: { ctrl: DeskController; s: 
         </div>
         <button
           type="button"
-          className={cx('btn btn--icon btn--quiet btn--h44 colour__picker', s.picking && 'colour__picker--on')}
+          className={cx('colour__picker', s.picking && 'colour__picker--on')}
           aria-label={t('draw.pickColour')}
           aria-pressed={s.picking}
           aria-keyshortcuts="I"
@@ -152,13 +170,13 @@ export function ColorPanel({ ctrl, s, worldColors }: { ctrl: DeskController; s: 
         </button>
       </div>
       <p className="side__label">{t('draw.colours')}</p>
-      <Swatches colors={KID_SWATCHES} current={s.color} origin="box" onPick={pick} label={t('draw.colours')} />
+      <Swatches colors={KID_SWATCHES} names={boxNames} current={s.color} origin="box" onPick={pick} label={t('draw.colours')} />
       <p className="side__label">{t('draw.skinTones')}</p>
-      <Swatches colors={SKIN_TONES} current={s.color} origin="skin" onPick={pick} label={t('draw.skinTones')} />
+      <Swatches colors={SKIN_TONES} names={skinNames} current={s.color} origin="skin" onPick={pick} label={t('draw.skinTones')} />
       {worldColors.length > 0 && (
         <>
           <p className="side__label">{t('draw.fromWorld')}</p>
-          <Swatches colors={worldColors} current={s.color} origin="world" onPick={pick} label={t('draw.fromWorld')} />
+          <Swatches colors={worldColors} names={worldNames} current={s.color} origin="world" onPick={pick} label={t('draw.fromWorld')} />
         </>
       )}
       <button ref={moreRef} type="button" className="colour__more" aria-expanded={mixing} onClick={() => setMixing((m) => !m)}>
@@ -167,7 +185,7 @@ export function ColorPanel({ ctrl, s, worldColors }: { ctrl: DeskController; s: 
         <Icon name="plus" size={16} />
       </button>
       <Popover open={mixing} anchor={moreRef.current} onClose={() => setMixing(false)} label={t('draw.moreColours')} placement="left" className="desk-popover">
-        <Mixer color={s.color} recent={s.recent} onPick={pick} />
+        <Mixer color={s.color} recent={s.recent} recentNames={recentNames} onPick={pick} />
       </Popover>
     </section>
   );

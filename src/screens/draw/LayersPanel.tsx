@@ -134,7 +134,7 @@ export function LayersPanel({ ctrl, s }: { ctrl: DeskController; s: DeskState })
   return (
     <section className="side__section layers" aria-labelledby="desk-layers">
       <div className="side__head">
-        <h2 id="desk-layers" className="desk-caps">
+        <h2 id="desk-layers" className="side__title">
           {bones ? t('draw.parts') : t('draw.layers')}
         </h2>
         <div className="side__actions">

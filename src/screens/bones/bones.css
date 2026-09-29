@@ -1,14 +1,30 @@
 /*
- * Bones (§2.11, `09-bones.png`): the top bar, the tools row, the sky with the constellation, and the
- * side panel with the moves. Tokens only (no hex values). 1366x768: the sky is 884x632 at (16, 120),
- * the side panel 434 wide.
+ * Bones (§2.11, `09-bones.png`) in Scratch's look: the top bar, the tools row, the board (the drawing
+ * straight on a white sheet, its bones in the bones' green) with the key hints and the legend under it,
+ * and the side panel with the moves. Flat panels with 1 px edges and 8 px corners; what is chosen (a
+ * joint, a bone, a move, a kind) wears Scratch's purple. Tokens only (no hex values). 1366x768: the
+ * board is about 884 wide at (16, 120), the side panel 434 wide.
+ *
+ * The sheet is white in every theme, so what sits on it reads the sheet's own ink (`--on-sheet`: the
+ * words colour in Original colours, black in High contrast; `--sheet-ink` stands in for it where the
+ * shared tokens don't have it yet), and the chosen purple turns black there in High contrast.
  */
 
 /* ---------- the frame ---------- */
 .screen.bones-screen {
+  --sheet-ink: var(--text);
+  --sheet-chosen: var(--change-bright);
+  --sheet-halo: var(--select-ring);
   grid-template-columns: minmax(0, 1fr) 434px;
   column-gap: 16px;
   padding: 0 16px 16px;
+  background: var(--bg);
+}
+
+:root[data-theme='contrast'] .screen.bones-screen {
+  --sheet-ink: var(--on-accent);
+  --sheet-chosen: var(--on-sheet, var(--sheet-ink));
+  --sheet-halo: transparent;
 }
 
 .bones-screen > .topbar {
@@ -58,19 +74,16 @@
 .bones-main {
   grid-area: main;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
   min-width: 0;
   min-height: 0;
-  padding-top: 6px;
+  padding-top: 12px;
   outline: none;
-}
-
-/* ---------- the tools row (y 66) ---------- */
-.bones-main {
   container: bones-main / inline-size;
 }
 
+/* ---------- the tools row ---------- */
 .bones-tools {
   display: flex;
   align-items: center;
@@ -81,46 +94,47 @@
 .bones-tools .kind-pill {
   flex: 0 1 auto;
   min-width: 150px;
-  font: var(--type-chip);
-  font-size: 0.9375rem;
 }
 
 .bones-tools .btn {
   flex: none;
-  gap: 6px;
-  padding: 0 13px 0 11px;
-  font: var(--type-chip);
-  font-size: 0.9375rem;
 }
 
-.bones-tools .btn .icon {
-  width: 18px;
-  height: 18px;
-}
-
+/* Show pieces: its switch in a box the height of the buttons beside it */
 .bones-tools__pieces {
   flex: none;
   column-gap: 8px;
   margin-left: auto;
-  padding: 0 12px 0 10px;
+  padding: 0 12px 0 8px;
   min-height: var(--control);
+  border: 1px solid var(--line-control);
   border-radius: var(--r-btn);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  background: var(--surface);
 }
 
 .bones-tools__pieces .toggle__label {
-  font: var(--type-chip);
-  font-size: 0.9375rem;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-/* a narrower sky (1280 wide): the tools keep their words and drop their icons, and the kind sits over
-   the facing, so long kinds ("An animal on 4 legs") still fit the row */
+/* a narrower board (1280 wide): the tools keep their words and drop their icons */
 @container bones-main (max-width: 860px) {
   .bones-tools .btn .icon {
     display: none;
   }
 
+  .bones-sky__legend {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* the kind sits over the facing once the row is tight, so long kinds ("An animal on 4 legs") still fit */
+@container bones-main (max-width: 980px) {
   .bones-tools .kind-pill__text {
     display: flex;
     flex-direction: column;
@@ -141,62 +155,20 @@
     font: var(--type-meta);
     font-size: 0.8125rem;
     line-height: 0.95rem;
-    color: var(--ink-2);
-  }
-
-  .bones-tools .btn {
-    padding: 0 12px;
-  }
-
-  .bones-sky__legend {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    color: var(--text-2);
   }
 }
 
-.bones-tools__pieces .toggle__switch {
-  width: 38px;
-  height: 22px;
-  margin: 0;
-}
-
-.bones-tools__pieces .toggle__switch::before {
-  content: '';
-  position: absolute;
-  inset: -11px -8px;
-}
-
-.bones-tools__pieces .toggle__knob {
-  top: 3px;
-  left: 3px;
-  width: 16px;
-  height: 16px;
-}
-
-.bones-tools__pieces .toggle__switch--on .toggle__knob {
-  transform: translateX(16px);
-}
-
-.bones-tools__pieces .toggle__label {
-  display: flex;
-  align-items: center;
-  align-self: stretch;
-  cursor: pointer;
-}
-
-/* ---------- the sky ---------- */
+/* ---------- the board: a white sheet ---------- */
 .bones-sky {
-  --sky-edge: color-mix(in srgb, var(--line-control) 60%, transparent);
   position: relative;
   contain: layout paint;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-radius: 22px;
-  background:
-    radial-gradient(ellipse 48% 58% at 50% 50%, var(--surface-raised) 0%, var(--surface-bottom) 58%, var(--well) 100%);
-  box-shadow: inset 0 0 0 1px var(--sky-edge);
+  border: 1px solid var(--line);
+  border-radius: var(--r-paper);
+  background: var(--sheet);
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -207,19 +179,10 @@
   outline-offset: 2px;
 }
 
-.bones-sky__stars {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.bones-sky__stars circle {
-  fill: var(--text);
-  opacity: 0.4;
-}
-
+/* the drawing, a little lighter than the bones over it */
 .bones-sky__art {
   position: absolute;
+  max-width: none;
   opacity: 0.92;
   pointer-events: none;
 }
@@ -228,32 +191,6 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-}
-
-.bones-sky__shimmer {
-  position: absolute;
-  overflow: hidden;
-  pointer-events: none;
-  border-radius: 12px;
-}
-
-.bones-sky__shimmer::after {
-  content: '';
-  position: absolute;
-  inset: -10% auto -10% 0;
-  width: 42%;
-  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--alive) 34%, transparent), transparent);
-  animation: bones-sweep 480ms var(--ease-soft) 1 both;
-}
-
-@keyframes bones-sweep {
-  from {
-    translate: -110% 0;
-  }
-
-  to {
-    translate: 260% 0;
-  }
 }
 
 /* the bones (SVG) */
@@ -269,127 +206,88 @@
 }
 
 .bone-ground {
-  stroke: var(--accent);
-  stroke-width: 4;
+  stroke: var(--brand);
+  stroke-width: 3;
   stroke-linecap: round;
 }
 
-.bone-glow {
-  --glow-w: 7px;
-  opacity: 0.3;
-}
-
-.bone-glow--far {
-  --glow-w: 13px;
-  opacity: 0.13;
-}
-
-.bone-glow__line {
-  fill: none;
-  stroke-width: var(--glow-w);
+/* the open card's bone: the selection halo, flat */
+.bone-halo {
+  stroke: var(--sheet-halo);
+  stroke-width: 16;
   stroke-linecap: round;
 }
 
-.bone-glow__line--L {
-  stroke: var(--alive);
-}
-
-.bone-glow__line--R {
-  stroke: var(--accent);
-}
-
-.bone-glow__line--C {
-  stroke: var(--text);
-  opacity: 0.8;
-}
-
-.bone-glow__line--on {
-  stroke: var(--accent);
-  stroke-width: calc(var(--glow-w) + 6px);
+/* the white casing under the plain and wiggly bones */
+.bone-case line {
+  stroke: var(--sheet);
+  stroke-width: 7;
+  stroke-linecap: round;
 }
 
 .bone-links line {
-  stroke: var(--text);
+  stroke: var(--on-sheet, var(--sheet-ink));
   stroke-width: 1.6;
   stroke-dasharray: 2 5;
   stroke-linecap: round;
-  opacity: 0.85;
 }
 
+/* the middle: a plain bone */
 .bone-mid {
-  stroke: var(--paper);
-  stroke-width: 3.2;
+  stroke: var(--bones);
+  stroke-width: 3.5;
   stroke-linecap: round;
 }
 
-/* on the Day sky (cream) the middle bones and links are drawn in ink */
-:root[data-theme='day'] .bone-mid,
-:root[data-theme='day'] .bone-wiggly--C {
-  stroke: var(--ink);
-}
-
-:root[data-theme='day'] .bone-links line,
-:root[data-theme='day'] .bone-glow__line--C {
-  stroke: var(--ink-2);
-}
-
+/* the sides: tapered, striped (left) or dotted (right), outlined in white (the stroke sits under the fill) */
 .bone-side {
-  stroke: color-mix(in srgb, var(--ink) 55%, transparent);
-  stroke-width: 1;
+  stroke: var(--sheet);
+  stroke-width: 2.5;
   stroke-linejoin: round;
+  paint-order: stroke;
 }
 
-.bone-pat--L {
-  fill: var(--alive);
-}
-
+.bone-pat--L,
 .bone-pat--R {
-  fill: var(--accent);
+  fill: var(--bones);
 }
 
 .bone-pat__mark {
-  fill: var(--ink);
-  opacity: 0.5;
+  fill: var(--sheet);
+  opacity: 0.85;
 }
 
 .bone-wiggly {
   fill: none;
+  stroke: var(--bones);
   stroke-width: 3.2;
   stroke-linecap: round;
   stroke-dasharray: 6 5;
 }
 
-.bone-wiggly--L {
-  stroke: var(--alive);
-}
-
-.bone-wiggly--R {
-  stroke: var(--accent);
-}
-
-.bone-wiggly--C {
-  stroke: var(--paper);
-}
-
-.bone--held {
-  stroke: var(--ink);
-  stroke-width: 2.4;
+/* something the character holds: stiff, so it gets a dark edge */
+.bone-side.bone--held {
+  stroke: var(--on-sheet, var(--sheet-ink));
+  stroke-width: 3;
 }
 
 .bone-mid.bone--held {
-  stroke: var(--paper);
-  stroke-width: 5;
+  stroke-width: 6;
 }
 
-.bone-selected {
-  stroke: var(--accent);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-dasharray: 1 6;
+/* the open card's bone: the chosen purple */
+.bone-side.bone--on {
+  stroke: var(--sheet-chosen);
+  stroke-width: 4;
+}
+
+.bone-mid.bone--on,
+.bone-wiggly.bone--on {
+  stroke: var(--sheet-chosen);
 }
 
 .bone-new-wiggly {
-  stroke: var(--alive);
+  stroke: var(--bones);
   stroke-width: 3.2;
   stroke-linecap: round;
   stroke-dasharray: 6 5;
@@ -412,7 +310,7 @@
   cursor: crosshair;
 }
 
-/* the stars (joints): 24 px, in 44 px targets */
+/* ---------- the joints: 24 px round handles, lettered L or R, in 44 px targets ---------- */
 .joints {
   position: absolute;
   inset: 0;
@@ -420,7 +318,6 @@
 }
 
 .joint {
-  --joint-edge: var(--ink);
   position: absolute;
   display: grid;
   place-items: center;
@@ -429,11 +326,16 @@
   margin: calc(var(--target) / -2) 0 0 calc(var(--target) / -2);
   padding: 0;
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   background: transparent;
   pointer-events: auto;
   cursor: grab;
   touch-action: none;
+}
+
+/* On the white sheet the High contrast ring is black (its yellow would vanish there). */
+:root[data-theme='contrast'] .joint {
+  --focus-ring: var(--on-sheet, var(--sheet-ink));
 }
 
 .joint:focus-visible {
@@ -446,24 +348,14 @@
   place-items: center;
   width: 24px;
   height: 24px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   font: 700 11px/1 var(--font-ui);
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow:
-    inset 0 0 0 2.5px var(--joint-edge),
-    0 2px 6px color-mix(in srgb, var(--bg-deep) 55%, transparent);
+  color: var(--on-sheet, var(--sheet-ink));
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 2.5px var(--bones);
   transition:
-    transform var(--t-micro) var(--ease-pop),
+    transform var(--t-micro) var(--ease-soft),
     background-color var(--t-micro) var(--ease-soft);
-}
-
-.joint--L {
-  --joint-edge: color-mix(in srgb, var(--alive), var(--ink) 52%);
-}
-
-.joint--R {
-  --joint-edge: color-mix(in srgb, var(--accent), var(--ink) 45%);
 }
 
 .joint--tip .joint__dot {
@@ -480,22 +372,21 @@
   outline-offset: 3px;
 }
 
+/* the chosen joint: Scratch's selection edge and halo */
 .joint--selected .joint__dot {
   box-shadow:
-    inset 0 0 0 2.5px var(--joint-edge),
-    0 0 0 3px var(--accent),
-    0 0 16px color-mix(in srgb, var(--accent) 55%, transparent);
+    inset 0 0 0 2.5px var(--sheet-chosen),
+    0 0 0 4px var(--sheet-halo);
 }
 
+/* picked up or dragged: filled with the chosen purple */
 .joint--picked .joint__dot,
 .joint--dragging .joint__dot {
   width: 28px;
   height: 28px;
-  background: var(--accent);
-  box-shadow:
-    inset 0 0 0 2.5px var(--ink),
-    0 0 0 5px color-mix(in srgb, var(--accent) 45%, transparent),
-    0 0 22px color-mix(in srgb, var(--accent) 60%, transparent);
+  color: var(--sheet);
+  background: var(--sheet-chosen);
+  box-shadow: 0 0 0 5px var(--sheet-halo);
 }
 
 .joint--dragging {
@@ -507,10 +398,10 @@
   inset: -12px;
   pointer-events: none;
   background:
-    linear-gradient(var(--accent), var(--accent)) 50% 0 / 2.5px 8px no-repeat,
-    linear-gradient(var(--accent), var(--accent)) 50% 100% / 2.5px 8px no-repeat,
-    linear-gradient(var(--accent), var(--accent)) 0 50% / 8px 2.5px no-repeat,
-    linear-gradient(var(--accent), var(--accent)) 100% 50% / 8px 2.5px no-repeat;
+    linear-gradient(var(--sheet-chosen), var(--sheet-chosen)) 50% 0 / 2.5px 8px no-repeat,
+    linear-gradient(var(--sheet-chosen), var(--sheet-chosen)) 50% 100% / 2.5px 8px no-repeat,
+    linear-gradient(var(--sheet-chosen), var(--sheet-chosen)) 0 50% / 8px 2.5px no-repeat,
+    linear-gradient(var(--sheet-chosen), var(--sheet-chosen)) 100% 50% / 8px 2.5px no-repeat;
 }
 
 .joints--busy .joint {
@@ -522,44 +413,60 @@
   cursor: crosshair;
 }
 
+/* wiggly mode: every joint can grow a bit, so each has a ring to drag from */
 .joints--wiggly .joint__dot {
   box-shadow:
-    inset 0 0 0 2.5px var(--joint-edge),
-    0 0 0 3px color-mix(in srgb, var(--alive) 55%, transparent);
+    inset 0 0 0 2.5px var(--bones),
+    0 0 0 3px color-mix(in srgb, var(--bones) 35%, transparent);
 }
 
-/* the star's name bubble (paper, beside the star) */
+/* the joint's name bubble: a small card beside the joint, pointing at it */
 .joint-tip {
-  --text: var(--ink);
-  --text-2: var(--ink-2);
   position: absolute;
   z-index: 2;
   padding: 10px 12px 11px;
-  border-radius: 14px;
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: var(--lift-paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--lift);
   pointer-events: none;
   animation: fade-in var(--t-micro) var(--ease-soft);
 }
 
+/* the pointer: a triangle with the card's edge (two border triangles, no rotation) */
+.joint-tip::before,
 .joint-tip::after {
   content: '';
   position: absolute;
   top: calc(var(--arrow, 50%) - 8px);
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  background: var(--paper);
-  rotate: 45deg;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+}
+
+.joint-tip--left::before {
+  right: -17px;
+  border-left-color: var(--line);
 }
 
 .joint-tip--left::after {
-  right: -7px;
+  right: -15px;
+  border-left-color: var(--surface);
+}
+
+.joint-tip--right::before {
+  left: -17px;
+  border-right-color: var(--line);
 }
 
 .joint-tip--right::after {
-  left: -7px;
+  left: -15px;
+  border-right-color: var(--surface);
+}
+
+:root[data-theme='contrast'] .joint-tip {
+  border: 2px solid var(--line);
 }
 
 .joint-tip__name {
@@ -572,19 +479,22 @@
   display: block;
   margin-top: 2px;
   font: var(--type-meta);
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
-/* Amble's guess */
+/* Amble's guess: a comment note on the board, like the Desk's request note */
 .guess-note {
   position: absolute;
   z-index: 1;
-  padding: 12px 14px 13px;
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px var(--line-control-panel),
-    var(--lift-sm);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
+  background: var(--note);
+}
+
+:root[data-theme='contrast'] .guess-note {
+  border: 2px solid var(--line);
 }
 
 .guess-note__head {
@@ -592,27 +502,35 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--s2);
-  margin-bottom: 4px;
+  min-height: 34px;
+  padding: 0 4px 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--note) 86%, var(--text));
 }
 
 .guess-note__title {
   margin: 0;
-  font: var(--type-label);
-  font-weight: 700;
-  color: var(--accent);
+  font: var(--type-caps);
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+/* a note with no bar (Your drawing changed): its title leads the body */
+.guess-note > .guess-note__title {
+  padding: 12px 14px 0;
 }
 
 .guess-note__close {
   position: relative;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  margin: -6px -8px -6px 0;
+  width: 30px;
+  height: 30px;
   padding: 0;
   border: 0;
-  border-radius: 50%;
-  color: var(--text-2);
+  border-radius: var(--r-sm);
+  color: var(--text);
   background: transparent;
   cursor: pointer;
 }
@@ -621,20 +539,28 @@
 .guess-note__close::before {
   content: '';
   position: absolute;
-  inset: -6px;
+  inset: -7px;
 }
 
 .guess-note__close:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--text) 8%, transparent);
+  background: color-mix(in srgb, var(--text) 12%, transparent);
 }
 
 .guess-note__text {
   margin: 0;
+  padding: 0 14px;
   font: var(--type-meta);
   font-size: 0.875rem;
   line-height: 1.3rem;
   color: var(--text);
+}
+
+.guess-note__text:first-of-type {
+  padding-top: 10px;
+}
+
+.guess-note__text:last-child {
+  padding-bottom: 12px;
 }
 
 .guess-note__text + .guess-note__text {
@@ -642,20 +568,18 @@
 }
 
 .guess-note__action {
-  margin-top: 10px;
+  margin: 10px 14px 14px;
 }
 
-/* the foot of the sky: key hints (left) and the legend (right) */
+/* ---------- under the board: the key hints (left) and the legend (right) ---------- */
 .bones-sky__foot {
-  position: absolute;
-  right: 16px;
-  bottom: 14px;
-  left: 18px;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: var(--s4);
-  pointer-events: none;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 4px;
 }
 
 .bones-sky__keys,
@@ -680,12 +604,11 @@
 
 .bones-sky__wiggly-hint {
   display: block;
-  max-width: 460px;
-  padding: 8px 14px;
-  border-radius: var(--r-chip);
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   color: var(--text);
-  background: color-mix(in srgb, var(--alive) 12%, var(--bg-deep));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alive) 45%, transparent);
+  background: var(--surface);
 }
 
 .bones-sky__wiggly-icon {
@@ -702,49 +625,42 @@
   gap: 14px;
 }
 
+/* the legend's joint and bone, drawn as on the sheet */
 .legend-star {
   display: grid;
   place-items: center;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   font: 700 11px/1 var(--font-ui);
-  color: var(--ink);
-  background: var(--paper);
-}
-
-.legend-star--L {
-  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--alive), var(--ink) 52%);
-}
-
-.legend-star--R {
-  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent), var(--ink) 45%);
+  color: var(--on-sheet, var(--sheet-ink));
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 2.5px var(--bones);
 }
 
 .legend-swatch {
-  width: 22px;
-  height: 8px;
-  border-radius: 4px;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 45%, transparent);
+  width: 26px;
+  height: 10px;
+  border-radius: var(--r-sm);
 }
 
 .legend-swatch--L {
   background:
-    repeating-linear-gradient(135deg, color-mix(in srgb, var(--ink) 50%, var(--alive)) 0 1.6px, transparent 1.6px 4px),
-    var(--alive);
+    repeating-linear-gradient(135deg, var(--sheet) 0 1.6px, transparent 1.6px 4.5px),
+    var(--bones);
 }
 
 .legend-swatch--R {
   background:
-    radial-gradient(circle, color-mix(in srgb, var(--ink) 50%, var(--accent)) 1.2px, transparent 1.5px) 0 0 / 5px 5px,
-    var(--accent);
+    radial-gradient(circle, var(--sheet) 1.2px, transparent 1.6px) 0 0 / 5.5px 5.5px,
+    var(--bones);
 }
 
-/* the bone list: hidden until it has focus, then a card at the sky's bottom-left */
+/* the bone list: hidden until it has focus, then a card at the board's bottom-left */
 .bone-tree {
   position: absolute;
   left: 16px;
-  bottom: 52px;
+  bottom: 16px;
   width: 1px;
   height: 1px;
   overflow: hidden;
@@ -755,15 +671,15 @@
   z-index: 3;
   width: 260px;
   height: auto;
-  max-height: calc(100% - 80px);
+  max-height: calc(100% - 32px);
   overflow: auto;
   padding: 10px 8px 8px;
-  border-radius: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   clip-path: none;
+  color: var(--text);
   background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px var(--line-control-panel),
-    var(--lift);
+  box-shadow: var(--lift);
 }
 
 .bone-tree__title {
@@ -788,14 +704,15 @@
 .bone-tree__item {
   min-height: 36px;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   font: var(--type-chip);
   color: var(--text);
   cursor: pointer;
 }
 
 .bone-tree__item[aria-selected='true'] {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--change);
+  box-shadow: inset 0 0 0 2px var(--change-bright);
 }
 
 .bone-tree__item:focus-visible {
@@ -834,11 +751,12 @@
   color: var(--text-2);
 }
 
-/* the empty states (loading, undrawn, missing) */
+/* the empty states (loading, undrawn, missing): a panel, not a sheet */
 .bones-sky--empty {
   display: grid;
   place-items: center;
   grid-row: 1 / -1;
+  background: var(--surface);
 }
 
 .bones-empty {
@@ -849,6 +767,7 @@
   max-width: 420px;
   padding: var(--s6);
   text-align: center;
+  color: var(--text);
 }
 
 .bones-empty__stars {
@@ -863,11 +782,18 @@
   stroke-width: 2;
   stroke-linecap: round;
   stroke-dasharray: 5 5;
-  opacity: 0.85;
 }
 
 .bones-empty__stars circle {
   fill: var(--bones);
+}
+
+:root[data-theme='contrast'] .bones-empty__stars path {
+  stroke: var(--text);
+}
+
+:root[data-theme='contrast'] .bones-empty__stars circle {
+  fill: var(--text);
 }
 
 .bones-empty__title {
@@ -884,8 +810,8 @@
 .bones-empty--loading {
   width: 60%;
   height: 70%;
-  border-radius: 18px;
-  background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--text) 5%, transparent) 50%, transparent 80%);
+  border-radius: var(--r-card);
+  background: var(--bg-lift);
 }
 
 /* ---------- the side panel ---------- */
@@ -893,9 +819,9 @@
   grid-area: aside;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   min-height: 0;
-  margin-top: 6px;
+  margin-top: 12px;
   overflow: auto;
   padding: 14px 18px;
 }
@@ -929,7 +855,7 @@
   text-align: right;
 }
 
-/* the preview stage */
+/* the preview stage: a small white sheet with a flat ground strip */
 .move-stage-wrap {
   position: relative;
 }
@@ -940,9 +866,9 @@
   container: move-stage / size;
   height: var(--stage-h);
   overflow: hidden;
-  border-radius: 16px;
-  background: linear-gradient(180deg, var(--surface-bottom) 0%, var(--surface-raised) 70%, color-mix(in srgb, var(--surface-raised), var(--change) 12%) 100%);
-  box-shadow: inset 0 0 0 1px var(--line-control-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--sheet);
   cursor: pointer;
   touch-action: none;
 }
@@ -950,18 +876,6 @@
 .move-stage:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: 3px;
-}
-
-.move-stage__glow {
-  position: absolute;
-  left: 50%;
-  top: 4%;
-  width: 62%;
-  aspect-ratio: 1;
-  translate: -50% 0;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 34%, transparent), transparent 66%);
-  pointer-events: none;
 }
 
 .move-stage__canvas {
@@ -980,8 +894,8 @@
   align-items: center;
   height: 16%;
   padding: 0 12px;
-  border-top: 2px solid var(--paper-3);
-  background: var(--bg);
+  border-top: 1px solid var(--line);
+  background: var(--bg-lift);
   pointer-events: none;
 }
 
@@ -1007,6 +921,7 @@
   font-size: 0.75rem;
 }
 
+/* "Walking": a chip */
 .move-stage__pill {
   position: absolute;
   top: 10px;
@@ -1014,11 +929,12 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 5px 12px 5px 10px;
+  padding: 3px 10px 3px 8px;
+  border: 1px solid var(--line);
   border-radius: var(--r-chip);
   font: var(--type-chip);
   color: var(--text);
-  background: color-mix(in srgb, var(--bg-deep) 72%, transparent);
+  background: var(--surface);
   pointer-events: none;
 }
 
@@ -1030,21 +946,19 @@
   margin: 0;
   padding: 0 40px;
   font: var(--type-meta);
-  color: var(--text-2);
+  color: var(--on-sheet, var(--sheet-ink));
   text-align: center;
 }
 
 .move-stage__dot {
   width: 9px;
   height: 9px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   background: var(--alive);
-  box-shadow: 0 0 8px var(--alive);
 }
 
 .move-stage__dot--off {
   background: var(--text-2);
-  box-shadow: none;
 }
 
 .move-stage-wrap > .tooltip-anchor {
@@ -1053,11 +967,7 @@
   left: 8px;
 }
 
-.move-stage__play {
-  background: color-mix(in srgb, var(--bg-deep) 60%, transparent);
-}
-
-/* the moves */
+/* the moves: toggle buttons; the one that plays is on (Scratch's purple) */
 .moves {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1077,27 +987,24 @@
 .move-btn {
   min-height: var(--control);
   padding: 0 6px;
-  border: 0;
-  border-radius: 13px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-btn);
   font: var(--type-label);
   color: var(--text);
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  background: var(--surface);
   cursor: pointer;
   transition: background-color var(--t-micro) var(--ease-soft);
 }
 
 .move-btn:hover {
-  background: color-mix(in srgb, var(--text) 9%, transparent);
+  background: var(--bg);
 }
 
 .move-btn--on,
 .move-btn--on:hover {
   color: var(--on-accent);
-  background: var(--accent);
-  box-shadow:
-    inset 0 0 0 1.5px var(--accent-border),
-    0 0 18px color-mix(in srgb, var(--accent) 40%, transparent);
+  border-color: var(--change);
+  background: var(--change);
 }
 
 /* feel */
@@ -1128,6 +1035,7 @@
   flex-direction: column;
 }
 
+/* the dial's look: a purple fill on white with a thin edge, a white knob with a purple ring */
 .feel-row__range {
   --fill: 50%;
   width: 100%;
@@ -1139,37 +1047,35 @@
 }
 
 .feel-row__range::-webkit-slider-runnable-track {
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(90deg, var(--alive) var(--fill), var(--well) var(--fill));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control) 70%, transparent);
+  height: 8px;
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--change) var(--fill), var(--surface) var(--fill));
+  box-shadow: inset 0 0 0 1px var(--line-control);
 }
 
 .feel-row__range::-moz-range-track {
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(90deg, var(--alive) var(--fill), var(--well) var(--fill));
+  height: 8px;
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--change) var(--fill), var(--surface) var(--fill));
 }
 
 .feel-row__range::-webkit-slider-thumb {
   width: 22px;
   height: 22px;
-  margin-top: -8px;
+  margin-top: -7px;
   border: 0;
-  border-radius: 50%;
-  background: var(--paper);
-  box-shadow:
-    0 0 0 3px var(--bg-deep),
-    0 2px 6px color-mix(in srgb, var(--bg-deep) 60%, transparent);
+  border-radius: var(--r-round);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--change-bright);
   appearance: none;
 }
 
 .feel-row__range::-moz-range-thumb {
   width: 22px;
   height: 22px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--paper);
+  border: 2px solid var(--change-bright);
+  border-radius: var(--r-round);
+  background: var(--surface);
 }
 
 .feel-row__range:focus-visible {
@@ -1189,7 +1095,7 @@
 .feel-row__ends {
   display: flex;
   justify-content: space-between;
-  margin-top: -5px;
+  margin-top: -3px;
   font: var(--type-meta);
   font-size: 0.8125rem;
   line-height: 1rem;
@@ -1202,7 +1108,7 @@
   text-align: right;
 }
 
-/* draw this move yourself */
+/* draw this move yourself: a secondary button with two lines */
 .draw-move {
   display: flex;
   align-items: center;
@@ -1210,19 +1116,18 @@
   width: 100%;
   min-height: var(--control);
   padding: 6px 12px;
-  border: 0;
-  border-radius: 14px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-btn);
   font: var(--type-meta);
   color: var(--text-2);
   text-align: left;
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line-control);
+  background: var(--surface);
   cursor: pointer;
 }
 
 .draw-move .icon {
   flex: none;
-  color: var(--ai);
+  color: var(--accent-text);
 }
 
 .draw-move__text {
@@ -1236,10 +1141,10 @@
 }
 
 .draw-move:hover {
-  background: color-mix(in srgb, var(--text) 8%, transparent);
+  background: var(--bg);
 }
 
-/* made on this Chromebook */
+/* made on this Chromebook (the same quiet note when the online helper saw an outline) */
 .bones-local {
   display: flex;
   flex: none;
@@ -1247,11 +1152,11 @@
   gap: 9px;
   margin: auto 0 0;
   padding: 10px 12px;
-  border-radius: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   font: var(--type-meta);
   color: var(--text-2);
-  background: color-mix(in srgb, var(--alive) 7%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alive) 25%, transparent);
+  background: var(--surface);
 }
 
 .bones-local .icon {
@@ -1262,17 +1167,7 @@
 
 .bones-local b {
   color: var(--alive);
-  font-weight: 600;
-}
-
-.bones-local--ai {
-  background: color-mix(in srgb, var(--ai) 8%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ai) 30%, transparent);
-}
-
-.bones-local--ai .icon,
-.bones-local--ai b {
-  color: var(--ai);
+  font-weight: 700;
 }
 
 /* ---------- other layouts ---------- */
@@ -1308,7 +1203,7 @@
   display: none;
 }
 
-/* portrait: the sky on top, the moves below it; the panel scrolls inside, the page stays put */
+/* portrait: the board on top, the moves below it; the panel scrolls inside, the page stays put */
 :root[data-layout='portrait'] .screen.bones-screen {
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto minmax(0, 1fr);
@@ -1321,7 +1216,7 @@
 }
 
 :root[data-layout='portrait'] .bones-main {
-  grid-template-rows: auto 52vh;
+  grid-template-rows: auto 52vh auto;
 }
 
 :root[data-layout='portrait'] .bones-side {
@@ -1333,7 +1228,6 @@
 }
 
 /* ---------- reduced motion ---------- */
-:root[data-motion='reduced'] .bones-sky__shimmer,
 :root[data-motion='reduced'] .joint-tip {
   animation: none;
 }

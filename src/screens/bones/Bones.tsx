@@ -5,7 +5,6 @@
  * returns to where the student came from; the bones save as they change, so leaving never asks.
  */
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { AiChip } from '../../app/frame/AiChip';
 import { Link } from '../../app/Link';
 import type { Route, RouteOf } from '../../app/routes';
 import { useCommand, useEscape } from '../../app/keys';
@@ -103,10 +102,7 @@ function BonesFrame({ route, view, status, actions, children, aside, onBack }: F
             </p>
           )}
         </div>
-        <div className="topbar__end bones-top__end">
-          <AiChip />
-          {actions}
-        </div>
+        <div className="topbar__end bones-top__end">{actions}</div>
       </header>
       <main id="main" tabIndex={-1} className="bones-main">
         {children}
@@ -227,7 +223,7 @@ function BonesScreen({ ctl, route }: { ctl: BonesController; route: BonesRoute }
           onChange={(k, f) => void ctl.setKindFacing(k, f)}
           className="bones-tools__kind"
         />
-        <Button variant="ghost" icon="sparkle" disabled={busy} onClick={() => void ctl.magic()}>
+        <Button variant="ghost" icon="bones" disabled={busy} onClick={() => void ctl.magic()}>
           {t('bones.magic')}
         </Button>
         <Button

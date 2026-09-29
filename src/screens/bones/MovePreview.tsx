@@ -1,5 +1,5 @@
 /**
- * Watch {name} move (§2.11): the rig preview on a lit ground strip under a lantern glow, with a pill
+ * Watch {name} move (§2.11): the rig preview on a small white sheet with a flat ground strip, and a chip
  * saying what it is doing ("Walking"). It is also a tiny toy: while it has focus, ← → walk and ↑ jumps;
  * a click sends it walking there. Under reduced motion it waits, still, until Play is pressed.
  */
@@ -70,7 +70,13 @@ export function MovePreview({ bound, clip, tweak, name, reduced, hold, emptyText
   useEffect(() => {
     const p = preview.current;
     if (!p || !bound) return;
+    const flip = p.puppet?.flip;
     p.show(bound);
+    // New bones make a new puppet, which starts facing right: without this, a drawing that faces left
+    // (or one walked the other way) turned with the paper flip on every change, a squeezed sliver.
+    const pup = p.puppet;
+    if (pup && flip === undefined) pup.face(pup.rig.facing || 1);
+    if (pup) pup.flip = flip ?? 1;
     setShown((n) => n + 1);
     if (playing) p.play(clip, { amount, speed });
     else p.pose(clip, 0.35);
@@ -152,7 +158,6 @@ export function MovePreview({ bound, clip, tweak, name, reduced, hold, emptyText
         onBlur={release}
         onPointerDown={(e) => walkThere(e.clientX)}
       >
-        <div className="move-stage__glow" aria-hidden="true" />
         <canvas ref={canvas} className="move-stage__canvas" aria-hidden="true" />
         <div className="move-stage__ground" aria-hidden="true">
           <span className="move-stage__toy">

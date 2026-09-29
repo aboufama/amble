@@ -35,7 +35,7 @@ import { TopBar } from '../../app/frame/TopBar';
 import { BuildPill } from '../ai/BuildPill';
 import { KindPicker } from '../bones/KindPicker';
 import { colorName } from './ColorPanel';
-import { DeskToast, PivotPin } from './DeskBits';
+import { DeskToast, PivotPin, type DeskToastData } from './DeskBits';
 import { GuideStrip } from './GuideStrip';
 import { PerfHud, perfHudWanted } from './PerfHud';
 import { PhotoImport } from './PhotoImport';
@@ -68,7 +68,8 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
   nameRef.current = name;
   const nameOf = useCallback(() => nameRef.current, []);
   const saving = useDeskSaving(ctrl, setup, store, files, nameOf);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToastData] = useState<DeskToastData | null>(null);
+  const setToast = useCallback((text: string) => setToastData({ text }), []);
   const [bringing, setBringing] = useState(false);
   const [watching, setWatching] = useState(false);
   const [photo, setPhoto] = useState<'lines' | 'trace' | null>(null);
@@ -100,7 +101,8 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
       prefs: { pressure: prefs.pressure, reducedMotion: reduced },
       heroImage: setup.heroImage,
       partBones: setup.partBones,
-      colors: { paper: PAPER.paper, workspace: THEMES[prefs.theme].bg },
+      // The white sheet on Scratch's grey workspace (the stage behind it is the same grey).
+      colors: { paper: PAPER.paper, workspace: THEMES[prefs.theme]?.well ?? PAPER.paper2 },
       flip: { move: flipIntent ?? setup.record?.export?.frames?.move ?? null, fps: setup.record?.export?.frames?.fps ?? 8 },
     });
     setCtrl(c);
@@ -130,7 +132,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
 
   // The paper's words: a toast above the view bar; tool and colour changes are announced.
   useDeskEvent(ctrl, (e) => {
-    if (e.type === 'toast') setToast(e.text);
+    if (e.type === 'toast') setToastData(e.undo && ctrl ? { text: e.text, tone: 'warn', action: { label: t('draw.undo'), run: () => void ctrl.undoLeak() } } : { text: e.text });
     else if (e.type === 'announce') announce(e.text);
     else if (e.type === 'penup' && ctrl && !memoryWarned.current) {
       const st = ctrl.surface.stats();
@@ -150,7 +152,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
     }
     announce(colorName(color));
   }, [color]);
-  const clearToast = useCallback(() => setToast(null), []);
+  const clearToast = useCallback(() => setToastData(null), []);
 
   // A lost canvas (a GPU reset) comes back from the layers in memory.
   useEffect(() => {
@@ -373,7 +375,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
           {t('draw.bones')}
         </Button>
       )}
-      <Button variant="lantern" icon="sparkle" onClick={() => void bring('world')} busy={bringing} disabled={!s?.ready || bringing} className="desk__bring" data-testid="bring-to-life">
+      <Button variant="lantern" icon="play" onClick={() => void bring('world')} busy={bringing} disabled={!s?.ready || bringing} className="desk__bring" data-testid="bring-to-life">
         {bringing ? t('draw.bringing') : t('draw.bringToLife')}
       </Button>
     </>
@@ -421,7 +423,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
             </div>
           )}
           {ctrl && s?.guides && <PivotPin ctrl={ctrl} pin={s.pin} name={name} stage={stage} />}
-          <DeskToast text={toast} onDone={clearToast} />
+          <DeskToast toast={toast} onDone={clearToast} />
           {ctrl && perfHud && <PerfHud ctrl={ctrl} />}
           {!s?.ready && (
             <div className="desk__opening" aria-hidden="true">

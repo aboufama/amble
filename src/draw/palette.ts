@@ -2,7 +2,58 @@
  * The Desk's colours (§2.10): 18 kid swatches, 9 skin tones, the colours already used in this world's other
  * drawings ("From your world"), and the few colours a student picked recently.
  */
-import { normalizeHex } from './colorNames';
+import { luminance, normalizeHex } from './colorNames';
+
+/** The rows of swatches on the colour panel. */
+export type SwatchGroup = 'box' | 'skin' | 'world' | 'recent';
+
+/** How a name that two swatches share is told apart (the words come from the i18n table). */
+export interface SwatchWords {
+  lighter(name: string): string;
+  darker(name: string): string;
+  nth(name: string, n: number): string;
+  inGroup(name: string, group: SwatchGroup): string;
+}
+
+/**
+ * A different name for every swatch on the panel, since a screen reader lists them all ("Pebble grey" three
+ * times says nothing): a name two swatches of one row share becomes "…, lighter" and "…, darker" (or a
+ * number, light to dark, for three or more), and a name another row has too gets its row's word
+ * ("Chocolate, skin tone"). Rows keep their order; the first row with a name keeps it plain.
+ */
+export function uniqueSwatchNames(groups: ReadonlyArray<{ group: SwatchGroup; colors: readonly string[] }>, nameOf: (hex: string) => string, words: SwatchWords): string[][] {
+  const out = groups.map(({ colors }) => colors.map(nameOf));
+  // Within a row: light to dark.
+  groups.forEach(({ colors }, g) => {
+    const byName = new Map<string, number[]>();
+    out[g].forEach((n, i) => byName.set(n, [...(byName.get(n) ?? []), i]));
+    for (const [name, idx] of byName) {
+      if (idx.length < 2) continue;
+      const order = [...idx].sort((a, b) => luminance(colors[b]) - luminance(colors[a]));
+      order.forEach((i, k) => {
+        out[g][i] = idx.length === 2 ? (k === 0 ? words.lighter(name) : words.darker(name)) : words.nth(name, k + 1);
+      });
+    }
+  });
+  // Across rows: the row's word on every row after the first that has the name.
+  const firstRow = new Map<string, number>();
+  out.forEach((row, g) =>
+    row.forEach((n, i) => {
+      const first = firstRow.get(n);
+      if (first === undefined) firstRow.set(n, g);
+      else if (first !== g) out[g][i] = words.inGroup(n, groups[g].group);
+    }),
+  );
+  // Anything still the same (the same colour twice in a row): numbered.
+  const seen = new Map<string, number>();
+  for (const row of out)
+    row.forEach((n, i) => {
+      const k = (seen.get(n) ?? 0) + 1;
+      seen.set(n, k);
+      if (k > 1) row[i] = words.nth(n, k);
+    });
+  return out;
+}
 
 /** The 18 kid swatches: two rows of nine, darks and lights of the rainbow. */
 export const KID_SWATCHES: readonly string[] = [

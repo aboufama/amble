@@ -1,10 +1,12 @@
 /**
  * Small pieces of the Desk: the pivot pin on the sheet (where it stands in the game), and the Desk's toast
- * above the view bar ("Perfect circle!", "Closed a small gap and filled it.").
+ * above the view bar ("Perfect circle!", "Closed a small gap and filled it.", "It leaked through a gap.
+ * [Undo]").
  */
 import { useEffect, useId, useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import type { DeskController } from '../../draw/deskController';
 import { midSentence, t } from '../../i18n';
+import { cx } from '../../ui/cx';
 import { Icon } from '../../ui/icons';
 
 /**
@@ -94,19 +96,39 @@ export function PivotPin({ ctrl, pin, name, stage }: { ctrl: DeskController; pin
   );
 }
 
+/** What the Desk's toast says, and a button beside the words when there is something to do ("Undo"). */
+export interface DeskToastData {
+  text: string;
+  action?: { label: string; run(): void };
+  tone?: 'done' | 'warn';
+}
+
 /** The Desk's own toast, above the view bar (the paper's quick words). */
-export function DeskToast({ text, onDone }: { text: string | null; onDone(): void }) {
+export function DeskToast({ toast, onDone }: { toast: DeskToastData | null; onDone(): void }) {
   useEffect(() => {
-    if (!text) return;
-    const id = window.setTimeout(onDone, 2800);
+    if (!toast) return;
+    // Time to reach its button, when it has one.
+    const id = window.setTimeout(onDone, toast.action ? 6000 : 2800);
     return () => clearTimeout(id);
-  }, [text, onDone]);
+  }, [toast, onDone]);
   return (
     <div className="desk-toast-slot" role="status" aria-live="polite">
-      {text && (
-        <p className="desk-toast" key={text}>
-          <Icon name="check" size={18} />
-          <span>{text}</span>
+      {toast && (
+        <p className={cx('desk-toast', toast.tone === 'warn' && 'desk-toast--warn')} key={toast.text}>
+          <Icon name={toast.tone === 'warn' ? 'warning' : 'check'} size={18} />
+          <span>{toast.text}</span>
+          {toast.action && (
+            <button
+              type="button"
+              className="desk-toast__action"
+              onClick={() => {
+                toast.action?.run();
+                onDone();
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
         </p>
       )}
     </div>

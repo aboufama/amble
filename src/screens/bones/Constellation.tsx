@@ -1,7 +1,8 @@
 /**
- * The sky (§2.11): the drawing at 92 % with its sticker edge, the constellation over it, the ground
- * anchor, Amble's guess, the key hints and the legend. It is a `role="application"` region: Tab goes
- * from star to star, arrows nudge, Enter picks up and drops. A hidden bone list mirrors the bone tree
+ * The board (§2.11): the drawing straight on a white sheet with its bones over it (the bones' green;
+ * stripes on the screen-left side, dots on the right, lettered joints), the ground anchor and Amble's
+ * guess; under the sheet, the key hints and the legend. The sheet is a `role="application"` region: Tab
+ * goes from star to star, arrows nudge, Enter picks up and drops. A hidden bone list mirrors the bone tree
  * for screen readers (and shows itself when it has focus).
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from 'react';
@@ -13,7 +14,6 @@ import { boneName, guessReasons, starsOf, type Star } from '../../bones/words';
 import { t } from '../../i18n';
 import { announce, showToast } from '../../state/app';
 import { Keycap } from '../../ui/components';
-import { useReducedMotion } from '../../ui/a11y';
 import { cx } from '../../ui/cx';
 import { playUiSound } from '../../ui/sounds';
 import { ArtSticker } from './ArtSticker';
@@ -64,13 +64,6 @@ function useStableOrder(stars: Star[]): Star[] {
   return order.current.map((sid) => bySid.get(sid)).filter((s): s is Star => !!s);
 }
 
-/** A few faint background stars (fixed, so the sky never flickers between renders). */
-const SKY_STARS: Array<[number, number, number]> = [
-  [0.07, 0.13, 1.2], [0.15, 0.66, 1], [0.24, 0.22, 1.3], [0.86, 0.14, 1.1], [0.93, 0.47, 1.3], [0.79, 0.82, 1],
-  [0.1, 0.89, 1.1], [0.74, 0.1, 1], [0.9, 0.76, 1], [0.05, 0.47, 1], [0.33, 0.9, 1.1], [0.58, 0.06, 1.2],
-  [0.66, 0.93, 1], [0.97, 0.3, 1.1], [0.42, 0.14, 0.9], [0.2, 0.4, 0.9],
-];
-
 function PiecesCanvas({ bound, fit, w, h }: { bound: BoundRig; fit: Fit; w: number; h: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -101,7 +94,6 @@ interface BoneDrag {
 export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: ConstellationProps) {
   const sky = useRef<HTMLDivElement>(null);
   const size = useSize(sky);
-  const reduced = useReducedMotion();
   const image = view.image;
   const rig = view.rig;
   const fit = useMemo(() => fitArt(size.w, size.h, image?.w ?? 1, image?.h ?? 1), [size.w, size.h, image?.w, image?.h]);
@@ -229,6 +221,7 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
   const ready = size.w > 0;
 
   return (
+    <>
     <div
       ref={sky}
       className={cx('bones-sky', wiggly && 'bones-sky--wiggly', busy && 'bones-sky--busy')}
@@ -238,16 +231,10 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
       aria-busy={busy || undefined}
       onPointerDown={onSkyDown}
     >
-      <svg className="bones-sky__stars" width="100%" height="100%" aria-hidden="true" focusable="false">
-        {SKY_STARS.map(([x, y, r], i) => (
-          <circle key={i} cx={`${x * 100}%`} cy={`${y * 100}%`} r={r} />
-        ))}
-      </svg>
       {ready && (
         <>
           <ArtSticker url={image.url} left={artBox.left} top={artBox.top} width={artBox.width} height={artBox.height} />
           {pieces && view.bound && <PiecesCanvas bound={view.bound} fit={fit} w={size.w} h={size.h} />}
-          {busy && !reduced && <div className="bones-sky__shimmer" style={artBox} aria-hidden="true" />}
           {rig && (
             <BoneLines
               rig={rig}
@@ -288,40 +275,6 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
           )}
         </>
       )}
-      <div className="bones-sky__foot">
-        {wiggly ? (
-          <p className="bones-sky__wiggly-hint" id="bones-keys">
-            <span aria-hidden="true" className="bones-sky__wiggly-icon">
-              ∿
-            </span>{' '}
-            {t('bones.wigglyHint')} <span className="bones-sky__wiggly-keys">{t('bones.wigglyKeys')}</span>
-          </p>
-        ) : (
-          <p className="bones-sky__keys" id="bones-keys">
-            <span>
-              <Keycap>Tab</Keycap> {t('bones.keysNext')}
-            </span>
-            <span>
-              <Keycap label={t('bones.keyArrows')}>← ↑ → ↓</Keycap> {t('bones.keysNudge')}
-            </span>
-            <span>
-              <Keycap>Enter</Keycap> {t('bones.keysPick')}
-            </span>
-          </p>
-        )}
-        <p className="bones-sky__legend">
-          <span className="legend-item">
-            <span className="legend-star legend-star--L" aria-hidden="true">L</span>
-            <span className="legend-swatch legend-swatch--L" aria-hidden="true" />
-            {t('bones.legendLeft')}
-          </span>
-          <span className="legend-item">
-            <span className="legend-star legend-star--R" aria-hidden="true">R</span>
-            <span className="legend-swatch legend-swatch--R" aria-hidden="true" />
-            {t('bones.legendRight')}
-          </span>
-        </p>
-      </div>
       {rig && (
         <BoneTree
           rig={rig}
@@ -343,5 +296,44 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
         />
       )}
     </div>
+    {/* Under the sheet, like the controls under Scratch's paint editor: the keys (or the wiggly hint) and the legend. */}
+    <div className="bones-sky__foot">
+      {wiggly ? (
+        <p className="bones-sky__wiggly-hint" id="bones-keys">
+          <span aria-hidden="true" className="bones-sky__wiggly-icon">
+            ∿
+          </span>{' '}
+          {t('bones.wigglyHint')} <span className="bones-sky__wiggly-keys">{t('bones.wigglyKeys')}</span>
+        </p>
+      ) : (
+        <p className="bones-sky__keys" id="bones-keys">
+          <span>
+            <Keycap>Tab</Keycap> {t('bones.keysNext')}
+          </span>
+          <span>
+            <Keycap label={t('bones.keyArrows')}>← ↑ → ↓</Keycap> {t('bones.keysNudge')}
+          </span>
+          <span>
+            <Keycap>Enter</Keycap> {t('bones.keysPick')}
+          </span>
+        </p>
+      )}
+      {/* while adding a wiggly bit its hint takes the whole row (one line, so the sheet never jumps) */}
+      {!wiggly && (
+        <p className="bones-sky__legend">
+          <span className="legend-item">
+            <span className="legend-star legend-star--L" aria-hidden="true">L</span>
+            <span className="legend-swatch legend-swatch--L" aria-hidden="true" />
+            {t('bones.legendLeft')}
+          </span>
+          <span className="legend-item">
+            <span className="legend-star legend-star--R" aria-hidden="true">R</span>
+            <span className="legend-swatch legend-swatch--R" aria-hidden="true" />
+            {t('bones.legendRight')}
+          </span>
+        </p>
+      )}
+    </div>
+    </>
   );
 }

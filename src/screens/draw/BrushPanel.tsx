@@ -23,7 +23,7 @@ export function BrushPanel({ ctrl, s, pixel }: { ctrl: DeskController; s: DeskSt
   const size = s.brush.size;
   return (
     <section className="side__section brush" aria-labelledby="desk-brush">
-      <h2 id="desk-brush" className="desk-caps">
+      <h2 id="desk-brush" className="side__title">
         {t('draw.brush')}
       </h2>
       <Slider

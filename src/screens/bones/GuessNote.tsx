@@ -46,7 +46,7 @@ export function RedoNote({ fit, sky, onRedo }: { fit: Fit; sky: { w: number; h: 
         {t('bones.staleTitle')}
       </h2>
       <p className="guess-note__text">{t('bones.staleBody')}</p>
-      <Button variant="ghost" size={44} icon="sparkle" className="guess-note__action" onClick={onRedo}>
+      <Button variant="ghost" size={44} icon="restart" className="guess-note__action" onClick={onRedo}>
         {t('bones.staleRedo')}
       </Button>
     </aside>
