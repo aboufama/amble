@@ -3,6 +3,7 @@
  * "You changed boss.js". If static checks fail, the world keeps playing its last version and the student
  * learns where the first problem is. Lines the student changed are credited to them.
  */
+import { isSupersededLoad } from '../../app/player/host';
 import { sourceFilesOf } from '../../cores/ai';
 import type { HistoryApi } from '../../history/api';
 import { codeStepText } from '../../history/summary';
@@ -37,19 +38,26 @@ export type RunOutcome =
   | { kind: 'blocked'; errors: CodeIssue[] }
   | { kind: 'ran'; world: World; changed: string[] }
   | { kind: 'replayed'; world: World }
-  | { kind: 'failed'; world: World };
+  | { kind: 'failed'; world: World }
+  /** Another load (a newer version of the world) took the player first: nothing was recorded. */
+  | { kind: 'superseded' };
 
 export async function runIt(world: World, edits: Readonly<Record<string, FileEdit>>, deps: RunDeps): Promise<RunOutcome> {
   const check = checkRun(world, edits, deps.history.attribute);
   if (check.kind === 'blocked') return check;
   if (!check.changed.length) {
-    await deps.play(world);
+    try {
+      await deps.play(world);
+    } catch (err) {
+      return isSupersededLoad(err) ? { kind: 'superseded' } : { kind: 'failed', world };
+    }
     return { kind: 'replayed', world };
   }
   const candidate: World = { ...world, code: check.code };
   try {
     await deps.play(candidate);
-  } catch {
+  } catch (err) {
+    if (isSupersededLoad(err)) return { kind: 'superseded' };
     await deps.play(world).catch(() => undefined);
     return { kind: 'failed', world };
   }

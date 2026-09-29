@@ -23,17 +23,24 @@ export function isOpenWorld(worldId: string): boolean {
   return getState().session.world?.id === worldId;
 }
 
-/** Sets the session's world and plays it from the start of a fresh realm; resolves with its manifest. */
-export async function playWorld(world: World): Promise<GameManifest> {
-  setSessionWorld(world);
+/**
+ * Plays a world from the start of a fresh realm (the session's world is left as it is); resolves with
+ * its manifest, or rejects when the player can't start it or a newer load replaced it (`isSupersededLoad`).
+ */
+export async function loadWorld(world: World): Promise<GameManifest> {
   const init = await toInitMessage(world, { mode: 'play', prefs: playerPrefsFrom(getState().prefs), autostart: true });
   const manifest = await getServices().player.load(init);
   setState((s) => {
-    const open = s.session.world;
-    if (!open || open.id !== world.id) return;
+    if (s.session.world?.id !== world.id) return;
     s.session.manifest = manifest;
-    s.session.cast = deriveCast(manifest, open);
+    s.session.cast = deriveCast(manifest, world);
     s.session.problems = [];
   });
   return manifest;
+}
+
+/** Sets the session's world, then plays it (Go back, and opening a world). */
+export function playWorld(world: World): Promise<GameManifest> {
+  setSessionWorld(world);
+  return loadWorld(world);
 }

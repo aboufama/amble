@@ -31,9 +31,13 @@ const PANEL_ID = 'code-editor';
 const noSubscribe = () => () => undefined;
 const noSnapshot = (): CodeSnapshot | null => null;
 
-/** Opens the world into the session and the game (unless it already is), and snapshots its first step. */
+/**
+ * Opens the world into the session (unless it already is) and snapshots its first step. The code shows
+ * at once; the game starts beside it when this screen opened the world (coming from the world screen, the
+ * game is already running there and keeps running here).
+ */
 function useOpenWorld(worldId: string): Phase {
-  const { player, history } = useServices();
+  const { history } = useServices();
   const [phase, setPhase] = useState<Phase>('opening');
   useEffect(() => {
     let live = true;
@@ -41,6 +45,7 @@ function useOpenWorld(worldId: string): Phase {
     void (async () => {
       const open = getState().session.world;
       let world = open?.id === worldId ? open : null;
+      const openedHere = !world;
       if (!world) {
         world = await openWorld(worldId);
         if (!live) return;
@@ -49,15 +54,14 @@ function useOpenWorld(worldId: string): Phase {
           return;
         }
       }
-      if (!player.manifest()) await playWorld(world).catch(() => undefined);
-      if (!live) return;
-      void history.ensureHead(world).catch(() => undefined);
       setPhase('ready');
+      void history.ensureHead(world).catch(() => undefined);
+      if (openedHere) void playWorld(world).catch(() => undefined);
     })();
     return () => {
       live = false;
     };
-  }, [worldId, player, history]);
+  }, [worldId, history]);
   return phase;
 }
 

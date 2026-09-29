@@ -11,11 +11,17 @@ interface Hook {
   services: { player: { load(init: unknown): Promise<unknown> } };
 }
 
-async function openCode(page: Page): Promise<string> {
+/** Opens the starter world and waits for its game's first frame (the student sees it play first). */
+async function openWorld(page: Page): Promise<string> {
   await openAmble(page);
   await gotoRoute(page, '#/starter/moon-king');
   await expect(page).toHaveURL(/#\/w\/[A-Za-z0-9_-]+$/);
-  const id = new URL(page.url()).hash.replace('#/w/', '');
+  await expect(page.getByTestId('player-layer')).toHaveAttribute('data-first-frame', /\d/, { timeout: 60_000 });
+  return new URL(page.url()).hash.replace('#/w/', '');
+}
+
+async function openCode(page: Page): Promise<string> {
+  const id = await openWorld(page);
   // Record what the player is asked to run.
   await page.evaluate(() => {
     const w = window as unknown as { __amble: Hook; __loads: string[][] };
@@ -114,10 +120,7 @@ test('a syntax error shows on its line and the world keeps its last version', as
 });
 
 test('teacher-locked lines are read-only', async ({ page }) => {
-  await openAmble(page);
-  await gotoRoute(page, '#/starter/moon-king');
-  await expect(page).toHaveURL(/#\/w\/[A-Za-z0-9_-]+$/);
-  const id = new URL(page.url()).hash.replace('#/w/', '');
+  const id = await openWorld(page);
   // The teacher locked line 3 (the game's config).
   await page.evaluate(async (worldId) => {
     type Amble = { store: { worlds: { get(id: string): Promise<{ code: Array<{ locked: unknown }> }> }; commit(c: unknown): Promise<void> }; setState(fn: (s: { session: { world: { code: Array<{ locked: unknown }> } | null } }) => void): void };

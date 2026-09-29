@@ -2,10 +2,11 @@
  * The Footsteps harness (M9): the Footsteps panel in the notebook's place (x 920, 428 wide) beside a
  * stand-in world view, over a world with fifteen seeded steps (drawings with stickers, dials, twists,
  * student code, AI changes with the student's words, an automatic fix). Open it on the dev server:
- *   http://localhost:5209/tests/history/harness/index.html   (?many=1: 75 steps, ?compact=1, ?theme=day)
+ *   http://localhost:5209/tests/history/harness/index.html
+ *   (?many=1: 75 steps, ?compact=1, ?theme=day, ?motion=reduced, ?nogame=1: no game in the world view)
  * `window.__harness` exposes the world id and the services for e2e tests.
  */
-import { StrictMode } from 'react';
+import { StrictMode, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../../../src/ui/fonts';
 import '../../../src/ui/tokens.css';
@@ -19,8 +20,10 @@ import { TopBar } from '../../../src/app/frame/TopBar';
 import { applyHtmlPrefs } from '../../../src/app/htmlPrefs';
 import { watchLayout } from '../../../src/app/layout';
 import { PlayerLayer } from '../../../src/app/player/PlayerLayer';
+import { usePlayerSlot } from '../../../src/app/player/slots';
 import { createServices, ServicesProvider, setServices, type Services } from '../../../src/app/services';
 import { createHistory } from '../../../src/history/api';
+import { playWorld } from '../../../src/history/live';
 import { attribute } from '../../../src/history/provenance';
 import type { ArtRecord, BlobRef, CodeFile, StepInput, World } from '../../../src/model/types';
 import { FootstepsPanel } from '../../../src/screens/footsteps/FootstepsPanel';
@@ -170,7 +173,7 @@ async function seed(services: Services): Promise<World> {
   await step(12, { kind: 'sound', by: 'student', text: 'You picked a new coin sound.' });
   await step(10, { kind: 'ask', by: 'ai', text: 'Amble made the Grumbles chase you faster.', request: 'make the grumbles faster', files: ['game.js'], tested: true }, (w) => ({
     ...w,
-    code: edit(w, 'ai', (s) => s.replace('g.chase(this.player, 150);', 'g.chase(this.player, 210);')),
+    code: edit(w, 'ai', (s) => s.replace('m.chase(this.player, 150);', 'm.chase(this.player, 210);')),
   }));
   await step(9, { kind: 'fix', by: 'auto', text: 'Amble fixed a small bug by itself (line 42).', files: ['game.js'] }, (w) => ({
     ...w,
@@ -182,16 +185,27 @@ async function seed(services: Services): Promise<World> {
     code: edit(w, 'ai', (s) =>
       s
         .replace("fan: { time: 2100, next: 'ring'", "fan: { time: 1800, next: 'spiral'")
-        .replace("ring: { time: 2000, next: 'spiral'", "ring: { time: 2400, next: 'fan'")
+        .replace("ring: { time: 2000, next: 'bombs'", "ring: { time: 2400, next: 'fan'")
         .replace('}, \'fan\');', "}, 'ring');"),
     ),
   }));
-  await step(2, { kind: 'draw', by: 'student', text: 'You drew the Moon King', cast: 'moonKing' }, async (w) => {
+  await step(2, { kind: 'draw', by: 'student', text: 'You drew the Moon King', cast: 'boss' }, async (w) => {
     const moon = await art(services, 'a_moondrawing', 'The Moon King', 'moon', clock);
     await services.store.commit({ art: [moon] });
-    return { ...w, cast: { ...w.cast, moonKing: { ...w.cast.moonKing, art: moon.id, madeBy: 'student' } } };
+    return { ...w, cast: { ...w.cast, boss: { ...w.cast.boss, art: moon.id, madeBy: 'student' } } };
   });
   return world;
+}
+
+/** The running game in the world view's place (the real player, in the `world` slot). */
+function WorldView() {
+  const ref = useRef<HTMLDivElement>(null);
+  usePlayerSlot('world', ref);
+  return (
+    <div className="harness__world" ref={ref}>
+      <span>World view (M2)</span>
+    </div>
+  );
 }
 
 function Harness({ worldId }: { worldId: string }) {
@@ -200,9 +214,7 @@ function Harness({ worldId }: { worldId: string }) {
     <div className="screen" data-testid="screen-harness">
       <TopBar title="The Moon King" />
       <main id="main" className="harness">
-        <div className="harness__world" aria-hidden="true">
-          <span>World view (M2)</span>
-        </div>
+        <WorldView />
         <div className="harness__notebook">
           <Panel title="Change your world" className="harness__ask">
             <p className="harness__muted">The Ask card (M2 and M5) sits here.</p>
@@ -245,6 +257,7 @@ async function boot(): Promise<void> {
   setState((s) => {
     s.session.world = world;
   });
+  if (!params.has('nogame')) void playWorld(world).catch(() => undefined);
   (window as unknown as { __harness: unknown }).__harness = { worldId: world.id, services, getState, setState };
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

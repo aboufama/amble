@@ -8,11 +8,37 @@ import { expect, test } from '../helpers/app';
 
 const HARNESS = '/tests/history/harness/index.html';
 
+interface LoadSeen {
+  files: string;
+  art: string[];
+  dials: Record<string, number>;
+}
+
 interface Harness {
   worldId: string;
   getState(): { session: { world: { code: Array<{ source: string }>; dials: Record<string, number>; cast: Record<string, { art: string | null }>; steps: Array<{ text: string; kind: string }> } | null } };
-  services: { store: { worlds: { get(id: string): Promise<{ steps: Array<{ kind: string }>; dials: Record<string, number> } | null> } } };
+  services: {
+    store: { worlds: { get(id: string): Promise<{ steps: Array<{ kind: string }>; dials: Record<string, number> } | null> } };
+    player: { load(init: unknown): Promise<unknown> };
+  };
 }
+
+/** Records what the running game is asked to load (files, drawings, dials). */
+async function spyOnLoads(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as { __harness: Harness; __loads: LoadSeen[] };
+    const player = w.__harness.services.player;
+    const load = player.load.bind(player);
+    w.__loads = [];
+    player.load = (init: unknown) => {
+      const i = init as { files: Array<{ source: string }>; art: Array<{ key: string }>; dials: Record<string, number> };
+      w.__loads.push({ files: i.files.map((f) => f.source).join('\n'), art: i.art.map((a) => a.key), dials: i.dials });
+      return load(init);
+    };
+  });
+}
+
+const lastLoad = (page: Page) => page.evaluate(() => (window as unknown as { __loads: LoadSeen[] }).__loads.at(-1) ?? null);
 
 async function openHarness(page: Page): Promise<void> {
   await page.goto(HARNESS);
@@ -23,7 +49,7 @@ async function openHarness(page: Page): Promise<void> {
 function world(page: Page) {
   return page.evaluate(() => {
     const w = (window as unknown as { __harness: Harness }).__harness.getState().session.world!;
-    return { source: w.code[0].source, dials: w.dials, moonKing: w.cast.moonKing?.art ?? null, steps: w.steps.map((s) => s.text) };
+    return { source: w.code[0].source, dials: w.dials, moonKing: w.cast.boss?.art ?? null, steps: w.steps.map((s) => s.text) };
   });
 }
 
@@ -34,6 +60,7 @@ test('Go back restores code, drawings and dials, and appends a step', async ({ p
   await expect(steps.first()).toContainText('You drew the Moon King');
   await expect(steps.first()).toHaveClass(/step--now/);
 
+  await spyOnLoads(page);
   const before = await world(page);
   expect(before.moonKing).not.toBeNull();
   expect(before.dials).toMatchObject({ jump: 820, orbSpeed: 200 });
@@ -49,11 +76,16 @@ test('Go back restores code, drawings and dials, and appends a step', async ({ p
   const after = await world(page);
   expect(after.dials).toMatchObject({ jump: 800, orbSpeed: 200 });
   expect(after.moonKing).toBeNull();
-  expect(after.source).toContain('g.chase(this.player, 150);');
+  expect(after.source).toContain('m.chase(this.player, 150);');
   expect(after.source).toContain("fan: { time: 2100, next: 'ring'");
   expect(after.source).toContain('jumps: 3');
   // Nothing was deleted: every earlier step is still listed.
   expect(after.steps.slice(0, before.steps.length)).toEqual(before.steps);
+  // The running world restarted with that step's code, drawings and dials.
+  await expect.poll(async () => (await lastLoad(page))?.files ?? '').toContain('m.chase(this.player, 150);');
+  const loaded = await lastLoad(page);
+  expect(loaded?.art).toEqual(['hero']);
+  expect(loaded?.dials).toMatchObject({ jump: 800, orbSpeed: 200 });
   const saved = await page.evaluate(async () => {
     const h = (window as unknown as { __harness: Harness }).__harness;
     return h.services.store.worlds.get(h.worldId);
@@ -69,6 +101,7 @@ test('Go back restores code, drawings and dials, and appends a step', async ({ p
   const again = await world(page);
   expect(again.moonKing).toBe(before.moonKing);
   expect(again.dials).toMatchObject({ jump: 820 });
+  await expect.poll(async () => (await lastLoad(page))?.art ?? []).toEqual(['hero', 'boss']);
 });
 
 test('See the change shows the words, the diff and the drawing', async ({ page }) => {

@@ -10,7 +10,7 @@ import { EditorView, type ViewUpdate } from '@codemirror/view';
 import type { Services } from '../../app/services';
 import { extractManifest, sourceFilesOf, type SourceFile } from '../../cores/ai';
 import type { PlayerError } from '../../cores/play';
-import { playWorld, setSessionWorld } from '../../history/live';
+import { loadWorld, setSessionWorld } from '../../history/live';
 import { t } from '../../i18n';
 import type { Author, CodeFile, ExplainOutcome, Role, World } from '../../model/types';
 import { announce } from '../../state/app';
@@ -294,7 +294,7 @@ export class CodeSession {
     this.emit();
     const outcome = await runIt(this.world, this.edits(), {
       history: this.o.services.history,
-      play: (w) => playWorld(w),
+      play: (w) => loadWorld(w),
       setWorld: (w) => setSessionWorld(w),
     });
     if (this.disposed) return;
@@ -305,6 +305,8 @@ export class CodeSession {
     } else if (outcome.kind === 'failed') {
       this.run = { kind: 'failed' };
       announce(t('history.runFailed'), 'assertive');
+    } else if (outcome.kind === 'superseded') {
+      this.run = this.dirtyFiles().length ? { kind: 'dirty' } : { kind: 'clean' };
     } else {
       this.runtime = [];
       this.adopt(outcome.world, true);

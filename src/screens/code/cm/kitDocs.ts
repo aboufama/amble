@@ -1,13 +1,12 @@
 /**
  * Kit docs in Look inside (§2.12): hover docs (signature plus one line) and autocomplete of kit members,
- * from `KIT_API` (the §5.16 table until the player core provides it), and the docs of every kit call in a
- * selection (Explain this with the AI helper off).
+ * from the kit's own reference (`KIT_REFERENCE`, and `KIT_API.docs.actor` for spawned characters), and the
+ * docs of every kit call in a selection (Explain this with the AI helper off).
  */
 import { autocompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import type { EditorState, Extension, Text } from '@codemirror/state';
 import { hoverTooltip } from '@codemirror/view';
-import { KIT_API, type KitApi, type KitMember } from '../../../cores/play';
-import { KIT_FALLBACK } from './kitFallback';
+import { KIT_API, KIT_REFERENCE, type KitMember as ActorDoc, type KitReference, type KitReferenceMember as KitMember } from '../../../cores/play';
 
 export interface KitDoc {
   /** '' for scene members (`this.spawnHero`), a namespace ('fx'), or 'actor' for character methods. */
@@ -21,14 +20,15 @@ export interface KitIndex {
   actor: Map<string, KitMember>;
 }
 
-export function kitIndex(api: KitApi = KIT_API.namespaces.length ? KIT_API : KIT_FALLBACK): KitIndex {
+/** The kit's reference (scene first, then each namespace) and the members of spawned characters. */
+export function kitIndex(reference: KitReference = KIT_REFERENCE, actor: readonly ActorDoc[] = KIT_API.docs.actor): KitIndex {
   const index: KitIndex = { scene: new Map(), namespaces: new Map(), actor: new Map() };
-  for (const ns of api.namespaces) {
+  for (const ns of reference.namespaces) {
     const map = new Map(ns.members.map((m) => [m.name, m]));
     if (ns.name === '') index.scene = map;
-    else if (ns.name === 'actor') index.actor = map;
     else index.namespaces.set(ns.name, map);
   }
+  for (const m of actor) index.actor.set(m.name, { name: m.name, kind: /\(/.test(m.sig) ? 'method' : 'property', signature: m.sig, doc: m.doc });
   return index;
 }
 

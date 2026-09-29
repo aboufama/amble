@@ -110,7 +110,9 @@ function Trail({ world, compact }: { world: World; compact: boolean }) {
       const next = await history.goBack(world, to.id);
       setSheet(null);
       announce(next.steps[next.steps.length - 1].text);
-      if (isOpenWorld(world.id)) await playWorld(next);
+      // The world went back as soon as it is saved. The game restarts beside it (a failed start shows on
+      // the world's problem card, and another Go back simply replaces this load).
+      if (isOpenWorld(world.id)) void playWorld(next).catch(() => undefined);
     } catch {
       showToast(t('history.goBackFailed'), { kind: 'error' });
     } finally {
