@@ -259,4 +259,5 @@ export const ai = {
   replyCut: 'Stopped early',
   replyFailed: "Didn't work: {why}",
   replyChecked: 'Checked',
+  replyRetried: "This one didn't go through, so Amble sent it again",
 } satisfies Strings;
