@@ -8,6 +8,7 @@ import type {
   ArtId,
   ArtRecord,
   BlobRef,
+  CastKey,
   DeskDraft,
   SettingsKey,
   SettingsMap,
@@ -51,6 +52,8 @@ export interface Store {
     get(artId: ArtId): Promise<DeskDraft | null>;
     put(d: DeskDraft): Promise<void>;
     clear(artId: ArtId): Promise<void>;
+    /** An addition to the spec's interface: every draft's where and when (no pixels), newest first. */
+    list(): Promise<DraftInfo[]>;
   };
   /** Device only: stroke logs (handwriting dynamics). Never exported, never sent. */
   strokes: {
@@ -71,6 +74,10 @@ export interface Store {
   handles: {
     get(worldId: WorldId): Promise<FileSystemFileHandle | null>;
     put(worldId: WorldId, h: FileSystemFileHandle): Promise<void>;
+    /** An addition: forget a world's kept file (a read-only copy, or Save as). */
+    remove(worldId: WorldId): Promise<void>;
+    /** An addition: every kept file, to find a world that is already open from the same file. */
+    all(): Promise<Array<{ worldId: WorldId; handle: FileSystemFileHandle }>>;
   };
   /** "What Amble sends": the last 50 AI requests, newest first. */
   ailog: {
@@ -101,4 +108,46 @@ export interface Commit {
 export interface StoreChange {
   worlds?: WorldId[];
   art?: ArtId[];
+}
+
+/** A draft without its pixels: enough to find work that was never committed (a crash, a closed lid). */
+export interface DraftInfo {
+  artId: ArtId;
+  worldId: WorldId | null;
+  castKey: CastKey | null;
+  at: number;
+}
+
+/**
+ * Whether writes are landing. 'full' after a QuotaExceededError, 'error' after any other failed write,
+ * 'ok' again after the next write that lands.
+ */
+export type StoreHealth = 'ok' | 'full' | 'error';
+
+export interface GcReport {
+  /** Blobs still referenced (or too new to judge). */
+  kept: number;
+  removed: number;
+  /** Bytes freed. */
+  bytes: number;
+}
+
+/**
+ * Upkeep both stores provide beyond the spec's `Store` (§4.3, §2.15): the daily garbage collection, the
+ * write health that turns into `library.storage`, sizes for the world budget and "Delete everything".
+ */
+export interface StoreUpkeep {
+  /** Marks every BlobRef reachable from metas, worlds, art, steps, drafts and the cache; deletes the rest older than `graceMs`. */
+  collectGarbage(o?: { now?: number; graceMs?: number }): Promise<GcReport>;
+  /** Total bytes of these blobs (missing ones count 0). */
+  blobBytes(refs: Iterable<BlobRef>): Promise<number>;
+  /** Deletes everything this store keeps on this device. */
+  wipe(): Promise<void>;
+  health(): StoreHealth;
+  onHealth(fn: (h: StoreHealth, err: unknown) => void): () => void;
+}
+
+export function upkeepOf(store: Store): (Store & StoreUpkeep) | null {
+  const s = store as Partial<StoreUpkeep>;
+  return typeof s.collectGarbage === 'function' && typeof s.onHealth === 'function' ? (store as Store & StoreUpkeep) : null;
 }
