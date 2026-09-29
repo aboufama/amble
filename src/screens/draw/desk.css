@@ -1252,7 +1252,9 @@ body:has(.screen.desk) .toast-region {
   align-items: center;
   gap: 6px;
   margin: 0;
+  min-width: 0;
   font: 700 0.9375rem/1.25rem var(--font-ui);
+  white-space: nowrap;
 }
 
 .preview__title .icon {
@@ -1384,6 +1386,8 @@ body:has(.screen.desk) .toast-region {
 
 .preview__switch {
   position: relative;
+  flex: none;
+  white-space: nowrap;
   display: inline-flex;
   margin-left: auto;
   align-items: center;
