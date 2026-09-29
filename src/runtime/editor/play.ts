@@ -22,15 +22,15 @@ const INPUT_EVENTS = ['keydown', 'pointerdown', 'touchstart', 'wheel'] as const;
 
 type Shooter = Actor & { shooterState?: { opts: { aim?: string } } };
 
-/** Listeners the game added for a pointer event (the kit's own start-and-restart tap doesn't count). */
+/** The game's own listeners for a pointer event (the kit's tap latch is on every scene, and is not one). */
 function gameListeners(input: Phaser.Input.InputPlugin, event: string): number {
-  return input.listeners(event).filter((fn) => !KIT_POINTER_LISTENERS.has(fn as (...args: never[]) => unknown)).length;
+  return input.listeners(event).filter((fn) => !KIT_POINTER_LISTENERS.has(fn)).length;
 }
 
 /** True when the game reads the pointer, so a tap is part of playing. */
 export function usesPointer(scene: AmbleScene): boolean {
   const k = scene.__kit;
-  if (k?.physicsType === 'matter') return true;
+  if (k?.physicsType === 'matter' || k?.controls?.pointerRead) return true;
   const input = scene.input;
   if (input && gameListeners(input, 'pointerdown') + gameListeners(input, 'pointerup') + gameListeners(input, 'gameobjectdown') > 0) return true;
   return scene.children.list.some((o) => isActor(o) && (o as Shooter).shooterState?.opts.aim === 'pointer');
@@ -79,7 +79,8 @@ export class PlayWatch {
     if (!this.active() || this.shell.paused()) return;
     const game = this.shell.game();
     const scene = currentScene();
-    if (!game || !scene || !kitRunning(scene) || usesPointer(scene)) return;
+    // Only a tap on the game itself: the touch buttons sit over the game, and a press on one is playing.
+    if (!game || e.target !== game.canvas || !scene || !kitRunning(scene) || usesPointer(scene)) return;
     const hit = this.hitTest(game, e.clientX, e.clientY);
     if (!hit) return;
     e.stopImmediatePropagation();

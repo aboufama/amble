@@ -11,14 +11,27 @@ export interface MemoryStorage extends Storage {
 
 const MAX_KEYS = 500;
 const MAX_VALUE = 100_000;
+/** Writes are saved together 250 ms after they stop, but never later than this after the first one. */
+const MAX_WAIT_MS = 1000;
 
 export function createStorage(initial: Record<string, string>, onChange: ((data: Record<string, string>) => void) | null): MemoryStorage {
   const map = new Map<string, string>(Object.entries(initial));
   let timer = 0;
+  /** When the oldest unsaved change happened. */
+  let since: number | null = null;
+  const flush = (): void => {
+    clearTimeout(timer);
+    since = null;
+    onChange?.(Object.fromEntries(map));
+  };
   const changed = (): void => {
     if (!onChange) return;
+    const now = Date.now();
+    since ??= now;
     clearTimeout(timer);
-    timer = window.setTimeout(() => onChange(Object.fromEntries(map)), 250);
+    // A game that saves every frame never pauses long enough for a plain debounce: save it every second.
+    if (now - since >= MAX_WAIT_MS) flush();
+    else timer = window.setTimeout(flush, 250);
   };
   const api = {
     get length() {

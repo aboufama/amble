@@ -103,6 +103,8 @@ class FlipbookVisual implements RiggedCharacter {
   }
 
   update(dtMs: number): void {
+    // A NaN step would stick in the page clock, and the pages would stop on the last one for good.
+    if (!Number.isFinite(dtMs)) dtMs = 0;
     this.inner.update(dtMs);
     const on = this.active;
     if (on) {

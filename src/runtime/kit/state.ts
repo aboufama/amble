@@ -211,11 +211,11 @@ export class Kit {
     const c = this.controls;
     // The kit's own screens read input without it counting as the game's controls.
     if (this.state === 'title') {
-      if (c.kitPressed('jump') || c.kitPressed('fire') || c.kitPressed('action') || c.pointer.justDown || c.anyKey) this.start();
+      if (c.kitPressed('jump') || c.kitPressed('fire') || c.kitPressed('action') || c.kitPointer.justDown || c.anyKey) this.start();
       return;
     }
     if (this.state === 'won' || this.state === 'lost') {
-      if (this.now() - this.endedAt > 900 && (c.tappedRestart || c.pointer.justDown || c.kitPressed('jump'))) this.scene.restart();
+      if (this.now() - this.endedAt > 900 && (c.tappedRestart || c.kitPointer.justDown || c.kitPressed('jump'))) this.scene.restart();
       return;
     }
     if (c.kitPressed('pause')) this.togglePause();

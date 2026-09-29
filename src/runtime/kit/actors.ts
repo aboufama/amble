@@ -241,7 +241,7 @@ function driveShooter(k: Kit, a: Actor, dt: number): void {
   if (!(o.auto || c.held('fire')) || S.cd > 0 || a.dashing) return;
   S.cd = Math.max(30, numOf(o.every, 120));
   let angle = a.facing < 0 ? 180 : 0;
-  if (o.aim === 'pointer') angle = util.angleTo(a, c.pointer);
+  if (o.aim === 'pointer') angle = util.angleTo(a, c.kitPointer);
   else if (o.aim === 'up') angle = -90;
   else if (o.aim === '8way' && c.up) angle = c.x ? Math.atan2(-1, c.x) / DEG : -90;
   else if (o.aim === '8way' && c.down && !onGround(k, a)) angle = c.x ? Math.atan2(1, c.x) / DEG : 90;

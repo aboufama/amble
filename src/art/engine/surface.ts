@@ -350,9 +350,14 @@ class Surface implements ArtSurface {
 
   // ------------------------------------------------------------------------------------------ recording
 
-  /** Pushes a history step and logs its op; the one place operations are committed. */
+  /**
+   * Pushes a history step and logs its op; the one place operations are committed. An operation that changed
+   * nothing (a stroke on the desk beside the paper) is neither: every logged op is exactly one undo step, so
+   * the log's undo marks take back what the student's undos took back, and replays match the drawing.
+   */
   private record(label: string, steps: Step[], op: Exclude<LogOp, { op: 'undo' } | { op: 'redo' } | { op: 'init' }>, layer: string | null): void {
-    if (steps.length) this.hist.push({ label, steps });
+    if (!steps.length) return;
+    this.hist.push({ label, steps });
     if (this.recording) {
       if (logSamples(this.ops) + (op.op === 'stroke' ? op.dts.length : 0) > LIMITS.logSamples) this.recording = false;
       else this.ops.push(op);
@@ -819,8 +824,10 @@ class Surface implements ArtSurface {
       xyp,
       dts,
     };
-    this.lastStroke = { op, points: st.session.pointsBeforeFinish };
-    this.record(st.session.spec.brush.label, this.takePending(), op, layer);
+    const steps = this.takePending();
+    // A stroke that left no ink (all of it off the paper) is nothing "Make it perfect" could take back.
+    this.lastStroke = steps.length ? { op, points: st.session.pointsBeforeFinish } : null;
+    this.record(st.session.spec.brush.label, steps, op, layer);
     this.comp.flush();
     this.st.commit.push(performance.now() - t0);
   }
@@ -1267,23 +1274,41 @@ class Surface implements ArtSurface {
       this.sel.cancel();
       return true;
     }
-    const e = await this.hist.undo();
-    if (!e) return false;
-    if (this.recording) this.ops.push({ op: 'undo' });
-    this.lastStroke = null;
-    this.afterHistory();
-    return true;
+    return this.stepHistory('undo');
   }
 
   async redo(): Promise<boolean> {
     if (this.busy) return new Promise((resolve) => this.queued.push(() => void this.redo().then(resolve)));
     if (!this.b || this.stroke) return false;
     this.finishPour();
-    const e = await this.hist.redo();
-    if (!e) return false;
-    if (this.recording) this.ops.push({ op: 'redo' });
-    this.afterHistory();
-    return true;
+    return this.stepHistory('redo');
+  }
+
+  /**
+   * One undo or redo, with input held meanwhile. The step can wait on the worker (old steps are packed there,
+   * tile by tile), and a stroke begun during that wait would be committed before the undo landed and then
+   * painted over by it. So, as during a fill, input is queued and replayed in order once the step is done and
+   * logged. A step that cannot run (the worker failed) changes nothing and is reported, never thrown.
+   */
+  private async stepHistory(which: 'undo' | 'redo'): Promise<boolean> {
+    this.busy = true;
+    try {
+      const e = await (which === 'undo' ? this.hist.undo() : this.hist.redo());
+      if (!e) return false;
+      if (this.recording) this.ops.push({ op: which });
+      if (which === 'undo') this.lastStroke = null;
+      this.afterHistory();
+      return true;
+    } catch (err) {
+      this.em.emit('error', { message: err instanceof Error ? err.message : String(err) });
+      return false;
+    } finally {
+      this.busy = false;
+      const q = this.queued;
+      this.queued = [];
+      for (const f of q) f();
+      this.checkSettled();
+    }
   }
 
   private afterHistory(): void {
@@ -1384,11 +1409,15 @@ class Surface implements ArtSurface {
     const step = setLayer(this.board, id, clean);
     if (!step) return;
     const merge = Object.keys(clean).length === 1 && clean.opacity !== undefined ? `opacity:${id}` : undefined;
-    this.hist.push({ label: 'Layer change', steps: [{ struct: step }], merge });
+    // A slider drag is one step, in the history and in the log alike: the log's last op can take the new
+    // value only when it is this layer's opacity, and it does exactly when the history joins the two steps
+    // (which it does only within 1.5 s), or the log's undo marks would take back the wrong thing.
+    const last = this.recording ? this.ops[this.ops.length - 1] : undefined;
+    const logTop = merge && last?.op === 'layer' && last.action === 'set' && last.id === id && last.patch && Object.keys(last.patch).length === 1 && last.patch.opacity !== undefined ? last : null;
+    const prev = this.hist.undoStack[this.hist.undoStack.length - 1];
+    const entry = this.hist.push({ label: 'Layer change', steps: [{ struct: step }], merge }, { merge: !this.recording || logTop !== null });
     if (this.recording) {
-      const top = this.ops[this.ops.length - 1];
-      // Coalesce slider drags in the log like the history does.
-      if (merge && top?.op === 'layer' && top.action === 'set' && top.id === id && top.patch && Object.keys(top.patch).length === 1 && top.patch.opacity !== undefined && this.hist.undoStack[this.hist.undoStack.length - 1]?.merge === merge) top.patch = { opacity: clean.opacity };
+      if (logTop && entry === prev) logTop.patch = { opacity: clean.opacity };
       else this.ops.push({ op: 'layer', action: 'set', id, patch: clean });
     }
     this.markDirty();
@@ -1409,19 +1438,26 @@ class Surface implements ArtSurface {
       this.em.emit('toast', { message: 'That is a lot of layers! Merge some to add more.', kind: 'limit' });
       return null;
     }
-    const src = image instanceof Blob ? await createImageBitmap(image) : image;
-    const sw = 'naturalWidth' in src ? src.naturalWidth : src.width;
-    const sh = 'naturalHeight' in src ? src.naturalHeight : src.height;
-    if (!sw || !sh) return null;
-    // Fit the photo inside the board, centred.
-    const k = Math.min(b.W / sw, b.H / sh);
-    const w = Math.round(sw * k);
-    const h = Math.round(sh * k);
-    const c = new OffscreenCanvas(b.W, b.H);
-    const ctx = c.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return null;
-    ctx.drawImage(src, Math.round((b.W - w) / 2), Math.round((b.H - h) / 2), w, h);
-    const photo = new Uint8ClampedArray(ctx.getImageData(0, 0, b.W, b.H).data);
+    // A picture decoded here is let go of as soon as it is on the board (a camera photo is tens of MB).
+    const own = image instanceof Blob ? await createImageBitmap(image) : null;
+    let photo: Uint8ClampedArray;
+    try {
+      const src = own ?? (image as Exclude<typeof image, Blob>);
+      const sw = 'naturalWidth' in src ? src.naturalWidth : src.width;
+      const sh = 'naturalHeight' in src ? src.naturalHeight : src.height;
+      if (!sw || !sh) return null;
+      // Fit the photo inside the board, centred.
+      const k = Math.min(b.W / sw, b.H / sh);
+      const w = Math.round(sw * k);
+      const h = Math.round(sh * k);
+      const c = new OffscreenCanvas(b.W, b.H);
+      const ctx = c.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return null;
+      ctx.drawImage(src, Math.round((b.W - w) / 2), Math.round((b.H - h) / 2), w, h);
+      photo = new Uint8ClampedArray(ctx.getImageData(0, 0, b.W, b.H).data);
+    } finally {
+      own?.close();
+    }
     // A photo to trace goes at the bottom; a photo's lines (paper removed on the device) go on top.
     const lines = o.role === 'lines';
     const layer = makeLayer(uid('l'), lines ? 'lines' : 'trace', o.name ?? (lines ? 'Photo lines' : 'Photo to trace'));
@@ -1684,10 +1720,16 @@ class Surface implements ArtSurface {
     };
   }
 
+  /** The drawing's layers, pages and every cel's version: the same twice means nothing changed in between. */
+  private stateSig(): string {
+    let s = this.sigOf();
+    for (const [frame, layer, cel] of this.board.entries()) s += `|${frame}/${layer}:${cel.version}`;
+    return s;
+  }
+
   async toArtDoc(): Promise<ArtDoc> {
     if (this.sel.active) this.sel.commit();
     const b = this.board;
-    for (const f of b.frames) await b.ensureFrame(f.id);
     const encode = async (board: Board, frame: string, layer: string): Promise<import('./model').ArtCel | null> => {
       const d = board.pixels(frame, layer);
       if (!d) return null;
@@ -1696,7 +1738,15 @@ class Surface implements ArtSurface {
       return res.cel;
     };
     this.meta.version++;
-    return boardToArtDoc(b, this.meta, this.recording || this.ops.length ? this.ops : null, this.celCache, encode);
+    // The cels are encoded one worker round trip at a time while the student keeps drawing. A change in
+    // between (a stroke, a Merge down) would save a mix of before and after, and a merged layer's pixels
+    // nowhere: so the pass runs again until nothing changed during it (cheap: unchanged cels are cached).
+    for (let pass = 0; ; pass++) {
+      for (const f of b.frames) await b.ensureFrame(f.id);
+      const before = this.stateSig();
+      const doc = await boardToArtDoc(b, this.meta, this.recording || this.ops.length ? this.ops : null, this.celCache, encode);
+      if (this.stateSig() === before || pass >= 3) return doc;
+    }
   }
 
   isDirty(): boolean {

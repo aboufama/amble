@@ -4,7 +4,7 @@
  * Idle frames can be packed (deflated) to stay inside the memory budget and are unpacked on demand.
  */
 import type { Rect } from './geom';
-import { type ArtFrame, type ArtLayer, LIMITS, isPartRole } from './model';
+import { type ArtFrame, type ArtLayer, LIMITS, isPartRole, uid } from './model';
 import { deflate, inflate } from './png';
 import { alphaBounds, copyIn, copyOut } from './blend';
 
@@ -29,6 +29,12 @@ export class Board {
   readonly W: number;
   readonly H: number;
   readonly pixelArt: boolean;
+  /**
+   * This board instance, for caches that outlive it (the page's engine worker). Cel versions only mean
+   * something within one board: a drawing opened again has the same frame and layer ids, and its versions
+   * start over, so a key without this could name the old visit's pixels.
+   */
+  readonly uid = uid('b');
   layers: ArtLayer[] = [];
   frames: ArtFrame[] = [];
   private cels = new Map<string, Cel>();

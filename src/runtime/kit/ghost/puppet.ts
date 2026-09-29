@@ -135,6 +135,9 @@ export class Puppet implements RiggedCharacter {
 
   update(dtMs: number): void {
     if (this.destroyed) return;
+    // Game code sets the speed this runs at (`hero.animSpeed`): one NaN frame would stay in the clip clock,
+    // the smoothed pose and the paper flip for good, and the character would vanish for the rest of the run.
+    if (!Number.isFinite(dtMs)) dtMs = 0;
     const dt = Math.max(0, Math.min(0.1, dtMs / 1000));
     this.autoClip();
     this.clipT += dt * this.clipSpeed;

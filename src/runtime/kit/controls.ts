@@ -20,14 +20,14 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   pause: ['P', 'ESC'],
 };
 
+/**
+ * The kit's own pointer listeners on a scene (the tap latch below). They are no sign that the game reads
+ * the pointer: the ghost loop still lifts a tapped stand-in to the Desk in such a game (editor/play.ts).
+ */
+export const KIT_POINTER_LISTENERS = new WeakSet<object>();
+
 /** Standard gamepad mapping: A jump, X fire, B dash, Y action, Start pause. */
 const PAD: Partial<Record<Action, number[]>> = { jump: [0], fire: [2, 7], dash: [1, 5], action: [3], pause: [9] };
-
-/**
- * The kit's own pointer listeners (the tap that starts a title card or restarts after a loss). Every kit
- * scene has one, so they never make a game "read the pointer": a tap on a just-bones member still lifts it.
- */
-export const KIT_POINTER_LISTENERS = new WeakSet<(...args: never[]) => unknown>();
 
 export class Controls {
   bind: Record<Action, string[]> = JSON.parse(JSON.stringify(DEFAULT_BINDINGS)) as Record<Action, string[]>;
@@ -35,7 +35,10 @@ export class Controls {
   readonly virtual: Partial<Record<Action, boolean>>;
   private ax = 0;
   private ay = 0;
-  readonly pointer = { x: 0, y: 0, down: false, justDown: false };
+  /** The pointer, as the kit's own screens read it (tap to start, tap to play again). */
+  readonly kitPointer = { x: 0, y: 0, down: false, justDown: false };
+  /** Game code read `pointer`: its taps are gameplay, so the ghost loop leaves them alone (editor/play.ts). */
+  pointerRead = false;
   /** Any key went down this frame (starts the title card). */
   anyKey = false;
   /** R went down this frame (restart after win/lose). */
@@ -85,6 +88,12 @@ export class Controls {
     key.on('down', () => this.latch.add(name));
     this.keys.set(name, key);
     return key;
+  }
+
+  /** The mouse or finger, in world coordinates, for game code. */
+  get pointer(): { x: number; y: number; down: boolean; justDown: boolean } {
+    this.pointerRead = true;
+    return this.kitPointer;
   }
 
   /** -1..1 left/right (keys, stick, pad). Reading it tells the touch overlay the game moves sideways. */
@@ -198,11 +207,12 @@ export class Controls {
     this.ay = Math.max(-1, Math.min(1, ay));
     this.state = st;
     const p = this.scene.input.activePointer;
-    const wasDown = this.pointer.down;
-    this.pointer.x = p.worldX;
-    this.pointer.y = p.worldY;
-    this.pointer.down = p.isDown;
-    this.pointer.justDown = (p.isDown && !wasDown) || this.pointerLatch;
+    const kp = this.kitPointer;
+    const wasDown = kp.down;
+    kp.x = p.worldX;
+    kp.y = p.worldY;
+    kp.down = p.isDown;
+    kp.justDown = (p.isDown && !wasDown) || this.pointerLatch;
     this.pointerLatch = false;
   }
 }

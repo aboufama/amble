@@ -282,10 +282,13 @@ export class Painter {
     return wall;
   }
 
-  /** Cache key of the lines analysis (changes whenever a wall layer changes). */
+  /**
+   * Cache key of the lines analysis (changes whenever a wall layer changes). The board's own id comes first:
+   * the engine worker keeps analyses for the whole page, across drawings and visits.
+   */
   linesKey(frame: string, maxGap: number, only?: string | null): string {
     const parts = this.wallLayers(only).map((l) => `${l.id}:${this.board.version(frame, l.id)}`);
-    return `${frame}|${maxGap}|${only ? 'only:' : ''}${parts.join(',')}`;
+    return `${this.board.uid}|${frame}|${maxGap}|${only ? 'only:' : ''}${parts.join(',')}`;
   }
 
   /** The lines analysis, cached until the lines change. */

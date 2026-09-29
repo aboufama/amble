@@ -102,7 +102,8 @@ export class Animator {
     const clip = resolveClip(this.kind, name);
     if (!clip || this.tweaks[clip.name]?.off) return false;
     const loop = opts.loop ?? clip.loop;
-    const rate = opts.speed ?? 1;
+    // a NaN rate from game code would freeze the clip's clock on NaN (and the drawing with it)
+    const rate = opts.speed !== undefined && Number.isFinite(opts.speed) ? opts.speed : 1;
     const fade = opts.fade ?? 0.2;
     if (clip.upper && !loop && this.base.loop && LOCOMOTION.has(this.base.clip.name)) {
       this.overlay = { clip, t: 0, loop: false, rate };

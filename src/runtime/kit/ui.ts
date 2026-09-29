@@ -312,16 +312,29 @@ export class Ui {
   /** A countdown at the top; calls onDone at zero. */
   timer(seconds: number, onDone?: () => void): { left: number; stop(): void } {
     const t = this.text(this.W / 2, 70, '', { size: 34 });
-    const state = { left: Math.max(0, seconds), stopped: false, stop: () => { state.stopped = true; t.destroy(); } };
+    // Game code sets the count, and a count that is not a number (a time limit never set, a bonus added
+    // before it exists) would show "NaN" and never reach zero: the timer goes on from its last real count.
+    let last = Math.max(0, Number(seconds) || 0);
     const fn = (dt: number) => {
       if (state.stopped) return;
-      state.left = Math.max(0, state.left - dt);
+      const now = Number(state.left);
+      state.left = last = Math.max(0, (Number.isNaN(now) ? last : now) - dt);
       t.setText(String(Math.ceil(state.left)));
       if (state.left <= 0) {
         state.stop();
-        this.k.postFns.splice(this.k.postFns.indexOf(fn), 1);
         if (onDone) this.k.guard(onDone);
       }
+    };
+    const state = {
+      left: last,
+      stopped: false,
+      stop: () => {
+        if (state.stopped) return;
+        state.stopped = true;
+        t.destroy();
+        const i = this.k.postFns.indexOf(fn);
+        if (i >= 0) this.k.postFns.splice(i, 1);
+      },
     };
     this.k.postFns.push(fn);
     return state;
