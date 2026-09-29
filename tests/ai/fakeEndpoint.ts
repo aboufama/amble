@@ -1,5 +1,5 @@
 /** A scripted OpenAI-compatible endpoint for transport tests: every request gets the next reply. */
-import type { Transport } from '../../src/ai/transport/types';
+import type { Transport } from '../../src/ai/wire/types';
 
 export interface SentRequest {
   url: string;

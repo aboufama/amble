@@ -1,4 +1,4 @@
-import type { Capabilities } from '../transport/types';
+import type { Capabilities } from '../wire/types';
 
 /** Content level, by grade band (map-school §2.6): what is refused or toned down. */
 export type AgeBand = 'elementary' | 'middle' | 'high';

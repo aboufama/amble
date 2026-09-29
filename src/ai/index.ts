@@ -19,10 +19,10 @@ export { AiError, aiError, isAiError, kidMessage, type AiErrorInit, type AiError
 export { parseJsonReply, type JsonParseResult } from './json/parse';
 export { checkJson, clampJson, s, strictSchemaProblems, wireSchema, type Infer, type JsonSchema, type JsonType, type JsonValue, type Schema } from './json/schema';
 
-// Transport
-export { chatJson, chatText, DEFAULT_RETRIES, DEFAULT_STALL_MS, DEFAULT_TIMEOUT_MS, listModels, pingModel } from './transport/chat';
-export { isReasoningModel } from './transport/body';
-export { forgetLearnedCaps } from './transport/learned';
+// Transport (src/ai/transport.ts; the wire details are in src/ai/wire/)
+export { chatJson, chatText, DEFAULT_RETRIES, DEFAULT_STALL_MS, DEFAULT_TIMEOUT_MS, listModels, pingModel } from './transport';
+export { isReasoningModel } from './wire/body';
+export { forgetLearnedCaps } from './wire/learned';
 export {
   cancelCodexLogin,
   CODEX_MODEL,
@@ -31,7 +31,7 @@ export {
   fetchCodexStatus,
   startCodexLogin,
   type DevServerInfo,
-} from './transport/codex';
+} from './wire/codex';
 export type {
   Capabilities,
   ChatJsonRequest,
@@ -46,7 +46,7 @@ export type {
   ReasoningEffort,
   Transport,
   Usage,
-} from './transport/types';
+} from './transport';
 export type { CodexStatus } from './codexTypes';
 
 // Configuration

@@ -5,7 +5,7 @@ import { moderate, screenOutput, screenRequest, verdictFromCategories } from '..
 import { findPii, scrubPii } from '../../src/ai/safety/pii';
 import { CRISIS_CARD, toneDownNote } from '../../src/ai/safety/policy';
 import { checkOutputText, checkStudentText } from '../../src/ai/safety/screen';
-import { forgetLearnedCaps } from '../../src/ai/transport/learned';
+import { forgetLearnedCaps } from '../../src/ai/wire/learned';
 import { fakeEndpoint, never, transport } from './fakeEndpoint';
 
 /** Offensive test words are written ROT13 so this file doesn't display them. */

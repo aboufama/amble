@@ -1,5 +1,5 @@
 /** Readers for untrusted configuration values (managed config, build variables, class links). */
-import type { Capabilities } from '../transport/types';
+import type { Capabilities } from '../wire/types';
 import { looksLikeProviderKey, looksLikeSecret } from './secrets';
 import { AGE_BANDS, type AgeBand, type DistrictInfo, type LockKey, type ModerationMode } from './types';
 

@@ -12,8 +12,8 @@
  *   and a student can only go lower.
  * - School mode ignores manual settings and the dev server as endpoints.
  */
-import { CODEX_MODEL } from '../transport/codex';
-import { originOf } from '../transport/fetch';
+import { CODEX_MODEL } from '../wire/codex';
+import { originOf } from '../wire/fetch';
 import { isExpired } from './classLink';
 import { OPENAI_BASE_URL } from './settings';
 import { AGE_BANDS, type AgeBand, type AiAuth, type AiConfig, type AiSource, type ConfigLayer, type LockKey, type ModerationMode } from './types';

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiError } from '../../src/ai/errors';
 import { s } from '../../src/ai/json/schema';
-import { chatJson, chatText, listModels, pingModel } from '../../src/ai/transport/chat';
-import { forgetLearnedCaps } from '../../src/ai/transport/learned';
-import type { ChatStatus, ContentPart } from '../../src/ai/transport/types';
+import { chatJson, chatText, listModels, pingModel } from '../../src/ai/transport';
+import { forgetLearnedCaps } from '../../src/ai/wire/learned';
+import type { ChatStatus, ContentPart } from '../../src/ai/wire/types';
 import { fakeEndpoint, httpError, plain, sse, systemContent, transport, userContent } from './fakeEndpoint';
 
 const Plan = s.object({

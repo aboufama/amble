@@ -7,9 +7,9 @@
  */
 import type { AgeBand, ModerationMode } from '../config/types';
 import { aiError } from '../errors';
-import { aiFetch, Watchdog } from '../transport/fetch';
-import { knownUnsupported, rememberUnsupported } from '../transport/learned';
-import type { Transport } from '../transport/types';
+import { aiFetch, Watchdog } from '../wire/fetch';
+import { knownUnsupported, rememberUnsupported } from '../wire/learned';
+import type { Transport } from '../wire/types';
 import { CRISIS_CARD, refusal, toneHint, type SafetyVerdict, type ToneHint } from './policy';
 import { checkOutputText, checkStudentText, type FlaggedText, type OutputCategory, type OutputCheck } from './screen';
 

@@ -1,6 +1,7 @@
 /**
- * `chatJson` and `chatText`: the two request primitives, on Chat Completions (the wire format with
- * the widest support among district proxies: LiteLLM, vLLM, Ollama, Azure gateways).
+ * The transport: `chatJson` and `chatText`, the two request primitives, on Chat Completions (the
+ * wire format with the widest support among district proxies: LiteLLM, vLLM, Ollama, Azure
+ * gateways). All AI traffic leaves through here (and `wire/fetch.ts`, its one door).
  *
  * Every call:
  * - streams when it can, and reads a plain JSON answer when a proxy ignores `stream: true`;
@@ -10,16 +11,32 @@
  * - gives up on a stalled stream, a total deadline, or the caller's AbortSignal;
  * - fails with a typed `AiError` a student can read.
  */
-import { aiError } from '../errors';
-import { parseJsonReply } from '../json/parse';
-import { checkJson, clampJson, wireSchema, type JsonSchema } from '../json/schema';
-import { buildBody, downgrade, hasImages, initialOptions, type JsonSpec, type ReplyFormat, type WireOptions } from './body';
-import { codexRun } from './codex';
-import { classify, failureOf, isRetryable, parseRetryAfter, retryDelay, retryReason, type Failure } from './failures';
-import { aiFetch, sleep, Watchdog, type AbortCause } from './fetch';
-import { knownUnsupported, rememberUnsupported } from './learned';
-import { addUsage, emptyReply, readChatReply, readHttpFailure, type ReplyState } from './reply';
-import type { ChatJsonRequest, ChatJsonResult, ChatRequestBase, ChatTextRequest, ChatTextResult, Transport, Usage } from './types';
+import { aiError } from './errors';
+import { parseJsonReply } from './json/parse';
+import { checkJson, clampJson, wireSchema, type JsonSchema } from './json/schema';
+import { buildBody, downgrade, hasImages, initialOptions, type JsonSpec, type ReplyFormat, type WireOptions } from './wire/body';
+import { codexRun } from './wire/codex';
+import { classify, failureOf, isRetryable, parseRetryAfter, retryDelay, retryReason, type Failure } from './wire/failures';
+import { aiFetch, sleep, Watchdog, type AbortCause } from './wire/fetch';
+import { knownUnsupported, rememberUnsupported } from './wire/learned';
+import { addUsage, emptyReply, readChatReply, readHttpFailure, type ReplyState } from './wire/reply';
+import type { ChatJsonRequest, ChatJsonResult, ChatRequestBase, ChatTextRequest, ChatTextResult, Transport, Usage } from './wire/types';
+
+export type {
+  Capabilities,
+  ChatJsonRequest,
+  ChatJsonResult,
+  ChatMessage,
+  ChatRequestBase,
+  ChatStatus,
+  ChatTextRequest,
+  ChatTextResult,
+  ContentPart,
+  FallbackFeature,
+  ReasoningEffort,
+  Transport,
+  Usage,
+} from './wire/types';
 
 export const DEFAULT_TIMEOUT_MS = 10 * 60_000;
 export const DEFAULT_STALL_MS = 90_000;

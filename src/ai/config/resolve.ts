@@ -4,9 +4,9 @@
  * disconnected, after Settings change, and when the managed configuration changes.
  */
 import type { AuthKind } from '../errors';
-import { CODEX_BASE_URL, CODEX_MODEL, CODEX_MODEL_NAME, devServerInfo, type DevServerInfo } from '../transport/codex';
-import { originOf } from '../transport/fetch';
-import type { Transport } from '../transport/types';
+import { CODEX_BASE_URL, CODEX_MODEL, CODEX_MODEL_NAME, devServerInfo, type DevServerInfo } from '../wire/codex';
+import { originOf } from '../wire/fetch';
+import type { Transport } from '../wire/types';
 import { layerFromClassLink, loadClassLink, readClassLink, type ClassLinkRead } from './classLink';
 import { layerFromEnv } from './env';
 import { layerFromManaged, readManagedConfig } from './managed';

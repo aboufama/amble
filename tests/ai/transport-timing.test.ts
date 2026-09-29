@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiError } from '../../src/ai/errors';
 import { s } from '../../src/ai/json/schema';
-import { chatJson, chatText, DEFAULT_TIMEOUT_MS } from '../../src/ai/transport/chat';
-import { CODEX_BASE_URL } from '../../src/ai/transport/codex';
-import { forgetLearnedCaps } from '../../src/ai/transport/learned';
-import type { ChatStatus } from '../../src/ai/transport/types';
+import { chatJson, chatText, DEFAULT_TIMEOUT_MS } from '../../src/ai/transport';
+import { CODEX_BASE_URL } from '../../src/ai/wire/codex';
+import { forgetLearnedCaps } from '../../src/ai/wire/learned';
+import type { ChatStatus } from '../../src/ai/wire/types';
 import { fakeEndpoint, hangingStream, never, sse, transport, type SentRequest } from './fakeEndpoint';
 
 const Small = s.object({ ok: s.boolean() });
