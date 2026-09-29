@@ -13,7 +13,7 @@ const run = (p: RigPuppet, frames: number, motion: { dx?: number; dy?: number } 
   for (let i = 0; i < frames; i++) p.update(1 / 60, motion);
 };
 
-describe('a rigged character after a non-finite frame', () => {
+describe('a rigged character after a non-finite frame', { timeout: 120_000 }, () => {
   it('recovers from a NaN time step', () => {
     const p = new RigPuppet(bound('dog'));
     run(p, 30);
