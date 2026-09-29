@@ -369,6 +369,14 @@
   background: var(--on-accent);
 }
 
+.toggle__switch:disabled {
+  opacity: 0.45;
+}
+
+.toggle__switch:disabled + .toggle__label {
+  color: var(--text-2);
+}
+
 .toggle__label {
   font: var(--type-label);
 }
@@ -562,6 +570,12 @@
 .field__input::placeholder {
   color: var(--text-2);
   opacity: 1;
+}
+
+.field__input:disabled {
+  border-color: var(--line);
+  color: var(--text-2);
+  background: var(--bg-lift);
 }
 
 .field__input:focus {
@@ -1034,10 +1048,16 @@
   color: var(--on-brand);
 }
 
-:is(.on-brand, .topbar) :is(.field__input, .paper, .sticky-note, .panel, .keycap, .segmented__option--on, .tag--paper) {
+:is(.on-brand, .topbar) :is(.field__input, .paper, .sticky-note, .panel, .keycap, .segmented__option--on, .tag--paper, .toggle__switch, .slider__number) {
   --text: var(--ink);
   --text-2: var(--ink-2);
   --line-control: var(--paper-line);
+}
+
+/* A chip on the bar: white words on the darker blue. */
+:is(.on-brand, .topbar) .chip {
+  border-color: transparent;
+  background: var(--brand-hover);
 }
 
 :is(.on-brand, .topbar) a:not(.btn) {
@@ -1077,7 +1097,14 @@
 }
 
 :is(.on-brand, .topbar) .chip--button {
+  border-color: var(--on-brand);
   background: transparent;
+}
+
+:is(.on-brand, .topbar) .chip--selected {
+  color: var(--change);
+  border-color: var(--change-bright);
+  background: var(--on-brand);
 }
 
 :is(.on-brand, .topbar) .segmented {
