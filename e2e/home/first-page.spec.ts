@@ -122,3 +122,34 @@ test('"Or play one first." opens a starter, and leaving it untouched keeps the F
   await expect(page.getByTestId('screen-first')).toBeVisible();
   await expect.poll(() => page.evaluate(async () => (await (window as unknown as { __amble: { store: { worlds: { list(): Promise<unknown[]> } } } }).__amble.store.worlds.list()).length)).toBe(0);
 });
+
+test('a pen on the paper while it slides in lands it at once, so the line stays under the pen', async ({ page }) => {
+  await openAmble(page, { clean: true });
+  const first = page.getByTestId('screen-first');
+  await expect(first).toHaveClass(/first--entered/);
+  // Hold the entrance where it is, as if the student were quicker than the paper.
+  const sliding = await page.evaluate(() => {
+    const anims = document.querySelector('.first__paper-cell')?.getAnimations() ?? [];
+    anims.forEach((a) => a.pause());
+    return anims.length;
+  });
+  test.skip(sliding === 0, 'the paper had already landed on this machine');
+  const board = page.getByTestId('first-board');
+  const box = (await board.boundingBox())!;
+  await stroke(page, board, humanStroke(line(box.width * 0.2, box.height * 0.4, box.width * 0.8, box.height * 0.4), { wobble: 0, tremor: 0, jitter: 0 }), { pointer: 'pen' });
+  // The paper landed on the pen-down, so nothing moved it under the stroke.
+  expect(await page.evaluate(() => document.querySelector('.first__paper-cell')?.getAnimations().length)).toBe(0);
+  const ink = await board.locator('canvas').first().evaluate((c: HTMLCanvasElement) => {
+    const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+    let top = Infinity;
+    let bottom = -1;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 200 || d[i] + d[i + 1] + d[i + 2] > 200) continue;
+      const y = Math.floor(i / 4 / c.width);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+    }
+    return { rows: bottom - top + 1, scale: c.height / c.getBoundingClientRect().height };
+  });
+  expect(ink.rows / ink.scale, 'a straight line, not a hook').toBeLessThan(24);
+});

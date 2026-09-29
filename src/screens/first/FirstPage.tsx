@@ -79,7 +79,9 @@ export function FirstPage() {
   const firstCard = useRef<HTMLButtonElement | null>(null);
   const lifeButton = useRef<HTMLButtonElement>(null);
 
+  const rootRef = useRef<HTMLDivElement>(null);
   const [entered, setEntered] = useState(false);
+  const [landed, setLanded] = useState(false);
   const [ready, setReady] = useState(false);
   const [inked, setInked] = useState(0);
   const [canUndo, setCanUndo] = useState(false);
@@ -166,6 +168,10 @@ export function FirstPage() {
     };
     let warmed = false;
     const firstTouch = () => {
+      // A pen on the paper while it still slides in: it lands at once (before the stroke reads where the
+      // paper is), so the line stays under the pen instead of bending with the paper.
+      rootRef.current?.classList.add('first--landed');
+      setLanded(true);
       setTouched(true);
       // Start the rig worker while the student draws, so Bring it to life never waits for it to load.
       if (!warmed) {
@@ -439,7 +445,7 @@ export function FirstPage() {
   const paperStyle = { ['--ground-line' as string]: `${GROUND_LINE * 100}%` } as CSSProperties;
 
   return (
-    <div className={cx('first', entered && 'first--entered', reduced && 'first--still')} data-testid="screen-first" data-phase={phase} data-awake={awake || undefined}>
+    <div ref={rootRef} className={cx('first', entered && 'first--entered', reduced && 'first--still', landed && 'first--landed')} data-testid="screen-first" data-phase={phase} data-awake={awake || undefined}>
       <NightSky decor={false} />
       <BottomPath lit={entered} />
       <HomeHeader />
