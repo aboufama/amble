@@ -4,7 +4,7 @@
  * a step changed, and `attribute` keeps each code line's author (starter, AI, student or teacher).
  */
 import { getServices } from '../app/services';
-import { extractManifest, sourceFilesOf } from '../cores/ai';
+import { sourceFilesOf } from '../cores/ai';
 import { uid } from '../model/ids';
 import type { Author, CodeFile, StepDiff, StepId, StepInput, StepSnapshot, World } from '../model/types';
 import type { Store } from '../store/api';
@@ -36,8 +36,11 @@ export interface HistoryOptions {
   newId?: () => StepId;
 }
 
+/** The code tools (the validator) load with the first diff, not with the app. */
+type CodeTools = typeof import('../cores/aiCode');
+
 /** The dial defaults a snapshot's code declares (`static dials`), for dials the student never moved. */
-function dialDefaults(snap: StepSnapshot): Record<string, number> {
+function dialDefaults(snap: StepSnapshot, { extractManifest }: CodeTools): Record<string, number> {
   try {
     const dials = extractManifest(sourceFilesOf(snap.code)).statics.dials;
     const out: Record<string, number> = {};
@@ -77,7 +80,8 @@ export function createHistory(o: HistoryOptions = {}): HistoryApi {
       const parent = parentOf(world, stepId);
       const [after, before] = await Promise.all([store.steps.get(stepId), parent ? store.steps.get(parent.id) : Promise.resolve(null)]);
       if (!after) return { files: [], drawings: [], dials: [] };
-      const defaults = before ? { ...dialDefaults(before), ...dialDefaults(after) } : {};
+      const tools = before ? await import('../cores/aiCode') : null;
+      const defaults = before && tools ? { ...dialDefaults(before, tools), ...dialDefaults(after, tools) } : {};
       return stepDiff(before, after, defaults);
     },
     attribute,

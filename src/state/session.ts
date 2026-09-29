@@ -22,7 +22,6 @@ import type { AiOutcome, CastKey, CastMember, CastSlot, PlayerError, SaveState, 
 import { createAutosave, type Autosave } from '../store/autosave';
 import { deriveCast } from '../world/cast';
 import { DialBurst, type DialCommit } from '../world/dialBurst';
-import { toInitMessage } from '../world/init';
 import type { TagTrigger } from '../world/requestPolicy';
 import { getState, setState, type ComeAlive } from './store';
 
@@ -271,6 +270,8 @@ export function loadGame(world: World, o: { autostart?: boolean } = {}): Promise
   patchSession({ ready: false, stopped: null, problems: [], newVersion: null, heavy: false });
   const run = (async () => {
     player.setTitle(t('world.gameTitle', { title: world.title }));
+    // M2's init message instruments the game's loops with the validator's acorn: it loads with the first world.
+    const { toInitMessage } = await import('../world/init');
     const init = await toInitMessage(world, { mode: 'play', prefs: playerPrefsFrom(getState().prefs), autostart: o.autostart ?? false });
     try {
       const manifest = await player.load(init);

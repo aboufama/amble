@@ -215,10 +215,14 @@ export class PlayerHostImpl implements PlayerHost {
   private async ensure(): Promise<Player> {
     if (this.player) return this.player;
     const container = await this.waitForLayer();
-    // The runtime's URL needs the page to resolve (virtual:amble-runtime), so it loads here, lazily.
-    const runtimeUrl = this.o.runtimeUrl ?? (await import('../../cores/playRuntime')).RUNTIME_URL;
+    // The runtime's URL needs the page to resolve (virtual:amble-runtime), so it loads here, lazily, and
+    // so does the Player itself: the Trail and the First page never start a game, so they never load it.
+    const [runtimeUrl, core] = await Promise.all([
+      this.o.runtimeUrl ?? import('../../cores/playRuntime').then((m) => m.RUNTIME_URL),
+      import('../../cores/player'),
+    ]);
     if (this.player) return this.player;
-    const player = new Player({
+    const player = new core.Player({
       container,
       runtimeUrl,
       title: this.title,

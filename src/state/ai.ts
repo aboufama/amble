@@ -27,9 +27,6 @@ import type {
   World,
   WorldId,
 } from '../model/types';
-import { ladderCast, ladderMapping } from '../pipeline/ladder';
-import { handEditFile } from '../pipeline/service';
-import { readStatics } from '../pipeline/manifest';
 import { announce, showToast } from './app';
 import { markSeen } from './prefs';
 import { applyAccepted, setDial, setTwist } from './session';
@@ -254,7 +251,8 @@ async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind:
   const before = await currentWorld(worldId);
   if (!before) return;
   const files = changedFiles(before, outcome);
-  const handFile = outcome.handEditsTouched ? handEditFile(before.code, outcome.files) : null;
+  // The pipeline's code tools (acorn and friends) are loaded by now: this outcome came from them.
+  const handFile = outcome.handEditsTouched ? (await import('../pipeline/service')).handEditFile(before.code, outcome.files) : null;
   setState((s) => {
     s.ai.changed = { worldId, files, handFile };
   });
@@ -286,7 +284,7 @@ async function applyBuild(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 
     await commitWorld({ ...world, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, 'build', words));
   } else {
     const plan = world.plan;
-    const cast = plan ? ladderCast(world, ...ladderArgs(plan, outcome.files)) : world.cast;
+    const cast = plan ? await ladderCastOf(world, plan, outcome.files) : world.cast;
     const starter = world.origin.kind === 'plan' ? world.origin.starter : null;
     const title = starter ? getServices().starters.info(starter).title : '';
     await commitWorld({ ...world, code: outcome.files, cast, title: plan?.title || world.title, updatedAt: Date.now() }, { kind: 'code', by: 'ai', text: t('ai.stepLadder', { starter: title }), request: words, files: outcome.files.map((f) => f.path) });
@@ -298,9 +296,11 @@ async function applyBuild(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 
   }
 }
 
-function ladderArgs(plan: PlanReply, files: World['code']): [Record<CastKey, CastKey>, PlanReply['cast']] {
+/** The cast of a build that fell back to its starter (the ladder's code tools load with the job). */
+async function ladderCastOf(world: World, plan: PlanReply, files: World['code']): Promise<World['cast']> {
+  const [{ ladderCast, ladderMapping }, { readStatics }] = await Promise.all([import('../pipeline/ladder'), import('../pipeline/manifest')]);
   const { mapping, resting } = ladderMapping(plan, readStatics(files).art);
-  return [mapping, resting];
+  return ladderCast(world, mapping, resting);
 }
 
 /** A refusal is kept as a category and a time only, never the words (§5.13). */
