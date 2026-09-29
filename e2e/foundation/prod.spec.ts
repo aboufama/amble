@@ -25,5 +25,11 @@ test('the build loads from a sub-path under its CSP @prod', async ({ page }, inf
     location.hash = '#/trail';
   });
   await expect(page.getByTestId('screen-trail')).toBeVisible();
+  // A starter plays: the built runtime loads from the sub-path and its bootstrap passes the CSP by hash.
+  await page.evaluate(() => {
+    location.hash = '#/starter/moon-king';
+  });
+  await expect(page.getByTestId('screen-world')).toBeVisible();
+  await expect(page.getByTestId('player-layer')).toHaveAttribute('data-first-frame', /^[1-9]\d*$/, { timeout: 45_000 });
   expect(violations).toEqual([]);
 });

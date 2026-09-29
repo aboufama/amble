@@ -31,8 +31,8 @@ export const CLASS_HEADER = 'X-Amble-Class';
 export const FIXTURE_FACTS = {
   /** change-throws.patch creates boss.js whose line 3 throws on the first `update`. */
   throwsAt: { file: 'boss.js', line: 3 },
-  /** build-moon-king.patch declares these art keys. */
-  buildKeys: ['hero', 'moonKing', 'grumble', 'star', 'ground', 'ledge', 'shot', 'orb'],
+  /** build-moon-king.patch (the player core's demo boss game, as the stub starters open) declares these art keys. */
+  buildKeys: ['hero', 'boss', 'minion', 'ground', 'ledge', 'shot', 'orb', 'bomb'],
 } as const;
 
 const FIXTURE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'ai');

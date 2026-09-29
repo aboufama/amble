@@ -3,6 +3,7 @@
  * world, registers the `world` player slot and loads the game into it.
  */
 import { useEffect, useRef } from 'react';
+import { isSupersededLoad } from '../../app/player/host';
 import { playerPrefsFrom } from '../../app/player/prefs';
 import { usePlayerSlot } from '../../app/player/slots';
 import { ScreenFrame } from '../../app/frame/ScreenFrame';
@@ -31,7 +32,10 @@ export function World({ route }: { route: RouteOf<'world'> }) {
       setState((s) => {
         s.session.manifest = manifest;
       });
-    })();
+    })().catch((err: unknown) => {
+      // Leaving the world, or a newer load, cancels this one; M2 shows real failures in the problem card.
+      if (!isSupersededLoad(err)) console.error('The world could not start:', err);
+    });
     return () => {
       live = false;
     };

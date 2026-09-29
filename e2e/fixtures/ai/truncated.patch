@@ -4,27 +4,31 @@
 @@next Make the Moon King stomp|Add a second boss|Give the hero a shield
 @@safety ok
 @@file game.js replace
-// The Moon King: run, double-jump, dash and blast a giant boss through three phases.
+// MOON KING: run, double-jump, dash and blast a giant boss through three phases of bullet patterns.
 class Game extends Amble.Scene {
-  static config = { title: 'The Moon King', subtitle: 'Run, jump, dash and blast!', physics: 'arcade', gravity: 1500, background: '#151843' };
+  static config = { title: 'MOON KING', subtitle: 'Run, jump, dash and blast!', physics: 'arcade', gravity: 1500, background: '#120a2a', controls: { fire: 'BLAST' } };
   static art = {
-    hero: { kind: 'character', rig: 'biped', role: 'hero', w: 40, h: 64, facing: 'right', name: 'Pip', ask: 'Draw your hero', about: 'Your hero. Runs, jumps and shoots.', pronoun: 'them', priority: 1, required: true },
-    moonKing: { kind: 'character', rig: 'blob', role: 'boss', w: 200, h: 180, facing: 'left', name: 'The Moon King', ask: 'Draw the Moon King, a giant grumpy boss', about: 'A huge boss with three phases.', pronoun: 'him', priority: 2, required: true },
-    grumble: { kind: 'character', rig: 'blob', role: 'enemy', w: 46, h: 40, facing: 'left', name: 'Grumble', ask: 'Draw a Grumble, a little moon rock', about: 'Grumbles chase you in phase 2.', pronoun: 'them', priority: 3, required: true },
-    star: { kind: 'item', role: 'item', w: 28, h: 28, name: 'Star shard', ask: 'Draw a star shard', about: 'It makes your shots bigger.', pronoun: 'it', priority: 4, required: false },
-    ground: { kind: 'terrain', role: 'terrain', w: 32, h: 32, name: 'Ground', ask: 'Draw the moon ground', about: 'Made by the game until you draw it.', pronoun: 'it', priority: 8, required: false },
-    ledge: { kind: 'terrain', role: 'terrain', w: 32, h: 16, name: 'Ledge', ask: 'Draw a floating ledge', about: 'Made by the game until you draw it.', pronoun: 'it', priority: 8, required: false },
-    shot: { kind: 'projectile', role: 'projectile', w: 26, h: 10, name: 'Star shot', ask: 'Draw your shot', about: 'What you shoot.', pronoun: 'it', priority: 6, required: false },
-    orb: { kind: 'projectile', role: 'enemyShot', w: 18, h: 18, name: 'Moon orb', ask: 'Draw a moon orb', about: 'What the Moon King throws.', pronoun: 'it', priority: 7, required: false },
+    hero: { kind: 'character', rig: 'biped', w: 38, h: 64, role: 'hero', name: 'Pip', ask: 'Draw your hero', priority: 1 },
+    boss: { kind: 'character', rig: 'blob', w: 220, h: 190, role: 'boss', name: 'Moon King', ask: 'Draw the Moon King, a giant grumpy boss', priority: 2 },
+    minion: { kind: 'character', rig: 'blob', w: 46, h: 40, role: 'enemy', name: 'Grumble', ask: 'Draw a little moon minion' },
+    ground: { kind: 'terrain', color: '#4a3b7a', top: '#8f7fd6', required: false },
+    ledge: { kind: 'terrain', color: '#5b4a91', top: '#b3a4ff', required: false },
+    shot: { kind: 'projectile', w: 26, h: 10, color: '#9ff3ff', required: false },
+    orb: { kind: 'projectile', w: 18, h: 18, role: 'enemyShot', color: '#ff5ea8', required: false },
+    bomb: { kind: 'projectile', w: 30, h: 30, role: 'enemyShot', color: '#ffb347', required: false },
   };
   static dials = {
-    jump: { label: 'Jump height', value: 720, min: 400, max: 1100, step: 20, live: true, words: 'hop bounce float', for: 'hero' },
-    bossHp: { label: 'Moon King health', value: 150, min: 50, max: 400, step: 10, live: false, words: 'boss health life', for: 'moonKing' },
-    orbSpeed: { label: 'Orb speed', value: 240, min: 120, max: 420, step: 10, live: true, words: 'bullets fast slow', for: 'moonKing' },
+    jump: { label: 'Jump power', value: 720, min: 400, max: 1100, step: 10, words: 'hop bounce float', for: 'hero' },
+    orbSpeed: { label: 'Orb speed', value: 280, min: 120, max: 480, step: 10, for: 'boss' },
+    bossHealth: { label: 'Boss health', value: 150, min: 40, max: 400, step: 10, live: false, for: 'boss' },
   };
 
   create() {
-    this.parallax([{ draw: 'stars', factor: 0.02, speed: 8 }, { draw: 'hills', color: '#2a2e6e', factor: 0.25, y: 380, height: 160 }]);
+    this.parallax([
+      { draw: 'stars', factor: 0.02, speed: 8 },
+      { draw: 'mountains', color: '#2a1a55', factor: 0.1, y: 250, height: 290 },
+      { draw: 'hills', color: '#3b2574', factor: 0.25, y: 360, height: 180 },
+    ]);
     this.level([
       '', '', '', '', '', '', '',
       '            ======            ',
@@ -36,9 +40,20 @@ class Game extends Amble.Scene {
     ], { tile: 32, legend: { '#': 'ground', '=': { key: 'ledge', oneWay: true, height: 16 } } });
 
     this.player = this.spawnHero(140, 420, 'hero', { hp: 5 })
-      .platformer({ speed: 330, jump: () => this.dial.jump, jumps: 2, dash: true })
+      .platformer({ speed: 330, jump: () => this.dials.jump, jumps: 2, dash: true })
       .shooter({ key: 'shot', every: 110, aim: '8way', speed: 980 });
     this.ui.hearts(this.player);
 
-    this.boss = this.spawnEnemy(720, 190, 'moonKing', { boss: true, hp: this.dial.bossHp });
+    this.boss = this.spawnEnemy(720, 190, 'boss', { boss: true, hp: this.dials.bossHealth });
     this.boss.lookAt(this.player);
+    this.ui.bossBar(this.boss, 'THE MOON KING');
+    this.music.play('boss');
+    this.ui.hint('ARROWS move - SPACE jumps (twice!) - X shoots (hold UP to aim) - SHIFT dashes');
+
+    this.rage = 0;
+    const orb = () => this.dials.orbSpeed;
+    this.brain(this.boss, {
+      fan: { time: 2100, next: 'ring', enter: (b) => this.volley(b, 4, () => this.pattern.spread(b, this.angleTo(b, this.player), { key: 'orb', count: 5 + this.rage * 2, arc: 70, speed: orb })) },
+      ring: { time: 2000, next: 'bombs', enter: (b) => this.volley(b, 3, () => this.pattern.ring(b, { key: 'orb', count: 14 + this.rage * 6, speed: () => orb() * 0.7, petals: this.rage ? 3 : 0 })) },
+      bombs: { time: 2300, next: 'spiral', enter: (b) => this.volley(b, 3 + this.rage, () => this.dropBomb(b)) },
+      spiral: { time: 3000, next: ['fan', 'laser'], enter: (b) => this.pattern.spiral(b, { key: 'orb', arms: 3 + this.rage, turn: 14, every: 110, duration: 2600, speed: () => orb() * 0.65 }) },

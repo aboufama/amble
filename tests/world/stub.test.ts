@@ -23,7 +23,7 @@ describe('world (stub)', () => {
   it('deriveCast merges the game art needs with the world slots', () => {
     const need = (key: string, required: boolean): ArtNeed => ({
       key, name: key, kind: 'character', rig: 'biped', role: 'hero', shape: 'capsule', w: 40, h: 64, color: '#7cc7ef', ask: '', about: '',
-      pronoun: 'them', facing: 'right', priority: 1, required, declared: true, used: true, drawn: false,
+      pronoun: 'them', facing: 'right', priority: 1, required, spare: false, declared: true, used: true, drawn: false,
     });
     const cast = deriveCast({ ...EMPTY_MANIFEST, art: [need('hero', true), need('moonKing', true), need('star', false)] }, sampleWorld());
     expect(Object.fromEntries(cast.map((c) => [c.key, c.status]))).toEqual({ hero: 'drawn', moonKing: 'needed', star: 'optional', pal: 'resting' });
