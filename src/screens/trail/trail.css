@@ -45,6 +45,11 @@
   width: min(610px, calc(100vw - 110px));
 }
 
+/* Until the student's worlds are read, Amble can't tell "Welcome back" from a first visit. */
+.trail-copy--waiting {
+  visibility: hidden;
+}
+
 .trail-copy__eyebrow {
   display: flex;
   align-items: center;

@@ -163,8 +163,14 @@ function TrailScene({ still, lit }: SceneProps) {
   const hasCharacters = characters.length > 0;
   const latest = latestCharacter(characters);
   const resting = useMemo(() => restingCharacters(characters, worlds), [characters, worlds]);
-  const assignment = pendingAssignment(classAsg, worlds);
-  const stops = useMemo(() => trailStops({ worlds, starters: starterList, hasCharacters, resting: resting.slice(0, 3).map((c) => c.id) }), [worlds, hasCharacters, resting, starterList]);
+  // The signs wait for the student's worlds (§2.4: they fade in when the list returns). Starters laid out
+  // alone first would hold the scroll snap, and the student's own worlds, put in before them, would open
+  // out of sight to the left.
+  const assignment = loaded ? pendingAssignment(classAsg, worlds) : null;
+  const stops = useMemo(
+    () => (loaded ? trailStops({ worlds, starters: starterList, hasCharacters, resting: resting.slice(0, 3).map((c) => c.id) }) : []),
+    [loaded, worlds, hasCharacters, resting, starterList],
+  );
   const { placed, width } = useMemo(() => placeStops(stops, { noteRoom: assignment ? NOTE_ROOM : 0 }), [stops, assignment]);
   const signs = signStops(stops);
   const now = Date.now();
@@ -351,7 +357,7 @@ function TrailScene({ still, lit }: SceneProps) {
       <div className="trail__banner">
         <StorageBanner />
       </div>
-      <div ref={copy} className={cx('trail-copy', hasCharacters && 'trail-copy--back')}>
+      <div ref={copy} className={cx('trail-copy', hasCharacters && 'trail-copy--back', !loaded && 'trail-copy--waiting')}>
         {hasCharacters ? (
           <div className="trail-copy__back">
             <h1 className="trail-copy__welcome">{t('home.welcomeBack')}</h1>
