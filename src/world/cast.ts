@@ -29,9 +29,9 @@ export function deriveCast(manifest: GameManifest | null, world: World): CastMem
       h: need.h,
       priority: need.priority,
       required: need.required,
-      spare: false,
+      spare: need.spare,
       art,
-      status: art ? 'drawn' : need.required ? 'needed' : 'optional',
+      status: art ? 'drawn' : need.spare ? 'spare' : need.required ? 'needed' : 'optional',
       onScreen: need.used,
       count: 0,
     });

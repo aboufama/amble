@@ -54,7 +54,7 @@ const DEFS: StarterDef[] = [
 ];
 
 /** The fixture game's art keys (the stub opens it for every starter). */
-const FIXTURE_KEYS: CastKey[] = ['hero', 'moonKing', 'grumble', 'star', 'ground', 'ledge', 'shot', 'orb'];
+const FIXTURE_KEYS: CastKey[] = ['hero', 'boss', 'minion', 'ground', 'ledge', 'shot', 'orb', 'bomb'];
 
 function infoOf(d: StarterDef): StarterInfo {
   return {

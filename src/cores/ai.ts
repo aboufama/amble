@@ -217,40 +217,10 @@ export function extractManifest(files: readonly SourceFile[], manifest: KitManif
   return { statics: r.statics, art: r.art };
 }
 
-/**
- * The kit's API as the validator's manifest: from the player core's `KIT_API` when it has one, else the
- * v1 surface of §5.16 (so validation works before the player core lands).
- */
+/** The kit's API as the validator's manifest: the player core's `KIT_API` (scene, namespaces, actor methods, synonyms, reserved names). */
 export function kitManifest(api: KitApi = KIT_API): KitManifest {
-  if (api.namespaces.length) {
-    const scene = api.namespaces.find((n) => n.name === '')?.members.map((m) => m.name) ?? [];
-    const namespaces: Record<string, string[]> = {};
-    for (const ns of api.namespaces) if (ns.name) namespaces[ns.name] = ns.members.map((m) => m.name);
-    return { globals: ['Amble', 'Phaser'], sceneMethods: scene, namespaces };
-  }
-  return FALLBACK_KIT_MANIFEST;
+  return api;
 }
-
-const words = (s: string): string[] => s.split(/\s+/).filter(Boolean);
-
-/** §5.16's scene and namespaces (FOUNDATION-STUB until the player core's KIT_API lands). */
-const FALLBACK_KIT_MANIFEST: KitManifest = {
-  globals: ['Amble', 'Phaser', 'localStorage', 'sessionStorage'],
-  sceneMethods: words(
-    'tune art hasArt spawn spawnHero spawnEnemy all group shoot collide overlap every after wait cooldown brain phases waves follow worldSize ' +
-      'parallax weather level platform chunks flipGravity portal win lose restart addScore highScore setHighScore sfx rand pick chance dist angleTo ' +
-      'blast box ball stack pyramid wreckingBall ragdoll grab impacts stats hero score clock timeScale gravityFlipped dial twists init preload create update',
-  ),
-  namespaces: {
-    fx: words('shake hitstop slowmo flash punch chroma burst explode shockwave dust squash trail ghost hurtFlash halo lightning confetti vignette desaturate motion'),
-    ui: words('text big pop hint score setScore hearts bossBar bar say dialogue button timer panel'),
-    pattern: words('ring spread aimed spiral rain wall laser'),
-    music: words('play intensity stop'),
-    combo: words('count best window mult hit reset'),
-    controls: words('x y left right up down jump fire dash action held pressed released pointer bind virtual'),
-    twists: words('isOn list'),
-  },
-};
 
 // ------------------------------------------------------------------ class links
 
