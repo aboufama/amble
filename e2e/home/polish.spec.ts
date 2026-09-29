@@ -4,6 +4,7 @@
  */
 import type { Page } from '@playwright/test';
 import { expect, gotoRoute, openAmble, test } from '../helpers/app';
+import { mockAi } from '../helpers/mockAi';
 
 /** Makes worlds from the Boss fight seed with no hero drawn (as "Pick a world" or a plan does). */
 async function makeWorlds(page: Page, titles: string[]): Promise<void> {
@@ -69,4 +70,10 @@ test('the empty world list offers a New world', async ({ page }) => {
   await make.click();
   await expect(page).toHaveURL(/#\/new$/);
   await expect(page.getByTestId('screen-new')).toBeVisible();
+});
+
+test('#/new?idea=1 puts the caret in the idea box, not on the sheet\'s close button', async ({ page }) => {
+  await mockAi(page);
+  await openAmble(page, { clean: true, ai: 'mock', route: '#/new?idea=1' });
+  await expect(page.getByTestId('idea-field')).toBeFocused();
 });
