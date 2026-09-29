@@ -59,18 +59,21 @@ File names: lowercase letters, digits and dashes, ending in .js (boss.js, level-
 
 const GAME = `# THE GAME
 A game is up to 8 small files (each under 400 lines). game.js is required and loads last; other files load
-first in alphabetical order and may only declare classes, functions and constants. game.js declares:
+first in alphabetical order and may only declare classes, functions and constants. Each file runs as its own
+script: declare a top-level name (FLOOR, spawnWave) in one file only, and use it from the others.
+game.js declares:
 class Game extends Amble.Scene {
   static config = { title, subtitle, physics: 'arcade' | 'matter' | 'none', gravity, background, controls };
   static art = { key: { kind, rig, role, w, h, facing, name, ask, about, pronoun, priority, required, spare }, ... };
   static dials = { key: { label, value, min, max, step, live, words, for }, ... };
   static sounds = { key: { caption, segments: [...] }, ... };          (optional)
   create() { ... }
-  update(time, dt) { ... }                                              (optional)
+  update(time, dt) { ... }                                  (optional; dt is the ms since the last frame)
 }
 The static fields hold plain literals only (strings, numbers, true/false, arrays, objects): Amble reads them
 without running the game. The screen is 960x540 game pixels, (0, 0) at the top left, y grows downward; angles
-are degrees (0 right, 90 down). Keep state on this (this.boss, this.rage) and build everything in create().
+are degrees (0 right, 90 down). Keep state on this in names of your own (this.boss, this.rage, this.stage) and
+build everything in create().
 Art fields: kind: character | item | projectile | prop | terrain | background | decor; rig (characters):
 biped | quadruped | flyer | swimmer | blob | object | none; role: hero | enemy | boss | npc | item | hazard |
 prop | terrain | projectile | enemyShot | decor | background; facing: right | left | viewer; pronoun: him |
@@ -90,7 +93,11 @@ Keys are camelCase (moonKing, star, lavaBall).
   'shot' and enemy shots 'orb' unless you pass key. Never write collide/overlap code for these.
 - level() and platform() make solid ground and ledges ('#' is 'ground'); a legend entry with a character or
   item key spawns it there. phases() shows the big title, shakes and flashes; damage() flashes, knocks back
-  and bursts particles; the title card, win and lose screens, R to restart and touch buttons are automatic.`;
+  and bursts particles; the title card, win and lose screens, R to restart and touch buttons are automatic.
+- Actors send events: actor.on('die' | 'hurt' | 'stomp' | 'pickup' | 'land' | 'jump' | 'shoot' | 'drawn', fn)
+  ('drawn': the student's drawing just arrived). A shot from the hero, or with role: 'hero', hits enemies; every
+  other shot (spawnProjectile's too) hits the hero.
+- Levels: this.setLevel(n) then this.restart() builds level n: create() runs again and reads this.levelNumber.`;
 
 const ART = `# ART IS HUMAN (the most important rule)
 Never draw characters, creatures, items, platforms or scenery with Graphics, shapes, text, emoji or generated
@@ -123,7 +130,7 @@ const KIT_OPTIONS = `Options you will use most:
   spawn: { hp, points, group, gravity (false floats), bounce, drag, immovable, vx, vy, speed, angle, scale,
          depth, tint, life (ms), float (bob px), trail, glow, hitbox (0-1 of w), circle, onPickup(hero, item) }
   shots and patterns: { key, speed, damage, gravity, bounce, life (ms), pierce, homing (target), turn, spin,
-         spread (deg), count, arc (deg), scale, blend: 'add', onExpire(shot) }
+         spread (deg), count, arc (deg), scale, blend: 'add', role: 'hero' | 'enemy', onExpire(shot) }
   platformer: { speed, jump, jumps (2 = double jump), dash: true, stomp, maxFall }; runner adds { maxSpeed,
          speedUp }; topdown: { speed }; flyer: { speed, lift, glide }
   shooter: { key, every (ms), speed, damage, count, arc, spread, aim: 'facing' | '8way' | 'pointer' | 'up', auto }
@@ -141,8 +148,10 @@ const RULES = `# RULES
   parent, top, opener, window.open, location, document, cookies, indexedDB, or new Phaser.Game.
   localStorage works (it is saved with the world). Games never ask players to type.
 - Do not create objects in update() unless behind a condition, cooldown or pool (shoot and pattern pool).
-- Kit names on this (never assign them): fx, ui, controls, music, combo, pattern, twists, dials, dial, clock.
-  this.hero is set by spawnHero; change the score with addScore().
+- Never store your own things in a name the kit or Phaser already uses on this: fx, ui, controls, music, combo,
+  pattern, twists, dials, dial, clock, any this.* method in the KIT above (this.level() builds levels, so name
+  yours this.stage), or Phaser's add, physics, time, events, input, cameras, tweens. this.hero is set by
+  spawnHero; change the score with addScore().
 - Arcade: at most 1000 bullets. Matter: at most 150 moving bodies. At most 1500 particles. No Graphics
   redrawn every frame. No setText every frame. At most 2 camera effects, only through this.fx.
 - Short, clear code with a one-line comment on each fun part, because students read it.
