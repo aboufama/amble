@@ -191,12 +191,31 @@ test.describe('the player', () => {
     // A point on the boss that no other thing covers (its orbs fly out of its middle from the start).
     const where = await frame.evaluate(() => {
       type Box = { key: string | null; x: number; y: number; w: number; h: number };
-      const objects = ((window as unknown as GameWin).__ambleGame as unknown as { objects(): Box[] }).objects();
+      type Shown = { active: boolean; visible: boolean; depth?: number; getBounds?: () => { x: number; y: number; width: number; height: number } };
+      type Cam = { worldView: { x: number; y: number }; zoom: number; x: number; y: number };
+      const hook = (window as unknown as GameWin).__ambleGame as unknown as {
+        objects(): Box[];
+        find(key: string): { depth?: number } | null;
+        game: { canvas: HTMLCanvasElement; scale: { width: number }; scene: { getScenes(active: boolean): Array<{ sys: { settings: { key: string } }; cameras: { main: Cam }; children: { list: Shown[] } }> } };
+      };
+      const objects = hook.objects();
       const boss = objects.find((o) => o.key === 'boss');
       if (!boss) throw new Error('no boss on screen');
-      const others = objects.filter((o) => o !== boss);
-      for (const fy of [0.5, 0.4, 0.6, 0.3, 0.7]) {
-        for (const fx of [0.5, 0.4, 0.6, 0.3, 0.7]) {
+      const others: Array<{ x: number; y: number; w: number; h: number }> = objects.filter((o) => o !== boss);
+      // The objects list leaves shots out, so the orbs come from what the scenes draw over the boss.
+      const k = hook.game.canvas.getBoundingClientRect().width / hook.game.scale.width || 1;
+      const bossDepth = hook.find('boss')?.depth ?? 0;
+      for (const scene of hook.game.scene.getScenes(true)) {
+        if (scene.sys.settings.key === '__amble_ui') continue;
+        const cam = scene.cameras.main;
+        for (const o of scene.children.list) {
+          if (!o.active || !o.visible || !o.getBounds || (o.depth ?? 0) <= bossDepth) continue;
+          const r = o.getBounds();
+          others.push({ x: ((r.x - cam.worldView.x) * cam.zoom + cam.x) * k, y: ((r.y - cam.worldView.y) * cam.zoom + cam.y) * k, w: r.width * cam.zoom * k, h: r.height * cam.zoom * k });
+        }
+      }
+      for (const fy of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {
+        for (const fx of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {
           const x = boss.x + boss.w * fx;
           const y = boss.y + boss.h * fy;
           if (!others.some((o) => x >= o.x - 4 && x <= o.x + o.w + 4 && y >= o.y - 4 && y <= o.y + o.h + 4)) return { x, y };
