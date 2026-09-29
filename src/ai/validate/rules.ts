@@ -198,6 +198,33 @@ function kitCalls(ctx: FileContext, n: CallExpression, anc: readonly AnyNode[], 
   }
 }
 
+/** Scene members game code may set: the kit's setters for the hero, the score and the game's speed. */
+const SETTABLE = new Set(['hero', 'score', 'timeScale']);
+
+/** Scene methods the kit itself calls (shots, pickups, bosses, waves, restarts), whatever the game calls. */
+const KIT_CALLS = new Set(['sfx', 'shoot', 'spawn', 'spawnItem', 'phases', 'flipGravity', 'brain', 'win', 'lose', 'blast', 'restart']);
+
+/**
+ * Storing a game's own things in a name the kit or Phaser already uses on the scene: `this.level = 2` hides
+ * the kit's level() (and the scene object is reused when the level restarts, so the next create() breaks),
+ * `this.time = 0` breaks Phaser's clock. A kit method that neither the kit nor the game ever calls
+ * (`this.portal = null` in a game with no this.portal(...)) is only hidden, so that is a warning.
+ */
+function overwrite(ctx: FileContext, node: AnyNode, name: string): void {
+  const alt = `my${name[0].toUpperCase()}${name.slice(1)}`;
+  if (ctx.api.reserved.has(name)) {
+    ctx.add('error', 'kit-overwrite', node, `\`this.${name}\` is part of the Amble kit; pick another name (e.g. this.${alt}).`, { name });
+  } else if (SETTABLE.has(name)) {
+    return;
+  } else if (PHASER_SCENE_MEMBERS.includes(name)) {
+    ctx.add('error', 'kit-overwrite', node, `\`this.${name}\` is already part of the Phaser scene; storing something else in it breaks the game. Pick another name for yours, like this.${alt}.`, { name });
+  } else if (ctx.api.sceneMethods.has(name) && (KIT_CALLS.has(name) || ctx.facts.called.has(name))) {
+    ctx.add('error', 'kit-overwrite', node, `\`this.${name}\` is already a kit method; storing something else in it breaks the kit. Pick another name for yours, like this.${alt}.`, { name });
+  } else if (ctx.api.sceneMethods.has(name)) {
+    ctx.add('warning', 'kit-overwrite', node, `\`this.${name}\` hides the kit method this.${name}(); pick another name for yours, like this.${alt}, so both keep working.`, { name });
+  }
+}
+
 function probeRules(ctx: FileContext): void {
   const updates = ctx.updateMethods();
   const displayVars = new Map<string, CallExpression>();
@@ -277,11 +304,13 @@ function probeRules(ctx: FileContext): void {
     AssignmentExpression(n, _s, anc) {
       const left = memberPath(n.left);
       const m = /^this\.(\w+)$/.exec(left);
-      if (m && ctx.api.reserved.has(m[1]) && thisIsScene(anc, ctx.sceneClasses)) {
-        const alt = `my${m[1][0].toUpperCase()}${m[1].slice(1)}`;
-        ctx.add('error', 'kit-overwrite', n, `\`this.${m[1]}\` is part of the Amble kit; pick another name (e.g. this.${alt}).`, { name: m[1] });
-      }
+      if (m && thisIsScene(anc, ctx.sceneClasses)) overwrite(ctx, n, m[1]);
       if (/physics\.world\.timeScale$/.test(left)) ctx.add('warning', 'arcade-timescale', n, 'Arcade `world.timeScale` is inverted (2 = half speed). Use `this.timeScale = 0.5` or `this.fx.slowmo()`.');
+    },
+    PropertyDefinition(n, _s, anc) {
+      // A class field (`level = 1;`) is the same as `this.level = 1` in the constructor.
+      const cls = anc[anc.length - 3];
+      if (!n.static && !n.computed && n.key.type === 'Identifier' && cls && ctx.sceneClasses.has(cls)) overwrite(ctx, n, n.key.name);
     },
     VariableDeclarator(n) {
       if (n.init?.type === 'CallExpression' && /^this\.add\.(sprite|image)$/.test(memberPath(n.init.callee)) && n.id.type === 'Identifier') displayVars.set(n.id.name, n.init);

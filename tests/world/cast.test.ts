@@ -89,4 +89,14 @@ describe('warmupCode', () => {
     expect(planSize({ size: 'huge' })).toEqual({ w: 140, h: 224 });
     expect(planSize({ size: 'screen' })).toEqual({ w: 960, h: 540 });
   });
+
+  it('sizes things without bones by their kind, as the build is told (§5.4)', () => {
+    expect(planSize({ size: 'small', kind: 'terrain' })).toEqual({ w: 32, h: 32 });
+    expect(planSize({ size: 'small', kind: 'item' })).toEqual({ w: 28, h: 28 });
+    expect(planSize({ size: 'tiny', kind: 'projectile' })).toEqual({ w: 16, h: 16 });
+    expect(planSize({ size: 'huge', kind: 'background' })).toEqual({ w: 960, h: 540 });
+    const plan = samplePlan();
+    const item = { ...plan.cast[0], key: 'leaf', kind: 'item' as const, rig: 'none' as const, role: 'item' as const, size: 'small' as const, required: false };
+    expect(warmupCode({ ...plan, cast: [...plan.cast, item] })[0].source).toMatch(/leaf: \{ kind: "item", [^}]*w: 28, h: 28,/);
+  });
 });

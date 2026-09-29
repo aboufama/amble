@@ -91,6 +91,11 @@ export function robotFail(file: string, line: number, message: string): RobotOut
   return { pass: false, reasons: [message], errors: [{ file, line, column: 5, phase: 'update', message, count: 12 }], warnings: ['a warning'], summary: 'failed · 6 s · hero moved · 1 error' };
 }
 
+/** A run the robot stopped for taking too long, with nothing thrown by the game (as `playerRobot` reports it). */
+export function robotFrozen(message = 'The game did not start.'): RobotOutcome {
+  return { pass: false, reasons: [message], errors: [{ file: 'game.js', line: 0, column: 0, phase: 'frozen', message, count: 1 }], warnings: [], summary: 'failed · 0 s · no hero · 1 error' };
+}
+
 /** A robot that answers from a queue (PASS when it runs out). */
 export function fakeRobot(outcomes: Array<RobotOutcome | null | ((signal: AbortSignal) => Promise<RobotOutcome | null>)> = []) {
   const runs: Array<readonly CodeFile[]> = [];

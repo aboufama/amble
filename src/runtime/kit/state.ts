@@ -197,6 +197,9 @@ export class Kit {
   start(quiet = false): void {
     this.ui.clearPanel('title');
     this.state = 'play';
+    // The title card is for the first start (it also unlocks audio). After it, a level restart (the next
+    // level, playing again, a dial that restarts) plays at once, until the editor loads the game again.
+    env().autostart = true;
     if (!quiet) this.ui.big('GO!', { ms: 700, color: '#7ddf8c' });
     env().post({ type: 'state', state: 'running' });
     env().post({ type: 'event', event: { kind: 'start' } });

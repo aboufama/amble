@@ -17,6 +17,8 @@ export interface GameFacts {
   artUsed: Set<string>;
   /** Dials declared `live: false`: a change restarts the level, so a single read of one is right. */
   restartDials: ReadonlySet<string>;
+  /** Method names the game calls anywhere (`this.level(...)`, `scene.shoot(...)`). */
+  called: ReadonlySet<string>;
 }
 
 export class FileContext {

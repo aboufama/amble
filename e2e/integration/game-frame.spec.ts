@@ -1,8 +1,9 @@
 /**
  * The running game's frame, across the player and the kit: a game torn down mid-run leaves no page error
  * (its closed audio stays quiet), a robot test in the spare holds the frozen-game watchdog and leaves the
- * visible game running, the title card's keys never count as the game's controls, and a heal right after
- * a hit leaves the heart full.
+ * visible game running, the title card's keys never count as the game's controls, a heal right after
+ * a hit leaves the heart full, a level restart keeps its level and skips the title card once the game has
+ * started, and a shake's camera kick keeps the game's turn.
  */
 import type { Frame, Page } from '@playwright/test';
 import { expect, gotoRoute, openAmble, test } from '../helpers/app';
@@ -141,3 +142,75 @@ test('a heal right after a hit leaves the heart full', async ({ page }) => {
   await expect.poll(async () => (await inScene<Array<{ tweens: number }>>(frame, HEARTS)).every((h) => h.tweens === 0), { timeout: 15_000 }).toBe(true);
   expect((await inScene<Array<{ alpha: number }>>(frame, HEARTS)).map((h) => h.alpha)).toEqual(before.map(() => 1));
 });
+
+test('a level restart keeps the level setLevel chose, and playing again after a win starts at level 1', async ({ page }) => {
+  test.setTimeout(150_000);
+  await openWorld(page);
+  // A game that notes the level each create() builds (its own fields live on through a level restart): level 1,
+  // then setLevel(2) and restart(), then a win and restart() (play again). It reports what it saw as an error,
+  // which the robot test collects.
+  const LEVELS = `class Game extends Amble.Scene {
+  static config = { physics: 'none' };
+  create() {
+    this.seen = [...(this.seen || []), this.levelNumber];
+    if (this.seen.length === 1) this.after(50, () => { this.setLevel(2); this.restart(); });
+    else if (this.seen.length === 2) this.after(50, () => { this.win(); this.after(50, () => this.restart()); });
+    else throw new Error('levels ' + this.seen.join(' '));
+  }
+}
+`;
+  expect(await robotErrors(page, LEVELS)).toContainEqual(expect.stringContaining('levels 1 2 1'));
+});
+
+test('once the game has started, a level restart plays at once: no title card between levels', async ({ page }) => {
+  test.setTimeout(150_000);
+  await openWorld(page);
+  const frame = await gameFrame(page);
+  const state = () => frame.evaluate(() => (window as unknown as { __ambleGame: { state: string } }).__ambleGame.state);
+  const creates = () => frame.evaluate(() => (window as unknown as { __ambleGame: { createCount: number } }).__ambleGame.createCount);
+  expect(await state()).toBe('title');
+  await startGame(page, frame);
+  const before = await creates();
+  // Level 2 the documented way; the game's own "LEVEL 2" banner is the title the student sees.
+  await inScene(frame, '(s) => { s.setLevel(2); s.restart(); }');
+  await expect.poll(creates, { timeout: 20_000 }).toBeGreaterThan(before);
+  await expect.poll(state, { timeout: 20_000 }).toBe('running');
+  expect(await inScene<number>(frame, '(s) => s.levelNumber')).toBe(2);
+});
+
+test("a big shake kicks the camera and eases back to the game's own turn, so a flipped screen stays flipped", async ({ page }) => {
+  test.setTimeout(150_000);
+  await openWorld(page);
+  // The game turns the screen upside down, then a big shake (0.014 and up) kicks the camera. The game reports
+  // whether the kick moved the camera, and where the camera came to rest.
+  const FLIPPED = `class Game extends Amble.Scene {
+  static config = { physics: 'none' };
+  create() {
+    const cam = this.cameras.main;
+    cam.setRotation(Math.PI);
+    this.after(50, () => {
+      this.fx.shake(0.02, 180);
+      const kicked = Math.abs(cam.rotation - Math.PI) > 0.001;
+      this.after(900, () => { throw new Error('camera ' + kicked + ' ' + cam.rotation.toFixed(2)); });
+    });
+  }
+}
+`;
+  expect(await robotErrors(page, FLIPPED)).toContainEqual(expect.stringContaining('camera true 3.14'));
+});
+
+/** Runs `source` as the open world's game in a robot test (no autopilot) and returns the errors it reported. */
+async function robotErrors(page: Page, source: string): Promise<string[]> {
+  return page.evaluate(async (source) => {
+    type Amble = { getState(): { session: { world: object | null }; prefs: unknown }; services: { player: { robot(init: unknown): Promise<{ raw: { errors: Array<{ message: string }> } }> } } };
+    const a = (window as unknown as { __amble: Amble }).__amble;
+    const initUrl = '/src/world/init.ts';
+    const prefsUrl = '/src/app/player/prefs.ts';
+    const { toInitMessage } = (await import(/* @vite-ignore */ initUrl)) as { toInitMessage(w: unknown, o: unknown): Promise<unknown> };
+    const { playerPrefsFrom } = (await import(/* @vite-ignore */ prefsUrl)) as { playerPrefsFrom(p: unknown): Record<string, unknown> };
+    const world = { ...a.getState().session.world, code: [{ path: 'game.js', source, authors: [], locked: [] }] };
+    const init = await toInitMessage(world, { mode: 'robot', prefs: { ...playerPrefsFrom(a.getState().prefs), muted: true }, robot: { gameMs: 3000, seed: 1, bot: 'none' }, autostart: true });
+    const r = await a.services.player.robot(init);
+    return r.raw.errors.map((e) => e.message);
+  }, source);
+}

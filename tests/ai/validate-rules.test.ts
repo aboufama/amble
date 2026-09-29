@@ -4,6 +4,7 @@ import { instrument } from '../../src/ai/validate/instrument';
 import { peekStaticLiteral } from '../../src/ai/validate/statics';
 import type { KitManifest, ValidationResult } from '../../src/ai/validate/types';
 import { validateCode, validateGame } from '../../src/ai/validate/validate';
+import { kitManifest } from '../../src/cores/aiCode';
 import { KIT_API } from '../../src/play';
 import { FIXTURES } from '../../src/runtime/fixtures';
 import { PROBE_MANIFEST } from './fixtures/probeManifest';
@@ -237,6 +238,38 @@ describe('names', () => {
     const r = validateGame(files, { manifest: KIT });
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual([]);
+  });
+
+  it('flags a top-level name declared in two files: each file runs as its own script', () => {
+    const files = [
+      { path: 'moves.js', content: 'const FLOOR = 496;\nfunction volley() {}\nvar tries = 1;\n' },
+      { path: 'zombies.js', content: '// The zombies.\nconst FLOOR = 480;\nfunction volley() {}\nvar tries = 2;\nclass Zed {}\n' },
+      { path: 'game.js', content: game('    const z = new Zed();\n    volley(FLOOR, tries);') },
+    ];
+    const r = validateGame(files, { manifest: KIT });
+    // Two functions or two vars may share a name (the later one wins); a const, let or class may not.
+    expect(r.errors.map((e) => [e.rule, e.file, e.line])).toEqual([['duplicate-declaration', 'zombies.js', 2]]);
+    expect(r.errors[0].message).toBe('`FLOOR` is already declared in moves.js. Every file runs as its own script, so each top-level name can be declared only once in the whole game: use the one in moves.js, or give this one another name.');
+    expect(r.errors[0].kid).toBe('Line 2: "FLOOR" is already made in another file of this game. Each name can only be made once.');
+    // Load order decides which one is "again": helpers alphabetically, then game.js.
+    const inGame = validateGame([{ path: 'a.js', content: 'const SPEED = 1;\n' }, { path: 'game.js', content: `const SPEED = 2;\n${game('')}` }], { manifest: KIT });
+    expect(inGame.errors.map((e) => [e.rule, e.file])).toEqual([['duplicate-declaration', 'game.js']]);
+  });
+
+  it('flags game state stored in names the kit or Phaser use on the scene: an error when that breaks something', () => {
+    const lines = ['this.level = 1;', 'this.time = 0;', 'this.portal = null;', 'this.hero = null;', 'this.score = 5;', 'this.timeScale = 0.5;', 'this.stage = 2;', "this.level(['#']);", 'this.win = true;'];
+    const r = validateCode(game(lines.map((l) => `    ${l}`).join('\n')), { manifest: kitManifest(), fix: false });
+    // The game calls level(), time is Phaser's, and the kit itself calls win(): errors. Nothing calls portal(): a warning.
+    expect(r.errors.filter((e) => e.rule === 'kit-overwrite').map((e) => e.line)).toEqual([3, 4, 11]);
+    expect(r.errors[0].message).toBe('`this.level` is already a kit method; storing something else in it breaks the kit. Pick another name for yours, like this.myLevel.');
+    expect(r.errors[1].message).toBe('`this.time` is already part of the Phaser scene; storing something else in it breaks the game. Pick another name for yours, like this.myTime.');
+    expect(r.warnings.filter((w) => w.rule === 'kit-overwrite').map((w) => [w.line, w.message])).toEqual([
+      [5, '`this.portal` hides the kit method this.portal(); pick another name for yours, like this.myPortal, so both keep working.'],
+    ]);
+    // A class field is the same thing: sfx() is one the kit calls itself.
+    const field = validateCode('class Game extends Amble.Scene {\n  platform = null;\n  sfx = null;\n  create() {}\n}\n', { manifest: kitManifest(), fix: false });
+    expect(field.errors.map((e) => [e.rule, e.line])).toEqual([['kit-overwrite', 3]]);
+    expect(field.warnings.map((w) => [w.rule, w.line])).toEqual([['kit-overwrite', 2]]);
   });
 
   it('only lets game.js declare the Game class', () => {

@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import type { AiProgress } from '../../src/model/types';
 import { runCodeJob, type CodeJob } from '../../src/pipeline/jobs';
-import { deps, fakeChat, fakeRobot, fixture, hangs, MOON_KING, PASS, robotFail, world } from './helpers';
+import { warmupCode } from '../../src/world/warmup';
+import { code, deps, fakeChat, fakeRobot, fixture, hangs, MOON_KING, PASS, PLAN_SNAIL, robotFail, robotFrozen, world } from './helpers';
 
 const change = (words = 'make grumbles squashable', over: Partial<CodeJob> = {}): CodeJob => ({ task: 'change', world: world(), words, level: 'middle', ...over });
 
@@ -167,6 +168,69 @@ describe('the job state machine', () => {
     const r = await runCodeJob(change(), deps(chat), track().events, new AbortController().signal);
     expect(r.kind).toBe('accepted');
     expect(calls[1].user).toContain('Your reply was not an AMBLE PATCH.');
+  });
+
+  it('tests again instead of asking for a fix when the robot only timed out (a busy Chromebook, not the code)', async () => {
+    const { calls, chat } = fakeChat([fixture('change-stomp.patch')]);
+    const robot = fakeRobot([robotFrozen('The game did not start.'), PASS]);
+    const r = await runCodeJob(change(), deps(chat, robot.robot), track().events, new AbortController().signal);
+    expect(r).toMatchObject({ kind: 'accepted', repairs: 0, tested: true });
+    expect(calls.map((c) => c.task)).toEqual(['change']);
+    expect(robot.runs).toHaveLength(2);
+  });
+
+  it('asks for a fix when the robot times out twice, and at once when the game threw before it froze', async () => {
+    const twice = fakeChat([fixture('change-stomp.patch'), REPLACE_GAME]);
+    const robot = fakeRobot([robotFrozen(), robotFrozen(), PASS]);
+    const r = await runCodeJob(change(), deps(twice.chat, robot.robot), track().events, new AbortController().signal);
+    expect(r).toMatchObject({ kind: 'accepted', repairs: 1 });
+    expect(twice.calls.map((c) => c.task)).toEqual(['change', 'fix']);
+    expect(twice.calls[1].user).toContain('frozen: The game did not start.');
+
+    const threw = robotFrozen('The game did not start.');
+    threw.errors.unshift({ file: 'game.js', line: 12, column: 3, phase: 'load', message: "SyntaxError: Identifier 'FLOOR' has already been declared", count: 1 });
+    const once = fakeChat([fixture('change-stomp.patch'), REPLACE_GAME]);
+    const robot2 = fakeRobot([threw, PASS]);
+    const r2 = await runCodeJob(change(), deps(once.chat, robot2.robot), track().events, new AbortController().signal);
+    expect(r2).toMatchObject({ kind: 'accepted', repairs: 1 });
+    expect(robot2.runs).toHaveLength(2);
+    expect(once.calls[1].user).toContain("load: SyntaxError: Identifier 'FLOOR' has already been declared");
+  });
+
+  it("tells a build the plan's cast and sizes, not the Warm-up game's", async () => {
+    const plan = PLAN_SNAIL;
+    // The world a build runs on is still its Warm-up, whose code declares the plan's cast too (here, sized otherwise).
+    const warm = code('game.js', warmupCode(plan)[0].source.replace(/w: 28, h: 28/g, 'w: 99, h: 99'));
+    expect(warm.source).toContain('w: 99, h: 99');
+    const job: CodeJob = { task: 'build', world: world({ code: [warm], cast: {} }), words: plan.pitch, level: 'middle', build: { plan, starter: 'moon-king', baseFiles: [code('game.js', MOON_KING)] } };
+    const { calls, chat } = fakeChat([fixture('build-moon-king.patch')]);
+    await runCodeJob(job, deps(chat), track().events, new AbortController().signal);
+    expect(calls[0].user).toContain('- leaf "Lettuce leaf" · item · JUST BONES (not drawn yet) · 28x28');
+    expect(calls[0].user).toContain('- saltKing "The Salt King" · character · biped · JUST BONES (not drawn yet) · 140x224 · faces left');
+  });
+
+  describe('a build on a starter with a helper file (every real starter has one)', () => {
+    const plan = PLAN_SNAIL;
+    const moves = code('moves.js', 'const FLOOR = 496;\n\n/** Fires a volley. */\nfunction volley(scene) {\n  return FLOOR;\n}\n');
+    const job = (): CodeJob => ({ task: 'build', world: world({ code: [], cast: {} }), words: plan.pitch, level: 'middle', build: { plan, starter: 'moon-king', baseFiles: [moves, code('game.js', MOON_KING)] } });
+    const build = (helper: string, gameUses: string) =>
+      `@@amble-patch 1\n@@summary The snail's rescue.\n@@safety ok\n@@file salt.js create\n${helper}@@file game.js create\n${MOON_KING.replace('  create() {\n', `  create() {\n    ${gameUses}\n`)}@@end\n`;
+
+    it('drops the starter helper when the reply declares its names again in a file of its own', async () => {
+      const { chat } = fakeChat([build('const FLOOR = 480;\n\nfunction saltWave(scene) {\n  return FLOOR;\n}\n', 'this.floorY = FLOOR - 10;')]);
+      const r = await runCodeJob(job(), deps(chat), track().events, new AbortController().signal);
+      expect(r.kind).toBe('accepted');
+      if (r.kind !== 'accepted') return;
+      expect(r.files.map((f) => f.path)).toEqual(['salt.js', 'game.js']);
+    });
+
+    it('keeps the starter helper when the new files still call it', async () => {
+      const { chat } = fakeChat([build('function saltWave(scene) {\n  return volley(scene);\n}\n', 'this.floorY = FLOOR - 10;')]);
+      const r = await runCodeJob(job(), deps(chat), track().events, new AbortController().signal);
+      expect(r.kind).toBe('accepted');
+      if (r.kind !== 'accepted') return;
+      expect(r.files.map((f) => f.path)).toEqual(['moves.js', 'salt.js', 'game.js']);
+    });
   });
 
   it('accepts untested when there is no player (tested: false)', async () => {

@@ -1,7 +1,7 @@
 /** "Amble made it a little gentler: {note}" (§2.8 Toned down; M5): a paper note inside the Ask card. */
-import { t } from '../../i18n';
 import type { SafetyNote as Note } from '../../model/types';
 import { PaperCard } from '../../ui/components';
+import { gentlerText } from './words';
 import './ai.css';
 
 export function SafetyNote({ note }: { note: Note }) {
@@ -9,7 +9,7 @@ export function SafetyNote({ note }: { note: Note }) {
   return (
     <PaperCard className="ai-paper" tilt={-0.6} cut>
       <p className="ai-paper__text" role="note" data-testid="ai-safety-note">
-        {t('ai.gentler', { note: note.note.trim() })}
+        {gentlerText(note.note)}
       </p>
     </PaperCard>
   );

@@ -33,6 +33,7 @@ export type RuleId =
   | 'bad-base-class'
   | 'class-name'
   | 'duplicate-game-class'
+  | 'duplicate-declaration'
   | 'missing-super'
   | 'async-lifecycle'
   | 'unknown-api'

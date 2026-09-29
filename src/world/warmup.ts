@@ -4,13 +4,15 @@
  * the world's title. A working minimal version.
  */
 import type { CodeFile, PlanCastItem, PlanReply } from '../model/types';
+import { sizeOf } from '../pipeline/sizes';
 
-/** The plan's relative sizes in game px; the hero unit is 40x64 (§5.4). */
-export function planSize(item: Pick<PlanCastItem, 'size'>): { w: number; h: number } {
-  const scale = { tiny: 0.4, small: 0.7, hero: 1, big: 2, huge: 3.5 } as const;
-  if (item.size === 'screen') return { w: 960, h: 540 };
-  const k = scale[item.size];
-  return { w: Math.round(40 * k), h: Math.round(64 * k) };
+/**
+ * The plan's relative sizes in game px (§5.4), by the pipeline's one table: characters scale the 40x64 hero
+ * unit, things without bones are square on the hero's width, terrain is one 32 px tile, a background fills
+ * the screen. The build is told these same sizes, so the Warm-up's request notes match the built game's.
+ */
+export function planSize(item: Pick<PlanCastItem, 'size'> & Partial<Pick<PlanCastItem, 'kind'>>): { w: number; h: number } {
+  return sizeOf(item.size, item.kind ?? 'character');
 }
 
 /** Members that stand in the line-up (not scenery or shots). */

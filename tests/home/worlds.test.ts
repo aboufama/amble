@@ -83,6 +83,19 @@ describe("a plan's world", () => {
     expect(saved?.steps.at(-1)).toMatchObject({ kind: 'ask', by: 'ai', tested: true });
   });
 
+  it("quotes the student's own idea in the build's footstep, never the plan's pitch as if they said it", async () => {
+    const files = [{ path: 'game.js', source: '// built', authors: [['ai', 1]] as Array<['ai', number]>, locked: [] }];
+    const accepted: AiOutcome = { kind: 'accepted', files, manifest: {} as never, summary: 'Built', play: '', next: [], safety: { kind: 'ok', note: '' }, repairs: 0, tested: true, handEditsTouched: false, newArt: [] };
+    const build = vi.fn<AiService['build']>(async () => accepted);
+    const { store } = services({ ai: { ...createAppAi(), build } });
+    const plan = samplePlan();
+    const world = await createPlanWorld(plan, 'a snail who rescues her friends', null);
+    startBuild(world, plan);
+    expect(getState().ai.job).toMatchObject({ worldId: world.id, task: 'build', request: 'a snail who rescues her friends' });
+    await vi.waitFor(() => expect(getState().ai.job).toBeNull());
+    expect((await store.worlds.get(world.id))?.steps.at(-1)).toMatchObject({ kind: 'ask', by: 'ai', request: 'a snail who rescues her friends' });
+  });
+
   it('keeps the Warm-up when the build fails', async () => {
     const build = vi.fn<AiService['build']>(async () => ({ kind: 'failed', reason: 'runtime', message: 'no', details: [] }));
     const { store } = services({ ai: { ...createAppAi(), build } });

@@ -91,6 +91,11 @@ export interface JobEvents {
 
 class Stopped extends Error {}
 
+/** The robot stopped the run for taking too long (it did not start, or its frames stopped finishing), and the game threw nothing. */
+export function timedOut(r: RobotOutcome): boolean {
+  return !r.pass && r.errors.length > 0 && r.errors.every((e) => e.phase === 'frozen');
+}
+
 /** The first reply's headers are what the student reads; a repair's only fill what is missing. */
 function metaOf(prev: PatchMeta | null, patch: Patch): PatchMeta {
   if (prev?.summary) return prev;
@@ -125,7 +130,8 @@ async function run(job: CodeJob, deps: JobDeps, events: JobEvents, signal: Abort
     scope: job.scope ?? null,
     title: job.world.title,
     physics: world.physics,
-    cast: world.cast.length || !job.build ? world.cast : planCastLines(job.build.plan, job.world),
+    // A build's world is still its Warm-up: the plan is what the model builds (and its sizes are the truth).
+    cast: job.build ? planCastLines(job.build.plan, job.world) : world.cast,
     dials: world.dials,
     twistsOn: world.twistsOn,
     groups: world.groups,
@@ -285,8 +291,15 @@ async function run(job: CodeJob, deps: JobDeps, events: JobEvents, signal: Abort
     let tested = false;
     if (deps.robot) {
       events.onProgress({ phase: 'testing' });
-      const r = await deps.robot(checked.files.map((f) => ({ path: f.path, source: f.content, authors: [], locked: [] })), { signal, seed: deps.seed });
+      const candidate = checked.files.map((f) => ({ path: f.path, source: f.content, authors: [], locked: [] }));
+      let r = await deps.robot(candidate, { signal, seed: deps.seed });
       stop();
+      // Stopped for taking too long with nothing thrown: a busy Chromebook, not the code (a loop that never
+      // ends throws "This loop never ends"). Test once more before asking the model to fix what isn't broken.
+      if (r && timedOut(r)) {
+        r = await deps.robot(candidate, { signal, seed: deps.seed });
+        stop();
+      }
       if (r) {
         robot = r;
         baseInput.lastRobot = r.summary;
