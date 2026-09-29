@@ -1,7 +1,11 @@
 /**
- * The `ai` slice (M5): the running job (for the Ask card, the world's progress pill and the Desk's build
- * pill), the last outcome, the helper's status, retry waits, the explainer before the first Ask, explain
- * answers, the last local steer, and the actions that start, stop and apply jobs.
+ * The `ai` slice (M5): the running job (for the wish box, the world's working pill and the Desk's build
+ * pill), the last outcome, the helper's status, retry waits, the last wish that landed (the "Done!"
+ * toast), the last local steer, and the actions that start, stop, apply and undo wishes.
+ *
+ * Wishes feel like magic (MAGIC-BRIEF.md): what the AI wrote for students (summaries, next ideas, notes)
+ * is cleaned of machine words and of a helper speaking as "I" before anything reads it, and nothing here
+ * announces the machinery's phases: "Working on it…", then "Done! …".
  *
  * One job runs per world (§5.2): starting one never stops another world's. Changes and fixes in the open
  * world are applied through the session's `applyAccepted` (M2); builds run while the student draws, so
@@ -13,24 +17,10 @@ import { getServices } from '../app/services';
 import { navigate } from '../app/router';
 import type { ArtNeed } from '../cores/play';
 import { t } from '../i18n';
-import type {
-  AiJobView,
-  AiOutcome,
-  AiProgress,
-  AiStatus,
-  CastKey,
-  ExplainReply,
-  LocalSteer,
-  PlanReply,
-  PlayerError,
-  StepId,
-  StepInput,
-  World,
-  WorldId,
-} from '../model/types';
+import type { AiJobView, AiOutcome, AiProgress, AiStatus, CastKey, LocalSteer, PlanReply, PlayerError, StepId, StepInput, World, WorldId } from '../model/types';
+import { doneText, forStudentsOutcome, waitText } from '../screens/ai/words';
 import { seeChange } from '../screens/footsteps/seeChange';
-import { announce, dismissToast, showToast } from './app';
-import { markSeen } from './prefs';
+import { announce } from './app';
 import { adoptWorld, applyAccepted, loadGame, patchSession, refreshCast, setDial, setTwist } from './session';
 import { getState, setState } from './store';
 
@@ -43,32 +33,26 @@ export interface SteerRecord {
   wasOn: boolean;
 }
 
+/** A wish that landed in a world: "Done! {what changed}" [See what changed] [Undo]. */
+export interface LandedWish {
+  worldId: WorldId;
+  /** Its footstep (See what changed opens it; Undo goes back to the step before it). */
+  stepId: StepId | null;
+  /** "Done! The Moon King throws fireballs now." */
+  text: string;
+  /** The files it changed (Look inside opens the first when there is no step to show). */
+  files: string[];
+  at: number;
+}
+
 export type WaitReason = 'rate-limited' | 'server' | 'network';
 
-/** A request waiting to be sent again (the Ask card counts it down). */
+/** A request waiting to be sent again (the wish box says so, without a ticking counter). */
 export interface AiWait {
   worldId: WorldId;
   reason: WaitReason;
   /** `Date.now()` when it is sent again. */
   until: number;
-}
-
-/** An Ask waiting for the student to read the AI explainer (the first Ask on this device). */
-export interface PendingAsk {
-  worldId: WorldId;
-  words: string;
-  scope: CastKey | null;
-}
-
-/** An explain-only class's answer (§2.8): shown in the Ask card, and as notes in Look inside. */
-export interface ExplainNote {
-  worldId: WorldId;
-  question: string;
-  path: string;
-  reply: ExplainReply | null;
-  /** Why there is no reply (kid words), or null. */
-  error: string | null;
-  at: number;
 }
 
 export interface AiSlice {
@@ -79,21 +63,18 @@ export interface AiSlice {
   outcomeFor: { worldId: WorldId; task: AiJobView['task']; request: string; at: number } | null;
   /** New cast members the running job's game.js declared (they appear before the job ends). */
   streamedArt: ArtNeed[];
-  /** The last local steer, for the toast's Undo. */
+  /** The last local steer, for its toast's Undo. */
   steer: SteerRecord | null;
+  /** The last wish that landed, for its toast (the newest of this and `steer` shows). */
+  landed: LandedWish | null;
   /** The running job's retry wait. */
   wait: AiWait | null;
-  /** The explainer is open before this Ask. */
-  explainer: PendingAsk | null;
-  /** The world an explain request is running for. */
-  explaining: WorldId | null;
-  explain: ExplainNote | null;
   /** What the last accepted change touched: its files, and a file whose student-written lines it rewrote. */
   changed: { worldId: WorldId; files: string[]; handFile: string | null } | null;
 }
 
 export function initialAi(): AiSlice {
-  return { job: null, lastOutcome: null, status: 'off', outcomeFor: null, streamedArt: [], steer: null, wait: null, explainer: null, explaining: null, explain: null, changed: null };
+  return { job: null, lastOutcome: null, status: 'off', outcomeFor: null, streamedArt: [], steer: null, landed: null, wait: null, changed: null };
 }
 
 export function setAiStatus(status: AiStatus): void {
@@ -116,19 +97,12 @@ function shownJob(): AiJobView | null {
   return newest;
 }
 
-const PHASE_WORDS: Partial<Record<AiProgress['phase'], () => string>> = {
-  checking: () => t('ai.stepChecking'),
-  planning: () => t('ai.stepPlanning'),
-  validating: () => t('ai.stepValidating'),
-  testing: () => t('ai.stepTesting'),
-  swapping: () => t('ai.stepSwapping'),
-};
-
 function progressFor(worldId: WorldId): (p: AiProgress) => void {
   return (progress) => {
     const job = running.get(worldId);
     if (!job) return;
-    // Streaming ticks at most 4 times a second; phase changes always go through.
+    // Streaming ticks at most 4 times a second; phase changes always go through. The phases stay out of
+    // sight (no list, no announcements): the wish box only says "Working on it…".
     const now = Date.now();
     const same = job.progress.phase === progress.phase && job.progress.file === progress.file;
     if (same && progress.phase === 'writing' && now - (ticks.get(worldId) ?? 0) < 250) return;
@@ -139,18 +113,17 @@ function progressFor(worldId: WorldId): (p: AiProgress) => void {
       if (s.ai.job?.worldId === worldId) s.ai.job = next;
       if (progress.phase !== 'queued' && s.ai.wait?.worldId === worldId) s.ai.wait = null;
     });
-    if (!same) {
-      const words = progress.phase === 'writing' ? (progress.file ? t('ai.stepWritingFile', { file: progress.file }) : t('ai.stepWriting')) : progress.phase === 'fixing' ? t('ai.stepFixing', { round: progress.round ?? 1 }) : PHASE_WORDS[progress.phase]?.();
-      if (words && getState().session.world?.id === worldId) announce(words);
-    }
   };
 }
 
 function waitFor(worldId: WorldId): (ms: number, reason: WaitReason) => void {
   return (ms, reason) => {
+    const waiting = getState().ai.wait?.worldId === worldId;
     setState((s) => {
       s.ai.wait = { worldId, reason, until: Date.now() + ms };
     });
+    // Said once when a wish starts waiting; the line itself changes quietly.
+    if (!waiting && getState().session.world?.id === worldId) announce(waitText(Math.ceil(ms / 1000), reason));
   };
 }
 
@@ -173,6 +146,7 @@ function begin(world: World, task: AiJobView['task'], request: string): AbortCon
     s.ai.streamedArt = [];
     if (s.ai.wait?.worldId === world.id) s.ai.wait = null;
   });
+  if (task !== 'build' && getState().session.world?.id === world.id) announce(t('ai.working'));
   return own;
 }
 
@@ -240,39 +214,73 @@ function stepFor(outcome: Extract<AiOutcome, { kind: 'accepted' }>, task: AiJobV
   return { kind: 'ask', by: 'ai', text: outcome.summary || t('ai.changedPlain'), request: words, files, tested: outcome.tested, handEdits: outcome.handEditsTouched };
 }
 
-/** The files an accepted outcome changed (for See the change). */
+/** The files an accepted outcome changed (for See what changed). */
 function changedFiles(before: World, outcome: Extract<AiOutcome, { kind: 'accepted' }>): string[] {
   return outcome.files.filter((f) => before.code.find((b) => b.path === f.path)?.source !== f.source).map((f) => f.path);
 }
 
-/** The "Amble changed your world" toast on screen, if any (it goes once its change is being shown). */
-let changeToast: string | null = null;
+/** "Done! The Moon King throws fireballs now." lands (its toast shows over the world, §2.8 Done). */
+function land(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, files: string[], stepId: StepId | null): void {
+  const text = doneText(outcome.summary);
+  setState((s) => {
+    s.ai.landed = { worldId, stepId, text, files, at: Date.now() };
+  });
+  if (getState().session.world?.id === worldId) announce(text);
+}
 
-/** Closes the "Amble changed your world" toast: See the change is open, so it has done its job. */
+export function clearLanded(): void {
+  if (!getState().ai.landed) return;
+  setState((s) => {
+    s.ai.landed = null;
+  });
+}
+
+/** Closes the "Done!" toast: See the change is open (Footsteps calls this), so it has done its job. */
 export function dismissChangeToast(): void {
-  if (changeToast) dismissToast(changeToast);
-  changeToast = null;
+  clearLanded();
 }
 
 /**
- * "Amble changed your world: …" [See the change] (§2.8 Done). See the change opens the same sheet as the
- * footstep's link (§2.9: the summary, the student's words and the diff), back in the world if the student
- * has moved on; Look inside only when there is no step to show.
+ * See what changed: the same sheet as the footstep's link (§2.9: the summary, the student's words and the
+ * diff), back in the world if the student has moved on; Look inside only when there is no step to show.
  */
-function doneToast(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, files: string[], stepId: StepId | null): void {
-  if (getState().session.world?.id !== worldId) return;
-  const text = outcome.summary ? t('ai.changed', { summary: outcome.summary }) : t('ai.changedPlain');
-  const run = () => {
-    if (!stepId) {
-      navigate({ name: 'code', worldId, file: files[0] ?? 'game.js' });
-      return;
-    }
-    const route = getState().app.route;
-    if (route.name !== 'world' || route.id !== worldId) navigate({ name: 'world', id: worldId });
-    seeChange(worldId, stepId);
-  };
-  dismissChangeToast();
-  changeToast = showToast(text, { kind: 'ai', action: { label: t('ai.seeChange'), run } });
+export function seeWish(): void {
+  const rec = getState().ai.landed;
+  if (!rec) return;
+  clearLanded();
+  if (!rec.stepId) {
+    navigate({ name: 'code', worldId: rec.worldId, file: rec.files[0] ?? 'game.js' });
+    return;
+  }
+  const route = getState().app.route;
+  if (route.name !== 'world' || route.id !== rec.worldId) navigate({ name: 'world', id: rec.worldId });
+  seeChange(rec.worldId, rec.stepId);
+}
+
+/** Undo: the world goes back to the step before the wish (a new footstep; nothing is ever lost), and so does its game. */
+export async function undoWish(): Promise<void> {
+  const rec = getState().ai.landed;
+  if (!rec?.stepId) return;
+  clearLanded();
+  const world = await currentWorld(rec.worldId);
+  const at = world ? world.steps.findIndex((s) => s.id === rec.stepId) : -1;
+  const before = world && at > 0 ? world.steps[at - 1] : null;
+  if (!world || !before) {
+    announce(t('ai.undoFailed'));
+    return;
+  }
+  try {
+    const back = await getServices().history.goBack(world, before.id);
+    if (adoptWorld(back)) void loadGame(back, { autostart: true });
+    setState((s) => {
+      if (s.ai.outcomeFor?.worldId !== rec.worldId) return;
+      s.ai.lastOutcome = null;
+      s.ai.outcomeFor = null;
+    });
+    announce(t('ai.undone'));
+  } catch {
+    announce(t('ai.undoFailed'));
+  }
 }
 
 /** Applies an accepted change or fix: the session's `applyAccepted` (M2), else a direct commit. */
@@ -287,7 +295,7 @@ async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind:
   });
   if (getState().session.world?.id === worldId) {
     const recorded = await applyAccepted(outcome);
-    doneToast(worldId, outcome, files, recorded.steps.at(-1)?.id ?? null);
+    land(worldId, outcome, files, recorded.steps.at(-1)?.id ?? null);
     return;
   }
   const recorded = await commitWorld({ ...before, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, task, words), keepCode);
@@ -298,7 +306,7 @@ async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind:
     });
     void getServices().player.promote().catch(() => undefined);
   }
-  doneToast(worldId, outcome, files, recorded.steps.at(-1)?.id ?? null);
+  land(worldId, outcome, files, recorded.steps.at(-1)?.id ?? null);
 }
 
 /** A build's result, written to the stored world (the student may be drawing on the Desk). */
@@ -357,7 +365,7 @@ async function recordRefusal(worldId: WorldId, category: string): Promise<void> 
   await commitWorld(world, { kind: 'refused', by: 'ai', text: category === 'support' ? t('ai.stepRefusedSupport') : t('ai.stepRefused', { category }) });
 }
 
-/** A refusal or crisis the Ask card caught on the device (nothing was sent): a footstep, never the words. */
+/** A refusal or crisis the wish box caught on the device (nothing was sent): a footstep, never the words. */
 export function noteLocalRefusal(world: World, category: string): Promise<void> {
   return recordRefusal(world.id, category).catch((err: unknown) => console.error(err));
 }
@@ -381,13 +389,16 @@ async function run(world: World, task: AiJobView['task'], words: string, go: (c:
   const own = begin(world, task, words);
   let outcome: AiOutcome;
   try {
-    outcome = await go(own);
+    outcome = forStudentsOutcome(await go(own));
   } catch (err) {
     outcome = { kind: 'failed', reason: 'transport', message: t('ai.failed'), details: [err instanceof Error ? err.message : String(err)] };
   }
   await settle(world, task, words, outcome);
   finish(world, task, words, outcome, own);
-  if (outcome.kind === 'failed' || outcome.kind === 'unavailable') announce(outcome.message, 'assertive');
+  // A wish that didn't work leaves the world as it was: said politely, it stops nothing.
+  if ((outcome.kind === 'failed' || outcome.kind === 'unavailable') && getState().session.world?.id === world.id) announce(outcome.message);
+  // A build lands while the student draws: the Desk's pill says so, and so does the live region.
+  if (task === 'build' && (outcome.kind === 'accepted' || outcome.kind === 'fallback')) announce(t('ai.buildReady'));
   return outcome;
 }
 
@@ -395,12 +406,12 @@ function jobOptions(world: World, c: AbortController) {
   return { signal: c.signal, onProgress: progressFor(world.id), onArt: artFor(world.id), onWait: waitFor(world.id) };
 }
 
-/** Ask (§2.8): the student's words change the world. */
+/** A wish (§2.8): the student's words change the world. */
 export function startChange(world: World, words: string, scope: CastKey | null = null): Promise<AiOutcome> {
   return run(world, 'change', words, (c) => getServices().ai.change(world, words, { ...jobOptions(world, c), scope: scope ?? undefined }));
 }
 
-/** Ask Amble to fix it (the problem card); `words` is what the Ask card shows while it works. */
+/** Ask Amble to fix it (the problem card); `words` is what the wish box shows while it works. */
 export function startFix(world: World, problems: PlayerError[], words = t('ai.stepFixedPlain')): Promise<AiOutcome> {
   return run(world, 'fix', words, (c) => getServices().ai.fix(world, problems, jobOptions(world, c)));
 }
@@ -423,79 +434,6 @@ export function resumeBuild(world: World): void {
   void startBuild(world, world.plan).catch((err: unknown) => console.warn('The build stopped:', err));
 }
 
-/**
- * An Ask from the student: the AI explainer first when this device has never seen it (§2.16), else the
- * change. Returns null while the explainer is open.
- */
-export function askAi(world: World, words: string, scope: CastKey | null = null): Promise<AiOutcome> | null {
-  if (!getState().prefs.seen.aiExplainer) {
-    setState((s) => {
-      s.ai.explainer = { worldId: world.id, words, scope };
-    });
-    return null;
-  }
-  return startChange(world, words, scope);
-}
-
-/** Got it: the explainer is seen on this device, and the Ask it held goes ahead. */
-export async function confirmExplainer(): Promise<AiOutcome | null> {
-  const pending = getState().ai.explainer;
-  closeExplainer();
-  if (!pending) return null;
-  const world = await currentWorld(pending.worldId);
-  return world ? startChange(world, pending.words, pending.scope) : null;
-}
-
-/** Closes the explainer without asking (What gets sent?, Esc). It still counts as seen. */
-export function closeExplainer(): void {
-  markSeen('aiExplainer');
-  setState((s) => {
-    s.ai.explainer = null;
-  });
-}
-
-// ------------------------------------------------------------------ explain-only classes
-
-let explainController: AbortController | null = null;
-
-/** An explain-only class asks about its world (§2.8): the answer is a note, and nothing changes. */
-export async function startExplain(world: World, question: string, path = 'game.js'): Promise<void> {
-  explainController?.abort();
-  const own = new AbortController();
-  explainController = own;
-  const file = world.code.find((f) => f.path === path) ?? world.code.find((f) => f.path === 'game.js') ?? world.code[0];
-  setState((s) => {
-    s.ai.explaining = world.id;
-  });
-  let note: ExplainNote = { worldId: world.id, question, path: file?.path ?? path, reply: null, error: null, at: Date.now() };
-  try {
-    if (!file) throw new Error('no code');
-    const out = await getServices().ai.explain(world, { path: file.path, from: 1, to: file.source.split('\n').length, question }, { signal: own.signal });
-    if (out.kind === 'explained') note = { ...note, reply: out.reply };
-    else if (out.kind === 'cancelled') return;
-    else if (out.kind === 'crisis') {
-      note = { ...note, error: '' };
-      void noteLocalRefusal(world, 'support');
-    } else note = { ...note, error: out.kind === 'refused' ? out.note || t('ai.refusedDefault') : out.message || t('ai.explainFailed') };
-  } catch {
-    note = { ...note, error: t('ai.explainFailed') };
-  } finally {
-    if (explainController === own) {
-      explainController = null;
-      setState((s) => {
-        s.ai.explaining = null;
-      });
-    }
-  }
-  setState((s) => {
-    s.ai.explain = note;
-  });
-}
-
-export function stopExplain(): void {
-  explainController?.abort();
-}
-
 // ------------------------------------------------------------------ after a change
 
 /** Go back (§2.8): the change rewrote the student's own lines, and they want their version back. */
@@ -510,13 +448,14 @@ export async function goBackBefore(worldId: WorldId): Promise<void> {
   await store.commit({ worlds: [back] });
   // The world goes back, and so does the game playing it.
   if (adoptWorld(back)) void loadGame(back, { autostart: true });
+  clearLanded();
   setState((s) => {
     s.ai.lastOutcome = null;
     s.ai.outcomeFor = null;
   });
 }
 
-// ------------------------------------------------------------------ local steering
+// ------------------------------------------------------------------ dials and twists matched on the device
 
 /** Applies a local steer (a dial move or a twist) and remembers it for Undo. */
 export function applySteer(world: World, steer: LocalSteer, words: string): void {
@@ -537,16 +476,17 @@ export function undoSteer(): void {
   clearSteer();
 }
 
-/** Ask the AI instead: the steer is undone and the same words go to the AI helper. */
-export async function steerToAi(): Promise<AiOutcome | null> {
+/** Make a wish instead: the steer is undone and the same words go as a wish. */
+export async function steerToWish(): Promise<AiOutcome | null> {
   const rec = getState().ai.steer;
   if (!rec) return null;
   undoSteer();
   const world = await currentWorld(rec.worldId);
-  return world ? askAi(world, rec.words) : null;
+  return world ? startChange(world, rec.words) : null;
 }
 
 export function clearSteer(): void {
+  if (!getState().ai.steer) return;
   setState((s) => {
     s.ai.steer = null;
   });

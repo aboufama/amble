@@ -1,16 +1,16 @@
-/** The AI cards' word helpers and the hand-edit check behind "Amble also changed lines you wrote in …". */
+/** The wish box's word helpers and the hand-edit check behind "This wish also changed lines you wrote in …". */
 import { describe, expect, it } from 'vitest';
 import { handEditFile } from '../../src/pipeline/service';
 import { addedMemberText, nameInSentence, steerText, withoutSpans } from '../../src/screens/ai/words';
 
-describe('the steer toast', () => {
+describe('the toast for a dial or twist the device matched', () => {
   it('says which way a dial went, and what a twist did', () => {
-    expect(steerText({ kind: 'dial', key: 'jump', label: 'Jump power', from: 720, to: 860 })).toBe('Turned Jump power up to 860. No AI needed.');
-    expect(steerText({ kind: 'dial', key: 'orbSpeed', label: 'Orb speed', from: 280, to: 160 })).toBe('Turned Orb speed down to 160. No AI needed.');
-    expect(steerText({ kind: 'dial', key: 'gravity', label: 'Gravity', from: 0.5, to: 0.5 })).toBe('Set Gravity to 0.5. No AI needed.');
-    expect(steerText({ kind: 'dial', key: 'size', label: 'Size', from: 1, to: 1.3333 })).toBe('Turned Size up to 1.33. No AI needed.');
-    expect(steerText({ kind: 'twist', id: 'giantMode', name: 'Giant mode', on: true })).toBe('Switched on Giant mode. No AI needed.');
-    expect(steerText({ kind: 'twist', id: 'giantMode', name: 'Giant mode', on: false })).toBe('Switched off Giant mode. No AI needed.');
+    expect(steerText({ kind: 'dial', key: 'jump', label: 'Jump power', from: 720, to: 860 })).toBe('Turned Jump power up to 860.');
+    expect(steerText({ kind: 'dial', key: 'orbSpeed', label: 'Orb speed', from: 280, to: 160 })).toBe('Turned Orb speed down to 160.');
+    expect(steerText({ kind: 'dial', key: 'gravity', label: 'Gravity', from: 0.5, to: 0.5 })).toBe('Set Gravity to 0.5.');
+    expect(steerText({ kind: 'dial', key: 'size', label: 'Size', from: 1, to: 1.3333 })).toBe('Turned Size up to 1.33.');
+    expect(steerText({ kind: 'twist', id: 'giantMode', name: 'Giant mode', on: true })).toBe('Switched on Giant mode.');
+    expect(steerText({ kind: 'twist', id: 'giantMode', name: 'Giant mode', on: false })).toBe('Switched off Giant mode.');
   });
 });
 
@@ -29,9 +29,9 @@ describe('Remove it', () => {
 describe('names in sentences', () => {
   it('puts "the" before names of more than one word', () => {
     expect(['Moon King', 'The Moon King', 'Pip', ''].map(nameInSentence)).toEqual(['the Moon King', 'the Moon King', 'Pip', '']);
-    expect(addedMemberText('Pizza slice')).toBe('Your change added a Pizza slice. Draw it now?');
-    expect(addedMemberText('Orb')).toBe('Your change added an Orb. Draw it now?');
-    expect(addedMemberText('The Salt King')).toBe('Your change added The Salt King. Draw them now?');
+    expect(addedMemberText('Pizza slice')).toBe('Your wish added a Pizza slice. Draw it now?');
+    expect(addedMemberText('Orb')).toBe('Your wish added an Orb. Draw it now?');
+    expect(addedMemberText('The Salt King')).toBe('Your wish added The Salt King. Draw them now?');
   });
 });
 

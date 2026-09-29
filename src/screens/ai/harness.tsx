@@ -1,8 +1,8 @@
 /**
  * The AI cards' e2e harness (dev server only: the app never imports this file, so it is never built).
  * It mounts the cards the open screen does not show itself, wired to the app's real store and services:
- * the build pill always, and over a screen without the world's notebook, the Ask card (title, badge,
- * `AskStates`) and the steer toast (the world screen has its own, so specs drive the real ones there).
+ * the build pill always, and over a screen without the world's notebook, the wish box (its title and
+ * `AskStates`) and the wish toast (the world screen has its own, so specs drive the real ones there).
  * e2e/ai specs load it with `import('/src/screens/ai/harness.tsx')` and call `mountAiHarness()`;
  * `view: 'sent'` shows What Amble sends instead. `planWorld(plan)` makes a world from a plan the way
  * M1's plan card does.
@@ -14,11 +14,11 @@ import { t } from '../../i18n';
 import type { PlanReply, World } from '../../model/types';
 import { startBuild } from '../../state/ai';
 import { setState, useStore } from '../../state/store';
-import { Panel, Tag } from '../../ui/components';
+import { Panel } from '../../ui/components';
 import { AskStates } from './AskStates';
 import { BuildPill } from './BuildPill';
-import { SteerToastHost } from './SteerToast';
 import { WhatsSent } from './WhatsSent';
+import { WishToastHost } from './WishToast';
 import './ai.css';
 
 let root: Root | null = null;
@@ -28,7 +28,7 @@ function AskHarness() {
   const world = useStore((s) => s.session.world);
   const manifest = useStore((s) => s.session.manifest);
   const scope = useStore((s) => s.session.selected);
-  // The world screen shows its own Ask card and steer toast.
+  // The world screen shows its own wish box and wish toast.
   const inWorld = useStore((s) => s.app.route.name === 'world' && s.app.route.id === s.session.world?.id);
   if (!world) return null;
   if (inWorld) {
@@ -41,20 +41,12 @@ function AskHarness() {
   return (
     <>
       <div className="ai-harness__world" data-testid="ai-harness-world">
-        <SteerToastHost worldId={world.id} />
+        <WishToastHost worldId={world.id} />
       </div>
       <div className="ai-harness__pill">
         <BuildPill worldId={world.id} />
       </div>
-      <Panel
-        className="ai-harness__notebook"
-        title={t('ai.askTitle')}
-        actions={
-          <Tag variant="dark" icon="sparkle">
-            {t('ai.askBadge')}
-          </Tag>
-        }
-      >
+      <Panel className="ai-harness__notebook" title={t('ai.askTitle')}>
         <AskStates
           world={world}
           manifest={manifest}
@@ -82,6 +74,7 @@ const HARNESS_CSS = `
 .ai-harness { position: fixed; inset: 0; z-index: var(--z-sheet); pointer-events: none; }
 .ai-harness > * { pointer-events: auto; }
 .ai-harness__world { position: absolute; left: 20px; top: 66px; width: 880px; height: 495px; pointer-events: none; }
+.ai-harness__world .wish-toast-host { bottom: 16px; }
 .ai-harness__world > * { pointer-events: auto; }
 .ai-harness__pill { position: absolute; left: 50%; top: 8px; translate: -50% 0; }
 .ai-harness__notebook { position: absolute; right: 18px; top: 66px; width: 428px; max-height: calc(100vh - 80px); overflow: auto; }
