@@ -2,20 +2,27 @@
  * The `app` slice (FOUNDATION): where the student is, the layout class, toasts, the dialog stack and the
  * two live regions. Also the class-link intake the router read at boot, for the Join card (M7).
  */
-import type { Route } from '../app/routes';
+import { screenKeyOf, type Route } from '../app/routes';
 import type { ClassLinkIntake } from '../model/types';
 import { setState, getState, type LayoutClass } from './store';
 
+/** `ai` is kept for older callers: a wish that landed reads as a success. */
 export type ToastKind = 'info' | 'success' | 'error' | 'ai';
 
 export interface Toast {
   id: string;
   text: string;
   kind: ToastKind;
-  /** A toast with an action stays until dismissed or acted on. */
+  /** One button ([Undo], [See what changed]). A toast with an action still goes by itself (8 s). */
   action: { label: string; run: () => void } | null;
+  /** Stays until dismissed or acted on: only for a toast that must be answered. */
   sticky: boolean;
   at: number;
+  /**
+   * The screen it belongs to (`screenKeyOf`): it goes when the student moves to another screen. Null
+   * for a toast that stays relevant everywhere (errors, by default).
+   */
+  screen: string | null;
 }
 
 interface DialogBase {
@@ -64,11 +71,29 @@ export function initialApp(): AppSlice {
 /** At most two toasts show at once (§3.4); the oldest non-sticky one goes first. */
 const MAX_TOASTS = 2;
 
+/**
+ * A toast shown this soon before the screen changes came with the change (a toast, then `navigate`, in
+ * one click): it moves to the new screen instead of going.
+ */
+export const TOAST_GRACE_MS = 1000;
+
 let toastCounter = 0;
 
+/**
+ * Where the student is. Moving to another screen takes away the toasts that belonged to the one they
+ * left, unless a toast stays relevant everywhere (no screen), must be answered (sticky), or came with
+ * this very move.
+ */
 export function setRoute(route: Route): void {
   setState((s) => {
+    const from = screenKeyOf(s.app.route);
+    const to = screenKeyOf(route);
     s.app.route = route;
+    if (from === to || !s.app.toasts.length) return;
+    const now = Date.now();
+    s.app.toasts = s.app.toasts
+      .filter((x) => x.sticky || x.screen === null || x.screen === to || now - x.at < TOAST_GRACE_MS)
+      .map((x) => (x.screen === from && now - x.at < TOAST_GRACE_MS ? { ...x, screen: to } : x));
   });
 }
 
@@ -82,14 +107,32 @@ export function setLayout(layout: LayoutClass): void {
 export interface ToastOptions {
   kind?: ToastKind;
   action?: { label: string; run: () => void };
-  /** Stays until dismissed (default: only when there is an action). */
+  /** Stays until dismissed (default false: every toast goes by itself, even one with an action). */
   sticky?: boolean;
+  /**
+   * 'screen' (the default) goes when the student moves to another screen; 'app' follows them, for
+   * news that stays true anywhere. Errors default to 'app'.
+   */
+  scope?: 'screen' | 'app';
 }
 
-/** Shows a toast (`role=status`); returns its id. 4 s, 8 s for errors, sticky with an action. */
+/**
+ * Shows a toast (`role=status`); returns its id. It goes after 4 s, or 8 s for errors and toasts with an
+ * action (longer while the pointer or focus is on it), and when the student leaves its screen.
+ */
 export function showToast(text: string, o: ToastOptions = {}): string {
   const id = `t${++toastCounter}`;
-  const toast: Toast = { id, text, kind: o.kind ?? 'info', action: o.action ?? null, sticky: o.sticky ?? Boolean(o.action), at: Date.now() };
+  const kind = o.kind ?? 'info';
+  const scope = o.scope ?? (kind === 'error' ? 'app' : 'screen');
+  const toast: Toast = {
+    id,
+    text,
+    kind,
+    action: o.action ?? null,
+    sticky: o.sticky ?? false,
+    at: Date.now(),
+    screen: scope === 'app' ? null : screenKeyOf(getState().app.route),
+  };
   setState((s) => {
     s.app.toasts = s.app.toasts.filter((x) => x.text !== text);
     s.app.toasts.push(toast);
@@ -107,10 +150,10 @@ export function dismissToast(id: string): void {
   });
 }
 
-/** How long a toast stays, in ms; null = until dismissed. */
+/** How long a toast stays, in ms; null = until dismissed. The clock stops while it is pointed at or focused. */
 export function toastDuration(t: Toast): number | null {
   if (t.sticky) return null;
-  return t.kind === 'error' ? 8000 : 4000;
+  return t.kind === 'error' || t.action ? 8000 : 4000;
 }
 
 export function pushDialog(entry: DialogEntry): void {

@@ -2,7 +2,7 @@
  * The store (§8.4): the app slice's actions, the promise dialogs, prefs defaults and merging, and the
  * layout classes (§2.2).
  */
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { layoutFor } from '../../src/app/layout';
 import { announce, dismissToast, setLayout, setRoute, showToast, toastDuration } from '../../src/state/app';
 import { defaultPrefs, loadPrefs, onPrefsChange, readPrefs, setPrefs } from '../../src/state/prefs';
@@ -65,14 +65,62 @@ describe('toasts', () => {
     expect(getState().app.toasts).toHaveLength(1);
   });
 
-  it('stays 4 s, 8 s for errors, and until dismissed with an action', () => {
+  it('stays 4 s, 8 s for errors and toasts with an action, and until dismissed only when sticky', () => {
     showToast('a');
     showToast('b', { kind: 'error' });
     const [a, b] = getState().app.toasts;
     expect(toastDuration(a)).toBe(4000);
     expect(toastDuration(b)).toBe(8000);
     showToast('c', { action: { label: 'Do', run: () => undefined } });
+    expect(toastDuration(getState().app.toasts.at(-1)!)).toBe(8000);
+    showToast('d', { sticky: true });
     expect(toastDuration(getState().app.toasts.at(-1)!)).toBeNull();
+  });
+
+  it('goes when the student moves to another screen, unless it stays relevant', () => {
+    let now = 1_000_000;
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      setRoute({ name: 'world', id: 'w1' });
+      showToast('Done! The Moon King throws fireballs now.', { kind: 'ai', action: { label: 'See what changed', run: () => undefined } });
+      showToast('Could not save.', { kind: 'error' });
+      now += 5000;
+      // The Hand in sheet is the same screen: nothing goes.
+      setRoute({ name: 'handin', worldId: 'w1' });
+      expect(getState().app.toasts).toHaveLength(2);
+      setRoute({ name: 'world', id: 'w1' });
+      // Full screen or a menu is not a move either; the Trail is.
+      setRoute({ name: 'trail', view: 'trail' });
+      expect(getState().app.toasts.map((t) => t.text)).toEqual(['Could not save.']);
+      // Errors follow the student; so does a toast asked to (scope 'app') or one that must be answered.
+      showToast('Welcome back.', { scope: 'app' });
+      showToast('Keep this?', { sticky: true });
+      now += 5000;
+      setRoute({ name: 'settings', section: null });
+      expect(getState().app.toasts.map((t) => t.text)).toEqual(['Welcome back.', 'Keep this?']);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it('comes along when it was shown with the move itself (a toast, then navigate)', () => {
+    let now = 2_000_000;
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      setRoute({ name: 'teacher', tab: 'assignments' });
+      showToast('The assignment is in your class link.', { kind: 'success' });
+      now += 200;
+      setRoute({ name: 'settings', section: 'ai' });
+      expect(getState().app.toasts.map((t) => t.screen)).toEqual(['settings']);
+      now += 3000;
+      // It now belongs to the screen it came to, and goes when the student leaves that one.
+      setRoute({ name: 'settings', section: 'reading' });
+      expect(getState().app.toasts).toHaveLength(1);
+      setRoute({ name: 'trail', view: 'trail' });
+      expect(getState().app.toasts).toHaveLength(0);
+    } finally {
+      clock.mockRestore();
+    }
   });
 });
 
