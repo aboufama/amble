@@ -90,24 +90,24 @@ const luma = (d: Uint8ClampedArray, o: number) => 0.299 * d[o] + 0.587 * d[o + 1
 
 /**
  * The alpha the rigger looks at: the flattened drawing minus pixels that only an excluded layer
- * (shading, sketch...) painted. A marker ground shadow must not become a limb.
+ * (shading, sketch...) painted, so a marker ground shadow never becomes a limb. That needs the other
+ * layers' paint (fills, not only lines): without it nothing is dropped, since a shaded pixel may
+ * cover a fill the rigger wasn't given.
  */
 function analysisAlpha(img: Pixels, layers: Record<string, LayerPixels> | undefined): Uint8Array {
   const n = img.width * img.height;
   const out = new Uint8Array(n);
   for (let i = 0; i < n; i++) out[i] = img.data[i * 4 + 3];
   if (!layers) return out;
-  for (const name of EXCLUDED_LAYERS) {
-    const l = layers[name];
-    if (!l) continue;
-    for (let y = 0; y < img.height; y++) {
-      for (let x = 0; x < img.width; x++) {
-        const la = layerAlpha(l, x, y);
-        if (la <= 16) continue;
-        const i = y * img.width + x;
-        // the flat pixel is (nearly) only this layer: nothing else was painted there
-        if (out[i] - la <= 24) out[i] = 0;
-      }
+  const excluded = EXCLUDED_LAYERS.map((k) => layers[k]).filter((l): l is LayerPixels => !!l);
+  const contentKeys = Object.keys(layers).filter((k) => !EXCLUDED_LAYERS.includes(k));
+  const content = contentKeys.map((k) => layers[k]);
+  if (!excluded.length || !contentKeys.some((k) => k !== 'lines')) return out;
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      if (!excluded.some((l) => layerAlpha(l, x, y) > 16)) continue;
+      if (content.some((l) => layerAlpha(l, x, y) > 16)) continue;
+      out[y * img.width + x] = 0;
     }
   }
   return out;

@@ -25,6 +25,8 @@ interface Layer {
   t: number;
   loop: boolean;
   rate: number;
+  /** Fading out: seconds since it began, and how long it takes. */
+  out?: { t: number; dur: number };
 }
 
 const UPPER_ROLES = new Set(['spine', 'neck', 'head', 'armL1', 'armL2', 'armR1', 'armR2', 'wingL1', 'wingL2', 'wingR1', 'wingR2']);
@@ -119,7 +121,12 @@ export class Animator {
     this.fadeT = 0;
     this.fadeDur = fade;
     this.base = { clip, t, loop, rate };
-    if (!clip.upper) this.overlay = null;
+    // an arm move over the legs fades out with the switch instead of snapping away
+    const o = this.overlay;
+    if (o && !clip.upper && !o.out) {
+      if (fade > 0) o.out = { t: 0, dur: Math.min(0.15, fade) };
+      else this.overlay = null;
+    }
     return true;
   }
 
@@ -166,13 +173,15 @@ export class Animator {
     const o = this.overlay;
     if (o) {
       this.advance(o, dt);
-      if (o.t >= o.clip.dur) {
+      if (o.out) o.out.t += dt;
+      if (o.t >= o.clip.dur || (o.out && o.out.t >= o.out.dur)) {
         this.overlay = null;
         this.onDone?.(o.clip.name);
       } else {
         this.tmp2.reset();
         this.evaluate(o, this.tmp2);
-        const w = Math.min(ease(clamp01(o.t / 0.06)), ease(clamp01((o.clip.dur - o.t) / 0.1)));
+        let w = Math.min(ease(clamp01(o.t / 0.06)), ease(clamp01((o.clip.dur - o.t) / 0.1)));
+        if (o.out) w *= 1 - ease(clamp01(o.out.t / o.out.dur));
         const m = this.upperMask;
         for (let i = 0; i < out.n; i++) {
           if (!m[i]) continue;
