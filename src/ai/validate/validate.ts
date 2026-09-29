@@ -19,7 +19,7 @@ import { runRules } from './rules';
 import { readStatics, staticFields } from './statics';
 import { visibleStrings } from './strings';
 import type { GameFile, Issue, ValidateOptions, ValidationResult, WorldFacts } from './types';
-import { checkGraphicsArt, checkWorldArt, directiveLines, lockedLineIssues } from './world';
+import { checkGraphicsArt, checkWorldArt, directiveLines, isKitTexture, lockedLineIssues } from './world';
 
 const DEFAULT_LIMITS: Limits = { maxFiles: 12, maxFileBytes: 40_000, maxTotalBytes: 120_000 };
 
@@ -247,6 +247,8 @@ function runPass(files: readonly GameFile[], api: Api, entry: string, fix: boole
   }
 
   facts.artDeclared.delete('');
+  // The kit's effects atlas and Phaser's own textures are shown, never drawn: they are not art.
+  for (const key of facts.artUsed) if (isKitTexture(key)) facts.artUsed.delete(key);
   const missing = [...facts.artUsed].filter((k) => !facts.artDeclared.has(k));
   if (missing.length) {
     issues.push({

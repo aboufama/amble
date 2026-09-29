@@ -154,6 +154,14 @@ const TEXTURE_MAKERS = /\.textures\.(create|createCanvas|addCanvas|addBase64|add
 const PICTOGRAPH = /\p{Extended_Pictographic}/u;
 const CHARACTER_NAMES = /^this\.(hero|player|boss|enemy|enemies|monster|villain|character|pet|npc)\w*$/i;
 
+/**
+ * Textures the kit and Phaser bring, never art to draw: the kit's effects atlas (`'amble-fx'`: dot, spark,
+ * ring, star, heart, line...) and Phaser's own (`'__WHITE'`, `'__DEFAULT'`). A game may show them.
+ */
+export function isKitTexture(key: string): boolean {
+  return key === 'amble-fx' || key.startsWith('__');
+}
+
 /** `this.add.rectangle(...)`, `this.add.graphics()`, `this.make.text(...)`: a code-drawn shape. */
 function isShapeCall(n: AnyNode | null | undefined): n is CallExpression {
   if (!n || n.type !== 'CallExpression') return false;

@@ -83,6 +83,21 @@ describe('art is human', () => {
     const r = run(game('', "    this.add.particles(0, 0, 'amble-fx', { speed: 100 });\n    const beam = this.add.rectangle(480, 270, 960, 4, 0xff00ff);\n    this.ui.text(10, 10, '⭐ 10 stars');"), false);
     expect(r.errors.map((e) => e.rule)).not.toContain('graphics-art');
   });
+
+  it("shows the kit's effects atlas and Phaser's own textures as they are: they are not art to draw", () => {
+    const body = [
+      "    const glow = this.add.image(480, 270, 'amble-fx', 'dot').setScale(4);",
+      "    this.add.sprite(100, 100, 'amble-fx', 'heart');",
+      "    this.add.image(10, 10, '__WHITE');",
+    ].join('\n');
+    const r = run(game("  static art = { hero: { kind: 'character', ask: 'Draw your hero' } };", body), false);
+    expect([...r.errors, ...r.warnings].map((i) => i.rule)).toEqual([]);
+    expect(r.art.used).not.toContain('amble-fx');
+    // A key of the game's own is still art the student draws, and a canvas still is not allowed.
+    const own = run(game("  static art = { hero: { kind: 'character', ask: 'Draw your hero' } };", "    this.add.image(480, 270, 'coin');"), false);
+    expect(own.warnings.map((w) => w.rule)).toContain('undeclared-art');
+    expect(run(game('', "    this.textures.createCanvas('amble-fx', 64, 64);"), false).errors.map((e) => e.rule)).toContain('graphics-art');
+  });
 });
 
 describe('the world the code belongs to', () => {
