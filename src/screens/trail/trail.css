@@ -697,7 +697,7 @@
   height: 100%;
 }
 
-.walker__sprite {
+.walker__frame {
   display: block;
   width: 100%;
   height: 100%;
@@ -712,9 +712,9 @@
   overflow: hidden;
 }
 
-/* A transform, not background-position: the frames step on the compositor, so a Trail full of walkers
-   repaints nothing while it waits. */
-.walker__strip {
+/* The whole strip, moved by a transform rather than background-position: the frames step on the
+   compositor, so a Trail full of walkers repaints nothing while it waits. */
+.walker__sprite {
   display: block;
   width: var(--strip-w);
   height: 100%;
@@ -759,9 +759,9 @@
   filter: drop-shadow(2px 0 0 var(--paper)) drop-shadow(-2px 0 0 var(--paper)) drop-shadow(0 2px 0 var(--paper)) drop-shadow(0 -2px 0 var(--paper));
 }
 
-.trail--still .walker__strip,
+.trail--still .walker__sprite,
 .trail--still .walker__turn,
-.trail__walkers--paused .walker__strip,
+.trail__walkers--paused .walker__sprite,
 .trail__walkers--paused .walker__turn,
 .trail--still .lamp__ph-body,
 .trail--still .trail-fly,
@@ -770,7 +770,7 @@
 }
 
 /* A hidden tab keeps its place: everything that loops holds still until the student is back (§3.6). */
-.trail--hidden .walker__strip,
+.trail--hidden .walker__sprite,
 .trail--hidden .walker__turn,
 .trail--hidden .trail-fly,
 .trail--hidden .lamp__glow {
