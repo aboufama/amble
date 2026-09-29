@@ -12,7 +12,7 @@ export interface FlashPolicy {
 }
 
 export const FLASH_POLICY: FlashPolicy = { maxPerSecond: 3, maxAlpha: 0.55 };
-export const FLASH_POLICY_REDUCED: FlashPolicy = { maxPerSecond: 1, maxAlpha: 0.25 };
+export const FLASH_POLICY_REDUCED: FlashPolicy = { maxPerSecond: 2, maxAlpha: 0.3 };
 
 export function flashPolicy(reducedMotion: boolean): FlashPolicy {
   return reducedMotion ? FLASH_POLICY_REDUCED : FLASH_POLICY;

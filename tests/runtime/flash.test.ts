@@ -32,7 +32,7 @@ describe('FlashLimiter', () => {
 
   it('is stricter with reduced motion', () => {
     const f = new FlashLimiter(FLASH_POLICY_REDUCED);
-    expect([f.allow(0), f.allow(500), f.allow(1000)]).toEqual([true, false, true]);
+    expect([f.allow(0), f.allow(300), f.allow(600), f.allow(1000)]).toEqual([true, true, false, true]);
     f.setPolicy(FLASH_POLICY);
     expect(f.maxAlpha).toBe(0.55);
   });
@@ -43,7 +43,7 @@ describe('flash colours', () => {
     expect(safeFlashAlpha(1, 0xffffff, FLASH_POLICY)).toBe(0.55);
     expect(safeFlashAlpha(0.3, 0xffffff, FLASH_POLICY)).toBe(0.3);
     expect(safeFlashAlpha(1, 0xff0000, FLASH_POLICY)).toBeCloseTo(0.275);
-    expect(safeFlashAlpha(Number.NaN, 0xffffff, FLASH_POLICY_REDUCED)).toBe(0.25);
+    expect(safeFlashAlpha(Number.NaN, 0xffffff, FLASH_POLICY_REDUCED)).toBe(0.3);
   });
 
   it('recognises saturated red', () => {
