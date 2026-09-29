@@ -24,6 +24,7 @@ import type { Facing, PartLayers, Prefs } from '../model/types';
 import type { BoardSpec } from './boards';
 import { PAPER } from '../ui/tokens';
 import { guideColorsOf, renderGuides, templateOnBoard, type GuideLabels } from './guides';
+import { rigOnBoard } from './preview';
 import { surroundedByLines } from './leak';
 import { pushRecent, START_COLOR } from './palette';
 import { bonesLayout, FREEHAND_PAIR, mirrorMatrix, nextExtra, otherSide, pairIds, partOfLayer, rigFacing, targetLayer, type BonesStep, type RoutedTool } from './parts';
@@ -129,6 +130,8 @@ export interface DeskOpen {
   colors?: { paper: string; workspace: string };
   /** The flipbook's move and speed as saved (or the move Bones asked to draw). */
   flip?: { move: string | null; fps: number };
+  /** The bones a drawing reopened On the bones was saved with (export px), and its export's size. */
+  saved?: { rig: RigData; w: number; h: number } | null;
 }
 
 type Listener = () => void;
@@ -169,6 +172,9 @@ const BRUSH_OF: Record<DeskTool, 'ink' | 'pencil' | 'marker' | 'crayon' | 'airbr
   pixel: 'pixel',
 };
 
+/** How long the Desk waits to find where a reopened drawing sits before it opens with the template's bones. */
+const SAVED_BONES_MS = 3000;
+
 /** Steady when the view bar's Steady is on: a 12 px pulled string. */
 const STEADY_ON = 0.4;
 
@@ -176,13 +182,15 @@ export class DeskController {
   readonly surface: ArtSurface;
   /** What is being drawn (a free drawing's kind and facing can change: "What is it?"). */
   request: DeskRequest;
-  readonly board: BoardSpec;
+  private paper: BoardSpec;
   private state: DeskState;
   private readonly listeners = new Set<Listener>();
   private readonly eventListeners = new Set<(e: DeskEvent) => void>();
   private readonly off: Array<() => void> = [];
   private lastTouched: string | null = null;
   private rig: RigData | null;
+  /** The saved bones, until `placeSaved` puts them on the board. */
+  private saved: DeskOpen['saved'];
   private guideTimer = 0;
   private stopPlay: (() => void) | null = null;
   private destroyed = false;
@@ -205,11 +213,12 @@ export class DeskController {
 
   constructor(o: DeskOpen) {
     this.request = o.request;
-    this.board = o.board;
+    this.paper = o.board;
     this.partBones = o.partBones;
     this.heroImage = o.heroImage;
     this.host = o.host;
     this.rig = templateOnBoard(o.board, o.request);
+    this.saved = o.mode === 'bones' ? (o.saved ?? null) : null;
     this.surface = createArtSurface(o.host, o.doc, {
       pressure: o.prefs.pressure,
       keyboard: false,
@@ -274,7 +283,41 @@ export class DeskController {
       pin: null,
       pinPlaced: o.doc.anchor !== null && o.doc.anchor !== undefined,
     };
-    void this.surface.ready.then(() => this.onReady(), () => undefined);
+    void this.surface.ready.then(
+      () => this.placeSaved().then(() => this.onReady()),
+      () => undefined,
+    );
+  }
+
+  /** The paper: its size, its ground line and its scale. */
+  get board(): BoardSpec {
+    return this.paper;
+  }
+
+  /**
+   * A drawing reopened On the bones keeps the bones its parts were drawn on: the saved rig goes back onto the
+   * board where the drawing is (a starter's drawing is made on a board of its own, its bones placed by hand),
+   * for the guides, the previews and Bring to life, with the ground line at its feet. A rig that isn't the
+   * template's bones keeps the template.
+   */
+  private async placeSaved(): Promise<void> {
+    const saved = this.saved;
+    this.saved = null;
+    const template = this.rig;
+    if (!saved || !template || this.destroyed) return;
+    try {
+      // The drawing as saved: where it sits on the board (its trim box) places the export's pixels. The Desk
+      // opens with the template if that takes too long.
+      const e = await Promise.race([this.surface.export({ maxSize: 64, thumbSize: 16, flatOnly: true }), new Promise<null>((r) => setTimeout(() => r(null), SAVED_BONES_MS))]);
+      if (!e || this.destroyed) return;
+      const rig = rigOnBoard(saved.rig, saved, e.box);
+      const names = new Set(rig.bones.map((b) => b.name));
+      if (rig.kind !== template.kind || !template.bones.every((b) => names.has(b.name))) return;
+      this.rig = rig;
+      if (this.paper.groundY !== null) this.paper = { ...this.paper, groundY: Math.round(rig.anchor[1]) };
+    } catch (err) {
+      console.warn('The saved bones could not be placed:', err);
+    }
   }
 
   private setPen(down: boolean): void {

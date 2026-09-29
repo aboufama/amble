@@ -24,3 +24,14 @@ export function snapMid(_a: Analysis, g: LimbResult, hint: P2 | undefined, guide
   if (best.d <= guide.tolJoint) g.mid = best.q;
   else if (guide.keepUnsnapped) g.mid = hint;
 }
+
+/**
+ * Legs drawn touching share one path through the drawing, which can run from a foot up the other thigh:
+ * when each fitted hip is nearer the other leg's hinted hip (by more than 8% of the drawing's size in
+ * all), the hips swap back.
+ */
+export function uncrossStarts(l: LimbResult, r: LimbResult, hl: P2 | undefined, hr: P2 | undefined, guide: Guide | null): void {
+  if (!hl || !hr || !guide) return;
+  const d = (p: P2, q: P2) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+  if (d(l.start, hr) + d(r.start, hl) + guide.tolJoint < d(l.start, hl) + d(r.start, hr)) [l.start, r.start] = [r.start, l.start];
+}

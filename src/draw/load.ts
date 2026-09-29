@@ -3,14 +3,14 @@
  * running game or the world's code), its board, the drawing (its draft when newer than its record), the
  * mode (characters open On the bones), the hero for scale and the world's colours.
  */
-import { partSteps, type CharacterKind } from '../cores/rig';
+import { partSteps, type CharacterKind, type RigData } from '../cores/rig';
 import type { ArtDoc } from '../cores/art';
 import { t } from '../i18n';
 import { uid } from '../model/ids';
 import type { ArtId, ArtRecord, BlobRef, CastKey, CastMember, PartLayers, World, WorldId } from '../model/types';
 import type { Store } from '../store/api';
 import { measureWorld } from '../store/quota';
-import { boardFor, freeBoard, type BoardSpec } from './boards';
+import { boardAtSize, boardFor, freeBoard, freeBoardOf, type BoardSpec } from './boards';
 import { artIdFor, blankDoc, DamagedDrawing, openDrawing, type Opened } from './drafts';
 import { worldColors } from './palette';
 import { bonesLayout, rigFacing, type BonesStep } from './parts';
@@ -35,6 +35,11 @@ export interface DeskSetup {
   steps: BonesStep[];
   /** Part name → the bones it is drawn on. */
   partBones: Record<string, string[]>;
+  /**
+   * The bones a drawing reopened On the bones was saved with, in the pixels of its export (`w` x `h`): its
+   * parts were drawn on them, so the Desk puts them back where the drawing is instead of the template's.
+   */
+  savedRig: { rig: RigData; w: number; h: number } | null;
   heroImage: ImageBitmap | null;
   colors: string[];
   /** Cel refs already saved (drafts leave them out). */
@@ -131,9 +136,9 @@ export async function loadFreeDesk(store: Store, artId: ArtId): Promise<DeskLoad
   const rec = opened?.record ?? damaged;
   const request: DeskRequest = { ...freeRequest(rec?.name ?? opened?.doc.name ?? t('draw.newDrawingName')), ...(rec ? { kind: rec.kind, rig: rec.rig } : {}) };
   const board = opened
-    ? { ...freeBoard('square'), w: opened.doc.width, h: opened.doc.height, pixelArt: opened.doc.pixelArt }
+    ? freeBoardOf(opened.doc.width, opened.doc.height, opened.doc.pixelArt)
     : damaged
-      ? { ...freeBoard('square'), w: damaged.board.w, h: damaged.board.h, pixelArt: damaged.board.pixelArt }
+      ? freeBoardOf(damaged.board.w, damaged.board.h, damaged.board.pixelArt)
       : freeBoard('square');
   const setup = await finish(store, { artId, world: null, request, opened, damaged, board });
   return { ok: true, setup };
@@ -149,12 +154,15 @@ async function finish(
   let doc: ArtDoc;
   let mode: 'bones' | 'free';
   let parts: Record<string, PartLayers>;
+  let savedRig: DeskSetup['savedRig'] = null;
   if (opened) {
     doc = opened.doc;
     // A new drawing of a damaged one has its own layers: the record's pairs and mode were the old drawing's.
     const rec = opened.damaged ? null : opened.record;
     parts = partsOfDoc(doc, rec);
     mode = rec?.mode ?? (Object.keys(parts).length ? 'bones' : 'free');
+    // A restored draft may have grown past the saved drawing, whose place on the board is where its bones go.
+    if (mode === 'bones' && rec?.rigData && rec.export && !opened.restored && rec.rigData.kind === request.rig) savedRig = { rig: rec.rigData, w: rec.export.w, h: rec.export.h };
     // Extras drawn earlier join the Extras step.
     for (const name of Object.keys(parts)) if (!steps.some((s) => s.parts.includes(name))) steps.find((s) => s.step === 'extras')?.parts.push(name);
   } else {
@@ -165,7 +173,7 @@ async function finish(
     mode = bones ? 'bones' : 'free';
     doc = blankDoc({ name: request.name, kind: request.kind, rig: request.rig, board: o.board, layers: layout?.layers ?? null });
   }
-  const board: BoardSpec = { ...o.board, w: doc.width, h: doc.height, pixelArt: doc.pixelArt };
+  const board = boardAtSize(o.board, doc.width, doc.height, doc.pixelArt);
   const [heroImage, colors] = await Promise.all([world ? heroImageOf(store, world, request) : Promise.resolve(null), world ? colorsOf(store, world, o.artId) : Promise.resolve([])]);
   return {
     artId: o.artId,
@@ -181,6 +189,7 @@ async function finish(
     parts,
     steps,
     partBones,
+    savedRig,
     heroImage,
     colors,
     // A damaged record's pieces may be missing: drafts keep every piece of the new drawing.

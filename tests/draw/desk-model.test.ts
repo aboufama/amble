@@ -3,13 +3,13 @@
  * note's facts, colour names, paper removal, and the previews' rig transform.
  */
 import { describe, expect, it } from 'vitest';
-import { boardFor, freeBoard, GROUND } from '../../src/draw/boards';
+import { boardAtSize, boardFor, freeBoard, freeBoardOf, GROUND } from '../../src/draw/boards';
 import { colorId, hexToHsv, hsvToHex, luminance, normalizeHex, NAMED_COLORS } from '../../src/draw/colorNames';
 import { KID_SWATCHES, pushRecent, SKIN_TONES, worldColors } from '../../src/draw/palette';
 import { bonesLayout, compositePair, FREEHAND_PAIR, inkUnion, mirrorMatrix, nextExtra, otherSide, pairIds, partOfLayer, targetLayer } from '../../src/draw/parts';
 import { levels, removePaper } from '../../src/draw/photo';
-import { placeCallout } from '../../src/draw/guides';
-import { hintsOnExport, rigOnExport } from '../../src/draw/preview';
+import { placeCallout, templateOnBoard } from '../../src/draw/guides';
+import { hintsOnExport, rigOnBoard, rigOnExport } from '../../src/draw/preview';
 import { factText, freeRequest, requestFacts, timesTall, type DeskRequest } from '../../src/draw/request';
 import { templateFor } from '../../src/cores/rig';
 import { t } from '../../src/i18n';
@@ -67,6 +67,27 @@ describe('boards (§7.3)', () => {
     expect([free.w, free.h, free.pixelArt]).toEqual([1024, 1024, false]);
     const px = freeBoard('pixel32');
     expect([px.w, px.h, px.pixelArt, px.exportMax]).toEqual([32, 32, true, 32]);
+  });
+
+  it('keeps the ground line and the scale in proportion on a drawing of another size (a starter’s 256 board)', () => {
+    const spec = boardFor({ kind: 'character', role: 'hero', w: 40, h: 64, key: 'hero' });
+    expect(boardAtSize(spec, spec.w, spec.h, false)).toEqual(spec);
+    const small = boardAtSize(spec, 256, 256, false);
+    expect([small.w, small.h, small.kind, small.exportMax]).toEqual([256, 256, spec.kind, spec.exportMax]);
+    expect(small.groundY).toBe(Math.round(spec.groundY! * (256 / spec.h)));
+    expect(small.perGamePx).toBeCloseTo(spec.perGamePx * (256 / spec.h));
+    // The template's bones stand on that paper, feet on its ground line.
+    const t = templateOnBoard(small, { rig: 'biped', w: 40, h: 64, facing: 'right' })!;
+    const ys = t.bones.flatMap((b) => [b.y, b.y2]);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(small.groundY! + 1);
+  });
+
+  it('finds the free board a drawing was made on', () => {
+    expect(freeBoardOf(1024, 1024, false)).toEqual(freeBoard('square'));
+    expect(freeBoardOf(768, 1280, false)).toEqual(freeBoard('tall'));
+    expect(freeBoardOf(1536, 864, false)).toEqual(freeBoard('wide'));
+    expect(freeBoardOf(64, 64, true)).toEqual(freeBoard('pixel64'));
   });
 });
 
@@ -238,6 +259,19 @@ describe('the previews’ bones', () => {
     expect(moved.bones[3].x2).toBeCloseTo((rig.bones[3].x2 - 100) * 0.5);
     expect(moved.bones.length).toBe(rig.bones.length);
     expect(hintsOnExport({ head: [120, 70] }, [100, 50, 300, 500], 2)).toEqual({ head: [40, 40] });
+  });
+
+  it('moves a saved rig from its export’s pixels back onto the board', () => {
+    const rig = templateFor('biped', 200, 400, 0);
+    const box = [100, 50, 300, 500] as const;
+    const saved = rigOnExport(rig, box, 0.5);
+    const back = rigOnBoard(saved, { w: 150, h: 250 }, box);
+    expect(back.anchor[0]).toBeCloseTo(rig.anchor[0]);
+    expect(back.anchor[1]).toBeCloseTo(rig.anchor[1]);
+    back.bones.forEach((b, i) => {
+      expect(b.x).toBeCloseTo(rig.bones[i].x);
+      expect(b.y2).toBeCloseTo(rig.bones[i].y2);
+    });
   });
 });
 

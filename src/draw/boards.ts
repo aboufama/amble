@@ -69,6 +69,22 @@ export function freeBoard(size: 'square' | 'tall' | 'wide' | 'pixel16' | 'pixel3
   return { kind: 'free', w, h, pixelArt: false, groundY: Math.round(h * GROUND), exportMax: 512, perGamePx: (h * FIGURE) / HERO_H };
 }
 
+/**
+ * The request's board at the size a drawing was made (a starter's drawings have boards of their own, and a
+ * drawing keeps its size when its request changes): the ground line and the scale keep their share of it.
+ */
+export function boardAtSize(spec: BoardSpec, w: number, h: number, pixelArt: boolean): BoardSpec {
+  if (w === spec.w && h === spec.h) return { ...spec, pixelArt };
+  const k = h / spec.h;
+  return { ...spec, w, h, pixelArt, groundY: spec.groundY === null ? null : Math.round(spec.groundY * k), perGamePx: spec.perGamePx * k };
+}
+
+/** The free board a drawing of this size was made on (⋯ → Board size). */
+export function freeBoardOf(w: number, h: number, pixelArt: boolean): BoardSpec {
+  if (pixelArt) return { ...freeBoard('pixel32'), w, h, exportMax: Math.max(w, h) };
+  return boardAtSize(freeBoard(w > h ? 'wide' : h > w ? 'tall' : 'square'), w, h, false);
+}
+
 /** The hero's height on this board (the scale ghost), board px. */
 export function heroHeightOnBoard(board: BoardSpec, heroH: number): number {
   return heroH * board.perGamePx;

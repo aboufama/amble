@@ -15,7 +15,7 @@ import {
 import { lca, pathDown, pathToRoot, px, skelTree, topSkeletonPixel, type P2 } from './graph';
 import { nextName } from './extras';
 import { SLOTS, slotPoints, type Guide } from './guide';
-import { snapMid } from './snap';
+import { snapMid, uncrossStarts } from './snap';
 
 function pickHead(a: Analysis, taken: Set<End>): End | undefined {
   const { bbox, cx, cy } = a;
@@ -237,6 +237,9 @@ export function fitBiped(a: Analysis, guide: Guide | null): Fit {
       snapMid(a, g, guide?.joints[`leg${side}2` as BoneRole], guide);
       legGeo.push({ g, side });
     });
+    const gl = legGeo.find((l) => l.side === 'L')?.g;
+    const gr = legGeo.find((l) => l.side === 'R')?.g;
+    if (gl && gr) uncrossStarts(gl, gr, guide?.joints['legL1' as BoneRole], guide?.joints['legR1' as BoneRole], guide);
   }
   const hipPts = legGeo.map((l) => l.g.start);
   let hipMid: P2 = hipPts.length

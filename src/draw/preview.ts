@@ -43,6 +43,12 @@ export function rigOnExport(rig: RigData, box: readonly [number, number, number,
   };
 }
 
+/** A rig in the pixels of an export (`size`, of the drawing trimmed at `box` on the board) moved back onto the board. */
+export function rigOnBoard(rig: RigData, size: { w: number; h: number }, box: readonly [number, number, number, number]): RigData {
+  const scale = Math.max(size.w, size.h) / Math.max(1, box[2], box[3]);
+  return rigOnExport(rig, [-box[0] * scale, -box[1] * scale, box[2] * scale, box[3] * scale], 1 / scale);
+}
+
 /** Board-space joint hints moved into an export's pixels. */
 export function hintsOnExport(hints: JointHints, box: readonly [number, number, number, number], scale: number): JointHints {
   const out: JointHints = {};

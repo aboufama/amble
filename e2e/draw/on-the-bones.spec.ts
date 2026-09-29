@@ -3,8 +3,24 @@
  * itself), strokes land on the chosen part's layers, the preview moves, and Bring to life makes the rig
  * from the parts (`made: 'parts'`).
  */
+import type { Page } from '@playwright/test';
 import { expect, openAmble, test } from '../helpers/app';
+import { openStarter } from '../journeys/journey';
 import { boardSize, circle, deskState, drawOnBoard, inkedLayers, openDesk, openStarterWorld, settle, tapOnBoard } from './desk';
+
+type Bone = { name: string; x: number; y: number; x2: number; y2: number };
+
+/** The hero's saved drawing: its bones (export px), its export's size and its version. */
+async function heroArt(page: Page, world: string): Promise<{ version: number; w: number; h: number; bones: Bone[] } | null> {
+  return page.evaluate(async (id) => {
+    type Rec = { version: number; export: { w: number; h: number } | null; rigData: { bones: Bone[] } | null };
+    const a = (window as unknown as { __amble: { store: { worlds: { get(id: string): Promise<{ cast: Record<string, { art: string | null }> } | null> }; art: { get(id: string): Promise<Rec | null> } } } }).__amble;
+    const w = await a.store.worlds.get(id);
+    const art = w?.cast.hero?.art;
+    const rec = art ? await a.store.art.get(art) : null;
+    return rec?.export && rec.rigData ? { version: rec.version, w: rec.export.w, h: rec.export.h, bones: rec.rigData.bones } : null;
+  }, world);
+}
 
 test('the chosen side of On the bones | Freehand stays readable under the pointer', async ({ page }) => {
   await openAmble(page);
@@ -106,4 +122,44 @@ test('Bones from the Desk brings the drawing to life and opens its bones', async
   await page.waitForFunction((id) => location.hash === `#/w/${id}/bones/grumble`, world, { timeout: 30_000 });
   await expect(page.getByTestId('screen-bones')).toBeVisible();
   await expect(page.getByText('is only bones so far')).toHaveCount(0);
+});
+
+test('a starter’s drawing opens on its own bones: on its paper, and after Bring to life', async ({ page }) => {
+  test.setTimeout(120_000);
+  await openAmble(page);
+  const world = await openStarter(page, 'moon-king');
+  const saved = await heroArt(page, world);
+  expect(saved).not.toBeNull();
+  await openDesk(page, `#/w/${world}/draw/hero`);
+
+  // Pip is drawn on a board of his own: his bones stand in the drawing, feet on the ground line.
+  const desk = await page
+    .waitForFunction(() => {
+      type Probe = { board: { w: number; h: number; groundY: number | null }; art(): { box: [number, number, number, number] } | null; template(): { anchor: [number, number]; bones: Bone[] } | null };
+      const d = (window as unknown as { __ambleDesk?: Probe | null }).__ambleDesk;
+      const art = d?.art();
+      const rig = d?.template();
+      if (!d || !art || !rig) return null;
+      const xs = rig.bones.flatMap((b) => [b.x, b.x2]);
+      const ys = rig.bones.flatMap((b) => [b.y, b.y2]);
+      return { ground: d.board.groundY, feet: rig.anchor[1], bones: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)], art: art.box };
+    }, null, { timeout: 30_000 })
+    .then((h) => h.jsonValue());
+  const [ax, ay, aw, ah] = desk!.art;
+  expect(desk!.bones[0]).toBeGreaterThanOrEqual(ax - 2);
+  expect(desk!.bones[1]).toBeGreaterThanOrEqual(ay - 2);
+  expect(desk!.bones[2]).toBeLessThanOrEqual(ax + aw + 2);
+  expect(desk!.bones[3]).toBeLessThanOrEqual(ay + ah + 2);
+  expect(desk!.ground).toBe(Math.round(desk!.feet));
+
+  // Bring to life rigs him on the same bones (in his new export's pixels).
+  await page.getByTestId('bring-to-life').click();
+  await page.waitForFunction((id) => location.hash === `#/w/${id}`, world, { timeout: 30_000 });
+  await expect.poll(async () => (await heroArt(page, world))?.version ?? 0, { timeout: 30_000 }).toBeGreaterThan(saved!.version);
+  const after = (await heroArt(page, world))!;
+  const off = saved!.bones.map((b) => {
+    const n = after.bones.find((x) => x.name === b.name);
+    return n ? Math.hypot(n.x / after.h - b.x / saved!.h, n.y / after.h - b.y / saved!.h) : 1;
+  });
+  expect(Math.max(...off)).toBeLessThan(0.06);
 });
