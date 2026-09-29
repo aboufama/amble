@@ -95,14 +95,10 @@ export interface TestOptions {
 
 /** Sends the one-line test and says how it went. */
 export async function testEndpoint(spec: EndpointSpec, o: TestOptions = {}): Promise<TestResult> {
-  let body: string | null = null;
-  let received: () => number = () => 0;
-  const transport = endpointTransport(spec, (b, r) => {
-    body = b;
-    received = r;
-  });
+  // Every request the test sends (a proxy may make the core try again), each logged as it went out.
+  const sent: Array<{ body: string; received: () => number; at: number }> = [];
+  const transport = endpointTransport(spec, (body, received) => sent.push({ body, received, at: Date.now() }));
   if (!transport) return { ok: false, message: t('school.staff_testNoAddress'), status: null };
-  const at = Date.now();
   let result: TestResult;
   try {
     const ms = await pingModel(transport, spec.model, { signal: o.signal, timeoutMs: o.timeoutMs ?? 30_000 });
@@ -110,22 +106,24 @@ export async function testEndpoint(spec: EndpointSpec, o: TestOptions = {}): Pro
   } catch (err) {
     result = { ok: false, ...testFailure(err, spec) };
   }
-  if (body !== null && o.store) {
-    const sent: string = body;
-    const entry: AiLogEntry = {
-      id: uid('l_'),
-      at,
-      kind: 'test',
-      host: hostOf(spec.baseUrl),
-      model: spec.model,
-      bytesSent: new TextEncoder().encode(sent).length,
-      bytesReceived: received(),
-      included: [t('school.logTestIncluded')],
-      body: sent,
-      status: result.ok ? 'ok' : 'failed',
-      replySummary: result.ok ? t('school.logTestOk', { time: formatSeconds(result.ms) }) : result.message,
-    };
-    await o.store.ailog.add(entry).catch(() => undefined);
+  if (o.store) {
+    for (const [i, { body, received, at }] of sent.entries()) {
+      const last = i === sent.length - 1;
+      const entry: AiLogEntry = {
+        id: uid('l_'),
+        at,
+        kind: 'test',
+        host: hostOf(spec.baseUrl),
+        model: spec.model,
+        bytesSent: new TextEncoder().encode(body).length,
+        bytesReceived: received(),
+        included: [t('school.logTestIncluded')],
+        body,
+        status: last && result.ok ? 'ok' : 'failed',
+        replySummary: !last ? t('ai.replyRetried') : result.ok ? t('school.logTestOk', { time: formatSeconds(result.ms) }) : result.message,
+      };
+      await o.store.ailog.add(entry).catch(() => undefined);
+    }
   }
   return result;
 }
