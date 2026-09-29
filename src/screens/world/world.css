@@ -660,12 +660,19 @@
   min-width: 0;
 }
 
+/* The keys that fit, whole: one that doesn't wraps onto a second line, which is out of sight. */
 .world-controls__keys {
   display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-content: flex-start;
   align-items: center;
+  justify-content: flex-end;
   gap: 12px;
+  min-width: 0;
+  height: 30px;
   margin: 0;
-  padding: 0;
+  padding: 1px 0;
   list-style: none;
   overflow: hidden;
 }
@@ -731,9 +738,18 @@
   flex-direction: column;
   justify-content: center;
   gap: 2px;
-  width: 112px;
-  padding: 8px 8px 8px 12px;
+  /* Wider with larger text and extra spacing, so "4 of 8 drawn." stays on one line. */
+  width: calc(var(--head-w) * var(--text-scale, 1));
+  padding: 6px 8px 6px 12px;
   border-right: 1px solid var(--line);
+}
+
+.cast-line {
+  --head-w: 112px;
+}
+
+:root[data-spacing='extra'] .cast-line {
+  --head-w: 128px;
 }
 
 .cast-line__title {
@@ -806,7 +822,7 @@
 }
 
 .cast-line__more--before {
-  left: 116px;
+  left: calc(var(--head-w) * var(--text-scale, 1) + 4px);
 }
 
 .cast-line__more--after {
