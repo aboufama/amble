@@ -8,6 +8,7 @@ import { colorId, hexToHsv, hsvToHex, luminance, normalizeHex, NAMED_COLORS } fr
 import { KID_SWATCHES, pushRecent, SKIN_TONES, worldColors } from '../../src/draw/palette';
 import { bonesLayout, compositePair, FREEHAND_PAIR, inkUnion, mirrorMatrix, nextExtra, otherSide, pairIds, partOfLayer, targetLayer } from '../../src/draw/parts';
 import { levels, removePaper } from '../../src/draw/photo';
+import { placeCallout } from '../../src/draw/guides';
 import { hintsOnExport, rigOnExport } from '../../src/draw/preview';
 import { factText, freeRequest, requestFacts, timesTall, type DeskRequest } from '../../src/draw/request';
 import { templateFor } from '../../src/cores/rig';
@@ -237,5 +238,30 @@ describe('the previews’ bones', () => {
     expect(moved.bones[3].x2).toBeCloseTo((rig.bones[3].x2 - 100) * 0.5);
     expect(moved.bones.length).toBe(rig.bones.length);
     expect(hintsOnExport({ head: [120, 70] }, [100, 50, 300, 500], 2)).toEqual({ head: [40, 40] });
+  });
+});
+
+describe('the on-the-bones callout (§2.10)', () => {
+  const inside = (p: { x: number; y: number }, box: { w: number; h: number }, board: { w: number; h: number }, u: number) =>
+    p.x >= 8 * u - 1e-9 && p.x + box.w <= board.w - 8 * u + 1e-9 && p.y >= 8 * u - 1e-9 && p.y + box.h <= board.h - 8 * u + 1e-9;
+
+  it('sits beside the bone when there is room', () => {
+    const board = { w: 1024, h: 1024 };
+    const p = placeCallout({ x: 300, y: 400 }, { w: 300, h: 40 }, board, 1.65);
+    expect(p.beside).toBe(true);
+    expect(p.x).toBeGreaterThan(300);
+    expect(inside(p, { w: 300, h: 40 }, board, 1.65)).toBe(true);
+  });
+
+  it('stays whole on a narrow board (a tall hero): above the tip, never cut off at the edge', () => {
+    // Pip's board is 729 x 1024; the callout is wider than either side of the spine.
+    const board = { w: 729, h: 1024 };
+    const u = 1024 / 620;
+    const box = { w: 420, h: 48 };
+    const tip = { x: 364, y: 330 };
+    const p = placeCallout(tip, box, board, u);
+    expect(inside(p, box, board, u)).toBe(true);
+    expect(p.beside).toBe(false);
+    expect(p.y + box.h).toBeLessThanOrEqual(tip.y);
   });
 });

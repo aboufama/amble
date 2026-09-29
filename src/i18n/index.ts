@@ -44,6 +44,14 @@ export function format(text: string, vars?: Vars): string {
   return text.replace(/\{(\w+)\}/g, (all, name: string) => (name in vars ? String(vars[name]) : all));
 }
 
+/**
+ * A name as it reads inside a sentence: "The Moon King" becomes "the Moon King" ("Drawing the Moon King",
+ * "You drew the Moon King"). Other names stay as they are.
+ */
+export function midSentence(name: string): string {
+  return /^The\s+\S/.test(name) ? `t${name.slice(1)}` : name;
+}
+
 export function t(key: MessageKey, vars?: Vars): string {
   const text = lookup(key);
   if (text === undefined) {

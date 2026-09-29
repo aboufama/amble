@@ -4,9 +4,9 @@
  * game gave this member, and "Dials change the game right away. No AI needed."
  */
 import { useEffect, useMemo, useRef } from 'react';
-import { t } from '../../i18n';
+import { midSentence, t } from '../../i18n';
 import type { CastMember } from '../../model/types';
-import { selectThing } from '../../state/session';
+import { closeThing } from '../../state/session';
 import { useStore } from '../../state/store';
 import { Button, IconButton, PlaceholderGlyph, Popover, roleWord, Sticker } from '../../ui/components';
 import { DialSlider } from './DialSlider';
@@ -41,7 +41,7 @@ export function ThingCard({ member, anchor, onDraw, onBones }: ThingCardProps) {
     return () => cancelAnimationFrame(id);
   }, [member.key]);
   return (
-    <Popover open anchor={anchor} onClose={() => selectThing(null)} label={member.name} placement={placement} tone="lantern" className="thing-card">
+    <Popover open anchor={anchor} onClose={closeThing} label={member.name} placement={placement} tone="lantern" className="thing-card">
       <div ref={head} className="thing-card__head" data-testid="thing-card" data-key={member.key}>
         <span className="thing-card__pic" aria-hidden="true">
           {drawn ? <Sticker src={sticker} alt="" size={54} /> : <PlaceholderGlyph rig={member.rig} role={member.role} shape={member.shape} size={54} />}
@@ -50,7 +50,7 @@ export function ThingCard({ member, anchor, onDraw, onBones }: ThingCardProps) {
           <h3>{member.name}</h3>
           <p>{roleLine(member)}</p>
         </div>
-        <IconButton icon="close" label={t('world.closeCard')} size={38} variant="quiet" tooltip={false} onClick={() => selectThing(null)} className="thing-card__close" />
+        <IconButton icon="close" label={t('world.closeCard')} size={38} variant="quiet" tooltip={false} onClick={closeThing} className="thing-card__close" />
       </div>
       <div className="thing-card__actions">
         <Button variant="paper" icon="draw" size={38} onClick={() => onDraw(member)} data-testid="thing-draw">
@@ -70,7 +70,7 @@ export function ThingCard({ member, anchor, onDraw, onBones }: ThingCardProps) {
           ))}
         </div>
       ) : (
-        <p className="thing-card__none">{t('world.noThingDials', { name: member.name })}</p>
+        <p className="thing-card__none">{t('world.noThingDials', { name: midSentence(member.name) })}</p>
       )}
       <p className="thing-card__note">{t('world.dialsNote')}</p>
     </Popover>

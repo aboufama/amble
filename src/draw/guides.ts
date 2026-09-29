@@ -366,25 +366,49 @@ function drawBonesAbove(ctx: Ctx, rig: RigData, current: ReadonlySet<string>, u:
   return tip;
 }
 
+/** Where the callout goes: beside the bone's tip, and always whole on the paper (words past its edge are cut). */
+export function placeCallout(
+  at: { x: number; y: number },
+  box: { w: number; h: number },
+  board: { w: number; h: number },
+  u: number,
+): { x: number; y: number; beside: boolean } {
+  const { w, h } = box;
+  const margin = 8 * u;
+  // Right of the tip; slid in from the paper's right edge; else left of the tip.
+  let x = at.x + 26 * u;
+  if (x + w > board.w - margin) x = Math.max(at.x + margin, board.w - margin - w);
+  if (x + w > board.w - margin) x = at.x - 26 * u - w;
+  x = Math.min(Math.max(margin, x), board.w - margin - w);
+  const beside = x >= at.x + 4 * u || x + w <= at.x - 4 * u;
+  let y = Math.min(board.h - h - margin, Math.max(margin, at.y - h / 2));
+  // A sheet too narrow for either side (a tall hero's board): above the tip, or below it, never over it.
+  if (!beside) y = at.y - h - 18 * u >= margin ? at.y - h - 18 * u : Math.min(board.h - h - margin, at.y + 18 * u);
+  return { x, y, beside };
+}
+
 function drawCallout(ctx: Ctx, text: string, at: { x: number; y: number }, board: BoardSpec, u: number): void {
-  const size = 15 * u;
+  let size = 15 * u;
   ctx.save();
   ctx.font = `700 ${size}px ${FONT}`;
-  const tw = ctx.measureText(text).width;
+  let tw = ctx.measureText(text).width;
   const padX = 12 * u;
+  const room = board.w - 16 * u - padX * 2;
+  // Words a little smaller when the paper is narrower than the callout.
+  if (tw > room) {
+    size = Math.max(11 * u, (size * room) / tw);
+    ctx.font = `700 ${size}px ${FONT}`;
+    tw = ctx.measureText(text).width;
+  }
   const h = size + 14 * u;
-  const w = tw + padX * 2;
-  // Beside the bone's tip, kept on the paper.
-  let x = at.x + 26 * u;
-  // Kept on the paper: slid in from the right edge, else on the tip's left.
-  if (x + w > board.w - 8 * u) x = Math.max(at.x + 8 * u, board.w - 8 * u - w);
-  if (x + w > board.w - 8 * u) x = at.x - 26 * u - w;
-  const y = Math.min(board.h - h - 8 * u, Math.max(8 * u, at.y - h / 2));
+  const w = Math.min(tw, room) + padX * 2;
+  const { x, y, beside } = placeCallout(at, { w, h }, board, u);
   ctx.strokeStyle = CALLOUT_BG;
   ctx.lineWidth = 2 * u;
   ctx.beginPath();
   ctx.moveTo(at.x, at.y);
-  ctx.lineTo(x < at.x ? x + w : x, y + h / 2);
+  if (beside) ctx.lineTo(x < at.x ? x + w : x, y + h / 2);
+  else ctx.lineTo(Math.min(Math.max(at.x, x + h / 2), x + w - h / 2), y < at.y ? y + h : y);
   ctx.stroke();
   ctx.fillStyle = CALLOUT_BG;
   const r = h / 2;
@@ -393,7 +417,7 @@ function drawCallout(ctx: Ctx, text: string, at: { x: number; y: number }, board
   ctx.fill();
   ctx.fillStyle = '#86f3cb';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, x + padX, y + h / 2 + u);
+  ctx.fillText(text, x + padX, y + h / 2 + u, w - padX * 2);
   ctx.restore();
 }
 

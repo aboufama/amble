@@ -19,7 +19,7 @@ import {
   type ToolId,
 } from '../cores/art';
 import { partSteps, templateHints, type CharacterKind, type JointHints, type RigData } from '../cores/rig';
-import { t, type MessageKey } from '../i18n';
+import { midSentence, t, type MessageKey } from '../i18n';
 import type { Facing, PartLayers, Prefs } from '../model/types';
 import type { BoardSpec } from './boards';
 import { renderGuides, templateOnBoard, type GuideLabels } from './guides';
@@ -931,7 +931,7 @@ export class DeskController {
       door: t('draw.guideDoor'),
       repeats: t('draw.guideRepeats'),
       callout: this.state.mode === 'bones' && part ? t(`draw.callout_${calloutOf(part)}` as MessageKey) : null,
-      starNote: t('draw.starNote', { name: r.name }),
+      starNote: t('draw.starNote', { name: midSentence(r.name) }),
     };
     const starPose = this.state.starPose && this.state.mode === 'free' && r.kind === 'character' && r.rig !== 'none' && r.rig !== 'object';
     const images = renderGuides(

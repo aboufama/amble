@@ -2,12 +2,14 @@
  * The controls row's key hints (§2.6) and the request tag's words (§2.6), as pure functions: which keys
  * to show for a game, and how Amble names a member it asks for ("The Grumbles are only bones.").
  */
-import { t, type MessageKey } from '../i18n';
+import { midSentence, t, type MessageKey } from '../i18n';
 import type { Action, CastMember, Pronoun, World } from '../model/types';
 
 export interface Hint {
   keys: string;
   word: MessageKey;
+  /** The game's own word for the action when it renames it (Wobble Tower's Space drops a crate: "drop"). */
+  label?: string;
 }
 
 /** The kit's usual keys (src/runtime/kit/controls.ts DEFAULT_BINDINGS), as students read them. */
@@ -40,6 +42,26 @@ export function actionsFromCode(code: readonly { source: string }[]): Action[] {
   return [...out];
 }
 
+const NAMED: readonly Action[] = ['jump', 'fire', 'dash', 'action'];
+
+/**
+ * The words a game gives its actions: `static config = { controls: { jump: 'DROP' } }` names its touch
+ * buttons, and the key hints follow it ("Space drop", not "Space jump", when Space drops a crate). A word
+ * that is just the action's own name ('JUMP' for jump) changes nothing.
+ */
+export function actionWords(code: readonly { source: string }[]): Partial<Record<Action, string>> {
+  const text = code.map((f) => f.source).join('\n');
+  const block = /\bcontrols\s*:\s*\{([^{}]*)\}/.exec(text);
+  const out: Partial<Record<Action, string>> = {};
+  if (!block) return out;
+  for (const [, key, word] of block[1].matchAll(/\b(\w+)\s*:\s*['"]([^'"\n]{1,20})['"]/g)) {
+    const action = key as Action;
+    const said = word.trim().toLowerCase();
+    if (NAMED.includes(action) && said && said !== action) out[action] = said;
+  }
+  return out;
+}
+
 /** What to show hints for: the code's actions, plus movement and shooting keys the game reported reading. */
 export function hintActions(reported: readonly Action[], code: readonly { source: string }[]): Action[] {
   const moves = reported.filter((a) => a !== 'action' && a !== 'pause');
@@ -47,16 +69,17 @@ export function hintActions(reported: readonly Action[], code: readonly { source
 }
 
 /** Up to four hints, in the order students need them: move, jump, shoot, dash. */
-export function keyHints(actions: readonly Action[], controls: World['controls']): Hint[] {
+export function keyHints(actions: readonly Action[], controls: World['controls'], words: Partial<Record<Action, string>> = {}): Hint[] {
   const has = (a: Action) => actions.includes(a);
   const keyOf = (a: Action) => (controls[a]?.length ? keyLabel(controls[a]![0]) : USUAL[a] ?? '');
+  const named = (a: Action, word: MessageKey): Hint => (words[a] ? { keys: keyOf(a), word, label: words[a] } : { keys: keyOf(a), word });
   const out: Hint[] = [];
   if (has('left') || has('right')) out.push({ keys: t('world.keyArrowsLR'), word: 'world.actionMove' });
-  if (has('jump')) out.push({ keys: keyOf('jump'), word: 'world.actionJump' });
+  if (has('jump')) out.push(named('jump', 'world.actionJump'));
   else if (has('up') || has('down')) out.push({ keys: t('world.keyArrowsUD'), word: 'world.actionUpDown' });
-  if (has('fire')) out.push({ keys: keyOf('fire'), word: 'world.actionFire' });
-  if (has('dash')) out.push({ keys: keyOf('dash'), word: 'world.actionDash' });
-  if (has('action')) out.push({ keys: keyOf('action'), word: 'world.actionAction' });
+  if (has('fire')) out.push(named('fire', 'world.actionFire'));
+  if (has('dash')) out.push(named('dash', 'world.actionDash'));
+  if (has('action')) out.push(named('action', 'world.actionAction'));
   return out.filter((h) => h.keys).slice(0, 4);
 }
 
@@ -93,10 +116,10 @@ export interface RequestCopy {
 /** The tag's words for a member (a group when several play at once; the Warm-up's own words). */
 export function requestCopy(m: Pick<CastMember, 'name' | 'ask' | 'count' | 'pronoun'>, warmup: boolean): RequestCopy {
   if (warmup) {
-    return { title: t('world.requestWarmup', { name: withArticle(m) }), body: t('world.requestWarmupSub'), button: t('world.drawOne', { name: withArticle(m) }) };
+    return { title: t('world.requestWarmup', { name: midSentence(withArticle(m)) }), body: t('world.requestWarmupSub'), button: t('world.drawOne', { name: midSentence(withArticle(m)) }) };
   }
   if (m.count > 1) {
     return { title: t('world.requestAre', { names: plural(m.name) }), body: t('world.requestGroup'), button: t('world.drawOne', { name: aOrAn(m.name) }) };
   }
-  return { title: t('world.requestIs', { name: capital(withArticle(m)) }), body: t(PRONOUN_LINES[m.pronoun]), button: t('world.drawOne', { name: withArticle(m) }) };
+  return { title: t('world.requestIs', { name: capital(withArticle(m)) }), body: t(PRONOUN_LINES[m.pronoun]), button: t('world.drawOne', { name: midSentence(withArticle(m)) }) };
 }

@@ -1,6 +1,8 @@
 /** The controls row's key hints and the request tag's words (§2.6). */
 import { describe, expect, it } from 'vitest';
-import { actionsFromCode, hintActions, keyHints, keyLabel, plural, requestCopy, withArticle } from '../../src/world/hints';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { actionsFromCode, actionWords, hintActions, keyHints, keyLabel, plural, requestCopy, withArticle } from '../../src/world/hints';
 import { FIXTURE_GAME } from '../../src/starters/fixtureGame';
 
 const code = [{ source: FIXTURE_GAME }];
@@ -28,6 +30,18 @@ describe('key hints', () => {
     expect(keyHints(hintActions(['jump'], runner), {}).map((h) => h.word)).toEqual(['world.actionJump']);
   });
 
+  it("uses a game's own word for an action it renames (Wobble Tower's Space drops a crate)", () => {
+    const read = (id: string) => [{ source: readFileSync(join(__dirname, '../../src/starters', id, 'game.js'), 'utf8') }];
+    const tower = read('wobble-tower');
+    expect(actionWords(tower)).toEqual({ jump: 'drop' });
+    expect(keyHints(hintActions(['jump'], tower), {}, actionWords(tower)).map((h) => [h.keys, h.label ?? h.word])).toEqual([['Space', 'drop']]);
+    // Words that are just the action's name change nothing: Moon King still says "shoot" for X.
+    const moon = read('moon-king');
+    expect(actionWords(moon)).toEqual({});
+    expect(keyHints(hintActions(['jump', 'fire'], moon), {}, actionWords(moon)).every((h) => h.label === undefined)).toBe(true);
+    expect(actionWords([{ source: 'static config = { controls: { dash: "Zoom!", left: "GO" } }' }])).toEqual({ dash: 'zoom!' });
+  });
+
   it('names picked keys briefly', () => {
     expect(keyLabel('KeyQ')).toBe('Q');
     expect(keyLabel('Digit7')).toBe('7');
@@ -51,5 +65,9 @@ describe('the request tag words', () => {
     const grumbles = { name: 'Grumble', ask: 'Draw a little moon minion', count: 2, pronoun: 'them' as const };
     expect(requestCopy(grumbles, false)).toEqual({ title: 'The Grumbles are only bones.', body: 'Draw one and they all come alive.', button: 'Draw a Grumble' });
     expect(requestCopy({ ...boss, name: 'Rae', ask: 'Draw Rae, a space kid' }, true).title).toBe('While Amble builds, draw Rae?');
+    // The Moon King starter names him "The Moon King": the button reads like a sentence.
+    const named = { ...boss, name: 'The Moon King' };
+    expect(requestCopy(named, false)).toEqual({ title: 'The Moon King is only bones.', body: 'Draw him and he comes alive.', button: 'Draw the Moon King' });
+    expect(requestCopy(named, true).title).toBe('While Amble builds, draw the Moon King?');
   });
 });

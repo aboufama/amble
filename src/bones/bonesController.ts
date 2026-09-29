@@ -7,7 +7,7 @@
  * Framework-free: React reads it with `useSyncExternalStore(subscribe, getView)`.
  */
 import type { Services } from '../app/services';
-import { t } from '../i18n';
+import { midSentence, t } from '../i18n';
 import {
   RigWorkerError,
   artSizeOf,
@@ -592,7 +592,7 @@ export class BonesController {
       const open = getState().session.world;
       const world = open?.id === worldId ? open : await store.worlds.get(worldId);
       if (!world) return;
-      const next = await history.record(world, { kind: 'bones', by: 'student', text: t('bones.stepFixed', { name: this.record.name }), cast: key });
+      const next = await history.record(world, { kind: 'bones', by: 'student', text: t('bones.stepFixed', { name: midSentence(this.record.name) }), cast: key });
       await store.commit({ worlds: [next] });
       syncSession(next);
     } catch (err) {

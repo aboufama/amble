@@ -34,6 +34,8 @@ test('a change asked in the world is robot-tested, waits as a new version, plays
     await page.waitForTimeout(1000);
   }
   await expect(version).toContainText(`New version ready: ${SUMMARY}`);
+  // The card has its corner to itself: a request tag waits until it is gone.
+  await expect(page.getByTestId('request-tag')).toHaveCount(0);
   const outcome = await page.evaluate(() => (window as unknown as { __amble: { getState(): { ai: { lastOutcome: { kind: string; tested?: boolean } | null } } } }).__amble.getState().ai.lastOutcome);
   expect(outcome).toMatchObject({ kind: 'accepted', tested: true });
   // The game on screen was not replaced while the change was tested.
@@ -55,6 +57,13 @@ test('a change asked in the world is robot-tested, waits as a new version, plays
   await expect(step).toContainText(SUMMARY);
   await expect(step).toContainText(`You asked: "${WORDS}"`);
   await expect(step).toContainText('tested');
+
+  // The toast's See the change shows this change in the Footsteps sheet (as the footstep's link does), and goes.
+  const toast = page.locator('.toast', { hasText: 'Amble changed your world' });
+  await toast.getByRole('button', { name: 'See the change' }).click();
+  await expect(page.getByTestId('diff-sheet')).toContainText(WORDS);
+  await expect(page.getByTestId('diff-sheet')).toContainText('game.js');
+  await expect(toast).toHaveCount(0);
 
   // One change request, the class code only in its header, never the student's name or drawings.
   const changes = ai.tasks('change');

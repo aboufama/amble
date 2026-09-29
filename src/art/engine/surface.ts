@@ -491,6 +491,9 @@ class Surface implements ArtSurface {
     const st = this.stroke;
     this.pressTimer = window.setTimeout(() => {
       if (!st || this.stroke !== st || Math.hypot(st.lastVx - s.vx, st.lastVy - s.vy) > 6) return;
+      // A finger resting on blank paper is about to draw: picking the paper's colour there would make that
+      // stroke, and every one after it, invisible. Only paint the student can see is picked.
+      if (!this.paintAt(s.x, s.y)) return;
       this.endStroke(null, true);
       this.setColor(this.pickColor(s.x, s.y));
       this.em.emit('color', { color: this.state.color });
@@ -1054,6 +1057,20 @@ class Surface implements ArtSurface {
     const w = this.settledWaiters;
     this.settledWaiters = [];
     for (const f of w) f();
+  }
+
+  /** Whether a visible layer has paint at a board point (the paper alone does not count). */
+  private paintAt(x: number, y: number): boolean {
+    const board = this.board;
+    const px = Math.max(0, Math.min(board.W - 1, Math.floor(x)));
+    const py = Math.max(0, Math.min(board.H - 1, Math.floor(y)));
+    const j = (py * board.W + px) * 4;
+    for (const l of board.layers) {
+      if (!l.visible) continue;
+      const d = board.pixels(this.frameId, l.id);
+      if (d && (d[j + 3] / 255) * l.opacity > 0.1) return true;
+    }
+    return false;
   }
 
   pickColor(x: number, y: number): string {

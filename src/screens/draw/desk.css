@@ -75,8 +75,11 @@
   color: var(--warn);
 }
 
+/* The buttons never shrink, so their group keeps its width: the title moves over (and fits itself with an
+   ellipsis) instead of sliding under them when "Bringing it to life…" widens the button. */
 .desk__top .topbar__end {
   gap: var(--s2);
+  min-width: max-content;
 }
 
 .desk__top .topbar__end > * {
@@ -375,20 +378,20 @@
 }
 
 .strip__step--done .strip__num {
-  color: var(--on-accent);
+  color: var(--on-alive);
   background: var(--alive);
 }
 
 .strip__step--on {
-  --focus-ring: var(--ink);
-  color: var(--ink);
+  --focus-ring: var(--on-alive);
+  color: var(--on-alive);
   background: var(--alive);
   box-shadow: 0 0 16px color-mix(in srgb, var(--alive) 45%, transparent);
 }
 
 .strip__step--on .strip__num {
   color: var(--alive);
-  background: var(--ink);
+  background: var(--on-alive);
 }
 
 .strip__end {
@@ -1158,6 +1161,13 @@ body:has(.screen.desk) .toast-region {
   white-space: nowrap;
 }
 
+/* The chosen row is lighter (a lantern tint over the raised surface): its hint takes some of the main text
+   colour to stay at 4.5:1 and more (Night: 5.5:1; --text-2 alone is 4.2:1 there). */
+.layer--on .layer__hint,
+.layer--on .layer__status {
+  color: color-mix(in srgb, var(--text-2) 60%, var(--text));
+}
+
 .layer__status--now {
   font-weight: 700;
   color: var(--alive);
@@ -1245,7 +1255,7 @@ body:has(.screen.desk) .toast-region {
 }
 
 .flip__onion--on {
-  color: var(--on-accent);
+  color: var(--on-alive);
   background: var(--alive);
 }
 
@@ -1364,7 +1374,7 @@ body:has(.screen.desk) .toast-region {
   border: 0;
   border-radius: 10px;
   font: 700 0.8125rem/1 var(--font-ui);
-  color: var(--on-accent);
+  color: var(--on-alive);
   background: var(--alive);
   cursor: pointer;
 }

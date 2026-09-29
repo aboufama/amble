@@ -117,7 +117,6 @@ export const WorldView = forwardRef<HTMLDivElement, WorldViewProps>(function Wor
     <div ref={ref} className={cx('world-view', mode === 'change' && 'world-view--change')} data-testid="world-view">
       <div ref={slotRef} id="game" className="world-view__slot" role="region" tabIndex={-1} aria-label={t('world.worldRegion', { title: world.title })} data-testid="world-slot" />
       <Loading title={world.title} />
-      <Stopped onRestart={onReload} />
       <Notices />
       <AiPill world={world} />
       {mode === 'play' && (
@@ -130,8 +129,10 @@ export const WorldView = forwardRef<HTMLDivElement, WorldViewProps>(function Wor
           </div>
         </>
       )}
-      <ProblemCard world={world} onRestart={onRestart} />
       {mode === 'change' && frame && <ChangeLayer frame={frame} onDraw={(m) => onDraw(m)} onBones={onBones} />}
+      {/* Above Change mode's veil, so a broken or stopped world can be fixed from either mode. */}
+      <ProblemCard world={world} onRestart={onRestart} />
+      <Stopped onRestart={onReload} />
       {fullscreen && (
         <Button
           variant="ghost"

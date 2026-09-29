@@ -13,7 +13,7 @@ import { useServices } from '../../app/services';
 import { BonesController, type BonesTarget, type BonesView } from '../../bones/bonesController';
 import { goBackTo, leaveBones } from '../../bones/leave';
 import { facingWord } from '../../bones/kindWords';
-import { t } from '../../i18n';
+import { midSentence, t } from '../../i18n';
 import type { CharacterKind } from '../../cores/rig';
 import { announce, showToast } from '../../state/app';
 import { Button, IconButton, Toggle } from '../../ui/components';
@@ -270,7 +270,7 @@ function EmptyState({ view, route }: { view: BonesView; route: BonesRoute }) {
           ))}
         </svg>
         <h2 className="bones-empty__title">{t('bones.undrawnTitle', { name })}</h2>
-        <p className="bones-empty__body">{t('bones.undrawnBody', { name })}</p>
+        <p className="bones-empty__body">{t('bones.undrawnBody', { name: midSentence(name) })}</p>
         <Link to={drawingRoute(route)} className="btn btn--lantern btn--h44">
           <Icon name="draw" size={20} />
           <span className="btn__label">{t('bones.undrawnDraw', { name })}</span>

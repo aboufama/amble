@@ -18,7 +18,7 @@ import { packFlipbook, type PackedFlipbook } from '../../draw/flipbook';
 import { DeskController } from '../../draw/deskController';
 import type { DeskSetup } from '../../draw/load';
 import { hasBones } from '../../draw/request';
-import { t } from '../../i18n';
+import { midSentence, t } from '../../i18n';
 import type { CharacterKind, Facing } from '../../model/types';
 import { announce, showToast } from '../../state/app';
 import { setComeAlive } from '../../state/session';
@@ -284,8 +284,9 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
       const a = ctrl.surface.docToClient(bx, by);
       const b = ctrl.surface.docToClient(bx + bw, by + bh);
       const from = new DOMRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
-      announce(t('draw.cameAlive', { name }));
-      if (res.onePiece) showToast(t('draw.noLimbs', { name }));
+      // Back in its world, the world says it once the drawing lands there (after the come-alive flight).
+      if (to === 'bones' || !(setup.world && r.key)) announce(t('draw.cameAlive', { name }));
+      if (res.onePiece) showToast(t('draw.noLimbs', { name: midSentence(name) }));
       const bonesRoute: Route = setup.world && r.key ? { name: 'bones', worldId: setup.world.id, key: r.key } : { name: 'bonesFree', artId: res.record.id };
       if (to === 'bones') {
         navigate(bonesRoute);
@@ -335,12 +336,12 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
   const title = (
     <>
       {free ? (
-        <button type="button" className="desk__title desk__title--edit" onClick={() => void rename()} aria-label={`${t('draw.drawingTitle', { name })}. ${t('draw.nameIt')}`}>
-          <h1 className="topbar__title">{t('draw.drawingTitle', { name })}</h1>
+        <button type="button" className="desk__title desk__title--edit" onClick={() => void rename()} aria-label={`${t('draw.drawingTitle', { name: midSentence(name) })}. ${t('draw.nameIt')}`}>
+          <h1 className="topbar__title">{t('draw.drawingTitle', { name: midSentence(name) })}</h1>
           <Icon name="draw" size={18} />
         </button>
       ) : (
-        <h1 className="topbar__title desk__title">{t('draw.drawingTitle', { name })}</h1>
+        <h1 className="topbar__title desk__title">{t('draw.drawingTitle', { name: midSentence(name) })}</h1>
       )}
       {request.role && <Tag role={request.role} variant="paper" className="desk__role" />}
       {setup.world && <BuildPill worldId={setup.world.id} />}

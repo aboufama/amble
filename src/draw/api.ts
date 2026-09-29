@@ -16,7 +16,7 @@ import { exportArt, serializeArtDoc, type ArtDoc, type ArtExportResult } from '.
 import type { DrawnArt } from '../cores/play';
 import { rigWorker, type AutoRigRequest, type CharacterKind, type JointHints, type Pixels, type RigData, type RigSource } from '../cores/rig';
 import type { HistoryApi } from '../history/api';
-import { t } from '../i18n';
+import { midSentence, t } from '../i18n';
 import { blobRefOf, hexOfRef, uid } from '../model/ids';
 import type { ArtExport, ArtId, ArtKind, ArtRecord, BlobRef, CastKey, Facing, PartLayers, RigKind, Role, World, WorldId } from '../model/types';
 import { adoptWorld } from '../state/session';
@@ -266,7 +266,7 @@ export async function bringToLife(input: BringToLifeInput, deps: BringDeps = def
 
   // The footstep, after the drawing is safe.
   if (world && key) {
-    const text = t(prev?.export ? 'draw.youRedrew' : 'draw.youDrew', { name: input.name });
+    const text = t(prev?.export ? 'draw.youRedrew' : 'draw.youDrew', { name: midSentence(input.name) });
     try {
       const stepped = await deps.history.record(world, { kind: prev?.export ? 'redraw' : 'draw', by: 'student', text, cast: key });
       if (stepped !== world) {

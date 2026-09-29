@@ -435,7 +435,10 @@
   animation: tag-in var(--t-move) var(--ease-amble);
 }
 
-.coach-mark::after {
+/* The arrow, only when the mark sits beside the member it points at (centred, it points at nothing and
+   would otherwise sit at its static position, over the first letter of the text). */
+.coach-mark--left::after,
+.coach-mark--right::after {
   content: '';
   position: absolute;
   top: 40px;
@@ -849,6 +852,40 @@
   flex: none;
 }
 
+/* Round arrows over the line's ends while cards are out of view there. */
+.cast-line__more {
+  position: absolute;
+  top: calc(16px + var(--card-h) / 2 - 20px);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: var(--lift-sm), inset 0 0 0 1.5px var(--line-control-panel);
+  cursor: pointer;
+}
+
+.cast-line__more:hover {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
+}
+
+.cast-line__more--before {
+  left: 96px;
+}
+
+.cast-line__more--after {
+  right: -8px;
+}
+
+.cast-line__more--after .icon {
+  rotate: 180deg;
+}
+
 .cast-card {
   --focus-gap: var(--bg);
   position: relative;
@@ -900,7 +937,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  color: var(--ink);
+  color: var(--on-alive);
   background: var(--alive);
 }
 
@@ -985,6 +1022,24 @@
   opacity: 0.72;
 }
 
+/* "Room for {name}": the name is the point, so it gets two lines (and the glyph, only a hint of the kind,
+   gets smaller) instead of "Room for Bu…". */
+.cast-card--spare .cast-card__name {
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.12;
+}
+
+.cast-card--spare .cast-card__pic {
+  height: 36px;
+}
+
+.cast-card--spare .cast-card__pic .ph-glyph {
+  max-height: 36px;
+}
+
 .cast-card--spare:focus-visible,
 .cast-card--resting:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
@@ -1060,6 +1115,16 @@
     max-height: 40px;
   }
 
+  /* Compact cards have one line for a name. */
+  :root[data-layout='tab'] .cast-card--spare .cast-card__name {
+    display: block;
+    white-space: nowrap;
+  }
+
+  :root[data-layout='tab'] .cast-card--spare .cast-card__pic {
+    height: 40px;
+  }
+
   :root[data-layout='tab'] .cast-line__head {
     top: 8px;
   }
@@ -1110,6 +1175,33 @@
   padding: 6px 0 16px;
 }
 
+/* When the panels are taller than the screen (Change mode's Dials | Twists card under an Ask card with a
+   scope chip, a world with many dials, a long answer), the notebook scrolls: the page never does (§2.2),
+   and nothing may end up cut off below it. It reaches into the gutters on both sides so the panels'
+   shadows and focus rings are not clipped; the gutter on the right holds the scrollbar. */
+aside.notebook {
+  margin-inline: calc(-1 * var(--gap)) calc(-1 * var(--edge));
+  padding-inline: var(--gap) 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+aside.notebook > * {
+  margin-inline-end: max(0px, calc(var(--edge) - 10px));
+}
+
+:root[data-layout='portrait'] aside.notebook {
+  margin-inline: 0;
+  padding-inline: 0;
+  overflow: visible;
+  scrollbar-gutter: auto;
+}
+
+:root[data-layout='portrait'] aside.notebook > * {
+  margin-inline-end: 0;
+}
+
 .notebook > .panel {
   flex: none;
 }
@@ -1118,7 +1210,8 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  min-height: 120px;
+  /* The heading and the newest step, whole (the notebook scrolls when there is no room for this). */
+  min-height: 150px;
 }
 
 .notebook__steps > * {
@@ -1239,6 +1332,11 @@
 .twist-tile .twist-icon,
 .twist-tile .icon {
   color: var(--accent);
+}
+
+/* Lantern yellow is 1.4:1 on Day's light tiles (and fades on a projector): Day's darker lantern edge. */
+:root[data-theme='day'] .twist-tile :is(.twist-icon, .icon) {
+  color: var(--accent-border);
 }
 
 .twist-tile__switch {

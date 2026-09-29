@@ -3,7 +3,7 @@
  * pixels, and a drawing that survives switching away within 100 ms of a stroke.
  */
 import { expect, openAmble, test } from '../helpers/app';
-import { alphaAt, boardSize, circle, deskState, drawOnBoard, inkedLayers, openDesk, openStarterWorld, settle, tapOnBoard } from './desk';
+import { alphaAt, boardSize, circle, deskState, drawOnBoard, inkedLayers, openDesk, openStarterWorld, settle, tapOnBoard, toSheet } from './desk';
 
 test('tools by keyboard, while the sheet has focus', async ({ page }) => {
   await openAmble(page);
@@ -85,6 +85,52 @@ test('undo restores pixels, redo brings them back', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled();
   await page.keyboard.press('Control+Shift+z');
   await expect.poll(() => alphaAt(page, 'lines', x, y)).toBeGreaterThan(100);
+});
+
+test.describe('a finger held still', () => {
+  test.use({ hasTouch: true, viewport: { width: 1280, height: 800 } });
+
+  test('on blank paper still draws (it never picks the paper), and on paint picks that colour', async ({ page }) => {
+    await openAmble(page);
+    await openDesk(page, '#/draw/new');
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', x = 0, y = 0) =>
+      cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, radiusX: 4, radiusY: 4, force: 0.5, id: 1 }] });
+    const colour = () => page.evaluate(() => (window as unknown as { __ambleDesk: { getSnapshot(): { color: string; origin: string } } }).__ambleDesk.getSnapshot());
+    const toPage = async (x: number, y: number) => {
+      const [[sx, sy]] = await toSheet(page, [[x, y]]);
+      const box = (await page.getByTestId('desk-board').boundingBox())!;
+      return [box.x + sx, box.y + sy] as const;
+    };
+    const drag = async (x: number, y: number, holdMs: number, dy = 2) => {
+      await touch('touchStart', x, y);
+      if (holdMs) await page.waitForTimeout(holdMs);
+      for (let i = 1; i <= 16; i++) {
+        await touch('touchMove', x + i * 6, y + i * dy);
+        await page.waitForTimeout(10);
+      }
+      await touch('touchEnd');
+      await settle(page, 400);
+    };
+
+    // A child rests a finger on the paper before drawing: the stroke is ink, not an invisible "paper white".
+    const before = await colour();
+    const [x0, y0] = await toPage(200, 200);
+    await drag(x0, y0, 900);
+    expect((await colour()).color).toBe(before.color);
+    await expect.poll(() => alphaAt(page, 'lines', 200, 200)).toBeGreaterThan(100);
+
+    // Held still on something drawn, the finger picks its colour (long-press to pick a colour, §7.1).
+    await page.locator('.desk__side').getByRole('button', { name: /^Tomato red/ }).first().click();
+    const [x1, y1] = await toPage(600, 300);
+    for (let k = 0; k < 4; k++) await drag(x1, y1 + k * 3, 0, 0);
+    await page.locator('.desk__side').getByRole('button', { name: /^Ink black/ }).first().click();
+    await touch('touchStart', x1 + 20, y1 + 4);
+    await page.waitForTimeout(1000);
+    await touch('touchEnd');
+    await expect.poll(async () => (await colour()).origin).toBe('picked');
+    expect((await colour()).color).toBe('#e5484d');
+  });
 });
 
 test('switching drawings within 100 ms of a stroke loses nothing', async ({ page }) => {

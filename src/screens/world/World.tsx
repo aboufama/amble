@@ -12,7 +12,7 @@ import { navigate } from '../../app/router';
 import type { RouteOf } from '../../app/routes';
 import { useServices } from '../../app/services';
 import { withViewTransition } from '../../app/transitions';
-import { t } from '../../i18n';
+import { midSentence, t } from '../../i18n';
 import type { CastMember } from '../../model/types';
 import { announce, showToast } from '../../state/app';
 import { effectiveAiMode } from '../../state/config';
@@ -83,7 +83,7 @@ export function World({ route }: { route: RouteOf<'world'> }) {
       if (!getState().prefs.seen.ghostTip) markSeen('ghostTip');
       controller.current?.pauseForEditor();
       playUiSound('lift');
-      announce(t('world.lifting', { name: member.name }));
+      announce(t('world.lifting', { name: midSentence(member.name) }));
       const start: Box = !from
         ? (() => {
             const f = frameRef.current?.getBoundingClientRect();

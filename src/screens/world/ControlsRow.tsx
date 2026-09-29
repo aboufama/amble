@@ -9,7 +9,7 @@ import type { Action, World } from '../../model/types';
 import { Button, Keycap, Segmented } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { getState, useStore } from '../../state/store';
-import { hintActions, keyHints } from '../../world/hints';
+import { actionWords, hintActions, keyHints } from '../../world/hints';
 import { useLayout } from './hooks';
 
 const NO_ACTIONS: readonly Action[] = [];
@@ -46,7 +46,7 @@ export function ControlsRow({ world, fullscreen, onMode, onRestart, onFullscreen
   const touch = useStore((s) => s.prefs.touchControls);
   const layout = useLayout();
   const coarse = layout === 'touch' || touch === 'on';
-  const hints = keyHints(hintActions(actions, world.code), world.controls);
+  const hints = keyHints(hintActions(actions, world.code), world.controls, actionWords(world.code));
   const small = layout === 'small';
   const narrow = small || layout === 'portrait';
   return (
@@ -84,7 +84,7 @@ export function ControlsRow({ world, fullscreen, onMode, onRestart, onFullscreen
             {hints.map((h) => (
               <li key={h.word}>
                 <Keycap>{h.keys}</Keycap>
-                <span>{t(h.word)}</span>
+                <span>{h.label ?? t(h.word)}</span>
               </li>
             ))}
           </ul>

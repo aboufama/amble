@@ -14,6 +14,7 @@ import { parentOf } from '../../history/record';
 import { t } from '../../i18n';
 import { KEEP } from '../../model/limits';
 import type { StepId, StepSummary, World, WorldId } from '../../model/types';
+import { dismissChangeToast } from '../../state/ai';
 import { announce, showToast } from '../../state/app';
 import { Panel } from '../../ui/components';
 import { focusElement, rovingIndex, useReducedMotion } from '../../ui/a11y';
@@ -91,6 +92,11 @@ function Trail({ world, compact }: { world: World; compact: boolean }) {
     const id = setTimeout(() => setFresh(null), 700);
     return () => clearTimeout(id);
   }, [world.head, reduced]);
+
+  // A change on show needs no "Amble changed your world" toast over it.
+  useEffect(() => {
+    if (sheet) dismissChangeToast();
+  }, [sheet]);
 
   useEffect(
     () =>

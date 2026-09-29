@@ -215,7 +215,7 @@
 }
 
 .ai-step--done .ai-step__mark {
-  color: var(--on-accent);
+  color: var(--on-alive);
   background: var(--alive);
 }
 
