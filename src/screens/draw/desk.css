@@ -75,8 +75,11 @@
   color: var(--warn);
 }
 
+/* The buttons never shrink, so their group keeps its width: the title moves over (and fits itself with an
+   ellipsis) instead of sliding under them when "Bringing it to life…" widens the button. */
 .desk__top .topbar__end {
   gap: var(--s2);
+  min-width: max-content;
 }
 
 .desk__top .topbar__end > * {
