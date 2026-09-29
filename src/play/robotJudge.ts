@@ -28,7 +28,7 @@ export const ROBOT_THRESHOLDS: RobotThresholds = {
   maxGrowthSlack: 300,
 };
 
-export interface RobotReport extends RobotRaw {
+export interface RobotVerdict {
   pass: boolean;
   /** Why it failed (empty when it passed). */
   reasons: string[];
@@ -39,7 +39,23 @@ export interface RobotReport extends RobotRaw {
   blank: boolean;
 }
 
-export function judgeRobot(raw: RobotRaw, expectedFrames: number, t: RobotThresholds = ROBOT_THRESHOLDS): RobotReport {
+/** The raw measurements plus the verdict. */
+export interface RobotReport extends RobotRaw, RobotVerdict {}
+
+export interface JudgeOptions {
+  /** Frames the robot should have stepped (default: 60 per second of game time). */
+  expectedFrames?: number;
+  thresholds?: RobotThresholds;
+}
+
+/**
+ * Pass/fail for a robot run: `judgeRobot(raw)`, `judgeRobot(raw, { expectedFrames, thresholds })`, or
+ * `judgeRobot(raw, expectedFrames, thresholds)`.
+ */
+export function judgeRobot(raw: RobotRaw, frames?: number | JudgeOptions, thresholds?: RobotThresholds): RobotReport {
+  const o: JudgeOptions = typeof frames === 'number' ? { expectedFrames: frames, thresholds } : { thresholds, ...frames };
+  const expectedFrames = o.expectedFrames ?? Math.round(raw.gameMs / (1000 / 60));
+  const t = o.thresholds ?? ROBOT_THRESHOLDS;
   const reasons: string[] = [];
   const notes: string[] = [];
   for (const e of raw.errors.slice(0, 5)) {

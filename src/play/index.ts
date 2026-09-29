@@ -5,7 +5,7 @@
 export { Player, type GameBundle, type PlayerEvents, type PlayerOptions, type PlayerState } from './player';
 export { PlayerFrame, type FrameEvents, type FrameOptions } from './frame';
 export { runRobotTest, type RobotTestOptions } from './robot';
-export { judgeRobot, ROBOT_THRESHOLDS, type RobotReport, type RobotThresholds } from './robotJudge';
+export { judgeRobot, ROBOT_THRESHOLDS, type JudgeOptions, type RobotReport, type RobotThresholds, type RobotVerdict } from './robotJudge';
 export { buildStandaloneHtml, standaloneCsp, type StandaloneInput } from './standalone';
 export { loadRuntime, loadRuntimeText } from './runtimeBytes';
 export { PLAYER_BOOT, STANDALONE_BOOT, playerCsp, playerSrcdoc, scriptHash } from './bootstrap';

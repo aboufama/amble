@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PLAYER_BOOT, STANDALONE_BOOT, playerCsp, playerSrcdoc, scriptHash, sha256Base64 } from '../../src/play/bootstrap';
 import { isScrollKey, keyCodeFor, shouldForwardKey } from '../../src/play/keys';
 import { PLAYER_LIMITS, RateLimiter } from '../../src/play/limits';
-import { judgeRobot } from '../../src/play/robotJudge';
+import { judgeRobot, ROBOT_THRESHOLDS } from '../../src/play/robotJudge';
 import { buildStandaloneHtml } from '../../src/play/standalone';
 import { STANDALONE_DATA_ID, STANDALONE_RUNTIME_ID, type RobotRaw, type RuntimeStats } from '../../src/play/protocol';
 
@@ -91,6 +91,9 @@ describe('the robot judge', () => {
     expect(judgeRobot(raw({ end: stats(900) }), 360).reasons[0]).toMatch(/piling up/);
     expect(judgeRobot(raw({ frames: 100 }), 360).reasons[0]).toMatch(/100 of 360/);
     expect(judgeRobot(raw({ artMissing: ['boss'] }), 360).notes[0]).toMatch(/boss/);
+    // The options form defaults to 60 frames per second of game time.
+    expect(judgeRobot(raw({ frames: 100 }), { thresholds: ROBOT_THRESHOLDS }).reasons[0]).toMatch(/100 of 360/);
+    expect(judgeRobot(raw()).pass).toBe(true);
   });
 });
 
