@@ -152,3 +152,46 @@ test('teacher-locked lines are read-only', async ({ page }) => {
   await expect(page.locator('.cm-line', { hasText: 'static art = { // mine' })).toHaveCount(1);
   await expect(page.getByTestId('run-bar')).toContainText('You changed game.js');
 });
+
+test('Explain this shows kit docs with the AI helper off, and its note when on', async ({ page }) => {
+  await openCode(page);
+  await (await revealLine(page, 'this.ui.bossBar(')).click();
+  await page.getByRole('button', { name: 'Explain this' }).click();
+  const docs = page.locator('.cm-explain--docs');
+  await expect(docs).toContainText('What these do');
+  await expect(docs).toContainText('bossBar(');
+  await docs.getByRole('button', { name: 'Close this note' }).click();
+  await expect(docs).toHaveCount(0);
+
+  // A stand-in AI helper that answers on the device.
+  await page.evaluate(() => {
+    type Ai = { status(): string; explain(w: unknown, q: { from: number; to: number }): Promise<unknown> };
+    const ai = (window as unknown as { __amble: { services: { ai: Ai } } }).__amble.services.ai;
+    ai.status = () => 'ready';
+    ai.explain = async (_w, q) => ({
+      kind: 'explained',
+      reply: { answer: 'This line puts the boss health bar at the top.', lines: [{ from: q.from, to: q.to, note: 'The name shows above the bar.' }], safetyNote: '' },
+    });
+  });
+  await (await revealLine(page, 'this.ui.bossBar(')).click();
+  await page.getByRole('button', { name: 'Explain this' }).click();
+  const note = page.locator('.cm-explain--ai');
+  await expect(note).toContainText('AI helper');
+  await expect(note).toContainText('This line puts the boss health bar at the top.');
+  await expect(note).toContainText('The name shows above the bar.');
+});
+
+test('kit calls have hover docs and autocomplete', async ({ page }) => {
+  await openCode(page);
+  const line = await revealLine(page, 'this.ui.bossBar(');
+  await line.getByText('bossBar', { exact: true }).hover();
+  await expect(page.locator('.cm-kit-doc')).toContainText('this.ui.bossBar(');
+  await line.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' this.fx.sha');
+  const menu = page.locator('.cm-tooltip-autocomplete');
+  await expect(menu).toContainText('shake');
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.cm-line', { hasText: 'this.fx.shake' })).toHaveCount(1);
+});

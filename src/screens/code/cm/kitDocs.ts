@@ -99,6 +99,8 @@ export function kitDocsInRange(doc: Text, from: number, to: number, index: KitIn
     const at = from + (m.index ?? 0) + m[0].length - m[1].length;
     const ref = kitRefAt(doc, at, index);
     if (!ref) continue;
+    // `this.fx.shake` is about shake: the namespace on the way there needs no doc of its own.
+    if (ref.member.kind === 'namespace' && /^\s*\./.test(doc.sliceString(ref.to, Math.min(doc.length, ref.to + 3)))) continue;
     const key = `${ref.ns}.${ref.member.name}`;
     if (seen.has(key)) continue;
     seen.add(key);

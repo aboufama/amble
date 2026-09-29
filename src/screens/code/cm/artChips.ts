@@ -109,12 +109,24 @@ class ArtChipWidget extends WidgetType {
  */
 const NOT_ART_KEYS = new Set(['role', 'kind', 'rig', 'facing', 'shape', 'pronoun', 'physics', 'aim', 'draw', 'blend', 'name', 'ask', 'about', 'label', 'words', 'title', 'subtitle', 'sub', 'text', 'unit', 'caption', 'preset', 'wave', 'who']);
 
+/** Calls whose string arguments are words (a music style, a sound, a move, text on screen), not art keys. */
+const NOT_ART_CALLS = new Set(['play', 'sfx', 'weather', 'hint', 'big', 'pop', 'say', 'text', 'bossBar', 'win', 'lose', 'dialogue', 'button', 'isOn', 'cooldown', 'go', 'tune', 'face', 'setLevel']);
+
 function propertyNameOf(view: EditorView, node: SyntaxNode): string | null {
   const parent = node.parent;
   if (parent?.name !== 'Property') return null;
   const first = parent.firstChild;
   if (!first || first.from === node.from) return null;
   return view.state.doc.sliceString(first.from, first.to).replace(/^['"]|['"]$/g, '');
+}
+
+/** The name of the function a string is passed to (`music.play('boss')` → 'play'). */
+function calleeOf(view: EditorView, node: SyntaxNode): string | null {
+  if (node.parent?.name !== 'ArgList') return null;
+  const call = node.parent.parent;
+  const callee = call?.name === 'CallExpression' ? call.firstChild : null;
+  if (!callee) return null;
+  return /([A-Za-z_$][\w$]*)\s*$/.exec(view.state.doc.sliceString(callee.from, callee.to))?.[1] ?? null;
 }
 
 /** String literals (quotes stripped) that name a cast member, with their ranges. */
@@ -130,6 +142,8 @@ function artStrings(view: EditorView, chips: ReadonlyMap<string, ArtChipInfo>, v
         if (!info) return;
         const prop = propertyNameOf(view, ref.node);
         if (prop && NOT_ART_KEYS.has(prop)) return;
+        const callee = calleeOf(view, ref.node);
+        if (callee && NOT_ART_CALLS.has(callee)) return;
         visit(ref.from, ref.to, info);
       },
     });
