@@ -29,7 +29,7 @@ import type {
 } from '../model/types';
 import { announce, showToast } from './app';
 import { markSeen } from './prefs';
-import { adoptWorld, applyAccepted, loadGame, patchSession, refreshCast, setDial, setTwist } from './session';
+import { adoptWorld, applyAcceptedChange, loadGame, patchSession, refreshCast, setDial, setTwist } from './session';
 import { getState, setState } from './store';
 
 export interface SteerRecord {
@@ -86,8 +86,11 @@ export interface AiSlice {
   /** The world an explain request is running for. */
   explaining: WorldId | null;
   explain: ExplainNote | null;
-  /** What the last accepted change touched: its files, and a file whose student-written lines it rewrote. */
-  changed: { worldId: WorldId; files: string[]; handFile: string | null } | null;
+  /**
+   * What the last accepted change touched: its files, a file whose student-written lines it rewrote, and the
+   * files it left out because the student changed the same lines while it worked.
+   */
+  changed: { worldId: WorldId; files: string[]; handFile: string | null; leftOut: string[] } | null;
 }
 
 export function initialAi(): AiSlice {
@@ -170,6 +173,8 @@ function begin(world: World, task: AiJobView['task'], request: string): AbortCon
     s.ai.job = view;
     s.ai.streamedArt = [];
     if (s.ai.wait?.worldId === world.id) s.ai.wait = null;
+    // What the last change touched belongs to that change only.
+    if (s.ai.changed?.worldId === world.id) s.ai.changed = null;
   });
   return own;
 }
@@ -238,42 +243,61 @@ function stepFor(outcome: Extract<AiOutcome, { kind: 'accepted' }>, task: AiJobV
   return { kind: 'ask', by: 'ai', text: outcome.summary || t('ai.changedPlain'), request: words, files, tested: outcome.tested, handEdits: outcome.handEditsTouched };
 }
 
-/** The files an accepted outcome changed (for See the change). */
-function changedFiles(before: World, outcome: Extract<AiOutcome, { kind: 'accepted' }>): string[] {
-  return outcome.files.filter((f) => before.code.find((b) => b.path === f.path)?.source !== f.source).map((f) => f.path);
+/**
+ * Says which files a change left out because the student changed the same lines meanwhile: "You changed
+ * game.js while the AI helper was working, so its change to that file was left out. Ask again to try once more."
+ */
+export function leftOutText(files: readonly string[]): string {
+  if (files.length === 1) return t('ai.leftOut', { file: files[0] });
+  if (files.length === 2) return t('ai.leftOutTwo', { a: files[0], b: files[1] });
+  return t('ai.leftOutMany', { n: files.length });
 }
 
-/** "Amble changed your world: …" [See the change] (§2.8 Done). */
-function doneToast(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, files: string[]): void {
+/** "Amble changed your world: …" [See the change] (§2.8 Done); or, when none of it could go in, why. */
+function doneToast(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, files: string[], leftOut: string[]): void {
   if (getState().session.world?.id !== worldId) return;
+  if (leftOut.length) announce(leftOutText(leftOut));
+  if (!files.length && leftOut.length) {
+    showToast(leftOutText(leftOut), { kind: 'ai' });
+    return;
+  }
   const text = outcome.summary ? t('ai.changed', { summary: outcome.summary }) : t('ai.changedPlain');
   showToast(text, { kind: 'ai', action: { label: t('ai.seeChange'), run: () => navigate({ name: 'code', worldId, file: files[0] ?? 'game.js' }) } });
 }
 
-/** Applies an accepted change or fix: the session's `applyAccepted` (M2), else a direct commit. */
-async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, task: AiJobView['task'], words: string): Promise<void> {
-  const before = await currentWorld(worldId);
-  if (!before) return;
-  const files = changedFiles(before, outcome);
-  // The pipeline's code tools (acorn and friends) are loaded by now: this outcome came from them.
-  const handFile = outcome.handEditsTouched ? (await import('../pipeline/service')).handEditFile(before.code, outcome.files) : null;
-  setState((s) => {
-    s.ai.changed = { worldId, files, handFile };
-  });
+/**
+ * Applies an accepted change or fix: the session's `applyAccepted` (M2), else a direct commit. `base` is the
+ * code the job started from: code the student ran in Look inside while it worked stays (a three-way merge),
+ * and a file both changed in the same lines keeps the student's version.
+ */
+async function applyChange(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' }>, task: AiJobView['task'], words: string, base: World['code']): Promise<void> {
+  const noteChanged = (files: string[], handFile: string | null, leftOut: string[]) =>
+    setState((s) => {
+      s.ai.changed = { worldId, files, handFile, leftOut };
+    });
   if (getState().session.world?.id === worldId) {
-    await applyAccepted(outcome);
-    doneToast(worldId, outcome, files);
+    const r = await applyAcceptedChange(outcome, { base });
+    noteChanged(r.files, r.handFile, r.leftOut);
+    doneToast(worldId, outcome, r.files, r.leftOut);
     return;
   }
-  await commitWorld({ ...before, code: outcome.files, updatedAt: Date.now() }, stepFor(outcome, task, words), keepCode);
-  if (getState().session.world?.id === worldId) {
-    setState((s) => {
-      s.session.manifest = outcome.manifest;
-      s.session.newVersion = { summary: outcome.summary, ready: true };
-    });
-    void getServices().player.promote().catch(() => undefined);
+  // The pipeline's code tools (acorn and friends) are loaded by now: this outcome came from them.
+  const { rebaseChange } = await import('../pipeline/rebase');
+  const before = await currentWorld(worldId);
+  if (!before) return;
+  const r = rebaseChange(outcome, { base, world: before, attribute: getServices().history.attribute });
+  noteChanged(r.files, r.handFile, r.leftOut);
+  if (r.files.length || !r.leftOut.length) {
+    await commitWorld({ ...before, code: r.code, updatedAt: Date.now() }, { ...stepFor(outcome, task, words), files: r.files, ...(task === 'change' ? { handEdits: Boolean(r.handFile) } : {}) }, keepCode);
+    if (getState().session.world?.id === worldId) {
+      setState((s) => {
+        s.session.manifest = r.manifest;
+        s.session.newVersion = { summary: outcome.summary, ready: true };
+      });
+      void getServices().player.promote().catch(() => undefined);
+    }
   }
-  doneToast(worldId, outcome, files);
+  doneToast(worldId, outcome, r.files, r.leftOut);
 }
 
 /** A build's result, written to the stored world (the student may be drawing on the Desk). */
@@ -338,7 +362,7 @@ async function settle(world: World, task: AiJobView['task'], words: string, outc
   try {
     if (outcome.kind === 'accepted') {
       if (task === 'build') await applyBuild(world.id, outcome, words);
-      else await applyChange(world.id, outcome, task, words);
+      else await applyChange(world.id, outcome, task, words, world.code);
     } else if (outcome.kind === 'fallback') await applyBuild(world.id, outcome, words);
     else if (outcome.kind === 'crisis') await recordRefusal(world.id, 'support');
     else if (outcome.kind === 'refused') await recordRefusal(world.id, 'request');

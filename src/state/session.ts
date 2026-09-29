@@ -8,8 +8,9 @@
  * - `updateWorld(recipe)` edits the open world and autosaves it (800 ms, then idle, §4.4);
  * - `setDial` / `setTwist` change the running game live and print footsteps (dial bursts merge, 1.5 s);
  * - `recordStep(step)` prints a footstep for the open world;
- * - `applyAccepted(outcome, { task, request })` puts an accepted AI change into the world (a footstep, new
+ * - `applyAccepted(outcome, { task, request, base })` puts an accepted AI change into the world (a footstep, new
  *   cast members with a NEW ribbon) and loads it at once, or at the next pause when the student is playing;
+ *   with the job's starting code as `base`, code the student ran meanwhile stays (a three-way merge);
  * - `setComeAlive(c)` (M3, after Bring to life) starts the come-alive flight when the world shows again.
  */
 import type { Draft } from 'immer';
@@ -18,7 +19,7 @@ import { isSupersededLoad } from '../app/player/host';
 import { getServices } from '../app/services';
 import type { GameManifest, GameState, WorldObject } from '../cores/play';
 import { t } from '../i18n';
-import type { AiOutcome, CastKey, CastMember, CastSlot, PlayerError, SaveState, StepInput, TwistId, World, WorldId } from '../model/types';
+import type { AiOutcome, CastKey, CastMember, CastSlot, CodeFile, PlayerError, SaveState, StepInput, TwistId, World, WorldId } from '../model/types';
 import { createAutosave, type Autosave } from '../store/autosave';
 import { deriveCast } from '../world/cast';
 import { DialBurst, type DialCommit } from '../world/dialBurst';
@@ -443,6 +444,20 @@ function slotFor(key: CastKey): CastSlot {
   return { key, art: null, madeBy: null, extra: null, laterUntil: 0 };
 }
 
+/** What an accepted change did to the open world. */
+export interface AppliedChange {
+  /** The world with the change and its footstep (the world as it was when none of the change could go in). */
+  world: World;
+  /** The code just before the change went in. */
+  before: CodeFile[];
+  /** Files the change changed. */
+  files: string[];
+  /** Files the student changed while the AI helper worked, in the same lines: the change to them was left out. */
+  leftOut: string[];
+  /** A file whose student-written lines the change rewrote ("Amble also changed lines you wrote in …"). */
+  handFile: string | null;
+}
+
 /**
  * Applies an accepted AI change (or a build's fallback) to the open world: code with its authors, new
  * cast members, a footstep with the student's words, a save, and the new version in the player (at once,
@@ -450,8 +465,23 @@ function slotFor(key: CastKey): CastSlot {
  */
 export async function applyAccepted(
   outcome: Extract<AiOutcome, { kind: 'accepted' | 'fallback' }>,
-  o: { task?: 'build' | 'change' | 'fix'; request?: string } = {},
+  o: { task?: 'build' | 'change' | 'fix'; request?: string; base?: readonly CodeFile[] } = {},
 ): Promise<World> {
+  return (await applyAcceptedChange(outcome, o)).world;
+}
+
+/**
+ * `applyAccepted`, saying what went in. With `base` (the code the job started from), code the student ran in
+ * Look inside while the AI helper worked stays: the change goes in by a three-way merge, and a file both
+ * changed in the same lines keeps the student's version (`leftOut`). When nothing could go in, the world is
+ * left as it is: no footstep and no new version.
+ */
+export async function applyAcceptedChange(
+  outcome: Extract<AiOutcome, { kind: 'accepted' | 'fallback' }>,
+  o: { task?: 'build' | 'change' | 'fix'; request?: string; base?: readonly CodeFile[] } = {},
+): Promise<AppliedChange> {
+  // The pipeline's code tools read what merged code declares; they are loaded by now (the outcome came from them).
+  const rebase = o.base ? (await import('../pipeline/rebase')).rebaseChange : null;
   const world = getState().session.world;
   if (!world) throw new Error('No world is open.');
   // The AI pipeline calls this with the outcome alone: its job still holds the student's words.
@@ -459,20 +489,32 @@ export async function applyAccepted(
   const task = o.task ?? (job?.worldId === world.id ? job.task : undefined);
   const request = o.request ?? (job?.worldId === world.id && job.task !== 'fix' ? job.request : undefined);
   const { history } = getServices();
-  const code = history.attribute(world.code, outcome.files, 'ai');
+  const before = world.code;
+  const r =
+    rebase && o.base
+      ? rebase(outcome, { base: o.base, world, attribute: history.attribute })
+      : {
+          code: history.attribute(world.code, outcome.files, 'ai'),
+          manifest: outcome.manifest,
+          newArt: outcome.kind === 'accepted' ? outcome.newArt : [],
+          files: outcome.files.map((f) => f.path),
+          leftOut: [] as string[],
+          handFile: null,
+        };
+  if (!r.files.length && r.leftOut.length) return { world, before, files: [], leftOut: r.leftOut, handFile: null };
   const cast: Record<CastKey, CastSlot> = { ...world.cast };
   const added: CastKey[] = [];
-  for (const need of outcome.manifest.art) {
+  for (const need of r.manifest.art) {
     if (cast[need.key]) continue;
     cast[need.key] = slotFor(need.key);
     added.push(need.key);
   }
-  const fresh = outcome.kind === 'accepted' && outcome.newArt.length ? outcome.newArt : added;
+  const fresh = outcome.kind === 'accepted' && r.newArt.length ? r.newArt : added;
   updateWorld((w) => {
-    w.code = code;
+    w.code = r.code;
     w.cast = cast;
   });
-  const files = outcome.files.map((f) => f.path);
+  const files = r.files;
   const step: StepInput =
     outcome.kind === 'fallback'
       ? { kind: 'code', by: 'ai', text: outcome.message, files, ...(request ? { request } : {}) }
@@ -482,17 +524,17 @@ export async function applyAccepted(
           text: outcome.summary || t('world.stepAiChanged'),
           files,
           tested: outcome.tested,
-          handEdits: outcome.handEditsTouched,
+          handEdits: rebase ? Boolean(r.handFile) : outcome.handEditsTouched,
           ...(request ? { request } : {}),
         };
   const recorded = (await recordStep(step)) ?? getState().session.world ?? world;
   const summary = outcome.kind === 'accepted' ? outcome.summary : outcome.message;
-  patchSession({ fresh, manifest: outcome.manifest });
+  patchSession({ fresh, manifest: r.manifest });
   refreshCast();
   const playing = getState().session.player === 'running' && getState().session.mode === 'play';
   if (playing) patchSession({ newVersion: { summary, ready: true } });
   else void loadGame(recorded, { autostart: true });
-  return recorded;
+  return { world: recorded, before, files, leftOut: r.leftOut, handFile: r.handFile };
 }
 
 /** Loads a new version that waited for a pause ("New version ready: … [Play it now]"). */
