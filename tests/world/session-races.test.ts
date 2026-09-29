@@ -14,7 +14,7 @@ import { playWorld } from '../../src/history/live';
 import type { AiOutcome, PlanReply, World } from '../../src/model/types';
 import { startBuild } from '../../src/state/ai';
 import { closeWorld, flushWorld, openWorld, patchSession, setDial, updateWorld } from '../../src/state/session';
-import { getState, resetState } from '../../src/state/store';
+import { getState, resetState, setState } from '../../src/state/store';
 import { createStarterCatalog } from '../../src/starters/api';
 import { MemoryStore } from '../../src/store/memory';
 import { sampleWorld } from '../foundation/samples';
@@ -160,6 +160,38 @@ describe('a copy waiting in the autosave', () => {
     expect(stored?.steps.at(-1)?.kind).toBe('draw');
     expect(getState().session.world?.cast.boss.art).toBe(res.record.id);
     expect(getState().session.world?.title).toBe('Pizza Boss');
+  });
+
+  it('puts a build that lands while the student watches the Warm-up into the game', async () => {
+    const built = 'class Game extends Amble.Scene {}\n// built';
+    const outcome: Extract<AiOutcome, { kind: 'accepted' }> = {
+      kind: 'accepted',
+      files: [{ path: 'game.js', source: built, authors: [['ai', 2]], locked: [] }],
+      manifest: MANIFEST,
+      summary: 'a boss fight.',
+      play: '',
+      next: [],
+      safety: { kind: 'ok', note: '' },
+      repairs: 0,
+      tested: true,
+      handEditsTouched: false,
+      newArt: [],
+    };
+    (getServices() as unknown as { ai: { build: () => Promise<AiOutcome> } }).ai = { build: async () => outcome };
+    const player = getServices().player as unknown as ReturnType<typeof fakePlayer>;
+    // Build it first: the world screen shows the Warm-up, playing.
+    setState((s) => {
+      s.app.route = { name: 'world', id: world.id };
+    });
+    patchSession({ player: 'running', mode: 'play' });
+    player.load.mockClear();
+    await startBuild(getState().session.world!, { pitch: 'a boss fight', title: 'Moon King' } as PlanReply);
+    // Mid-play it waits for a pause as "New version ready"; stopped, it loads at once.
+    expect(getState().session.newVersion).toEqual({ summary: 'a boss fight.', ready: true });
+    patchSession({ newVersion: null, player: 'paused' });
+    (getServices() as unknown as { ai: { build: () => Promise<AiOutcome> } }).ai = { build: async () => ({ ...outcome, summary: 'again.' }) };
+    await startBuild(getState().session.world!, { pitch: 'a boss fight', title: 'Moon King' } as PlanReply);
+    await vi.waitFor(() => expect(player.load).toHaveBeenCalled());
   });
 
   it("never undoes an AI build that lands while the world is open", async () => {

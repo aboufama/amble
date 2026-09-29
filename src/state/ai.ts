@@ -29,7 +29,7 @@ import type {
 } from '../model/types';
 import { announce, showToast } from './app';
 import { markSeen } from './prefs';
-import { adoptWorld, applyAccepted, loadGame, setDial, setTwist } from './session';
+import { adoptWorld, applyAccepted, loadGame, patchSession, refreshCast, setDial, setTwist } from './session';
 import { getState, setState } from './store';
 
 export interface SteerRecord {
@@ -297,11 +297,22 @@ async function applyBuild(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 
       },
     );
   }
-  if (getState().session.world?.id === worldId) {
-    setState((s) => {
-      s.session.manifest = outcome.manifest;
-    });
-  }
+  const s = getState();
+  const open = s.session.world;
+  if (open?.id !== worldId) return;
+  setState((d) => {
+    d.session.manifest = outcome.manifest;
+  });
+  refreshCast();
+  // Watching the Warm-up in the world (Build it first): the real game comes like any new version, at once
+  // or at the next pause. Elsewhere (the Desk's preview plays it itself) the world loads it on return.
+  const route = s.app.route;
+  const onScreen = (route.name === 'world' && route.id === worldId) || (route.name === 'handin' && route.worldId === worldId);
+  if (!onScreen) return;
+  // The ladder's own card explains a fallback; the new-version card then says it plainly.
+  const summary = outcome.kind === 'accepted' ? outcome.summary : '';
+  if (s.session.player === 'running' && s.session.mode === 'play') patchSession({ newVersion: { summary, ready: true } });
+  else void loadGame(open, { autostart: true });
 }
 
 /** The cast of a build that fell back to its starter (the ladder's code tools load with the job). */
