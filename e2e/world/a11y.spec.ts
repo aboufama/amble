@@ -9,12 +9,14 @@ import { expect, test } from '../helpers/app';
 import { openWorld } from './world';
 
 async function axe(page: Page): Promise<string[]> {
+  // Let finite animations (a dialog fading in) finish: axe reads colours mid-fade as low contrast.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || (a.effect?.getComputedTiming().endTime ?? 0) === Infinity), null, { timeout: 5_000 }).catch(() => undefined);
   const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).exclude('iframe').analyze();
   return r.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`);
 }
 
 test.describe('the world screen is accessible', () => {
-  for (const theme of ['night', 'contrast'] as const) {
+  for (const theme of ['original', 'contrast'] as const) {
     const colours = theme === 'contrast' ? 'High contrast' : 'the Original colours';
     test(`in Play, in Change mode with a card open, and in World info, in ${colours}`, async ({ page }) => {
       await openWorld(page);

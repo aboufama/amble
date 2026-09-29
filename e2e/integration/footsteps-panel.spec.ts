@@ -5,12 +5,15 @@
  * its only step "1 more step".
  */
 import { expect, test } from '../helpers/app';
+import { mockAi } from '../helpers/mockAi';
 import { openWorld } from '../world/world';
 
 test.use({ viewport: { width: 1366, height: 657 } });
 
 test('a crowded notebook scrolls; Footsteps keeps its only step whole, never "1 more step"', async ({ page }) => {
-  await openWorld(page);
+  // With a class link and its AI, so the wish box (and its scope chip) is there.
+  await mockAi(page);
+  await openWorld(page, { ai: 'mock' });
   await page.getByRole('radio', { name: 'Change' }).click();
   await expect(page.getByTestId('tune-card')).toBeVisible();
   await page.getByTestId('tag-moonKing').click();

@@ -18,6 +18,21 @@ type Amble = {
  * would (bold enough that its bones are found every time).
  */
 async function drawPerson(page: Page, board: Locator): Promise<void> {
+  // The First page's paper slides in: a stroke begun meanwhile lands it at once, shifted from the strokes
+  // after it (a head drawn into the body). Draw once the paper has stopped moving.
+  await expect(page.getByTestId('screen-first')).toHaveClass(/first--entered/, { timeout: 15_000 });
+  const seen: string[] = [];
+  await expect
+    .poll(
+      async () => {
+        const b = await board.boundingBox();
+        seen.push(b ? `${Math.round(b.x)},${Math.round(b.y)}` : '');
+        const recent = seen.slice(-3);
+        return recent.length === 3 && recent[0] !== '' && recent.every((at) => at === recent[0]);
+      },
+      { intervals: [250], timeout: 15_000 },
+    )
+    .toBe(true);
   await page.getByTestId('pen-size').click();
   await expect(page.getByTestId('pen-size')).toHaveAccessibleName(/big/i);
   const box = await board.boundingBox();

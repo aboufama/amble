@@ -1,6 +1,6 @@
 /** Helpers for the world screen's specs: open a starter as a world, reach its game frame, read the game. */
 import type { Frame, Page } from '@playwright/test';
-import { expect, openAmble } from '../helpers/app';
+import { expect, openAmble, type OpenAmbleOptions } from '../helpers/app';
 
 export interface GameHook {
   state: string;
@@ -24,11 +24,12 @@ interface AmbleWin {
 }
 
 /**
- * Opens Amble, then the Moon King seed as the student's world (nothing drawn yet: every member is just
- * bones); waits for its first frame. Returns the world id.
+ * Opens Amble (with `o`, for example a class link so wishes are on), then the Moon King seed as the
+ * student's world (nothing drawn yet: every member is just bones); waits for its first frame. Returns the
+ * world id.
  */
-export async function openWorld(page: Page): Promise<string> {
-  await openAmble(page);
+export async function openWorld(page: Page, o: OpenAmbleOptions = {}): Promise<string> {
+  await openAmble(page, o);
   await page.evaluate(async () => {
     const a = (window as unknown as { __amble: { services: { starters: { open(id: string, o: { withArt: boolean }): Promise<{ world: { id: string } }> }; store: { commit(c: unknown): Promise<void> } }; navigate(r: unknown): void } }).__amble;
     const { world } = await a.services.starters.open('moon-king', { withArt: false });

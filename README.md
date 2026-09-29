@@ -2,9 +2,11 @@
 
 **Draw a character. It comes alive.**
 
-Amble is a game maker for students, made for school Chromebooks. A student draws a creature and presses **Bring it to life**: Amble finds bones under the drawing and it starts to hop. Then it stars in a real 2D game built on [Phaser](https://phaser.io/): a boss fight, a runner, a maze, a physics toy or a platformer. Everything else the game needs waits in the world as "just bones" until the student draws it. Students change their worlds in plain words ("make the jump floatier"), with dials and twists, or in the code itself.
+Amble is a game maker for students, made for school Chromebooks. A student draws a creature and presses **Bring it to life**: Amble finds bones under the drawing and it starts to hop. Then it stars in a real 2D game built on [Phaser](https://phaser.io/): a boss fight, a runner, a maze, a physics toy or a platformer. Everything else the game needs waits in the world as "just bones" until the student draws it. Students change their worlds with a wish in plain words ("make the jump floatier"), with dials and twists, or in the code itself.
 
-The art is always the student's. The optional AI helper writes and changes game code from a student's words. It never draws.
+The art is always the student's. Where a school sets one up, an AI service quietly turns a student's wishes into game code; it never draws. Students see the magic, not the machinery: the student screens never show AI labels, badges or sparkles, while Settings, the Teacher desk and the pages for families and IT say plainly what the AI does.
+
+The look is Scratch's colour palette and shape language (light blue-grey pages, white panels, Scratch blue and purple, crisp 4 and 8 px corners), with Amble's own screens. Settings offers Original colours and High contrast.
 
 Try it at <https://aboufama.github.io/amble/>. There is no account and no sign-in.
 
@@ -13,20 +15,20 @@ Try it at <https://aboufama.github.io/amble/>. There is no account and no sign-i
 ## What students do
 
 - **Draw first.** A new student starts on a sheet of paper with six markers. **Bring it to life** gives the drawing bones, on the device, and it hops. Then the student picks a world for it.
-- **The Trail** is home. Each world is a lit sign along a path at night, and the characters in them walk between the signs.
+- **The Trail** is home. Each world is a signboard along a daylight path over green hills, and the characters in them walk between the signs.
 - **A world** is a running Phaser game with its **Cast** underneath: every character, item and background it uses. A new drawing drops into the running game without a restart. Undrawn members are dashed "just bones" outlines, and tapping one opens it on the Desk. In **Change** mode students tap anything in the world and turn its **Dials**. **Twists** such as Moon gravity and Giant mode bend the rules with no AI.
 - **The Desk** is the drawing tool: pressure-sensitive ink, pencil, marker, crayon and airbrush, a fill that stays inside sketchy lines, shapes, layers, mirror and flipbook pages. A character the game asks for can be drawn **on the bones**, one body part at a time.
 - **Bones** shows the skeleton Amble found, as stars over the drawing. Students move any joint with a pointer or the keyboard, pick the kind of body (a person, an animal on 4 legs, a flying or swimming animal, a blob, a thing) and preview the moves every character gets: stand, walk, run, jump, fall, ouch, attack and wave.
-- **Ask** changes a world in plain words. A request that only turns a dial or flips a twist ("make the jump higher") happens on the device, with no AI. Anything else goes to the AI helper, if one is set up.
-- **Footsteps** keeps every change, the AI's included, and **Go back** never deletes a step. **Look inside** shows the world's real JavaScript, marks the lines the AI, the student or a teacher wrote, and runs the student's own edits.
+- **Wishes** change a world in plain words, in the **Change your world** box beside the game. A wish that only turns a dial or flips a twist ("make the jump higher") happens on the device, with no AI. Anything else goes to the school's AI service, if one is set up; the game keeps playing while it works, and the change lands with a "Done!" and an Undo. When no service is set up the box simply steps aside.
+- **Footsteps** keeps every change, wishes included ("You wished: …"), and **Go back** never deletes a step. **Look inside** shows the world's real JavaScript, marks the lines that came from a wish, from the student or from a teacher, and runs the student's own edits.
 - **Files and school.** Worlds save as `.amble` files (Save to Drive on a Chromebook). Teachers get a class link with a QR code, assignments, a gallery that plays a folder of turned-in worlds, and a letter for families. Students hand in through Google Classroom.
 
-Everything works without AI except the AI helper's own jobs: changing a world from Ask, planning a new world from an idea, explaining code, and suggesting joints. The five starter worlds (Moon King, Sky Run, Wobble Tower, Lantern Maze and Clank's Climb) play with no AI at all. A browser that still holds a game from the old block-based Amble is offered a one-way import of its drawings and sounds; the blocks don't come along.
+Everything works without AI except the AI's own jobs: granting wishes, planning a new world from an idea, explaining code, and suggesting joints. The five starter worlds (Moon King, Sky Run, Wobble Tower, Lantern Maze and Clank's Climb) play with no AI at all. A browser that still holds a game from the old block-based Amble is offered a one-way import of its drawings and sounds; the blocks don't come along.
 
 | ![A world in Play: the Moon King starter running, with the hero Pip shooting at the Moon King. The Cast line below shows Grumble, still just bones, under "Your turn".](docs/world.webp) | ![The Desk: drawing Pip on the bones, with the brushes on the left, the colour panel on the right and a live preview of Pip walking.](docs/desk.webp) |
 |---|---|
 | **A world.** The Moon King starter, playing. Grumble, marked "Your turn", is still just bones. | **The Desk.** Drawing Pip on the bones, with a live preview of Pip walking. |
-| ![Bones: Pip's joints shown as stars over the drawing, left side striped and right side dotted, with the moves and a live walking preview.](docs/bones.webp) | ![The Trail at night: world signs along a lit path, with Blorp and Pip walking between them.](docs/trail.webp) |
+| ![Bones: Pip's joints shown as stars over the drawing, left side striped and right side dotted, with the moves and a live walking preview.](docs/bones.webp) | ![The Trail in daylight: world signboards along a sandy path over green hills, with the student's character under the lamp and starter heroes walking between the signs.](docs/trail.webp) |
 | **Bones.** Pip's joints as stars, the left side striped and the right side dotted. | **The Trail.** The student's worlds as signs, and their characters walking the path. |
 
 ## Quick start

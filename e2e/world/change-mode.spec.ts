@@ -3,6 +3,7 @@
  * its own dials and scopes the Ask field; a dial moved by arrow keys changes the running game live and
  * becomes one footstep after 1.5 s; a twist switches live; Esc closes the card, Esc again returns to Play.
  */
+import { mockAi } from '../helpers/mockAi';
 import { expect, test } from '../helpers/app';
 import { gameFrame, openWorld, readGame, session } from './world';
 
@@ -64,8 +65,10 @@ test.describe('Change mode', () => {
     await expect.poll(() => session(page, (s) => (s.world as unknown as { steps: Array<{ text: string }> }).steps.at(-1)?.text)).toBe('You switched on Moon gravity');
   });
 
-  test('clicking into the Ask field keeps it about the selected member, and the notebook takes the next click', async ({ page }) => {
-    await openWorld(page);
+  test('clicking into the wish box keeps it about the selected member, and the notebook takes the next click', async ({ page }) => {
+    // With a class link and its AI, so the wish box is there.
+    await mockAi(page);
+    await openWorld(page, { ai: 'mock' });
     await page.getByRole('radio', { name: 'Change' }).click();
     await page.getByTestId('tag-moonKing').click();
     await expect(page.getByTestId('thing-card')).toBeVisible();
@@ -82,7 +85,7 @@ test.describe('Change mode', () => {
     await page.getByTestId('tune-card').getByRole('radio', { name: 'Twists' }).click();
     await expect(page.getByTestId('tune-card').getByRole('radio', { name: 'Twists' })).toHaveAttribute('aria-checked', 'true');
     // The chip's ✕ ends it.
-    await ask.getByRole('button', { name: 'Stop asking about the Moon King' }).click();
+    await ask.getByRole('button', { name: 'Stop wishing about the Moon King' }).click();
     await expect(ask.getByText('About the Moon King')).toHaveCount(0);
     expect(await session(page, (s) => s.scope)).toBe(null);
   });

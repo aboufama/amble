@@ -87,7 +87,8 @@ test('a clean profile: draw, bring it to life, name it, play Boss fight, draw th
   expect(await readGame(frame, (g) => g.createCount)).toBe(created);
 
   // A footstep printed for the drawing.
-  await expect(footsteps(page).first()).toContainText(boss.name, { timeout: 15_000 });
+  // Mid-sentence, a name that starts with "The" reads "the" ("You drew the Moon King").
+  await expect(footsteps(page).first()).toContainText(boss.name.replace(/^The /, 'the '), { timeout: 15_000 });
 
   // Nothing left the app: no request to any other origin at all (there is no AI here).
   expect(outsideRequests(guards.egress, new URL(baseURL!).origin)).toEqual([]);

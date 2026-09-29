@@ -13,8 +13,9 @@ import { worldWithAssignment } from './school';
 
 /** axe's WCAG 2.1 A and AA problems on the page as it is (game frames left out). */
 async function axe(page: Page, where: string): Promise<string[]> {
-  // The top bar's AI status chip is being removed from every top bar, and belongs to none of these screens.
-  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).exclude('iframe').exclude('.ai-chip').analyze();
+  // Let finite animations (a dialog fading in) finish: axe reads colours mid-fade as low contrast.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || (a.effect?.getComputedTiming().endTime ?? 0) === Infinity), null, { timeout: 5_000 }).catch(() => undefined);
+  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).exclude('iframe').analyze();
   return r.violations.map((v) => `${where} → ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`);
 }
 

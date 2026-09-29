@@ -13,11 +13,11 @@ test('the chosen side of On the bones | Freehand stays readable under the pointe
   const free = page.getByRole('radio', { name: 'Freehand' });
   await free.click();
   await expect(free).toHaveAttribute('aria-checked', 'true');
-  // The pointer is still over it: its words keep the paper face's ink colour, not the night text colour.
+  // The pointer is still over it: its words keep the chosen option's purple (Scratch's selection colour).
   await free.hover();
   const [text, ink] = await free.evaluate((el) => {
     const probe = document.createElement('span');
-    probe.style.color = 'var(--ink)';
+    probe.style.color = 'var(--change)';
     el.append(probe);
     const inkColour = getComputedStyle(probe).color;
     probe.remove();
