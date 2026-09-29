@@ -77,7 +77,7 @@ PW_CHROMIUM_PATH=/path/to/chromium E2E_PORT=5300 npx playwright test --project p
 npm run starters:build -- moon-king --no-browser
 ```
 
-Set `PW_CHROMIUM_PATH` for the Chromium step, and `STARTERS_OUT` for where its review images go.
+Set `PW_CHROMIUM_PATH` for the Chromium step, and `STARTERS_OUT` for where its review images go (by default `test-results/starters`).
 
 ## How the AI is configured
 
@@ -86,7 +86,7 @@ No AI address or key ships with Amble, and nothing turns the AI helper on by def
 1. **ChromeOS managed configuration**, for Amble force-installed on managed Chromebooks.
 2. **Build-time variables** (`VITE_AMBLE_*`) in a district's own build. They are public, so they hold the address and the policy, never a key: the build stops if a value looks like one.
 3. **A class link** (`https://<amble>/#class=...`) that a teacher makes in the Teacher desk. It carries the AI address, a class code (sent only in a request header, `X-Amble-Class` by default), the class's AI mode (on, explain only or off), its content level and an expiry date.
-4. **Manual settings** in Settings → AI helper → Set up AI (for grown-ups): a base URL (empty means OpenAI), an optional key, the model names and Test connection. They are for home use, and they are hidden in school builds, on managed devices and wherever a school provides the AI.
+4. **Manual settings** in Settings → AI helper → Set up AI (for grown-ups): a base URL (empty means OpenAI), an optional key, the model names and Test connection. They are for home use, and they are hidden in school builds, on managed devices and wherever a school provides the AI. A build with `VITE_AMBLE_AI_AUTH=user-key` shows only a key field, for the address the build set.
 
 A school source can lock the AI settings, the content level and pictures, so lower sources can't change them. A teacher's class link can switch the AI helper off, or to explain only, for a class; it can't switch on what the district switched off. Every field is in [docs/DISTRICT-SETUP.md](docs/DISTRICT-SETUP.md).
 
@@ -96,7 +96,7 @@ Amble uses up to three models. The main model writes and changes code. The fast 
 
 ## Privacy and safety
 
-Amble has no accounts, no analytics, no ads, no cookies and no server of its own. Worlds, drawings and settings stay in the browser's storage on the device until a student saves an `.amble` file. The app talks to two kinds of places only: the host that serves its files and, when a student uses the AI helper, the AI address that a school or a grown-up set up. An AI request carries the student's words and what the AI needs about the world (its code and the list of things to draw). Amble never adds a student's name or initials, pen strokes, recordings or drawings; the one exception is a small black-and-white outline for AI joint hints, which the district must allow and the student must OK for each drawing. Every request is listed on the device exactly as it was sent (What Amble sends, `#/sent`). Games run in a sandboxed frame with no network access and no access to Amble's storage. Before anything is sent, an on-device filter checks the student's words, refuses what isn't OK for school and catches personal information; a district endpoint can add moderation, and the words a new version of a game would show are checked again before the student sees them. If a student's words suggest they may be in danger, nothing is sent: Amble shows a card that points them to a trusted adult, to 988 and to New Hampshire's Rapid Response line.
+Amble has no accounts, no analytics, no ads, no cookies and no server of its own. Worlds, drawings and settings stay in the browser's storage on the device until a student saves an `.amble` file. The app talks to two kinds of places only: the host that serves its files and, when a student uses the AI helper, the AI address that a school or a grown-up set up. An AI request carries the student's words and what the AI needs about the world (its code and the list of things to draw). Amble never adds a student's name or initials, pen strokes, recordings or drawings; the one exception is a small black-and-white outline for AI joint hints, which the district must allow and the student must OK for each drawing. The last 50 requests are listed on the device exactly as they were sent (What Amble sends, `#/sent`). Games run in a sandboxed frame with no network access and no access to Amble's storage. Before anything is sent, an on-device filter checks the student's words, refuses what isn't OK for school and catches personal information; a district endpoint can add moderation, and the words a new version of a game would show are checked again before the student sees them. If a student's words suggest they may be in danger, nothing is sent: Amble shows a card that points them to a trusted adult, to 988 and to New Hampshire's Rapid Response line.
 
 ## Architecture at a glance
 
@@ -121,7 +121,7 @@ Vite, React 19, TypeScript and zustand; one IndexedDB database; hash routes (`#/
 | Starter worlds | `src/starters/`, `tools/starters/`, `public/starters/` | The five starters and the tool that builds their assets. |
 | Footsteps and code | `src/history/`, `src/screens/footsteps/`, `src/screens/code/` | Footsteps, Go back, who wrote each line, and Look inside. |
 
-Shared pieces: `src/app/` (routes, the app frame, the player host and layer), `src/ui/` (design system), `src/state/` (zustand slices), `src/model/` (types and limits), `src/i18n/en/` (every student-facing string), `src/legacy/` (the old Amble reader) and `src/audio/` (the sound synth). `vite/` holds the build plugins (the runtime bundle, the page CSP, the key guard, the dev-only guard, the service worker). `server/codexBridge.ts` is a dev-server bridge to a local Codex CLI and never ships. `dev/` holds harness pages for the cores.
+Shared pieces: `src/app/` (routes, the app frame, the player host and layer), `src/ui/` (design system), `src/state/` (zustand slices), `src/model/` (types and limits), `src/i18n/en/` (every student-facing string), `src/legacy/` (the old Amble reader) and `src/audio/` (the sound synth). `vite/` holds the build plugins (the runtime bundle, the page CSP, the key guard, the dev-only guard, the image-generation guard, the service worker). `server/codexBridge.ts` is a dev-server bridge to a local Codex CLI and never ships. `dev/` holds harness pages for the cores.
 
 ## Deploy
 
@@ -130,7 +130,7 @@ Shared pieces: `src/app/` (routes, the app frame, the player host and layer), `s
 1. **e2e** installs Chromium and runs the fast journeys (the first five minutes, no AI, egress and the sandbox, accessibility, and layout) with one retry. If they fail, the test results are kept as a build artifact for 7 days, and nothing deploys.
 2. **deploy** runs only after e2e passes: `npm ci`, `npm test`, `npm run build`, then it force-pushes `dist/` to the `gh-pages` branch. In the repository settings, Pages must serve the `gh-pages` branch from `/ (root)`.
 
-The build uses relative paths (`base: './'`), so `dist/` works from any host and sub-path. It stops if a `VITE_` variable looks like it holds a key, or if a dev-only test hook reached the bundle. The full e2e suite and the `prod` project don't run in CI.
+The build uses relative paths (`base: './'`), so `dist/` works from any host and sub-path. It stops if a `VITE_` variable looks like it holds a key, if a dev-only test hook reached the bundle, or if any file names an image-generation endpoint or model. The full e2e suite and the `prod` project don't run in CI.
 
 ## For schools
 
