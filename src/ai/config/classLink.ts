@@ -61,8 +61,9 @@ function fromBase64Url(s: string): string {
 }
 
 /**
- * Names shown to students and never sent anywhere: only a provider key's format counts there, since
- * teachers name classes like "APBiology2025Section4", which the random-looking-text test would refuse.
+ * Fields where only a provider key's format counts, not random-looking text: a class code may look random
+ * by design, and the class and district names are only shown to students (teachers name classes like
+ * "APBiology2025Section4", which the random-looking-text test would refuse).
  */
 const SHOWN_NAME = new Set(['code', 'name', 'district']);
 
