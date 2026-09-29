@@ -6,6 +6,12 @@
 
 type StartViewTransition = (update: () => void | Promise<void>) => { finished: Promise<void>; ready: Promise<void> };
 
+/** How long a transition may hold the old picture while the new screen loads the partner of a named element. */
+const PARTNER_WAIT_MS = 600;
+
+/** Whether `transitionName` named an element since the last transition (its partner is on the next screen). */
+let partners = false;
+
 function reducedMotion(): boolean {
   return typeof document !== 'undefined' && document.documentElement.dataset.motion === 'reduced';
 }
@@ -16,15 +22,35 @@ export function canTransition(): boolean {
   return typeof (document as Document & { startViewTransition?: StartViewTransition }).startViewTransition === 'function';
 }
 
+/**
+ * Resolves once the new screen has rendered past its loading state (its lazy chunk, a world read from
+ * storage), or after `ms`. A pair only morphs when both halves are in the pictures the browser takes.
+ */
+function screenLoaded(ms: number): Promise<void> {
+  const end = performance.now() + ms;
+  return new Promise((resolve) => {
+    const check = () => {
+      if (!document.querySelector('.screen--loading') || performance.now() >= end) resolve();
+      else setTimeout(check, 16);
+    };
+    check();
+  });
+}
+
 /** Runs a DOM update inside a View Transition when possible; otherwise just runs it. */
 export function withViewTransition(update: () => void): void {
+  const waitForPartners = partners;
+  partners = false;
   if (!canTransition()) {
     update();
     return;
   }
   const start = (document as Document & { startViewTransition: StartViewTransition }).startViewTransition.bind(document);
   try {
-    start(update).finished.catch(() => undefined);
+    start(() => {
+      update();
+      return waitForPartners ? screenLoaded(PARTNER_WAIT_MS) : undefined;
+    }).finished.catch(() => undefined);
   } catch {
     update();
   }
@@ -33,4 +59,5 @@ export function withViewTransition(update: () => void): void {
 /** Gives an element a View Transition name while it is on screen (null clears it). */
 export function transitionName(el: HTMLElement | null, name: string | null): void {
   if (el) el.style.setProperty('view-transition-name', name ?? 'none');
+  if (el && name) partners = true;
 }

@@ -227,6 +227,8 @@
   width: var(--wv-w);
   height: var(--wv-h);
   border-radius: var(--r-world);
+  /* The First page's paper and the Trail's world signs morph into it (§2.2, §2.3). */
+  view-transition-name: world-view;
   box-shadow:
     0 0 0 7px color-mix(in srgb, var(--accent) 7%, transparent),
     0 0 60px color-mix(in srgb, var(--accent) 16%, transparent),
