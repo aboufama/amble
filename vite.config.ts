@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
 import { ambleRuntime, playerBootHashes } from './vite/ambleRuntime.ts';
 import { aiConnectSources, csp } from './vite/csp.ts';
+import { devOnlyGuard } from './vite/devOnlyGuard.ts';
 import { envGuard } from './vite/envGuard.ts';
 import { swPlugin } from './vite/swPlugin.ts';
 
@@ -112,6 +113,8 @@ export default defineConfig(({ mode }) => {
       // from the dev server and emits it into the build (`import runtimeUrl from 'virtual:amble-runtime'`).
       ambleRuntime({ root }),
       envGuard(env),
+      // Fails a build that still holds the test hooks or an e2e harness.
+      devOnlyGuard(),
       // Game frames (srcdoc) inherit this policy, so it allows the player's bootstrap by its hash.
       csp({ connect: aiConnectSources(env), bootHashes: playerBootHashes }),
       swPlugin(),

@@ -739,6 +739,17 @@
   filter: drop-shadow(2px 0 0 var(--paper)) drop-shadow(-2px 0 0 var(--paper)) drop-shadow(0 2px 0 var(--paper)) drop-shadow(0 -2px 0 var(--paper));
 }
 
+/* Reduced motion: the lanterns are simply lit, and signs and chips simply there (§3.6: instant). */
+:root[data-motion='reduced'] .trail--first-load .sign__bracket,
+:root[data-motion='reduced'] .trail--first-load .sign__bracket::before,
+:root[data-motion='reduced'] .trail--first-load .lamp__lantern,
+:root[data-motion='reduced'] .trail--first-load .lamp__light,
+:root[data-motion='reduced'] .trail--first-load .lamp__glow,
+:root[data-motion='reduced'] .trail__main--loaded .trail-stop--sign,
+:root[data-motion='reduced'] .lamp__give {
+  animation: none;
+}
+
 .trail--still .walker__sprite,
 .trail--still .walker__turn,
 .trail__walkers--paused .walker__sprite,

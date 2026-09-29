@@ -49,7 +49,8 @@ export function PageShell({ page, title, meta, lede, children, wide, className }
           />
         }
       >
-        <article className={cx('page', wide && 'page--wide', className)} aria-labelledby={`page-${page}-title`}>
+        {/* A tab stop, so a page with no links can still be scrolled from the keyboard. */}
+        <article className={cx('page', wide && 'page--wide', className)} aria-labelledby={`page-${page}-title`} tabIndex={0}>
           <header className="page__head">
             <h1 id={`page-${page}-title`} className="page__title">
               {title}

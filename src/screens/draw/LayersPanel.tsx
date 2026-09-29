@@ -190,9 +190,8 @@ export function LayersPanel({ ctrl, s }: { ctrl: DeskController; s: DeskState })
                   <span className="layer__hint">{r.hint}</span>
                 )}
               </span>
-              <button
-                type="button"
-                tabIndex={-1}
+              {/* A pointer shortcut only (an option may not hold a control): the keyboard's Show or Hide is in the layer's options. */}
+              <span
                 className="layer__eye"
                 aria-hidden="true"
                 title={r.visible ? t('draw.hideLayer', { layer: r.name }) : t('draw.showLayer', { layer: r.name })}
@@ -202,7 +201,7 @@ export function LayersPanel({ ctrl, s }: { ctrl: DeskController; s: DeskState })
                 }}
               >
                 <Icon name={r.visible ? 'eye' : 'eyeOff'} size={20} />
-              </button>
+              </span>
             </li>
           );
         })}

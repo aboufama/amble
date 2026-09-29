@@ -36,7 +36,7 @@ test.describe('app shell', () => {
       ['#/settings', 'screen-settings'],
       ...SETTINGS.map((s): [string, string] => [`#/settings/${s}`, 'screen-settings']),
       ...TEACHER.map((tab): [string, string] => [`#/teacher/${tab}`, 'screen-teacher']),
-      ...PAGES.map((p): [string, string] => [`#/${p}`, 'screen-page']),
+      ...PAGES.map((p): [string, string] => [`#/${p}`, `screen-page-${p}`]),
       ['#/', 'screen-home'],
     ];
     for (const [hash, id] of simple) {
