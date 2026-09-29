@@ -139,6 +139,12 @@ describe('chatJson on the wire', () => {
     expect(ep.sent[1].body.safety_identifier).toBeUndefined();
   });
 
+  it('keeps a query on the base URL after the path', async () => {
+    const ep = fakeEndpoint([plain(JSON.stringify(plan))]);
+    await chatJson(transport(ep.fetch, { baseUrl: 'https://sau99.openai.azure.com/openai/deployments/amble?api-version=2024-10-21' }), req);
+    expect(ep.sent[0].url).toBe('https://sau99.openai.azure.com/openai/deployments/amble/chat/completions?api-version=2024-10-21');
+  });
+
   it('adds later turns after the user message', async () => {
     const ep = fakeEndpoint([plain(JSON.stringify(plan))]);
     await chatJson(transport(ep.fetch), { ...req, messages: [{ role: 'assistant', content: 'earlier' }, { role: 'user', content: 'again' }] });

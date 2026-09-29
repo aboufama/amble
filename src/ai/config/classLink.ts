@@ -69,6 +69,13 @@ function carriesSecret(v: unknown, key = ''): boolean {
   return false;
 }
 
+/** The object without its undefined fields (so stored and compared links hold only what was set). */
+function defined<T extends object>(o: { [K in keyof T]: T[K] | undefined }): T {
+  const out: Partial<T> = {};
+  for (const key of Object.keys(o) as Array<keyof T>) if (o[key] !== undefined) out[key] = o[key];
+  return out as T;
+}
+
 function validDate(v: unknown): string | undefined {
   const t = F.str(v, 40);
   return t && Number.isFinite(Date.parse(t)) ? t : undefined;
@@ -84,7 +91,7 @@ export function validateClassLink(raw: unknown): ClassLinkRead {
   if (!url) return { ok: false, error: "This class link doesn't say where the AI helper is." };
   if ('problem' in url) return { ok: false, error: url.problem };
   const p = o.policy && typeof o.policy === 'object' ? (o.policy as Record<string, unknown>) : {};
-  const policy: ClassPolicy = {
+  const policy = defined<ClassPolicy>({
     enabled: F.bool(p.enabled),
     ageBand: F.band(p.ageBand ?? p.level),
     moderation: F.moderation(p.moderation),
@@ -93,22 +100,23 @@ export function validateClassLink(raw: unknown): ClassLinkRead {
     caps: F.list(p.caps),
     expires: validDate(p.expires ?? o.exp),
     requestsMayBeReviewed: F.bool(p.requestsMayBeReviewed),
-  };
+  });
   const link: ClassLink = {
     v: 1,
     baseUrl: url.url,
-    model: F.str(o.model, 120),
-    fastModel: F.str(o.fastModel, 120),
-    visionModel: F.str(o.visionModel, 120),
-    visionAllowed: F.artToAi(o.visionAllowed),
-    code: F.code(o.code),
-    header: F.headerName(o.header),
-    name: F.str(o.name, 80),
-    district: F.str(o.district, 80),
+    ...defined<Omit<ClassLink, 'v' | 'baseUrl'>>({
+      model: F.str(o.model, 120),
+      fastModel: F.str(o.fastModel, 120),
+      visionModel: F.str(o.visionModel, 120),
+      visionAllowed: F.artToAi(o.visionAllowed),
+      code: F.code(o.code),
+      header: F.headerName(o.header),
+      name: F.str(o.name, 80),
+      district: F.str(o.district, 80),
+    }),
   };
-  const kept = Object.fromEntries(Object.entries(policy).filter(([, v]) => v !== undefined)) as ClassPolicy;
-  if (Object.keys(kept).length) link.policy = kept;
-  return { ok: true, link: Object.fromEntries(Object.entries(link).filter(([, v]) => v !== undefined)) as unknown as ClassLink };
+  if (Object.keys(policy).length) link.policy = policy;
+  return { ok: true, link };
 }
 
 /** The `class=` value in a URL fragment such as `#class=…` or `#/home?class=…`, or null. */

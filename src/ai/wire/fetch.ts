@@ -11,9 +11,12 @@ function pageUrl(): string {
   return typeof href === 'string' && /^https?:/.test(href) ? href : 'http://localhost/';
 }
 
-/** `base` + `/path`, without doubled slashes. */
+/** `base` + `/path`, without doubled slashes; a query on the base (Azure's `?api-version=`) stays at the end. */
 export function endpointUrl(baseUrl: string, path: string): string {
-  return `${baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
+  const q = baseUrl.indexOf('?');
+  const base = q >= 0 ? baseUrl.slice(0, q) : baseUrl;
+  const query = q >= 0 ? baseUrl.slice(q) : '';
+  return `${base.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}${query}`;
 }
 
 export function originOf(url: string): string | null {
