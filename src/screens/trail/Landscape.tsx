@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, type CSSProperties, type RefObject } from '
 import { cx } from '../../ui/cx';
 import { DESIGN_H, groundTop, pathTop, pathWidth, smoothPath } from '../../home/trailData';
 import skyUrl from './landscape.svg';
+import './landscape.css';
 
 /** The night sky behind everything: gradient, grain and (optionally) the stars, moon and constellation. */
 export function NightSky({ decor = true, className }: { decor?: boolean; className?: string }) {
@@ -230,13 +231,13 @@ export function BottomPath({ lit }: { lit: boolean }) {
       <path className="trail-ground__edge" d={band.edge} />
       <path className="trail-ground__edge trail-ground__edge--low" d={band.low} />
       {BOTTOM_LANTERNS.map((x, i) => {
-        const y = top(x) - 2;
+        const y = top(x) - 1;
         return (
           <g key={x} className="bottom-path__lantern" style={{ ['--i' as string]: i } as CSSProperties}>
-            <path className="bottom-path__post" d={`M${x} ${y} V${y - 34}`} />
-            <circle className="bottom-path__glow" cx={x} cy={y - 40} r="16" />
-            <rect className="bracket__lantern" x={x - 6} y={y - 48} width="12" height="15" rx="4" />
-            <rect className="bracket__light" x={x - 3.5} y={y - 45.5} width="7" height="9" rx="2.5" />
+            <path className="bottom-path__post" d={`M${x} ${y} V${y - 16}`} />
+            <circle className="bottom-path__glow" cx={x} cy={y - 22} r="13" />
+            <rect className="bracket__lantern" x={x - 5} y={y - 29} width="10" height="12" rx="3.5" />
+            <rect className="bracket__light" x={x - 2.8} y={y - 26.8} width="5.6" height="7.4" rx="2" />
           </g>
         );
       })}

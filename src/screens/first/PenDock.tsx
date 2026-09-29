@@ -82,7 +82,7 @@ export function PenDock({ color, size, erasing, canUndo, resting, onColor, onSiz
       })}
       <span className="pen-dock__sep" aria-hidden="true" />
       <button type="button" className="pen-dock__tool" aria-label={t('home.penSize', { size: t(SIZE_WORDS[size]) })} aria-disabled={resting || undefined} onClick={() => !resting && onSize(nextSize)} data-testid="pen-size" {...bind(PENS.length)}>
-        <span className="pen-dock__dot" style={{ width: 6 + size * 0.6, height: 6 + size * 0.6, background: erasing ? undefined : color }} />
+        <span className="pen-dock__dot" style={{ width: 6 + size * 0.6, height: 6 + size * 0.6 }} />
       </button>
       <button type="button" className={cx('pen-dock__tool', erasing && 'pen-dock__tool--on')} aria-label={t('home.eraser')} aria-pressed={erasing} aria-disabled={resting || undefined} onClick={() => !resting && onEraser()} data-testid="pen-eraser" {...bind(PENS.length + 1)}>
         <Icon name="eraser" size={22} />

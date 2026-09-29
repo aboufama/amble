@@ -22,6 +22,7 @@ import { AiExplainer } from '../ai/AiExplainer';
 import { CrisisCard } from '../ai/CrisisCard';
 import { PiiWarning } from '../ai/PiiWarning';
 import { RefusalCard } from '../ai/RefusalCard';
+import './cards.css';
 
 export interface IdeaBoxProps {
   variant: 'first' | 'sheet';

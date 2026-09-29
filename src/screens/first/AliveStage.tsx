@@ -96,19 +96,18 @@ export const AliveStage = forwardRef<AliveStageHandle, AliveStageProps>(function
       requestAnimationFrame(grow);
       state.current.height = geo.height * LIFT;
       setShadow({ x: geo.feetX, y: geo.feetY, from: geo.feetX, hop: 0, on: true });
-      // Three squash-bounces (the rig's land move), then the drop to the pencil line.
-      [240, 520, 800].forEach((at) => timers.push(window.setTimeout(() => live && p.play('land'), at)));
+      // Three squash-bounces (the rig's land move); "It's alive!" arrives during them; then the drop to
+      // the pencil line.
+      [200, 460, 720].forEach((at) => timers.push(window.setTimeout(() => live && p.play('land'), at)));
+      timers.push(window.setTimeout(() => live && callbacks.current.onAwake(), 560));
       timers.push(
         window.setTimeout(() => {
-          if (!live) return;
-          if (line > geo.feetY + 2) {
-            p.setOptions({ ground: line / geo.boxH });
-            p.input({});
-            state.current.groundY = line;
-            setShadow({ x: state.current.x, y: line, from: state.current.x, hop: 0, on: true });
-          }
-          callbacks.current.onAwake();
-        }, 1100),
+          if (!live || line <= geo.feetY + 2) return;
+          p.setOptions({ ground: line / geo.boxH });
+          p.input({});
+          state.current.groundY = line;
+          setShadow({ x: state.current.x, y: line, from: state.current.x, hop: 0, on: true });
+        }, 980),
       );
     });
     return () => {

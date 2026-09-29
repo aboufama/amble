@@ -1,0 +1,279 @@
+/*
+ * The Night Trail landscape (§2.4, §3): sky, hills, the lit path, lanterns. Tokens only; every loop stops
+ * under reduced motion and with Pause the trail (`.trail--still`).
+ */
+
+.night-sky {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(760px 300px at 51% 92%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%),
+    radial-gradient(700px 420px at 10% 14%, color-mix(in srgb, var(--change) 12%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--bg-deep) 0%, var(--bg) 36%, var(--bg-lift) 68%, color-mix(in srgb, var(--bg-lift), var(--change) 9%) 100%);
+}
+
+.night-sky__decor {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: right top;
+  background-size: 1366px 768px;
+}
+
+:root[data-theme='contrast'] .night-sky__decor {
+  display: none;
+}
+
+/* ---------- hills (0.3x and 0.55x parallax) ---------- */
+.hills {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 768px;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hills__layer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  will-change: transform;
+}
+
+.hills__layer svg {
+  display: block;
+}
+
+.hills__far {
+  fill: var(--surface-bottom);
+}
+
+.hills__far-ridge {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.6;
+  opacity: 0.8;
+}
+
+.hills__lights circle {
+  fill: color-mix(in srgb, var(--accent), white 22%);
+}
+
+.hills__mid {
+  fill: color-mix(in srgb, var(--bg) 72%, var(--surface-bottom));
+}
+
+.hills__mid-ridge {
+  fill: none;
+  stroke: color-mix(in srgb, var(--line) 78%, var(--bg));
+  stroke-width: 1.4;
+}
+
+/* ---------- the ground and the lit path ---------- */
+.trail-ground {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.trail-ground__ground {
+  fill: var(--well);
+}
+
+.trail-ground__glow-wide {
+  fill: var(--accent);
+  fill-opacity: 0.08;
+  stroke: var(--accent);
+  stroke-width: 28px;
+  stroke-opacity: 0.05;
+  stroke-linejoin: round;
+}
+
+.trail-ground__glow {
+  fill: var(--accent);
+  fill-opacity: 0.1;
+  stroke: var(--accent);
+  stroke-width: 11px;
+  stroke-opacity: 0.09;
+  stroke-linejoin: round;
+}
+
+.tg-trail-a,
+.tg-trail-c {
+  stop-color: var(--paper-3);
+  stop-opacity: 0.3;
+}
+
+.tg-trail-c {
+  stop-opacity: 0.22;
+}
+
+.tg-trail-b {
+  stop-color: color-mix(in srgb, var(--accent), white 30%);
+  stop-opacity: 0.42;
+}
+
+.trail-ground__edge {
+  fill: none;
+  stroke: var(--paper-2);
+  stroke-opacity: 0.38;
+  stroke-width: 1.6px;
+}
+
+.trail-ground__edge--low {
+  stroke-opacity: 0.24;
+  stroke-width: 1.4px;
+}
+
+.trail-ground__steps ellipse {
+  fill: var(--paper-2);
+  opacity: 0.42;
+}
+
+.tg-pool-a {
+  stop-color: color-mix(in srgb, var(--accent), white 35%);
+  stop-opacity: 0.34;
+}
+
+.tg-pool-b,
+.tg-poolbig-b {
+  stop-color: var(--accent);
+  stop-opacity: 0;
+}
+
+.tg-poolbig-a {
+  stop-color: color-mix(in srgb, var(--accent), white 35%);
+  stop-opacity: 0.62;
+}
+
+.tg-poolbig-m {
+  stop-color: color-mix(in srgb, var(--accent), var(--warn) 18%);
+  stop-opacity: 0.2;
+}
+
+.trail-ground__shadow {
+  fill: var(--bg-deep);
+  opacity: 0.35;
+}
+
+.trail-ground__fly {
+  fill: color-mix(in srgb, var(--alive), white 40%);
+}
+
+.trail-ground__fly-glow {
+  fill: var(--alive);
+  opacity: 0.28;
+}
+
+.trail-ground__flies > g {
+  animation: firefly 3.6s var(--ease-soft) infinite alternate;
+}
+
+@keyframes firefly {
+  from {
+    opacity: 0.35;
+    translate: 0 3px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 -3px;
+  }
+}
+
+/* ---------- a sign's hanging lantern ---------- */
+.bracket {
+  overflow: visible;
+}
+
+.bracket__glow {
+  fill: var(--accent);
+  opacity: 0.2;
+}
+
+.bracket__arm {
+  fill: none;
+  stroke: color-mix(in srgb, var(--bg-lift), var(--change) 22%);
+  stroke-width: 3px;
+}
+
+.bracket__lantern {
+  fill: var(--accent);
+}
+
+.bracket__light {
+  fill: color-mix(in srgb, var(--accent), white 72%);
+}
+
+/* ---------- the First page's path along the bottom ---------- */
+.bottom-path {
+  position: absolute;
+  inset: auto 0 0 0;
+  width: 100%;
+  height: 110px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bottom-path__post {
+  fill: none;
+  stroke: color-mix(in srgb, var(--bg-lift), var(--change) 22%);
+  stroke-width: 3px;
+  stroke-linecap: round;
+}
+
+.bottom-path__glow {
+  fill: var(--accent);
+  opacity: 0;
+}
+
+.bottom-path__lantern .bracket__lantern,
+.bottom-path__lantern .bracket__light {
+  opacity: 0.3;
+}
+
+.bottom-path--lit .bottom-path__lantern .bracket__lantern,
+.bottom-path--lit .bottom-path__lantern .bracket__light {
+  animation: lantern-on 240ms var(--ease-amble) both;
+  animation-delay: calc(260ms + var(--i) * 80ms);
+}
+
+.bottom-path--lit .bottom-path__glow {
+  animation: lantern-glow 240ms var(--ease-amble) both;
+  animation-delay: calc(260ms + var(--i) * 80ms);
+}
+
+@keyframes lantern-on {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes lantern-glow {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.28;
+  }
+}
+
+:root[data-motion='reduced'] .bottom-path__lantern .bracket__lantern,
+:root[data-motion='reduced'] .bottom-path__lantern .bracket__light {
+  animation: none;
+  opacity: 1;
+}
+
+:root[data-motion='reduced'] .bottom-path__glow {
+  animation: none;
+  opacity: 0.28;
+}
+
+:root[data-motion='reduced'] .trail-ground__flies > g {
+  animation: none;
+}

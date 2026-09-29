@@ -9,6 +9,7 @@ import type { PoseImage } from '../../home/seedThumbs';
 import type { StarterId, StarterInfo } from '../../model/types';
 import { cx } from '../../ui/cx';
 import { SeedScene } from './SeedScene';
+import './cards.css';
 
 export interface SeedCardProps {
   seed: StarterId;

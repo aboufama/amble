@@ -10,6 +10,7 @@ import { Wordmark } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
 import { OpenFile } from '../files/OpenFile';
+import './header.css';
 
 export function HomeHeader({ pulse = false, extra, className }: { pulse?: boolean; extra?: ReactNode; className?: string }) {
   return (

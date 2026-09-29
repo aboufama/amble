@@ -32,6 +32,12 @@ const PEAK = { on: 10 ** (-18 / 20), soft: 10 ** (-26 / 20) } as const;
 
 let ctx: AudioContext | null = null;
 let gestured = false;
+
+/** Sticky user activation: the page has had a click, tap or key press (browsers allow sound after it). */
+function activated(): boolean {
+  const ua = (globalThis.navigator as Navigator & { userActivation?: { hasBeenActive: boolean } } | undefined)?.userActivation;
+  return gestured || Boolean(ua?.hasBeenActive);
+}
 const buffers = new Map<string, AudioBuffer>();
 const last = new Map<HomeSound, number>();
 
@@ -42,7 +48,7 @@ export function homeSoundsGesture(): void {
 
 export function playHomeSound(name: HomeSound): void {
   const level = getState().prefs.uiSounds;
-  if (level === 'off' || !gestured || typeof AudioContext === 'undefined') return;
+  if (level === 'off' || !activated() || typeof AudioContext === 'undefined') return;
   const now = performance.now();
   if (now - (last.get(name) ?? -Infinity) < 60) return;
   last.set(name, now);
