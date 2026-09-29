@@ -129,20 +129,20 @@ test.describe('app shell', () => {
   });
 
   test('prefs apply to the page', async ({ page }) => {
-    await openAmble(page, { prefs: { theme: 'day', textScale: 1.3, reduceMotion: 'on' } });
+    await openAmble(page, { prefs: { theme: 'contrast', textScale: 1.3, reduceMotion: 'on' } });
     const html = page.locator('html');
-    await expect(html).toHaveAttribute('data-theme', 'day');
+    await expect(html).toHaveAttribute('data-theme', 'contrast');
     await expect(html).toHaveAttribute('data-text', '1.3');
     await expect(html).toHaveAttribute('data-motion', 'reduced');
     await expect(html).toHaveAttribute('data-layout', 'full');
     // Saved to the store, so a reload keeps them.
     await page.waitForFunction(async () => {
       const prefs = await (window as unknown as { __amble: { store: { settings: { get(k: string): Promise<{ theme?: string } | null> } } } }).__amble.store.settings.get('prefs');
-      return prefs?.theme === 'day';
+      return prefs?.theme === 'contrast';
     });
     await page.reload();
     await waitForApp(page);
-    await expect(html).toHaveAttribute('data-theme', 'day');
+    await expect(html).toHaveAttribute('data-theme', 'contrast');
   });
 
   test('a starter world reaches its first frame at the world slot', async ({ page }) => {

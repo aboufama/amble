@@ -230,7 +230,7 @@ export interface GalleryNote { fileHash: string; title: string; madeBy: string; 
 
 // ------------------------------------------------------------------ preferences and settings
 export interface Prefs {
-  theme: 'night' | 'day' | 'contrast';          // 'contrast' is also forced by forced-colors: active
+  theme: 'original' | 'contrast';               // 'contrast' is also forced by forced-colors: active; stored 'night' and 'day' read as 'original'
   reduceMotion: 'system' | 'on' | 'off';
   textScale: 1 | 1.15 | 1.3;
   extraSpacing: boolean;                        // WCAG 1.4.12 spacing

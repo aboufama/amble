@@ -122,7 +122,7 @@ describe('promise dialogs', () => {
 
 describe('prefs', () => {
   it('starts quiet in school builds', () => {
-    expect(defaultPrefs(true)).toMatchObject({ uiSounds: 'off', gameMuted: true, theme: 'night' });
+    expect(defaultPrefs(true)).toMatchObject({ uiSounds: 'off', gameMuted: true, theme: 'original' });
     expect(defaultPrefs(false)).toMatchObject({ uiSounds: 'on', gameMuted: false, brushSounds: false });
   });
 
@@ -132,10 +132,23 @@ describe('prefs', () => {
     loadPrefs(stored);
     const saved: string[] = [];
     onPrefsChange((p) => saved.push(p.theme));
-    setPrefs({ theme: 'day' });
+    setPrefs({ theme: 'original' });
     onPrefsChange(null);
-    expect(getState().prefs.theme).toBe('day');
-    expect(saved).toEqual(['day']);
+    expect(getState().prefs.theme).toBe('original');
+    expect(saved).toEqual(['original']);
+  });
+
+  it('reads the Night and Day themes of earlier builds as the Original colours', () => {
+    expect(readPrefs({ theme: 'night', textScale: 1.15 })).toMatchObject({ theme: 'original', textScale: 1.15 });
+    expect(readPrefs({ theme: 'day', extraSpacing: true })).toMatchObject({ theme: 'original', extraSpacing: true });
+    expect(readPrefs({ theme: 'contrast' }).theme).toBe('contrast');
+    expect(readPrefs({ theme: 'sepia' }).theme).toBe('original');
+    // Older code (or a test hook) writing a retired theme still gets the Original colours.
+    setPrefs({ theme: 'night' as never });
+    expect(getState().prefs.theme).toBe('original');
+    setPrefs({ theme: 'contrast' });
+    expect(getState().prefs.theme).toBe('contrast');
+    setPrefs({ theme: 'original' });
   });
 
   it('config writes merge', () => {

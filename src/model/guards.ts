@@ -573,9 +573,20 @@ export const isTeacherData = obj<M.TeacherData>({ assignments: arr(isAssignment,
 
 const SEEN_KEYS = ['firstPage', 'ghostTip', 'changeTip', 'aiExplainer', 'bonesTip', 'handinInitials'] as const;
 
+/** The colour themes (Settings → Reading → Colours): Scratch's Original colours, or High contrast. */
+export const THEME_NAMES = ['original', 'contrast'] as const;
+
+/**
+ * A theme from any build as today's: 'contrast' stays High contrast, and everything else means the
+ * Original colours, including the 'night' and 'day' themes that earlier builds stored.
+ */
+export function themeOf(v: unknown): M.Prefs['theme'] {
+  return v === 'contrast' ? 'contrast' : 'original';
+}
+
 /** The guard of each `Prefs` field (also used to merge stored prefs over the defaults). */
 export const PREFS_FIELDS: { [K in keyof M.Prefs]-?: Guard<M.Prefs[K]> } = {
-  theme: oneOf(['night', 'day', 'contrast']),
+  theme: oneOf(THEME_NAMES),
   reduceMotion: oneOf(['system', 'on', 'off']),
   textScale: lit(1, 1.15, 1.3),
   extraSpacing: isBool,

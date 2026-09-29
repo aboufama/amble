@@ -8,13 +8,16 @@ import { AI_BASE, mockAi } from '../helpers/mockAi';
 test('reading choices apply at once and last', async ({ page }) => {
   await openAmble(page, { clean: true, route: '#/settings/reading' });
   const settings = page.getByTestId('screen-settings');
-  await settings.getByRole('radio', { name: 'Day' }).click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'day');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'original');
+  await expect(settings.getByRole('radio', { name: 'Original colours' })).toBeChecked();
+  await settings.getByRole('radio', { name: 'High contrast' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'contrast');
   await settings.getByRole('radio', { name: '130%' }).click();
   await expect.poll(() => page.evaluate(async () => (await (window as any).__amble.services.store.settings.get('prefs'))?.textScale)).toBe(1.3);
   await page.reload();
   await waitForApp(page);
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'day');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'contrast');
+  await expect(page.getByTestId('screen-settings').getByRole('radio', { name: 'High contrast' })).toBeChecked();
   await expect(page.getByTestId('screen-settings').getByRole('radio', { name: '130%' })).toBeChecked();
 });
 

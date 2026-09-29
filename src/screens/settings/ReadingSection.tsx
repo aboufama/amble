@@ -1,7 +1,7 @@
 /**
- * Settings → Reading and motion (§2.15, §3.2): Theme (Night / Day / High contrast), Text size (100 / 115 /
- * 130 %), Extra spacing, Easy-read letters and the Read aloud buttons (on-device voices only); then motion
- * and games. Every change applies at once (`<html data-theme data-text …>`).
+ * Settings → Reading and motion (§2.15, §3.2): Colours (Original colours / High contrast, as in Scratch),
+ * Text size (100 / 115 / 130 %), Extra spacing, Easy-read letters and the Read aloud buttons (on-device
+ * voices only); then motion and games. Every change applies at once (`<html data-theme data-text …>`).
  */
 import { t } from '../../i18n';
 import type { Prefs } from '../../model/types';
@@ -18,12 +18,11 @@ export function ReadingSection() {
     <div className="set-reading">
       <Group title={t('school.setReadingTitle')}>
         <Choice<Prefs['theme']>
-          label={t('school.setTheme')}
-          hint={t('school.setThemeHint')}
+          label={t('common.colours')}
+          hint={t('common.coloursHint')}
           options={[
-            { value: 'night', label: t('school.setNight') },
-            { value: 'day', label: t('school.setDay') },
-            { value: 'contrast', label: t('school.setContrast') },
+            { value: 'original', label: t('common.coloursOriginal') },
+            { value: 'contrast', label: t('common.coloursContrast') },
           ]}
           value={prefs.theme}
           onChange={(v) => setPref('theme', v)}

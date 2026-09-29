@@ -33,6 +33,11 @@ export const common = {
   wentBackStep: 'You went back a step',
   drawMe: 'draw me',
 
+  colours: 'Colours',
+  coloursHint: 'High contrast is black, white and yellow. Drawings stay on white paper.',
+  coloursOriginal: 'Original colours',
+  coloursContrast: 'High contrast',
+
   aiChipReady: 'AI helper · on',
   aiChipReadyFrom: 'AI helper · on ({district})',
   aiChipOff: 'AI helper · off',
