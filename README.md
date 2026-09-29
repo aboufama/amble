@@ -1,124 +1,145 @@
 # Amble
 
-Make real 2D and 3D games with blocks. Amble has its own block language: lots of **exact blocks** for the basics (move, walk, jump, touching, repeat, score...), and **blocks in your own words** for everything else (`do [spin around and shrink away]`, `always: [twinkle as I fall]`). Games run on [Babylon.js](https://www.babylonjs.com/).
+**Draw a character. It comes alive.**
 
-**Try it:** https://aboufama.github.io/amble/ (exact blocks work right away; to compile blocks in your own words, open **Settings** and add an OpenAI API key, which stays in your browser). Running Amble on your own computer? You can **sign in with ChatGPT** instead.
+Amble is a game maker for students, made for school Chromebooks. A student draws a creature and presses **Bring it to life**: Amble finds bones under the drawing and it starts to hop. Then it stars in a real 2D game built on [Phaser](https://phaser.io/): a boss fight, a runner, a maze, a physics toy or a platformer. Everything else the game needs waits in the world as "just bones" until the student draws it. Students change their worlds in plain words ("make the jump floatier"), with dials and twists, or in the code itself.
 
-![The Amble editor in 2D mode](docs/editor-2d.png)
+The art is always the student's. The optional AI helper writes and changes game code from a student's words. It never draws.
 
-- **Blocks that teach how to direct anything.** The categories follow how you'd brief a capable helper. **Brief**: say what you're making, who it's for, how it looks, and what winning means. **Characters**: name exactly who you mean, by dragging their block (with their picture) into a slot. **Rules**: say what must always or never happen, and add **checks** that tell you when something isn't true. **Skills**: break big jobs into named steps.
-- **Exact where it can be, open where it should be.** Exact blocks compile instantly, offline, the same way every time. Words reach the whole game: a sentence on one sprite can change how another one plays, so when you add or change words (or the brief), the compile sees the whole program and may rewrite words elsewhere to fit, and tells you when it does. Words it didn't need to touch keep their code, and moving scripts around never recompiles anything. When nothing changed, **Recompile** starts over and writes everything again, so it can come out different.
-- **You make the assets.** Paint costumes, upload images or `.glb` 3D models, record or synthesize sounds.
-- **The compiler fills the gaps.** If your words need something you didn't make (the stars in "catch the falling stars", a laser sound, a 3D crate), the compiler makes it. It shows up as a **compiled asset** with a dashed outline. Keep it to make it yours, or delete it and the next compile makes a new one. Compiled assets are reused between compiles, so your game doesn't change looks every build, until you change the **art style**: then the compiler makes its art again in the new style.
-- **2D and 3D in the same engine.** Pick a world with the 2D / 3D switch.
+Try it at <https://aboufama.github.io/amble/>. There is no account and no sign-in.
 
-![The 3D example](docs/editor-3d.png)
+![The First page: a purple three-eyed creature drawn with markers is alive and named Blorp, and four worlds wait for it on the right.](docs/first-page.webp)
+
+## What students do
+
+- **Draw first.** A new student starts on a sheet of paper with six markers. **Bring it to life** gives the drawing bones, on the device, and it hops. Then the student picks a world for it.
+- **The Trail** is home. Each world is a lit sign along a path at night, and the characters in them walk between the signs.
+- **A world** is a running Phaser game with its **Cast** underneath: every character, item and background it uses. A new drawing drops into the running game without a restart. Undrawn members are dashed "just bones" outlines, and tapping one opens it on the Desk. In **Change** mode students tap anything in the world and turn its **Dials**. **Twists** such as Moon gravity and Giant mode bend the rules with no AI.
+- **The Desk** is the drawing tool: pressure-sensitive ink, pencil, marker, crayon and airbrush, a fill that stays inside sketchy lines, shapes, layers, mirror and flipbook pages. A character the game asks for can be drawn **on the bones**, one body part at a time.
+- **Bones** shows the skeleton Amble found, as stars over the drawing. Students move any joint with a pointer or the keyboard, pick the kind of body (a person, an animal on 4 legs, a flying or swimming animal, a blob, a thing) and preview the moves every character gets: stand, walk, run, jump, fall, ouch, attack and wave.
+- **Ask** changes a world in plain words. A request that only turns a dial or flips a twist ("make the jump higher") happens on the device, with no AI. Anything else goes to the AI helper, if one is set up.
+- **Footsteps** keeps every change, the AI's included, and **Go back** never deletes a step. **Look inside** shows the world's real JavaScript, marks the lines the AI, the student or a teacher wrote, and runs the student's own edits.
+- **Files and school.** Worlds save as `.amble` files (Save to Drive on a Chromebook). Teachers get a class link with a QR code, assignments, a gallery that plays a folder of turned-in worlds, and a letter for families. Students hand in through Google Classroom.
+
+Everything works without AI except the AI helper's own jobs: changing a world from Ask, planning a new world from an idea, explaining code, and suggesting joints. The five starter worlds (Moon King, Sky Run, Wobble Tower, Lantern Maze and Clank's Climb) play with no AI at all. A browser that still holds a game from the old block-based Amble is offered a one-way import of its drawings and sounds; the blocks don't come along.
+
+| ![A world in Play: the Moon King starter running, with the hero Pip shooting at the Moon King. The Cast line below shows Grumble, still just bones, under "Your turn".](docs/world.webp) | ![The Desk: drawing Pip on the bones, with the brushes on the left, the colour panel on the right and a live preview of Pip walking.](docs/desk.webp) |
+|---|---|
+| **A world.** The Moon King starter, playing. Grumble, marked "Your turn", is still just bones. | **The Desk.** Drawing Pip on the bones, with a live preview of Pip walking. |
+| ![Bones: Pip's joints shown as stars over the drawing, left side striped and right side dotted, with the moves and a live walking preview.](docs/bones.webp) | ![The Trail at night: world signs along a lit path, with Blorp and Pip walking between them.](docs/trail.webp) |
+| **Bones.** Pip's joints as stars, the left side striped and the right side dotted. | **The Trail.** The student's worlds as signs, and their characters walking the path. |
 
 ## Quick start
 
-```bash
-npm install
-npm run dev            # http://localhost:5173
-```
-
-Then either:
-
-- press **Sign in with ChatGPT** (top right). This needs the [Codex CLI](https://github.com/openai/codex) (`npm install -g @openai/codex`). Compiles then run on your ChatGPT plan with GPT-6 Astra Light, and no API key is needed ([details](#signing-in-with-chatgpt)), or
-- open **Settings** and paste an OpenAI API key (stored only in your browser), or
-- put `OPENAI_API_KEY=sk-...` in a `.env` file (see `.env.example`). The dev server then proxies OpenAI calls, and the key never reaches the browser.
-
-Press the green flag: the starter project uses only exact blocks, so it compiles instantly and needs no account. Try **File → Examples → Star Catcher** or **Coin Hills (3D)**: they have a couple of blocks in your own words, so press **Compile** once (with an account) and play.
-
-Defaults: `gpt-5` with low reasoning compiles blocks in your own words; `gpt-5-mini` makes compiled art, models and sounds. Any model your key can use can be picked in Settings, and any OpenAI-compatible endpoint works via the base URL. Signed in with ChatGPT, everything uses GPT-6 Astra Light (`gpt-6-astra` with low reasoning).
-
-### Signing in with ChatGPT
-
-OpenAI only lets its own Codex app sign in with ChatGPT, not other websites. So when Amble runs on your computer, the dev server (`server/codexBridge.ts`) hands compile requests to your Codex CLI:
-
-- **Sign in with ChatGPT** reuses the ChatGPT sign-in Codex already has, or runs `codex login`, which opens the ChatGPT sign-in page.
-- Each request runs `codex exec` with GPT-6 Astra at low reasoning, the preset ChatGPT calls "Astra Light". It counts toward your ChatGPT plan's Codex usage.
-- Codex runs in a read-only sandbox in an empty temporary folder, without your Codex config (`--ignore-user-config`) and without saving a session (`--ephemeral`).
-- **Sign out** only stops Amble from using it; Codex stays signed in. Set `CODEX_PATH` if `codex` isn't on your PATH.
-
-The GitHub Pages demo has no server, so there it's API keys only.
-
-## How it works
-
-```
- Blocks  ──►  Amble's compiler  ──────────────────────────────►  Amble engine (Babylon.js + Havok)
-              exact blocks: engine calls, instantly               runs in a sandboxed iframe
-              your words: small pieces of code, in one request
-              (new words, plus any written before that must change)
-```
-
-1. **The block language** (`src/blocks/spec.ts`) defines every block once: its shape (hat, stack, C, reporter, condition, or a standalone rule), its inputs (typed numbers and words, menus, character slots, condition slots) and its help text. The editor (`src/blocks/blockly.ts`) and the compiler both read it.
-2. **Exact blocks compile locally** (`src/compiler/codegen.ts`). Like Scratch, each script becomes a coroutine that its trigger starts (with Scratch's rules for restarting), loops yield once per frame, and every exact block becomes a direct engine call. The same blocks always give the same code.
-3. **Words become pieces.** A block in your own words becomes a small method. Its key is a hash of what it says and where it is (the words, the block, the sprite, whether it repeats, 2D or 3D). Pieces whose key is new go out, all in one request with the whole program and the code of every piece already written (`src/compiler/prompt.ts`, strict JSON from `src/compiler/schema.ts`). Words reach the whole game, so the reply can also rewrite pieces written before, on any sprite, when the new words need them to change; a changed brief sends them to be looked at again too. The art style is a piece of its own: a rule that sets up the game's look when it starts. Pieces that don't parse get one repair round. Pieces nothing rewrote come from the last compile, and undoing an edit compiles instantly again. **Recompile** (the Compile button when nothing changed, or Edit → Compile everything again) starts over: every piece is written again and the compiled art is made again.
-4. **Check and harden.** Every class is parsed with acorn (`src/compiler/transform.ts`). Loops get guards so a runaway `while (true)` pauses or stops instead of freezing the page. A missing `yield*` before `wait()` is added, and hooks that wait become coroutines.
-5. **Make assets.** Compiled costumes are drawn as SVG (or by an image model, if you choose that in Settings). 3D models are assembled from primitive shapes. Sounds come from a small synthesizer (`src/audio/synth.ts`). If generation fails, a placeholder keeps the game running.
-6. **Run.** The green flag compiles what changed and plays the game in an iframe with an opaque origin and a Content-Security-Policy that blocks all network access. With no account, blocks in your own words do nothing until they're compiled, and everything else still plays. Errors, failed **checks** and console output appear in the **Problems** dialog; **Fix** compiles the words of the sprites that had problems again, with the problems attached.
-
-Old projects made with earlier versions of Amble are converted to the new blocks when they're opened (`src/project/migrate.ts`), keeping every word.
-
-### The engine
-
-The Amble engine (`src/engine/`) is a thin, consistent game layer over Babylon.js:
-
-- **Consistent timing.** Logic and physics run on Babylon's deterministic lockstep: exactly 60 ticks per second on every machine, independent of the monitor's refresh rate. `wait()`, timers and tweens use game time, not wall-clock time.
-- **Unity-style sprites.** `class Player extends Sprite { start() {} update(dt) {} onKeyDown(key) {} onClick() {} onMessage(name, data) {} onCollide(other) {} onSpawn() {} }`, plus coroutines (`*start() { yield* this.wait(1) }`).
-- **2D:** orthographic 480×360 stage in pixels (Scratch coordinates), costumes as textured sprites, scrolling camera, layers.
-- **3D:** meters, sky, sun with shadows, ground, follow / first-person / orbit cameras. Image costumes are billboard cutouts; `.glb` and compiled models are real meshes.
-- **Physics:** Havok (dynamic/static/kinematic bodies, collisions, sensors). In 2D, bodies are constrained to the plane.
-- **Ready-made behaviors** for the exact Game blocks: walk with the arrow keys, jump, fall with gravity (the bottom of the screen is solid in 2D), be solid ground.
-- **Also:** input (keys, mouse, touch, pointer lock), Web Audio sounds, HUD text/values/buttons, speech bubbles, questions, particles.
-- **Full Babylon access:** compiled code can use the `BABYLON` namespace for anything the helpers don't cover.
-
-Why Babylon.js? It's a full game engine (rendering, physics, particles, glTF, cameras, input) where 2D and 3D share one scene graph and API. It has a built-in fixed-timestep mode, and it's famously backward compatible, so compiled code rarely breaks on version drift.
-
-## Project layout
-
-```
-src/
-  blocks/      the block language (spec.ts), menus, and the Blockly editor (renderer, fields, palette)
-  compiler/    code generation for exact blocks, pieces for words, prompts, schemas, OpenAI client,
-               code instrumentation, compiled assets
-  engine/      the game runtime that runs inside the player iframe (Babylon.js + Havok)
-  player/      editor <-> player protocol, iframe host, run-package builder
-  project/     data model, defaults and examples, migration of old projects, persistence, HTML export
-  components/  React UI (blocks editor, paint editor, sounds, stage, problems, sprite pane)
-server/        dev-server bridge for "Sign in with ChatGPT" (runs the Codex CLI)
-dev/engine-test.html   a page for poking the engine directly (npm run dev → /dev/engine-test.html)
-```
-
-## Saving and sharing
-
-- Projects autosave in your browser (IndexedDB).
-- **File → Save to your computer** writes a `.amble` file; **Open** reads it back.
-- **File → Export playable web page** produces a single `.html` file with the engine, physics and your game inside. It runs anywhere, with no server.
-
-## Deploying
-
-`.github/workflows/pages.yml` builds the app on every push and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves (Settings → Pages → Deploy from a branch → `gh-pages`, `/ (root)`). The build uses relative paths, so it works from any sub-path. On a static host there's no server key and no ChatGPT sign-in: exact blocks work for everyone, and each visitor uses their own OpenAI key from Settings to compile blocks in their own words.
-
-## Security notes
-
-- The API key lives in `localStorage` (or on the dev server with `OPENAI_API_KEY`). Compiled games can't read it: the player iframe is sandboxed without `allow-same-origin`, and its CSP has no network access (`connect-src data: blob:`).
-- Compiled SVG art is sanitized (no scripts, event handlers, or external references) before use.
-- The dev server's compile endpoints (`/api/openai`, `/api/codex`) only answer Amble's own page: they reject requests from other origins and require JSON, so other sites open in your browser can't use your key or your ChatGPT sign-in.
-
-## Development
+You need Node.js 22 (the version CI uses).
 
 ```bash
-npm run typecheck
-npm test                 # unit tests (vitest)
-npm run test:e2e         # Playwright: the editor, instant compiles, and word compiles against a mocked API
-npm run build            # production build in dist/ (includes amble-player.js and amble-havok.wasm)
+npm ci
+npm run dev
 ```
 
-To point Playwright at an already-installed Chromium, set `PW_CHROMIUM_PATH`, e.g. `PW_CHROMIUM_PATH=/path/to/chrome npm run test:e2e`.
+Open <http://localhost:5173/>. A new browser profile starts on the First page. The AI helper stays off until you set one up (see [How the AI is configured](#how-the-ai-is-configured)).
 
-## Ideas for next steps
+## Commands
 
-- Live previews of compiled 3D models in the costume list.
-- More providers (Anthropic, Gemini, local models). Everything goes through `src/compiler/openai.ts`.
-- Show the compiler a picture of your costumes so compiled art matches your style even more closely.
+| Command | What it does |
+|---|---|
+| `npm run dev` | The Vite dev server. It rebuilds the game player when anything under `src/runtime/` changes. |
+| `npm test` | Unit tests (vitest, in Node) in `tests/` and `server/`. |
+| `npm run typecheck` | Type-checks the app and its unit tests (`tsconfig.json`), then the build config, e2e tests and dev server (`tsconfig.node.json`). |
+| `npm run build` | Type-checks, then builds the static site into `dist/`. |
+| `npm run preview` | Serves `dist/` locally. |
+| `npm run test:e2e` | Playwright end-to-end tests in `e2e/`. |
+| `npm run starters:build` | Rebuilds the starter worlds' committed assets in `public/starters/`. |
+
+### End-to-end tests
+
+The e2e tests start their own dev server on `E2E_PORT` (default 5199) and run in Playwright's Chromium, or in the Chromium that `PW_CHROMIUM_PATH` points at. They run at 1366x768 with software WebGL (SwiftShader). AI tests use a mocked endpoint (`e2e/helpers/mockAi.ts`); no test calls a real AI service.
+
+```bash
+# Everything in e2e/, with a Chromium you already have, on a port of your own
+PW_CHROMIUM_PATH=/path/to/chromium E2E_PORT=5300 npm run test:e2e
+
+# The subset CI runs before every deploy
+PW_CHROMIUM_PATH=/path/to/chromium E2E_PORT=5300 npx playwright test journeys/first-five journeys/no-ai journeys/egress journeys/a11y journeys/layout
+
+# The production build with its CSP, served under /amble/ on port E2E_PORT + 100 (only the tests tagged @prod)
+PW_CHROMIUM_PATH=/path/to/chromium E2E_PORT=5300 npx playwright test --project prod
+```
+
+`E2E_REUSE=1` tests servers that are already running on those ports instead of starting new ones. The player core has its own spec and harness on port 5213: `npx playwright test -c dev/player/playwright.config.ts`.
+
+### Starter worlds
+
+`npm run starters:build` replays each starter drawing's stroke script through the real brush engine, exports it, fits its committed bones and checks them, validates every starter's code, and writes `public/starters/<id>/`. Then it robot-tests every starter in Chromium and redraws the Trail's signs. Pass starter ids to rebuild only those, and `--no-browser` to skip the Chromium step:
+
+```bash
+npm run starters:build -- moon-king --no-browser
+```
+
+Set `PW_CHROMIUM_PATH` for the Chromium step, and `STARTERS_OUT` for where its review images go.
+
+## How the AI is configured
+
+No AI address or key ships with Amble, and nothing turns the AI helper on by default. Amble works with any OpenAI-compatible Chat Completions endpoint: it calls `POST {base URL}/chat/completions`, and `POST {base URL}/moderations` when moderation is set to `endpoint`. It reads its settings from these sources, highest first (`src/ai/config/`):
+
+1. **ChromeOS managed configuration**, for Amble force-installed on managed Chromebooks.
+2. **Build-time variables** (`VITE_AMBLE_*`) in a district's own build. They are public, so they hold the address and the policy, never a key: the build stops if a value looks like one.
+3. **A class link** (`https://<amble>/#class=...`) that a teacher makes in the Teacher desk. It carries the AI address, a class code (sent only in a request header, `X-Amble-Class` by default), the class's AI mode (on, explain only or off), its content level and an expiry date.
+4. **Manual settings** in Settings → AI helper → Set up AI (for grown-ups): a base URL (empty means OpenAI), an optional key, the model names and Test connection. They are for home use, and they are hidden in school builds, on managed devices and wherever a school provides the AI.
+
+A school source can lock the AI settings, the content level and pictures, so lower sources can't change them. A teacher's class link can switch the AI helper off, or to explain only, for a class; it can't switch on what the district switched off. Every field is in [docs/DISTRICT-SETUP.md](docs/DISTRICT-SETUP.md).
+
+Amble uses up to three models. The main model writes and changes code. The fast model plans new worlds and explains code. The vision model suggests joints for Magic bones, only where the district allows pictures and the student says OK for that drawing. The fast and vision models default to the main one.
+
+**Local development.** Put `OPENAI_API_KEY` (and, if you like, `OPENAI_BASE_URL`) in a `.env` file (see `.env.example`). The dev server then proxies AI calls through `/api/openai`, so the key never reaches the browser, and `npm run dev` uses it when nothing above is set. Production builds never call `/api/*`.
+
+## Privacy and safety
+
+Amble has no accounts, no analytics, no ads, no cookies and no server of its own. Worlds, drawings and settings stay in the browser's storage on the device until a student saves an `.amble` file. The app talks to two kinds of places only: the host that serves its files and, when a student uses the AI helper, the AI address that a school or a grown-up set up. An AI request carries the student's words and what the AI needs about the world (its code and the list of things to draw). Amble never adds a student's name or initials, pen strokes, recordings or drawings; the one exception is a small black-and-white outline for AI joint hints, which the district must allow and the student must OK for each drawing. Every request is listed on the device exactly as it was sent (What Amble sends, `#/sent`). Games run in a sandboxed frame with no network access and no access to Amble's storage. Before anything is sent, an on-device filter checks the student's words, refuses what isn't OK for school and catches personal information; a district endpoint can add moderation, and the words a new version of a game would show are checked again before the student sees them. If a student's words suggest they may be in danger, nothing is sent: Amble shows a card that points them to a trusted adult, to 988 and to New Hampshire's Rapid Response line.
+
+## Architecture at a glance
+
+Vite, React 19, TypeScript and zustand; one IndexedDB database; hash routes (`#/trail`, `#/w/<id>`, `#/w/<id>/draw/<key>`...), because GitHub Pages can't serve app routes. Four cores do the heavy work, and nine modules build the screens on top of them. Modules reach the cores only through the typed barrels in `src/cores/`, and app code never imports Phaser or `src/runtime/` (a unit test enforces both).
+
+| Core | Folders | What it does |
+|---|---|---|
+| Art engine | `src/art/engine/` | The brush engine: brushes, layers, the gap-closing fill, selection, shapes, flipbook frames, undo and export. Framework-free; fills, undo packing and PNG encoding run in a worker. |
+| Rig | `src/rig/` | Auto-rig, binding a drawing to its bones, the procedural moves and the bone editing API. Auto-rig and binding run in a Web Worker on the device. |
+| Player and runtime | `src/play/`, `src/runtime/`, `vite/ambleRuntime.ts` | The sandboxed game player: Phaser 3.90 plus the Amble kit in a `sandbox="allow-scripts"` frame with its own CSP (`connect-src 'none'`), one visible player plus one warm spare, and the message protocol (`src/play/protocol.ts`). |
+| AI | `src/ai/` | The transport (one door for AI traffic), district configuration and class links, the game validator, the AMBLE PATCH parser and applier, and the safety filter. |
+
+| Module | Folders | What it does |
+|---|---|---|
+| Home | `src/home/`, `src/screens/first/`, `src/screens/trail/`, `src/screens/newworld/` | The First page, the Trail, New world and the plan card. |
+| World | `src/world/`, `src/screens/world/` | The running world: Play and Change, the Cast, Dials, Twists, the Ask card's frame. |
+| Draw | `src/draw/`, `src/screens/draw/` | The Desk and Bring to life. |
+| Bones | `src/bones/`, `src/screens/bones/` | The Bones view and Magic bones. |
+| AI pipeline | `src/pipeline/`, `src/screens/ai/` | Plans, builds, changes and fixes; validation, the robot test in the hidden spare player, up to two repairs, the fallback to a starter, the on-device dial and twist matcher, and the safety cards. |
+| Storage and files | `src/store/`, `src/files/`, `src/pwa/`, `src/screens/files/` | IndexedDB, autosave, `.amble` files, Save all my worlds, the service worker. |
+| School and settings | `src/school/`, `src/screens/teacher/`, `src/screens/join/`, `src/screens/handin/`, `src/screens/settings/`, `src/screens/pages/` | Class links, the Teacher desk, Hand in, Settings and the in-app pages. |
+| Starter worlds | `src/starters/`, `tools/starters/`, `public/starters/` | The five starters and the tool that builds their assets. |
+| Footsteps and code | `src/history/`, `src/screens/footsteps/`, `src/screens/code/` | Footsteps, Go back, who wrote each line, and Look inside. |
+
+Shared pieces: `src/app/` (routes, the app frame, the player host and layer), `src/ui/` (design system), `src/state/` (zustand slices), `src/model/` (types and limits), `src/i18n/en/` (every student-facing string), `src/legacy/` (the old Amble reader) and `src/audio/` (the sound synth). `vite/` holds the build plugins (the runtime bundle, the page CSP, the key guard, the dev-only guard, the service worker). `server/codexBridge.ts` is a dev-server bridge to a local Codex CLI and never ships. `dev/` holds harness pages for the cores.
+
+## Deploy
+
+`.github/workflows/pages.yml` publishes to GitHub Pages on every push to the branches it lists (today the working branch and `main`), and when it is run by hand. It has two jobs:
+
+1. **e2e** installs Chromium and runs the fast journeys (the first five minutes, no AI, egress and the sandbox, accessibility, and layout) with one retry. If they fail, the test results are kept as a build artifact for 7 days, and nothing deploys.
+2. **deploy** runs only after e2e passes: `npm ci`, `npm test`, `npm run build`, then it force-pushes `dist/` to the `gh-pages` branch. In the repository settings, Pages must serve the `gh-pages` branch from `/ (root)`.
+
+The build uses relative paths (`base: './'`), so `dist/` works from any host and sub-path. It stops if a `VITE_` variable looks like it holds a key, or if a dev-only test hook reached the bundle. The full e2e suite and the `prod` project don't run in CI.
+
+## For schools
+
+Amble ships no AI address and no key. A district runs its own AI proxy and points Amble at it with ChromeOS managed configuration, its own build, or teachers' class links. [docs/DISTRICT-SETUP.md](docs/DISTRICT-SETUP.md) is the guide for a district technology coordinator: what Amble sends, provider choices, every configuration field, moderation and the crisis card, the web filter allowlist, accessibility, and what is still missing before a district rollout.
+
+Inside the app: `#/it` (for IT), `#/privacy`, `#/terms`, `#/ai` (the AI helper's exact instructions), `#/parents` (a letter for families) and `#/accessibility`.
+
+## Credits
+
+Amble is made by Andre.
+
+It is built with Phaser, React, zustand, CodeMirror, acorn, fflate and the fonts Fredoka, Atkinson Hyperlegible Next and JetBrains Mono; Settings → About lists each one's license. The repository doesn't have a LICENSE file yet (see the list at the end of [docs/DISTRICT-SETUP.md](docs/DISTRICT-SETUP.md)).
