@@ -44,15 +44,18 @@ export function AiProgressList({ job, onStop }: AiProgressListProps) {
   const sticker = useArtSticker(hero.art);
   const heroRig = manifest?.art.find((a) => a.key === hero.key)?.rig ?? 'biped';
 
-  // A fix round, once started, stays the active step until the job ends (its reply streams again).
-  const fixRound = useRef<{ job: number; round: 0 | 1 | 2 }>({ job: job.startedAt, round: 0 });
-  if (fixRound.current.job !== job.startedAt) fixRound.current = { job: job.startedAt, round: 0 };
+  // A fix round, once started, stays the active step until the job ends (its reply streams again); a
+  // retry wait keeps the steps where they were.
+  const seen = useRef<{ job: number; round: 0 | 1 | 2; phase: AiPhase | null }>({ job: job.startedAt, round: 0, phase: null });
+  if (seen.current.job !== job.startedAt) seen.current = { job: job.startedAt, round: 0, phase: null };
   const p = job.progress;
-  if (p.phase === 'fixing') fixRound.current.round = p.round ?? 1;
-  const round = fixRound.current.round;
-  const fixing = round > 0 && p.phase !== 'swapping';
+  if (p.phase === 'fixing') seen.current.round = p.round ?? 1;
+  if (p.phase !== 'queued') seen.current.phase = p.phase;
+  const phase: AiPhase = p.phase === 'queued' ? (seen.current.phase ?? 'queued') : p.phase;
+  const round = seen.current.round;
+  const fixing = round > 0 && phase !== 'swapping';
 
-  const writing = p.phase === 'writing' && !fixing;
+  const writing = phase === 'writing' && !fixing;
   const steps: Array<{ key: StepKey; label: ReactNode }> = [
     { key: 'checking', label: t('ai.stepChecking') },
     {
@@ -85,7 +88,7 @@ export function AiProgressList({ job, onStop }: AiProgressListProps) {
       )}
       <ol className="ai-steps" aria-label={t('ai.progressLabel')}>
         {steps.map((s) => {
-          const state = stateOf(s.key, p.phase, fixing);
+          const state = stateOf(s.key, phase, fixing);
           return (
             <li key={s.key} className={cx('ai-step', `ai-step--${state}`)} data-step={s.key} data-state={state}>
               <span className="ai-step__mark" aria-hidden="true">

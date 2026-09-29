@@ -59,14 +59,18 @@ for (const [w, h] of [
     await page.getByTestId('ai-field').fill('');
 
     // Working: writing a file, fixing, and a busy wait.
-    const job = (progress: Patch) => ({ worldId: id, task: 'change', request: 'Make the Moon King get angrier when he is hurt: faster orbs and a stomp', progress, startedAt: now });
+    let started = now;
+    const job = (progress: Patch) => ({ worldId: id, task: 'change', request: 'Make the Moon King get angrier when he is hurt: faster orbs and a stomp', progress, startedAt: started });
     await setAi(page, { job: job({ phase: 'writing', file: 'boss.js', lines: 34, chars: 2100 }) });
     await shot('04-working-writing');
     await setAi(page, { job: job({ phase: 'fixing', round: 1 }) });
     await shot('05-working-fixing');
-    await setAi(page, { job: job({ phase: 'queued', waitMs: 8000 }), wait: { worldId: id, reason: 'rate-limited', until: now + 8000 } });
+    await reset(page, id);
+    started += 1;
+    await setAi(page, { job: job({ phase: 'checking' }) });
+    await setAi(page, { job: job({ phase: 'queued', waitMs: 8000 }), wait: { worldId: id, reason: 'rate-limited', until: Date.now() + 9000 } });
     await shot('06-busy-429');
-    await setAi(page, { wait: { worldId: id, reason: 'server', until: now + 20_000 } });
+    await setAi(page, { wait: { worldId: id, reason: 'server', until: Date.now() + 21_000 } });
     await shot('07-queued');
     await reset(page, id);
 
