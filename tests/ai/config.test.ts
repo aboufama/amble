@@ -249,6 +249,34 @@ describe('precedence: managed > build > class link > manual', () => {
     expect(c).toMatchObject({ source: 'none', enabled: false, schoolMode: true, manualAllowed: false });
   });
 
+  it("offers a user-key build's key field for its own address, and sends the key only there", () => {
+    const url = 'https://ai.district.example/v1';
+    const b = layerFromEnv({ VITE_AMBLE_AI_BASE_URL: url, VITE_AMBLE_AI_AUTH: 'user-key', VITE_AMBLE_AI_MODEL: 'district-model' });
+    expect(b).toMatchObject({ source: 'build', baseUrl: url, userKey: true });
+    // No key yet: off, and Settings offers the key field for that address (never the whole manual setup).
+    const waiting = mergeLayers([b]);
+    expect(waiting).toMatchObject({ enabled: false, offReason: 'needs-key', userKeyFor: url, manualAllowed: false, auth: { type: 'none' } });
+    expect(describeAiSource(waiting).detail).toBe('Add an AI key in Settings to turn it on.');
+    // A key saved for that address turns it on, with the build's address and model.
+    const withKey = mergeLayers([b, layerFromSettings(settings({ apiKey: KEY, baseUrl: url }))]);
+    expect(withKey).toMatchObject({ source: 'build', enabled: true, baseUrl: url, model: 'district-model', auth: { type: 'bearer', key: KEY }, userKeyFor: url });
+    expect(transportFor(withKey, { storage: new MemoryStorage() })?.headers).toEqual({ Authorization: `Bearer ${KEY}` });
+    // A key typed for another address (OpenAI, here) is never sent to the district's.
+    expect(mergeLayers([b, manualKey])).toMatchObject({ enabled: false, offReason: 'needs-key', auth: { type: 'none' } });
+    // Other builds offer no key field.
+    expect(mergeLayers([build({ baseUrl: url, auth: { type: 'none' } })]).userKeyFor).toBeNull();
+    expect(mergeLayers([manualKey]).userKeyFor).toBeNull();
+  });
+
+  it('never takes a key in a school build, and says so', () => {
+    const url = 'https://ai.district.example/v1';
+    const b = layerFromEnv({ VITE_AMBLE_SCHOOL_MODE: 'true', VITE_AMBLE_AI_BASE_URL: url, VITE_AMBLE_AI_AUTH: 'user-key' });
+    expect(b?.problems?.[0]).toMatch(/user-key: school copies never take a key/);
+    const c = mergeLayers([b, layerFromSettings(settings({ apiKey: KEY, baseUrl: url }))]);
+    expect(c).toMatchObject({ enabled: false, offReason: 'needs-key', userKeyFor: null, auth: { type: 'none' } });
+    expect(describeAiSource(c).detail).toBe('This copy of Amble asks for an AI key, and school copies never take one.');
+  });
+
   it('turns AI off for grade bands the district left out', () => {
     const m = managed({ baseUrl: 'https://ai.district.org/v1', aiBands: ['middle', 'high'], ageBand: 'elementary' });
     expect(mergeLayers([m])).toMatchObject({ enabled: false, offReason: 'grade-band', ageBand: 'elementary' });

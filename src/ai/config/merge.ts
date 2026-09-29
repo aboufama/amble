@@ -79,7 +79,8 @@ export function mergeLayers(input: ReadonlyArray<ConfigLayer | null | undefined>
     if (codeAuth) auth = { type: 'class-code', header: endpoint.classCodeHeader, code: codeAuth.code };
     else missing = 'needs-class-link';
   } else if (endpoint?.userKey) {
-    if (!schoolMode && manual?.auth?.type === 'bearer') auth = manual.auth;
+    // Only a key typed for this address (Settings keeps it with the address), never a key meant for another.
+    if (!schoolMode && manual?.auth?.type === 'bearer' && sameOrigin(manual.baseUrl, endpoint.baseUrl)) auth = manual.auth;
     else missing = 'needs-key';
   }
 
@@ -147,6 +148,8 @@ export function mergeLayers(input: ReadonlyArray<ConfigLayer | null | undefined>
     sharedDevice: layers.some((l) => isSchool(l) && l.sharedDevice === true),
     requestsMayBeReviewed: layers.some((l) => isSchool(l) && l.requestsMayBeReviewed === true),
     manualAllowed: !schoolMode && !locked.includes('ai') && !endpointIsSchool,
+    userKeyFor: endpoint?.userKey && !schoolMode ? (endpoint.baseUrl ?? null) : null,
+    classCodeHeader: endpoint?.classCodeHeader ?? (endpoint?.auth?.type === 'class-code' ? endpoint.auth.header : null),
     problems,
   };
 }

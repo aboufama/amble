@@ -14,6 +14,7 @@ import { SYSTEM_PROMPT } from '../../pipeline/prompts/system';
 import { showToast } from '../../state/app';
 import { TButton } from '../teacher/TButton';
 import { PageShell, pagesMeta } from './PageShell';
+import { SentList } from './SentList';
 import { Prose } from './Prose';
 
 const PROMPTS: Array<{ id: string; title: MessageKey; when: MessageKey; text: string }> = [
@@ -103,7 +104,9 @@ export function AiInstructions() {
       <Prose text={t('school.page_aiSafety')} />
 
       <h2 className="page__h2">{t('school.aiSeesTitle')}</h2>
-      <Prose text={t('school.page_aiSees')} />
+      <Prose text={t('school.page_aiSeesIntro')} />
+      <SentList />
+      <Prose text={t('school.page_aiSeesRest')} />
       <p className="page__links">
         <Link to={{ name: 'page', page: 'sent' }}>{t('common.routeSent')}</Link>
         <Link to={{ name: 'page', page: 'privacy' }}>{t('common.routePrivacy')}</Link>

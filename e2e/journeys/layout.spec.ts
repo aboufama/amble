@@ -2,7 +2,7 @@
  * Layout (§2.2, §10.2 `layout`): at the four sizes (1366x768, 1366x657 a Chrome tab, 1280x800 touch,
  * 1280x600 small) the page never scrolls and each screen's key controls are on screen: the First page, the
  * Trail, the world in Play and in Change, the Desk, Bones, Look inside, Hand in and the Teacher desk.
- * Dialogs reflow at 320 px, and 130 % text breaks nothing at 1280x600.
+ * Two dialogs and the in-app pages reflow at 320 px, and 130 % text breaks nothing at 1280x600.
  */
 import type { Locator, Page } from '@playwright/test';
 import { expect, gotoRoute, openAmble, test } from '../helpers/app';
@@ -128,6 +128,27 @@ test.describe('320 px wide', () => {
       expect(await dialog.evaluate((d) => d.scrollWidth <= d.clientWidth + 1)).toBe(true);
       await page.keyboard.press('Escape');
       await expect(page.getByRole('dialog')).toHaveCount(0);
+    }
+  });
+
+  test('the in-app pages reflow: only tables and code scroll sideways, inside their own boxes', async ({ page }) => {
+    test.setTimeout(120_000);
+    await openAmble(page, { clean: true });
+    for (const name of ['privacy', 'terms', 'ai', 'it', 'parents', 'accessibility', 'poster', 'sent', 'whatsnew']) {
+      await gotoRoute(page, `#/${name}`);
+      await expect(page.getByTestId(`screen-page-${name}`).getByRole('heading', { level: 1 })).toBeVisible();
+      const cut = await page.evaluate(() =>
+        [...document.querySelectorAll('body *')]
+          .filter((el) => {
+            const b = el.getBoundingClientRect();
+            if (!b.width || !b.height || el.closest('pre, .page__table-wrap')) return false;
+            return b.left < -1 || b.right > innerWidth + 1;
+          })
+          .slice(0, 3)
+          .map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}`),
+      );
+      expect(cut, `#/${name}: cut off sideways`).toEqual([]);
+      expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth), `#/${name}: page width`).toBe(true);
     }
   });
 });

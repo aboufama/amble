@@ -6,6 +6,7 @@
  */
 import { useMemo } from 'react';
 import { t, type MessageKey } from '../../i18n';
+import { classCodeHeaderFor } from '../../school/classLink';
 import { useTeacherData } from '../../school/teacherData';
 import { hostOf } from '../../school/testConnection';
 import { useStore } from '../../state/store';
@@ -83,6 +84,8 @@ export function ItPage() {
   const aiHosts = [ai?.baseUrl && !ai.baseUrl.startsWith('/') ? hostOf(ai.baseUrl) : null, teacherLink?.ai?.baseUrl ? hostOf(teacherLink.ai.baseUrl) : null].filter(
     (h, i, all): h is string => Boolean(h) && all.indexOf(h) === i,
   );
+  // The class-code header this copy uses: the district's (build or managed configuration), else X-Amble-Class.
+  const header = classCodeHeaderFor(ai);
   return (
     <PageShell page="it" title={t('school.itTitle')} meta={pagesMeta()} wide lede={<p>{t('school.itLede')}</p>}>
       <h2 className="page__h2">{t('school.itHostsTitle')}</h2>
@@ -121,7 +124,7 @@ export function ItPage() {
       <pre className="page__code">{BUILD_VARS.map(([k, v]) => `${k}=${v}`).join('\n')}</pre>
 
       <h2 className="page__h2">{t('school.itProxyTitle')}</h2>
-      <Prose text={t('school.page_itProxy')} />
+      <Prose text={t('school.page_itProxy', { header, headerLower: header.toLowerCase() })} />
 
       <h2 className="page__h2">{t('school.itProviderTitle')}</h2>
       <Prose text={t('school.page_itProvider')} />

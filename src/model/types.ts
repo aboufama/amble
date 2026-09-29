@@ -211,6 +211,12 @@ export interface ClassLinkV1 {
     model: string; fastModel?: string; visionModel?: string;
     caps?: string;                              // "json_schema,stream,reasoning,vision,moderation"
     auth: { type: 'class-code'; header: string; code: string } | { type: 'none' };
+    // District policy a link in the AI core's flat format may carry (§5.14); kept when a student joins.
+    visionAllowed?: boolean;                    // an outline of a drawing may go to the AI (Magic bones)
+    moderation?: 'endpoint' | 'provider' | 'local-only';
+    lock?: Array<'ai' | 'content' | 'vision'>;  // what lower sources (manual settings) can't change
+    safetyIdentifier?: boolean;
+    requestsMayBeReviewed?: boolean;
   } | null;
   mode: AiMode; level: Level;
   exp: string | null;                           // ISO date
@@ -292,7 +298,9 @@ export type AiOutcome =
   | { kind: 'accepted'; files: CodeFile[]; manifest: GameManifest; summary: string; play: string; next: string[];
       safety: SafetyNote; repairs: 0 | 1 | 2; tested: boolean; handEditsTouched: boolean; newArt: CastKey[] }
   | { kind: 'fallback'; files: CodeFile[]; manifest: GameManifest; message: string }   // build only: plan mapped onto the starter (§5.9)
-  | { kind: 'refused'; note: string; alternatives: string[] }
+  // `category` is what Footsteps keeps (§5.13): a safety category such as 'real-person', or 'flagged' when the
+  // AI service said no without one. Never the student's words.
+  | { kind: 'refused'; note: string; alternatives: string[]; category?: string }
   | { kind: 'crisis' }
   | { kind: 'failed'; reason: 'validation' | 'runtime' | 'truncated' | 'mismatch' | 'shape' | 'transport' | 'safety'; message: string; details: string[] }
   | { kind: 'unavailable'; status: AiStatus; message: string }

@@ -31,7 +31,7 @@ export function ParentLetter() {
         {usesAi ? (
           <>
             <p>{mode === 'explain' ? t('school.page_letterAiExplain', { provider: district ?? t('school.letterOurSchool'), host: aiHost ?? '' }) : t('school.page_letterAiOn', { provider: district ?? t('school.letterOurSchool'), host: aiHost ?? '' })}</p>
-            <p>{t('school.letterAiSends')}</p>
+            <p>{ai?.visionAllowed ? t('school.page_letterAiSendsOutline') : t('school.page_letterAiSends')}</p>
             <p>{ai?.requestsMayBeReviewed ? t('school.letterReviewed') : t('school.letterNotReviewed')}</p>
           </>
         ) : (

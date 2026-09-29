@@ -152,7 +152,7 @@ export function createAiService(env: AiEnv, core: AiCore = createAiCore(env)): A
     }
   };
 
-  const refusedFrom = (v: Extract<WordsVerdict, { kind: 'refuse' }>): Extract<AiOutcome, { kind: 'refused' }> => ({ kind: 'refused', note: v.note, alternatives: v.alternatives });
+  const refusedFrom = (v: Extract<WordsVerdict, { kind: 'refuse' }>): Extract<AiOutcome, { kind: 'refused' }> => ({ kind: 'refused', note: v.note, alternatives: v.alternatives, category: v.category });
 
   /** The streamed chat for code jobs, logged. */
   const codeChat = (tr: Transport, model: string) => async (call: ChatCall): Promise<ChatReply> => {
@@ -231,7 +231,8 @@ export function createAiService(env: AiEnv, core: AiCore = createAiCore(env)): A
       case 'accepted':
         return accepted(world, r);
       case 'refused':
-        return { kind: 'refused', note: refusalNote('model', r.note) || t('ai.refusedDefault'), alternatives: alternativesFor('violence', level) };
+        // The AI helper said no itself (`@@safety refused`): it names no category.
+        return { kind: 'refused', note: refusalNote('model', r.note) || t('ai.refusedDefault'), alternatives: alternativesFor('violence', level), category: 'flagged' };
       case 'crisis':
         return { kind: 'crisis' };
       case 'cancelled':
@@ -244,7 +245,8 @@ export function createAiService(env: AiEnv, core: AiCore = createAiCore(env)): A
   const fromError = (err: unknown, tr: Transport | null, level: Level): AiOutcome => {
     if (!isAiError(err)) return { kind: 'failed', reason: 'transport', message: t('ai.failed'), details: [err instanceof Error ? err.message : String(err)] };
     if (err.kind === 'cancelled') return { kind: 'cancelled' };
-    if (err.kind === 'refused') return { kind: 'refused', note: '', alternatives: alternativesFor('violence', level) };
+    // A provider's content filter or refusal: no category either.
+    if (err.kind === 'refused') return { kind: 'refused', note: '', alternatives: alternativesFor('violence', level), category: 'flagged' };
     const status = tr ? noteError(err, tr) : null;
     if (status) return unavailable(status);
     return { kind: 'failed', reason: 'transport', message: err.kind === 'timeout' ? t('ai.timeout') : err.kind === 'too-long' ? t('ai.tooBig') : t('ai.failed'), details: [err.detail || err.message] };
@@ -263,7 +265,7 @@ export function createAiService(env: AiEnv, core: AiCore = createAiCore(env)): A
         const v = await screen(words, job.level, c, tr, o.signal);
         if (v.kind === 'crisis') return { kind: 'crisis' };
         if (v.kind === 'refuse') return refusedFrom(v);
-        if (v.kind === 'pii' && v.block) return { kind: 'refused', note: t('ai.piiBlocked'), alternatives: [] };
+        if (v.kind === 'pii' && v.block) return { kind: 'refused', note: t('ai.piiBlocked'), alternatives: [], category: 'personal-info' };
         if (v.toneNotes) job = { ...job, toneNotes: v.toneNotes };
       }
       if (o.signal.aborted) return { kind: 'cancelled' };

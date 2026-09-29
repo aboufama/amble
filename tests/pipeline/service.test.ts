@@ -170,6 +170,13 @@ describe('a change, over the wire', () => {
     const out = await h.service.change(world(), 'something odd', job());
     expect(out.kind).toBe('refused');
     if (out.kind === 'refused') expect(out.alternatives).toEqual(['Make the enemies pop into confetti', 'Turn it into a water-balloon fight']);
+    // No category comes with a filter's refusal.
+    expect(out).toMatchObject({ category: 'flagged' });
+  });
+
+  it("names no category for the AI helper's own refusal", async () => {
+    const h = harness([sse([fixture('refused.patch')])]);
+    expect(await h.service.change(world(), 'make the fight really gross', job())).toMatchObject({ kind: 'refused', category: 'flagged' });
   });
 });
 
@@ -188,15 +195,17 @@ describe('safety before anything is sent', () => {
     if (out.kind === 'refused') {
       expect(out.note).toBe("Games about real people from your school or family aren't allowed, even as a joke.");
       expect(out.alternatives[0]).toBe('Make up a character with a funny name');
+      // What Footsteps keeps: the category, never the words.
+      expect(out.category).toBe('real-person');
     }
-    expect((await h.service.change(world(), 'shoot up the school', job())).kind).toBe('refused');
+    expect(await h.service.change(world(), 'shoot up the school', job())).toMatchObject({ kind: 'refused', category: 'school-attack' });
     expect(h.sent).toHaveLength(0);
   });
 
   it('blocks personal info at elementary and lets it through (after the warning) above', async () => {
     const low = harness([], { config: { level: 'elementary' } });
     const words = 'make the hero say my phone number is 603-555-0199';
-    expect(await low.service.change(world({ level: 'elementary' }), words, job())).toMatchObject({ kind: 'refused' });
+    expect(await low.service.change(world({ level: 'elementary' }), words, job())).toMatchObject({ kind: 'refused', category: 'personal-info' });
     expect(low.sent).toHaveLength(0);
     const mid = harness([sse([fixture('change-stomp.patch')])]);
     expect((await mid.service.change(world(), words, job())).kind).toBe('accepted');

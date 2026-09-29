@@ -9,6 +9,7 @@ import { createHistory } from '../../src/history/api';
 import { t } from '../../src/i18n';
 import type { AiMode, ClassLinkV1, CodeFile, Level } from '../../src/model/types';
 import type { AppServicesLike } from '../../src/pipeline/env';
+import { SENT_LINES } from '../../src/pipeline/sent';
 import { createAiService, type AiEnv, type AiEnvConfig } from '../../src/pipeline/service';
 import { createStarterCatalog } from '../../src/starters/api';
 import { MemoryStore } from '../../src/store/memory';
@@ -52,9 +53,10 @@ describe('the privacy notice and the wire', () => {
     expect(user).toMatch(/The student's own edits \(keep them\): game\.js lines \d+-\d+/);
     expect(user).toContain('Locked by the teacher (never change): game.js lines 1-2');
 
-    const notice = t('school.page_privacyAi');
-    const [sent, never] = notice.split('**Never sent:**');
-    expect(sent).toMatch(/the code of the world being changed, and its name/);
+    // The notice is its intro, the list of what a request carries (one line each), then the rest.
+    const sent = [t('school.page_privacyAiIntro'), ...SENT_LINES.map((key) => t(key))].join('\n');
+    const [, never] = t('school.page_privacyAiRest').split('**Never sent:**');
+    expect(sent).toMatch(/the title and code of the world/);
     expect(sent).toMatch(/which lines .*changed.*locked/);
     expect(never).not.toMatch(/who wrote which lines/);
   });

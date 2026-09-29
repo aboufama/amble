@@ -1,7 +1,7 @@
 /**
  * Look inside (§2.12, §8.5 M9): change a number → Run it → the world reloads with the change and a
  * footstep, which survive a page reload; a syntax error shows a diagnostic on its line and the world keeps
- * its last version; teacher-locked lines are read-only.
+ * its last version, and so do words that aren't OK for school; teacher-locked lines are read-only.
  */
 import type { Page } from '@playwright/test';
 import { expect, gotoRoute, openAmble, test, waitForApp } from '../helpers/app';
@@ -125,6 +125,32 @@ test('a syntax error shows on its line and the world keeps its last version', as
   await page.getByRole('button', { name: 'Undo my edits' }).click();
   await expect(page.locator('.cm-content')).not.toContainText('this.rage = 0; )');
   await expect(page.locator('.problem--error')).toHaveCount(0);
+});
+
+test("words that aren't OK for school don't run, and the run bar says which line", async ({ page }) => {
+  const id = await openCode(page);
+  await page.evaluate(() => (window as unknown as { __amble: Hook }).__amble.services.player.pause());
+  const before = await stored(page, id);
+  const loadsBefore = await page.evaluate(() => (window as unknown as { __loads: string[][] }).__loads.length);
+  // A word the output filter stops at every level (spelled here in ROT13, as the word lists keep it).
+  const rude = 'fuvg'.replace(/[a-z]/g, (c) => String.fromCharCode(((c.charCodeAt(0) - 97 + 13) % 26) + 97));
+  const line = before.source.split('\n').findIndex((l) => l.includes("this.win('MOON KING DEFEATED!')")) + 1;
+  expect(line).toBeGreaterThan(0);
+
+  await (await revealLine(page, "this.win('MOON KING DEFEATED!')")).click();
+  await page.keyboard.press('End');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowLeft');
+  await page.keyboard.type(`, you ${rude}`);
+  await expect(page.locator('.cm-line', { hasText: `DEFEATED, you ${rude}!` })).toHaveCount(1);
+
+  await page.getByTestId('run-it').click();
+  await expect(page.getByTestId('run-bar')).toContainText(`Let's keep the words in games friendly: line ${line}.`);
+  const after = await stored(page, id);
+  expect(after.source).toBe(before.source);
+  expect(after.steps).toEqual(before.steps);
+  expect(await page.evaluate(() => (window as unknown as { __loads: string[][] }).__loads.length)).toBe(loadsBefore);
+  await page.getByRole('button', { name: 'Show me' }).click();
+  await expect(page.locator('.cm-activeLine')).toContainText('DEFEATED, you');
 });
 
 test('teacher-locked lines are read-only', async ({ page }) => {

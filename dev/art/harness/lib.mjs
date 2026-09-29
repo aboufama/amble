@@ -2,10 +2,14 @@
 // pen, mouse and touch input over CDP (real-time paced, with pressure and tilt).
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+/** The repository's root folder. */
+export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 export const BASE = process.env.ART_URL ?? 'http://localhost:5211/dev/art/';
-export const OUT = process.env.ART_OUT ?? '/tmp/claude-0/-home-user-amble/847fd994-c08b-555b-932e-3a1946f04e60/scratchpad/rebuild/out-art';
+/** Screenshots and measurements go to test-results/art in the repository (ignored by git), or to ART_OUT. */
+export const OUT = resolve(process.env.ART_OUT ?? resolve(ROOT, 'test-results/art'));
 mkdirSync(OUT, { recursive: true });
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

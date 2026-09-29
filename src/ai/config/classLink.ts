@@ -14,6 +14,11 @@ import type { AgeBand, ConfigLayer, LockKey, ModerationMode } from './types';
 export interface ClassPolicy {
   /** false: AI off for this class. */
   enabled?: boolean;
+  /**
+   * The class's AI mode, as the Teacher desk sets it: `explain` lets the AI helper only explain code, and
+   * `off` is the same as `enabled: false`. The app reads it; the endpoint's configuration doesn't need it.
+   */
+  mode?: 'on' | 'explain' | 'off';
   ageBand?: AgeBand;
   moderation?: ModerationMode;
   lock?: LockKey[];
@@ -88,6 +93,11 @@ function validDate(v: unknown): string | undefined {
   return t && Number.isFinite(Date.parse(t)) ? t : undefined;
 }
 
+function aiMode(v: unknown): ClassPolicy['mode'] {
+  const t = typeof v === 'string' ? v.trim().toLowerCase() : '';
+  return t === 'on' || t === 'explain' || t === 'off' ? t : undefined;
+}
+
 /** Checks a decoded payload and keeps only the known, valid fields. */
 export function validateClassLink(raw: unknown): ClassLinkRead {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, error: "This class link isn't readable." };
@@ -100,6 +110,7 @@ export function validateClassLink(raw: unknown): ClassLinkRead {
   const p = o.policy && typeof o.policy === 'object' ? (o.policy as Record<string, unknown>) : {};
   const policy = defined<ClassPolicy>({
     enabled: F.bool(p.enabled),
+    mode: aiMode(p.mode),
     ageBand: F.band(p.ageBand ?? p.level),
     moderation: F.moderation(p.moderation),
     lock: F.locks(p.lock),
@@ -178,7 +189,7 @@ export function layerFromClassLink(link: ClassLink | null): ConfigLayer | null {
     fastModel: link.fastModel,
     visionModel: link.visionModel,
     visionAllowed: link.visionAllowed,
-    enabled: p.enabled,
+    enabled: p.mode === 'off' ? false : p.enabled,
     ageBand: p.ageBand,
     moderation: p.moderation,
     lock: p.lock,

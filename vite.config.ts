@@ -10,6 +10,7 @@ import { LAZY_GROUPS, PURE_ON_LOAD } from './vite/chunks.ts';
 import { aiConnectSources, csp } from './vite/csp.ts';
 import { devOnlyGuard } from './vite/devOnlyGuard.ts';
 import { envGuard } from './vite/envGuard.ts';
+import { imageGenGuard } from './vite/imageGenGuard.ts';
 import { swPlugin } from './vite/swPlugin.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -119,6 +120,8 @@ export default defineConfig(({ mode }) => {
       // Game frames (srcdoc) inherit this policy, so it allows the player's bootstrap by its hash.
       csp({ connect: aiConnectSources(env), bootHashes: playerBootHashes }),
       swPlugin(),
+      // Fails a build whose files name an image-generation endpoint or model (§5.11: the AI never draws).
+      imageGenGuard(),
       openaiProxy(env),
     ],
     build: {

@@ -2,6 +2,8 @@
  * Settings → AI helper (§2.15, §5.14): what the helper is doing and who set it up, the class this
  * Chromebook joined (and Leave this class), What Amble sends, and, in the public build with nothing set by
  * a school, the grown-ups' manual setup (address, key, models, Test connection, Remember on this Chromebook).
+ * A build that sets the address and asks for the user's own key (`VITE_AMBLE_AI_AUTH=user-key`) gets the key
+ * field alone, for that address.
  */
 import { useId, useState } from 'react';
 import { Link } from '../../app/Link';
@@ -32,7 +34,19 @@ function stores() {
   return { local: get('localStorage'), session: get('sessionStorage') };
 }
 
-function offWords(ai: AiConfig): string {
+/**
+ * What Settings offers for setting up the AI: the key field alone (a build that set the address and asks for
+ * the user's own key), the whole manual setup (the public build, when no school source provides or locks the
+ * AI), or nothing.
+ */
+export function setupOffered(ai: AiConfig | null, schoolBuild: boolean): 'key' | 'manual' | null {
+  if (!ai) return null;
+  if (ai.userKeyFor) return 'key';
+  return !schoolBuild && ai.manualAllowed && !ai.locked.includes('ai') ? 'manual' : null;
+}
+
+/** Why the AI helper is off, in the status line's words. */
+export function offWords(ai: AiConfig): string {
   switch (ai.offReason) {
     case 'turned-off':
       return ai.offBy === 'manual' ? t('school.setOffYou') : ai.offBy === 'class-link' ? t('school.setOffTeacher') : t('school.setOffSchool');
@@ -43,18 +57,115 @@ function offWords(ai: AiConfig): string {
     case 'needs-class-link':
       return t('school.setOffNeedsLink');
     case 'needs-key':
-      return t('school.setOffNeedsKey');
+      return ai.userKeyFor ? t('school.setOffNeedsKey') : t('school.setOffKeySchool');
     default:
       return t('school.setOffNone');
   }
 }
 
+/** The key field with Show/Hide and the shared-Chromebook warning. */
+function KeyField({ value, onChange }: { value: string; onChange(key: string): void }) {
+  const [show, setShow] = useState(false);
+  const keyId = useId();
+  return (
+    <>
+      <div className="set-key">
+        <Field
+          id={keyId}
+          label={t('school.setKey')}
+          type={show ? 'text' : 'password'}
+          value={value}
+          spellCheck={false}
+          autoComplete="off"
+          aria-describedby={`${keyId}-warn`}
+          onChange={(e) => onChange(e.target.value.trim())}
+        />
+        <Button variant="quiet" size={38} icon={show ? 'eyeOff' : 'eye'} onClick={() => setShow((v) => !v)} aria-controls={keyId} aria-pressed={show}>
+          {show ? t('school.setHideKey') : t('school.setShowKey')}
+        </Button>
+      </div>
+      <p className="set-warn" id={`${keyId}-warn`}>
+        <Icon name="warning" size={16} />
+        {t('school.setKeyWarning')}
+      </p>
+    </>
+  );
+}
+
+function TestLine({ result }: { result: TestResult | null }) {
+  if (!result) return null;
+  return (
+    <p className={cx('set-test', result.ok ? 'set-test--ok' : 'set-test--bad')} role="status">
+      <Icon name={result.ok ? 'check' : 'warning'} size={16} />
+      {result.ok ? t('school.setTestOk', { time: formatSeconds(result.ms) }) : result.message}
+    </p>
+  );
+}
+
+/**
+ * A build that set the address and asks for the user's own key (`VITE_AMBLE_AI_AUTH=user-key`): the key field
+ * alone. The key is saved with that address, and the AI core sends it to that address only.
+ */
+export function KeySetup({ address, model }: { address: string; model: string }) {
+  const { store } = useServices();
+  const saved = () => {
+    const s = loadAiSettings(stores());
+    return s.baseUrl === address ? s.apiKey : '';
+  };
+  const [key, setKey] = useState(saved);
+  const [remember, setRemember] = useState(() => loadAiSettings(stores()).rememberKey);
+  const [test, setTest] = useState<{ busy: boolean; result: TestResult | null }>({ busy: false, result: null });
+  const [stored, setStored] = useState(() => saved() !== '');
+
+  const save = async () => {
+    saveAiSettings({ ...loadAiSettings(stores()), baseUrl: address, apiKey: key, rememberKey: remember }, stores());
+    setStored(key !== '');
+    await refreshConfig();
+    showToast(t('school.setManualSaved'), { kind: 'success' });
+  };
+
+  const forget = async () => {
+    saveAiSettings({ ...loadAiSettings(stores()), baseUrl: '', apiKey: '' }, stores());
+    setKey('');
+    setStored(false);
+    await refreshConfig();
+    showToast(t('school.setKeyForgot'));
+  };
+
+  const runTest = async () => {
+    setTest({ busy: true, result: null });
+    const result = await testEndpoint({ baseUrl: address, model, auth: key ? { type: 'bearer', key } : { type: 'none' } }, { store });
+    setTest({ busy: false, result });
+    announce(result.ok ? t('school.setTestOk', { time: formatSeconds(result.ms) }) : result.message);
+  };
+
+  return (
+    <div className="set-manual__body" data-testid="ai-key-setup">
+      <p className="set-row__hint">{t('school.setKeyLede', { host: hostOf(address) })}</p>
+      <KeyField value={key} onChange={setKey} />
+      <Toggle label={t('school.setRemember')} hint={t('school.setRememberHint')} checked={remember} onChange={setRemember} />
+      <div className="set-actions">
+        <Button variant="lantern" icon="check" onClick={() => void save()}>
+          {t('school.setSave')}
+        </Button>
+        <Button variant="ghost" icon="play" busy={test.busy} onClick={() => void runTest()} disabled={test.busy}>
+          {t('school.setTest')}
+        </Button>
+        {stored && (
+          <Button variant="quiet" onClick={() => void forget()}>
+            {t('school.setKeyForget')}
+          </Button>
+        )}
+      </div>
+      <TestLine result={test.result} />
+    </div>
+  );
+}
+
 function ManualSetup() {
   const { store } = useServices();
   const [s, setS] = useState<AiSettings>(() => loadAiSettings(stores()));
-  const [show, setShow] = useState(false);
   const [test, setTest] = useState<{ busy: boolean; result: TestResult | null }>({ busy: false, result: null });
-  const keyId = useId();
   const patch = (p: Partial<AiSettings>) => setS((x) => ({ ...x, ...p }));
   const configured = Boolean(s.baseUrl || s.apiKey);
 
@@ -92,25 +203,7 @@ function ManualSetup() {
       <div className="set-manual__body">
         <p className="set-row__hint">{t('school.setManualLede')}</p>
         <Field label={t('school.setBaseUrl')} hint={t('school.setBaseUrlHint')} value={s.baseUrl} placeholder={OPENAI_BASE_URL} spellCheck={false} autoComplete="off" inputMode="url" onChange={(e) => patch({ baseUrl: e.target.value.trim() })} />
-        <div className="set-key">
-          <Field
-            id={keyId}
-            label={t('school.setKey')}
-            type={show ? 'text' : 'password'}
-            value={s.apiKey}
-            spellCheck={false}
-            autoComplete="off"
-            aria-describedby={`${keyId}-warn`}
-            onChange={(e) => patch({ apiKey: e.target.value.trim() })}
-          />
-          <Button variant="quiet" size={38} icon={show ? 'eyeOff' : 'eye'} onClick={() => setShow((v) => !v)} aria-controls={keyId} aria-pressed={show}>
-            {show ? t('school.setHideKey') : t('school.setShowKey')}
-          </Button>
-        </div>
-        <p className="set-warn" id={`${keyId}-warn`}>
-          <Icon name="warning" size={16} />
-          {t('school.setKeyWarning')}
-        </p>
+        <KeyField value={s.apiKey} onChange={(apiKey) => patch({ apiKey })} />
         <div className="set-two">
           <Field label={t('school.setModel')} value={s.model} placeholder="gpt-5" spellCheck={false} autoComplete="off" onChange={(e) => patch({ model: e.target.value.trim() })} />
           <Field label={t('school.setFastModel')} value={s.fastModel} placeholder="gpt-5-mini" spellCheck={false} autoComplete="off" onChange={(e) => patch({ fastModel: e.target.value.trim() })} />
@@ -129,12 +222,7 @@ function ManualSetup() {
             </Button>
           )}
         </div>
-        {test.result && (
-          <p className={cx('set-test', test.result.ok ? 'set-test--ok' : 'set-test--bad')} role="status">
-            <Icon name={test.result.ok ? 'check' : 'warning'} size={16} />
-            {test.result.ok ? t('school.setTestOk', { time: formatSeconds(test.result.ms) }) : test.result.message}
-          </p>
-        )}
+        <TestLine result={test.result} />
       </div>
     </details>
   );
@@ -163,7 +251,8 @@ export function AiSection() {
     detail = ai.enabled ? t('school.setOffTeacher') : offWords(ai);
   }
   const managed = ai && (ai.source === 'managed' || ai.source === 'build' || ai.locked.includes('ai'));
-  const manual = Boolean(ai && !schoolBuild && ai.manualAllowed && !ai.locked.includes('ai'));
+  const setup = setupOffered(ai, schoolBuild);
+  const manual = setup === 'manual';
 
   const leave = async () => {
     if (!classLink) return;
@@ -193,6 +282,12 @@ export function AiSection() {
           </div>
         </div>
       </Group>
+
+      {setup === 'key' && ai?.userKeyFor && (
+        <Group title={t('school.setKeyTitle')}>
+          <KeySetup address={ai.userKeyFor} model={ai.model} />
+        </Group>
+      )}
 
       <Group title={t('school.setClassTitle')}>
         {classLink ? (

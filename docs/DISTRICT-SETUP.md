@@ -163,7 +163,7 @@ This is the zero-touch path: students never see a setting.
 
 1. Force-install Amble as a web app (Chrome policy `WebAppInstallForceList`) at its address, for example `https://aboufama.github.io/amble/`.
 2. Push a managed configuration for Amble's origin (policy `ManagedConfigurationPerOrigin`, or the Admin console). Amble reads it with `navigator.managed.getManagedConfiguration`, which works only for force-installed web apps on managed devices. Everywhere else Amble finds no configuration and moves on.
-3. Amble reads the configuration when it starts. It wins over every other source, and a managed device counts as school mode unless the configuration says `"schoolMode": false`.
+3. Amble reads the configuration when it starts, and again whenever you change it (Chrome's `managedconfigurationchange` event), so a new configuration takes effect in an open Amble without a restart. It wins over every other source, and a managed device counts as school mode unless the configuration says `"schoolMode": false`.
 
 ```json
 {
@@ -238,7 +238,7 @@ The variables can also go in a `.env.production` file. Use `true` and `false` fo
 | `VITE_AMBLE_AI_BASE_URL` | https URL | Your proxy. It also narrows the page's content security policy to that origin (below). |
 | `VITE_AMBLE_AI_MODEL` | text | Default `amble-default` |
 | `VITE_AMBLE_AI_FAST_MODEL`, `VITE_AMBLE_AI_VISION_MODEL` | text | Default: the main model |
-| `VITE_AMBLE_AI_AUTH` | `class-code` or `none` | Read only when `VITE_AMBLE_AI_BASE_URL` is set. `class-code`: students join a teacher's class link, which supplies the code. `none` (or any other value): no credential. The code also accepts `user-key`, but this version gives users no place to type the key when the build sets the address, so don't use it. |
+| `VITE_AMBLE_AI_AUTH` | `class-code`, `none` or `user-key` | Read only when `VITE_AMBLE_AI_BASE_URL` is set. `class-code`: students join a teacher's class link, which supplies the code. `none` (or any other value): no credential. `user-key`: Settings → AI helper shows one key field (AI key, for grown-ups) for your address, and Amble sends that key only to your address. School copies (`VITE_AMBLE_SCHOOL_MODE=true`) never take a key, so don't combine the two. |
 | `VITE_AMBLE_AI_AUTH_HEADER` | header name | Default `X-Amble-Class` |
 | `VITE_AMBLE_AI_CAPS` | a comma list, for example `json_schema,stream,moderation` | See section 4.1 |
 | `VITE_AMBLE_AI_MODERATION` | `endpoint`, `provider` or `local-only` | See section 4.1 |
@@ -293,7 +293,7 @@ This is the format the Teacher desk writes (`ClassLinkV1` in `src/model/types.ts
 | `v` | Always `1` |
 | `cls` | The class name students see (up to 40 characters). Required. |
 | `district` | Your district's name, or `null`. The Join card shows "Class link from ..." |
-| `ai` | `null` for a class without AI, or: `baseUrl` (https), `model` (required), optionally `fastModel`, `visionModel` and `caps` (a comma list, section 4.1), and `auth`, either `{"type": "class-code", "header": "X-Amble-Class", "code": "..."}` or `{"type": "none"}` |
+| `ai` | `null` for a class without AI, or: `baseUrl` (https), `model` (required), optionally `fastModel`, `visionModel` and `caps` (a comma list, section 4.1), and `auth`, either `{"type": "class-code", "header": "X-Amble-Class", "code": "..."}` or `{"type": "none"}`. It may also carry the policy fields of the flat format below: `visionAllowed`, `moderation`, `lock`, `safetyIdentifier` and `requestsMayBeReviewed`. |
 | `mode` | `on`, `explain` (the AI helper only explains code) or `off`. Default `on`. |
 | `level` | `elementary`, `middle` or `high`. Default `middle`. |
 | `exp` | The last day the link works (`YYYY-MM-DD`, through the end of that day), or `null` for no end date |
@@ -313,18 +313,18 @@ Amble also reads the flat format that its AI core defines (`src/ai/config/classL
 https://<amble>/#class=<base64url({ v: 1, baseUrl, model, fastModel, visionModel, visionAllowed, code, header, name, district, policy })>
 ```
 
-Here `policy` can hold `enabled`, `ageBand`, `caps`, `expires`, `moderation`, `lock`, `safetyIdentifier` and `requestsMayBeReviewed`. When a student joins, though, Amble converts the link to the Teacher desk's format and stores that, so only the address, the models, `caps`, `code` and `header`, `name`, `district`, `enabled`, `ageBand` and `expires` take effect. `visionAllowed`, `moderation`, `lock`, `safetyIdentifier` and `requestsMayBeReviewed` are dropped. Set those in managed configuration or your build instead.
+Here `policy` can hold `enabled`, `mode` (`on`, `explain` or `off`), `ageBand`, `caps`, `expires`, `moderation`, `lock`, `safetyIdentifier` and `requestsMayBeReviewed`. When a student joins, Amble converts the link to the Teacher desk's format and back without losing a field, so every one of them takes effect. A few things change on the way: `name` is cut to 40 characters and `district` to 60, a link with no `name` shows its `district` as the class name, and a `header` without a `code` is dropped (it has nothing to carry). A missing `mode` means `on`, and a missing `ageBand` means `middle`, as in the Teacher desk's format.
 
 Rules for every class link:
 
 - Only https addresses work (http only for `localhost`).
 - A link never carries a provider key. Amble won't make or open a link with a value that looks like one, or (in the flat format) with a field named like a credential. The student sees "This link doesn't look safe, so Amble ignored it."
 - An expired link shows "This class link has expired. Ask your teacher for a new one. Amble still works without it."
-- The Teacher desk's live test always sends the class code in `X-Amble-Class`. If you configure another header name, the teacher's test won't match what your proxy expects, even though students' requests use your header. Keep the default unless you have a reason not to.
+- The class code travels in `X-Amble-Class`, or in the header your build (`VITE_AMBLE_AI_AUTH_HEADER`) or managed configuration (`auth.header`) names. The Teacher desk writes that header into its links and sends its live test with it.
 
 ### 4.5 Manual settings (home use)
 
-In the public copy, Settings → AI helper → **Set up AI (for grown-ups)** takes a base URL (empty means OpenAI's API), an optional key, a model and a fast model, a Test connection button, and **Remember on this Chromebook** (off keeps the key only until the tab closes). Settings warns: "A key typed here can be read by anyone who uses this browser. Never type a school or paid key on a shared Chromebook." Manual settings are hidden in school builds, on managed devices, and whenever a school source provides the AI or locks it.
+In the public copy, Settings → AI helper → **Set up AI (for grown-ups)** takes a base URL (empty means OpenAI's API), an optional key, a model and a fast model, a Test connection button, and **Remember on this Chromebook** (off keeps the key only until the tab closes). Settings warns: "A key typed here can be read by anyone who uses this browser. Never type a school or paid key on a shared Chromebook." Manual settings are hidden in school builds, on managed devices, and whenever a school source provides the AI or locks it. A build with `VITE_AMBLE_AI_AUTH=user-key` shows only the key field, for the address the build set.
 
 ## 5. Moderation and safety
 
@@ -445,10 +445,10 @@ The Teacher desk has a short "Ready for tomorrow?" list. For the district:
 These items are for Amble's maintainer, and a district can reasonably ask about each one before a district-wide rollout:
 
 1. **A custom domain for schools.** Every GitHub Pages site under `aboufama.github.io` is one web origin. They all share Amble's browser storage (worlds, settings and class codes), and they would all receive the same ChromeOS managed configuration. Many web filters also distrust `github.io`. Schools need an address that serves nothing but Amble, and the in-app pages' addresses change with it.
-2. **A LICENSE.** The repository has no license file, so districts have no written permission to host their own copy, even though the in-app privacy notice calls Amble open source. It needs a license for the code and one for the starter worlds' art.
+2. **A LICENSE.** The repository has no license file, so districts have no written permission to host their own copy. It needs a license for the code and one for the starter worlds' art.
 3. **A stable release channel.** Today `.github/workflows/pages.yml` publishes every push to the working branch and to `main` to the same address that schools would use. Schools need reviewed releases (for example from `main` or from tags, with release notes), the working branch on a separate preview address, two-factor sign-in on the owner's account, and workflow actions pinned to commit SHAs.
 4. **A data privacy agreement through SDPC.** New Hampshire districts sign agreements through the NH Student Privacy Alliance (the Student Data Privacy Consortium), using the NH DPA or the national NDPA. Amble should offer to sign with Exhibit B marked "no student data", name a security contact, and post an Exhibit E general offer that any NH district can accept.
 5. **An Accessibility Conformance Report (VPAT 2.5).** Under the DOJ's ADA Title II rule, districts must meet WCAG 2.1 AA (by April 26, 2027 where the population is 50,000 or more, as in Manchester and Nashua, and by April 26, 2028 elsewhere), and they ask vendors for an ACR now. It should cover the WCAG edition plus the Section 508 rows for authoring tools, backed by the automated tests and a manual ChromeVox review.
-6. **A security contact.** A `SECURITY.md` with a private way to report a vulnerability. Today the privacy notice asks people to report security problems in a public GitHub issue.
+6. **A security contact.** The privacy notice sends security problems to GitHub's private reporting form (<https://github.com/aboufama/amble/security/advisories/new>), which works only once private vulnerability reporting is turned on in the repository's settings. A `SECURITY.md` should point to the same form.
 
 Questions and problems: <https://github.com/aboufama/amble/issues>.

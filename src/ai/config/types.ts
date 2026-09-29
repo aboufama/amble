@@ -131,5 +131,17 @@ export interface AiConfig {
   requestsMayBeReviewed: boolean;
   /** Settings may offer the manual endpoint fields. */
   manualAllowed: boolean;
+  /**
+   * The endpoint asks for the user's own key (a build with `VITE_AMBLE_AI_AUTH=user-key`): its address, which
+   * the key is for. Settings then offers a key field for that address, and no other field. Null otherwise,
+   * and in school mode, which never takes a key.
+   */
+  userKeyFor: string | null;
+  /**
+   * The header the endpoint takes a class code in, when its source names one: a build's
+   * `VITE_AMBLE_AI_AUTH_HEADER` with `class-code`, a managed configuration's `auth.header`, or a class link's.
+   * The Teacher desk writes it into class links and uses it for the live test.
+   */
+  classCodeHeader: string | null;
   problems: string[];
 }

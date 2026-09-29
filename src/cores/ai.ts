@@ -39,6 +39,7 @@ export {
   describeAiSource,
   modelFor,
   mergeLayers,
+  onManagedConfigChange,
   pendingClassLink,
   readClassLink,
   validateClassLink,
@@ -235,6 +236,23 @@ function anyKeyLike(v: unknown): boolean {
   return false;
 }
 
+type ClassAi = NonNullable<ClassLinkV1['ai']>;
+type ClassAiPolicy = Pick<ClassAi, 'visionAllowed' | 'moderation' | 'lock' | 'safetyIdentifier' | 'requestsMayBeReviewed'>;
+
+const MODERATION_MODES: ReadonlyArray<ClassAiPolicy['moderation']> = ['endpoint', 'provider', 'local-only'];
+const LOCK_KEYS: ReadonlyArray<string> = ['ai', 'content', 'vision'];
+
+/** The district policy a link's AI part carries (§5.14), valid values only, as the AI core reads them. */
+function classAiPolicy(a: Record<string, unknown>): ClassAiPolicy {
+  const out: ClassAiPolicy = {};
+  if (typeof a.visionAllowed === 'boolean') out.visionAllowed = a.visionAllowed;
+  if (MODERATION_MODES.includes(a.moderation as ClassAiPolicy['moderation'])) out.moderation = a.moderation as ClassAiPolicy['moderation'];
+  if (Array.isArray(a.lock)) out.lock = [...new Set(a.lock.flatMap((k) => (k === 'art' ? ['vision'] : LOCK_KEYS.includes(k as string) ? [k as string] : [])))] as ClassAiPolicy['lock'];
+  if (typeof a.safetyIdentifier === 'boolean') out.safetyIdentifier = a.safetyIdentifier;
+  if (typeof a.requestsMayBeReviewed === 'boolean') out.requestsMayBeReviewed = a.requestsMayBeReviewed;
+  return out;
+}
+
 /** The spec's payload (§4.2 `ClassLinkV1`: `{ v: 1, cls, district, ai, mode, level, exp, asg }`). */
 function readSpecPayload(v: Record<string, unknown>, now: Date): ClassLinkParse {
   if (anyKeyLike(v)) return { ok: false, reason: 'unsafe' };
@@ -255,6 +273,7 @@ function readSpecPayload(v: Record<string, unknown>, now: Date): ClassLinkParse 
         auth && auth.type === 'class-code' && typeof auth.code === 'string'
           ? { type: 'class-code', header: typeof auth.header === 'string' ? auth.header : 'X-Amble-Class', code: auth.code.slice(0, 80) }
           : { type: 'none' },
+      ...classAiPolicy(a),
     };
   }
   const exp = typeof v.exp === 'string' ? v.exp : null;
@@ -283,45 +302,66 @@ function readSpecPayload(v: Record<string, unknown>, now: Date): ClassLinkParse 
   return { ok: true, link };
 }
 
-/** The core's class link as the app's `ClassLinkV1`. */
+/**
+ * The core's class link as the app's `ClassLinkV1`. Every field comes across (`classLinkToCore` takes it back):
+ * the address, models, capabilities and class code, the name and district (cut to the app's 40 and 60
+ * characters), the AI mode, level and expiry, and the district policy (pictures, moderation, locks, the safety
+ * identifier and whether requests may be reviewed). A link with no name is named after its district.
+ */
 export function classLinkFromCore(link: ClassLink): ClassLinkV1 {
   const p = link.policy;
   return {
     v: 1,
     cls: (link.name ?? link.district ?? '').slice(0, 40),
-    district: link.district ?? null,
+    district: link.district?.slice(0, 60) ?? null,
     ai: {
       baseUrl: link.baseUrl,
       model: link.model ?? '',
       ...(link.fastModel ? { fastModel: link.fastModel } : {}),
       ...(link.visionModel ? { visionModel: link.visionModel } : {}),
-      ...(p?.caps?.length ? { caps: p.caps.join(',') } : {}),
+      ...(p?.caps ? { caps: p.caps.join(',') } : {}),
       auth: link.code ? { type: 'class-code', header: link.header ?? 'X-Amble-Class', code: link.code } : { type: 'none' },
+      ...classAiPolicy({ visionAllowed: link.visionAllowed, moderation: p?.moderation, lock: p?.lock, safetyIdentifier: p?.safetyIdentifier, requestsMayBeReviewed: p?.requestsMayBeReviewed }),
     },
-    mode: p?.enabled === false ? 'off' : 'on',
+    mode: p?.enabled === false || p?.mode === 'off' ? 'off' : (p?.mode ?? 'on'),
     level: p?.ageBand ?? 'middle',
     exp: p?.expires ?? null,
     asg: null,
   };
 }
 
-/** The app's class link in the core's format (what `resolveAiConfig` reads back from `saveClassLink`). */
+/**
+ * The app's class link in the core's format (what `resolveAiConfig` reads back from `saveClassLink`), with
+ * every field the core's format holds. The assignment stays in the app's own copy (`settings.classLink`).
+ */
 export function classLinkToCore(link: ClassLinkV1): ClassLink | null {
-  if (!link.ai) return null;
-  const caps = link.ai.caps
+  const ai = link.ai;
+  if (!ai) return null;
+  const caps = ai.caps
     ?.split(',')
     .map((c) => c.trim())
     .filter(Boolean);
   return {
     v: 1,
-    baseUrl: link.ai.baseUrl,
-    model: link.ai.model || undefined,
-    fastModel: link.ai.fastModel,
-    visionModel: link.ai.visionModel,
-    ...(link.ai.auth.type === 'class-code' ? { code: link.ai.auth.code, header: link.ai.auth.header } : {}),
+    baseUrl: ai.baseUrl,
+    model: ai.model || undefined,
+    fastModel: ai.fastModel,
+    visionModel: ai.visionModel,
+    ...(ai.visionAllowed !== undefined ? { visionAllowed: ai.visionAllowed } : {}),
+    ...(ai.auth.type === 'class-code' ? { code: ai.auth.code, header: ai.auth.header } : {}),
     name: link.cls,
     district: link.district ?? undefined,
-    policy: { enabled: link.mode !== 'off', ageBand: link.level, ...(caps?.length ? { caps } : {}), ...(link.exp ? { expires: link.exp } : {}) },
+    policy: {
+      enabled: link.mode !== 'off',
+      mode: link.mode,
+      ageBand: link.level,
+      ...(caps ? { caps } : {}),
+      ...(link.exp ? { expires: link.exp } : {}),
+      ...(ai.moderation ? { moderation: ai.moderation } : {}),
+      ...(ai.lock ? { lock: [...ai.lock] } : {}),
+      ...(ai.safetyIdentifier !== undefined ? { safetyIdentifier: ai.safetyIdentifier } : {}),
+      ...(ai.requestsMayBeReviewed !== undefined ? { requestsMayBeReviewed: ai.requestsMayBeReviewed } : {}),
+    },
   };
 }
 
