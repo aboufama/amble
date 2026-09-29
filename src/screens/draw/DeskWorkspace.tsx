@@ -368,7 +368,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
           {t('draw.bones')}
         </Button>
       )}
-      <Button variant="lantern" icon="sparkle" onClick={() => void bring('world')} busy={bringing} disabled={!s?.ready || bringing} className="desk__bring" data-testid="bring-to-life">
+      <Button variant="lantern" icon="play" onClick={() => void bring('world')} busy={bringing} disabled={!s?.ready || bringing} className="desk__bring" data-testid="bring-to-life">
         {bringing ? t('draw.bringing') : t('draw.bringToLife')}
       </Button>
     </>

@@ -375,12 +375,12 @@ export function PreviewCard({ ctrl, s, setup, player, store, brought, bringing =
     <section className="preview" aria-labelledby="desk-preview">
       <div className="preview__head">
         <h2 id="desk-preview" className="preview__title">
-          <Icon name={shown === 'world' ? 'sparkle' : 'play'} size={16} />
+          <Icon name={shown === 'world' ? 'eye' : 'play'} size={16} />
           {title}
         </h2>
         {both ? (
           <button type="button" className="preview__switch" onClick={() => setPicked(shown === 'world' ? 'moves' : 'world')}>
-            <Icon name={shown === 'world' ? 'bones' : 'sparkle'} size={14} />
+            <Icon name={shown === 'world' ? 'bones' : 'eye'} size={14} />
             <span>{shown === 'world' ? t('draw.previewMovesShort') : t('draw.previewWorldShort')}</span>
           </button>
         ) : (

@@ -140,7 +140,7 @@ export function ToolOptions({ ctrl, s }: { ctrl: DeskController; s: DeskState })
             {tool === 'marker' && luminance(s.color) > 0.72 && <p className="opts__hint">{t('draw.markerLight')}</p>}
             {PERFECTABLE.has(tool) && (
               <button type="button" className="btn btn--ghost btn--h38 opts__perfect" onClick={() => void ctrl.makePerfect()}>
-                <Icon name="sparkle" size={18} />
+                <Icon name="shapes" size={18} />
                 <span className="btn__label">{t('draw.makePerfect')}</span>
               </button>
             )}
