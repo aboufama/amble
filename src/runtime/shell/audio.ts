@@ -7,6 +7,19 @@
 import { renderSynth, SAMPLE_RATE, type SynthSegment } from '../../audio/synth';
 import type { AudioState } from '../../play/protocol';
 
+/**
+ * Phaser's sound manager suspends and resumes the shared context without a catch: on blur, when the page
+ * shows again, and when its game is destroyed. The editor's `dispose` closes the context first (a load
+ * replaced while it was still booting, a game torn down mid-run), and each of those calls would then be an
+ * unhandled "Cannot suspend a closed AudioContext". Once closed, they do nothing.
+ */
+function quietWhenClosed(ctx: AudioContext): void {
+  const suspend = ctx.suspend.bind(ctx);
+  const resume = ctx.resume.bind(ctx);
+  ctx.suspend = () => (ctx.state === 'closed' ? Promise.resolve() : suspend());
+  ctx.resume = () => (ctx.state === 'closed' ? Promise.resolve() : resume());
+}
+
 export class AudioHub {
   readonly ctx: AudioContext | null;
   private readonly buffers = new Map<string, AudioBuffer>();
@@ -22,7 +35,10 @@ export class AudioHub {
       ctx = null;
     }
     this.ctx = ctx;
-    if (ctx) ctx.onstatechange = () => this.emitState();
+    if (ctx) {
+      ctx.onstatechange = () => this.emitState();
+      quietWhenClosed(ctx);
+    }
     for (const type of ['pointerdown', 'keydown', 'touchend'] as const) {
       window.addEventListener(type, () => this.unlock(), { capture: true });
     }

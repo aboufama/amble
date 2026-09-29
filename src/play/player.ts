@@ -36,6 +36,7 @@ import {
 } from './protocol';
 import { runRobotTest, type RobotTestOptions } from './robot';
 import type { RobotReport } from './robotJudge';
+import { FrozenWatch } from './watchdog';
 
 /** Everything needed to run a game. */
 export interface GameBundle {
@@ -101,7 +102,10 @@ export interface PlayerOptions {
   prefs?: Partial<PlayerPrefs>;
   /** Keep a spare iframe booted so Run is fast (default: yes, unless the machine reports under 4 GB). */
   prewarm?: boolean;
-  /** Milliseconds without any message from a running game before it counts as frozen (default 10000). */
+  /**
+   * Milliseconds without any message from a running game before it counts as frozen (default 10000). Loading
+   * gets three times as long, and a game with slow frames three of its longest gaps (see watchdog.ts).
+   */
   frozenAfterMs?: number;
 }
 
@@ -113,7 +117,7 @@ export class Player {
   private title: string;
   private prefs: PlayerPrefs;
   private readonly prewarmEnabled: boolean;
-  private readonly frozenAfterMs: number;
+  private readonly watch: FrozenWatch;
   private current: PlayerFrame | null = null;
   private spare: PlayerFrame | null = null;
   private leaving: PlayerFrame[] = [];
@@ -161,7 +165,7 @@ export class Player {
     this.prefs = { ...DEFAULT_PREFS, ...options.prefs };
     // Each renderer costs 45-60 MB plus textures: a 2 GB Chromebook cannot afford a spare.
     this.prewarmEnabled = options.prewarm ?? ((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4) >= 4;
-    this.frozenAfterMs = options.frozenAfterMs ?? 10_000;
+    this.watch = new FrozenWatch(options.frozenAfterMs ?? 10_000, WATCHDOG_MS);
     if (getComputedStyle(this.container).position === 'static') this.container.style.position = 'relative';
     document.addEventListener('visibilitychange', this.onVisibility);
     this.watchdog = window.setInterval(() => this.checkFrozen(), WATCHDOG_MS);
@@ -219,6 +223,7 @@ export class Player {
     this.current = frame;
     this.bind(frame);
     this.loadStartedAt = performance.now();
+    this.watch.restart(this.loadStartedAt);
     this.setState('loading');
     frame.send(this.initMessage(this.bundle));
     return new Promise<void>((resolve, reject) => {
@@ -339,13 +344,16 @@ export class Player {
   /**
    * Plays a game for `gameMs` of game time in a hidden player on a manual clock, with a scripted bot
    * (move, jump, shoot, click around), and reports errors, events and whether anything moved.
-   * Uses the warm spare when there is one; the visible game is not touched.
+   * Uses the warm spare when there is one; the visible game is not touched. The frozen-game watchdog holds
+   * meanwhile: the spare shares the visible game's renderer process, and the test can starve it.
    */
   async robotTest(bundle: GameBundle, options: Omit<RobotTestOptions, 'runtimeUrl' | 'bundle' | 'frame'> = {}): Promise<RobotReport> {
     const frame = this.takeSpare();
+    this.watch.hold();
     try {
       return await runRobotTest({ ...options, runtimeUrl: this.runtimeUrl, bundle, frame: frame ?? undefined, host: this.container });
     } finally {
+      this.watch.release(performance.now());
       this.scheduleSpare(2000);
     }
   }
@@ -518,8 +526,7 @@ export class Player {
     const frame = this.current;
     if (!frame?.ready || document.visibilityState === 'hidden') return;
     if (this.state !== 'running' && this.state !== 'title' && this.state !== 'loading') return;
-    const quiet = performance.now() - frame.lastMessageAt;
-    if (quiet < this.frozenAfterMs) return;
+    if (!this.watch.frozen(performance.now(), frame.lastMessageAt, this.state === 'loading')) return;
     const error: PlayerError = { phase: 'frozen', message: 'The game froze (a loop that never ends?), so Amble stopped it.', count: 1, fatal: true };
     this.errors.push(error);
     this.emit('error', error);
