@@ -47,6 +47,19 @@ describe('reading a class link from outside', () => {
     expect(readIntake(fragment(link), null, NOW)).toEqual({ ok: false, reason: 'damaged' });
   });
 
+  it('refuses addresses that are not https, whatever they claim to be', () => {
+    for (const baseUrl of ['javascript:alert(1)//https://ai.test/v1', 'data:text/html,hi', 'http://ai.test/v1', 'ftp://ai.test/v1', 'file:///etc/passwd', '//ai.test/v1']) {
+      const link = sampleClassLink({ ai: { baseUrl, model: 'm', auth: { type: 'none' } } });
+      expect(readIntake(fragment(link), null, NOW)).toMatchObject({ ok: false });
+    }
+  });
+
+  it('refuses an oversized link quickly, without decoding it', () => {
+    const started = performance.now();
+    expect(readIntake(`#class=${'A'.repeat(2_000_000)}`, null, NOW)).toEqual({ ok: false, reason: 'damaged' });
+    expect(performance.now() - started).toBeLessThan(250);
+  });
+
   it('refuses an AI address too long to keep', () => {
     const link = sampleClassLink({ ai: { baseUrl: `https://ai.test/${'v'.repeat(400)}`, model: 'm', auth: { type: 'none' } } });
     expect(readIntake(fragment(link), null, NOW)).toEqual({ ok: false, reason: 'damaged' });
