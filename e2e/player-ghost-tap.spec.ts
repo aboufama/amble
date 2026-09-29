@@ -3,7 +3,8 @@ import { expect, test, type Frame, type Page } from '@playwright/test';
 // The ghost loop from inside the game (src/runtime/editor/play.ts), through the player harness
 // (dev/player/): once the editor says Play mode, a tap on a "just bones" thing while the game runs pauses
 // it and names it (`artClicked`), so the student can go and draw it. Only games that read the pointer
-// themselves keep their taps.
+// themselves keep their taps. And a game rebuilt after it left its page (game code's `location.reload()`
+// for "press R to restart") must still have its ghost loop.
 
 interface LogEntry {
   t: number;
@@ -92,5 +93,28 @@ test.describe('a tap on a stand-in while the game runs', () => {
     await tapCrate(page);
     await expect.poll(() => frame.evaluate(() => (window as unknown as { __ambleGame: { scene: { taps: number } } }).__ambleGame.scene.taps), { timeout: 15_000 }).toBe(1);
     expect(await clicks(page)).toEqual([]);
+  });
+
+  test('still asks after the game was rebuilt for leaving its page', async ({ page }) => {
+    const first = await start(page, CRATE);
+    expect(await tapUntilNamed(page, 0)).toEqual(['crate']);
+    await page.evaluate(() => (window as unknown as Win).harness.player.resume());
+    // The game leaves its page; the Player rebuilds it, running again in a new frame.
+    await first.evaluate(() => {
+      location.href = 'about:blank';
+    });
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const log = (window as unknown as Win).harness.log;
+            const at = log.findIndex((l) => l.type === 'navigated');
+            return at >= 0 && log.slice(at).some((l) => l.type === 'state' && l.data === 'running');
+          }),
+        { timeout: 60_000 },
+      )
+      .toBe(true);
+    await running(page);
+    expect(await tapUntilNamed(page, 1)).toEqual(['crate', 'crate']);
   });
 });

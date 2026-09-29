@@ -131,6 +131,8 @@ export class Player {
   private destroyed = false;
   /** Navigations of the current bundle: rebuilt once, then it counts as broken (no rebuild loop). */
   private navigations = 0;
+  /** The editor's last `setMode`, told again to a game rebuilt after it left its page. */
+  private mode: 'play' | 'change' | null = null;
   private readonly listeners: Listeners = {
     state: new Set(), manifest: new Set(), firstFrame: new Set(), booted: new Set(), error: new Set(), warn: new Set(), log: new Set(),
     event: new Set(), artMissing: new Set(), artClicked: new Set(), swapped: new Set(), storage: new Set(), stats: new Set(),
@@ -406,7 +408,13 @@ export class Player {
         }
         this.emit('warn', "Games can't open web pages or use the internet, so Amble restarted it.", {});
         const again = this.bundle;
-        void this.load(again).catch(() => undefined);
+        void this.load(again)
+          .then(() => {
+            // The editor tells each game it loads which mode it is in (the ghost loop and the idle prompts
+            // start with it); this game it did not load.
+            if (this.mode) this.current?.send({ type: 'mode', mode: this.mode });
+          })
+          .catch(() => undefined);
       },
       failed: (message) => {
         if (frame !== this.current) return;
@@ -569,6 +577,7 @@ export class Player {
 
   /** 'change' pauses the game (call `pause()` too, so the tab's visibility never resumes it) and streams `objects` 4 times a second. */
   setMode(mode: 'play' | 'change'): void {
+    this.mode = mode;
     this.current?.send({ type: 'mode', mode });
   }
 
