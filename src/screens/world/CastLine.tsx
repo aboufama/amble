@@ -4,7 +4,7 @@
  * picture); a card still to draw lifts onto the Desk; the dashed card adds someone. In the small layout
  * the line becomes a "Cast 4/6" button with a bottom sheet.
  */
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { navigate } from '../../app/router';
 import { useServices } from '../../app/services';
 import { t } from '../../i18n';
@@ -14,7 +14,7 @@ import { useStore } from '../../state/store';
 import { askUser } from '../../ui/dialogs';
 import { Button, Popover, Sheet } from '../../ui/components';
 import { Icon, type IconName } from '../../ui/icons';
-import { rovingIndex } from '../../ui/a11y';
+import { rovingIndex, useReducedMotion } from '../../ui/a11y';
 import { castProgress, nextNeeded } from '../../world/cast';
 import { askBusy, runAsk } from '../../world/ask';
 import { AddCard, CastCard, pronounWord } from './CastCard';
@@ -64,6 +64,38 @@ function CardMenu({ member, anchor, actions, onClose }: { member: CastMember; an
   );
 }
 
+/**
+ * Whether cards are out of view at either end of the line. A wheel that only scrolls up and down (a mouse)
+ * scrolls the line sideways; keyboard users reach every card by Tab, which scrolls it into view.
+ */
+function useHiddenEnds(ref: RefObject<HTMLUListElement | null>, count: number): { before: boolean; after: boolean } {
+  const [ends, setEnds] = useState({ before: false, after: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      const next = { before: el.scrollLeft > 2, after: el.scrollLeft < max - 2 };
+      setEnds((was) => (was.before === next.before && was.after === next.after ? was : next));
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || el.scrollWidth <= el.clientWidth) return;
+      el.scrollLeft += e.deltaY;
+    };
+    measure();
+    el.addEventListener('scroll', measure, { passive: true });
+    el.addEventListener('wheel', onWheel, { passive: true });
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', measure);
+      el.removeEventListener('wheel', onWheel);
+      ro.disconnect();
+    };
+  }, [ref, count]);
+  return ends;
+}
+
 export interface CastLineProps {
   world: World;
   /** Lift a member onto the Desk from its card. */
@@ -80,6 +112,13 @@ export function CastLine({ world, onDraw, onAdd }: CastLineProps) {
   const layout = useLayout();
   const [menu, setMenu] = useState<{ member: CastMember; anchor: HTMLElement } | null>(null);
   const [sheet, setSheet] = useState(false);
+  const row = useRef<HTMLUListElement>(null);
+  const reduced = useReducedMotion();
+  const ends = useHiddenEnds(row, layout === 'small' ? 0 : cast.length);
+  const page = (dir: 1 | -1) => {
+    const el = row.current;
+    if (el) el.scrollBy({ left: dir * Math.max(120, el.clientWidth - 140), behavior: reduced ? 'auto' : 'smooth' });
+  };
   const progress = castProgress(cast);
   const glowKey = nextNeeded(cast)?.key ?? null;
   const origin = world.origin;
@@ -156,7 +195,7 @@ export function CastLine({ world, onDraw, onAdd }: CastLineProps) {
   );
 
   const list = (
-    <ul className="cast-line__cards" aria-label={t('world.castLabel')}>
+    <ul ref={row} className="cast-line__cards" aria-label={t('world.castLabel')}>
       {cast.map((m, i) => (
         <CastCard
           key={m.key}
@@ -197,6 +236,17 @@ export function CastLine({ world, onDraw, onAdd }: CastLineProps) {
       </svg>
       {head}
       {list}
+      {/* For the pointer only (the cards themselves are all reachable by Tab). */}
+      {ends.before && (
+        <button type="button" className="cast-line__more cast-line__more--before" tabIndex={-1} aria-hidden="true" title={t('world.castMore')} onClick={() => page(-1)}>
+          <Icon name="back" size={20} />
+        </button>
+      )}
+      {ends.after && (
+        <button type="button" className="cast-line__more cast-line__more--after" tabIndex={-1} aria-hidden="true" title={t('world.castMore')} onClick={() => page(1)} data-testid="cast-more">
+          <Icon name="back" size={20} />
+        </button>
+      )}
       {menu && <CardMenu member={menu.member} anchor={menu.anchor} actions={actionsFor(menu.member, menu.anchor)} onClose={() => setMenu(null)} />}
     </section>
   );

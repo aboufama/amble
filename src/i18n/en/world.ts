@@ -90,6 +90,7 @@ export const world = {
   castAllDrawn: "Everyone's drawn! ✦",
   castEmpty: 'Your cast shows up when the world starts.',
   castLabel: 'Cast: the drawings this world needs',
+  castMore: 'More of the cast',
   drawMe: 'Draw me',
   yourTurn: 'Your turn',
   optional: 'Optional',

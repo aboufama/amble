@@ -852,6 +852,40 @@
   flex: none;
 }
 
+/* Round arrows over the line's ends while cards are out of view there. */
+.cast-line__more {
+  position: absolute;
+  top: calc(16px + var(--card-h) / 2 - 20px);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: var(--lift-sm), inset 0 0 0 1.5px var(--line-control-panel);
+  cursor: pointer;
+}
+
+.cast-line__more:hover {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
+}
+
+.cast-line__more--before {
+  left: 96px;
+}
+
+.cast-line__more--after {
+  right: -8px;
+}
+
+.cast-line__more--after .icon {
+  rotate: 180deg;
+}
+
 .cast-card {
   --focus-gap: var(--bg);
   position: relative;

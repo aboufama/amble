@@ -37,6 +37,24 @@ test.describe('the world in Play', () => {
     expect(await page.evaluate(() => document.scrollingElement!.scrollHeight <= innerHeight)).toBe(true);
   });
 
+  test('an arrow shows when Cast cards are out of view, and brings Add someone into view', async ({ page }) => {
+    await openWorld(page);
+    const more = page.getByTestId('cast-more');
+    await expect(more).toBeVisible();
+    await more.click();
+    await expect
+      .poll(
+        async () => {
+          const [add, row] = await Promise.all([page.getByTestId('cast-add').boundingBox(), page.locator('.cast-line__cards').boundingBox()]);
+          return add!.x + add!.width <= row!.x + row!.width + 1;
+        },
+        { timeout: 15_000 },
+      )
+      .toBe(true);
+    await expect(more).toHaveCount(0);
+    await expect(page.locator('.cast-line__more--before')).toBeVisible();
+  });
+
   test('keys typed on the page play the game; Restart restarts the level', async ({ page }) => {
     await openWorld(page);
     const frame = await gameFrame(page);
