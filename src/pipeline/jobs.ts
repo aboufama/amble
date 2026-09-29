@@ -130,7 +130,8 @@ async function run(job: CodeJob, deps: JobDeps, events: JobEvents, signal: Abort
     scope: job.scope ?? null,
     title: job.world.title,
     physics: world.physics,
-    cast: world.cast.length || !job.build ? world.cast : planCastLines(job.build.plan, job.world),
+    // A build's world is still its Warm-up: the plan is what the model builds (and its sizes are the truth).
+    cast: job.build ? planCastLines(job.build.plan, job.world) : world.cast,
     dials: world.dials,
     twistsOn: world.twistsOn,
     groups: world.groups,

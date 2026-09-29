@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AiProgress } from '../../src/model/types';
 import { runCodeJob, type CodeJob } from '../../src/pipeline/jobs';
+import { warmupCode } from '../../src/world/warmup';
 import { code, deps, fakeChat, fakeRobot, fixture, hangs, MOON_KING, PASS, PLAN_SNAIL, robotFail, robotFrozen, world } from './helpers';
 
 const change = (words = 'make grumbles squashable', over: Partial<CodeJob> = {}): CodeJob => ({ task: 'change', world: world(), words, level: 'middle', ...over });
@@ -194,6 +195,18 @@ describe('the job state machine', () => {
     expect(r2).toMatchObject({ kind: 'accepted', repairs: 1 });
     expect(robot2.runs).toHaveLength(2);
     expect(once.calls[1].user).toContain("load: SyntaxError: Identifier 'FLOOR' has already been declared");
+  });
+
+  it("tells a build the plan's cast and sizes, not the Warm-up game's", async () => {
+    const plan = PLAN_SNAIL;
+    // The world a build runs on is still its Warm-up, whose code declares the plan's cast too (here, sized otherwise).
+    const warm = code('game.js', warmupCode(plan)[0].source.replace(/w: 28, h: 28/g, 'w: 99, h: 99'));
+    expect(warm.source).toContain('w: 99, h: 99');
+    const job: CodeJob = { task: 'build', world: world({ code: [warm], cast: {} }), words: plan.pitch, level: 'middle', build: { plan, starter: 'moon-king', baseFiles: [code('game.js', MOON_KING)] } };
+    const { calls, chat } = fakeChat([fixture('build-moon-king.patch')]);
+    await runCodeJob(job, deps(chat), track().events, new AbortController().signal);
+    expect(calls[0].user).toContain('- leaf "Lettuce leaf" · item · JUST BONES (not drawn yet) · 28x28');
+    expect(calls[0].user).toContain('- saltKing "The Salt King" · character · biped · JUST BONES (not drawn yet) · 140x224 · faces left');
   });
 
   describe('a build on a starter with a helper file (every real starter has one)', () => {
