@@ -1,9 +1,10 @@
 /**
  * `#/new` the New world sheet (§2.5): a bottom sheet over the Trail. **"Give {name} a world."** (or
  * **"Pick a world"** with no hero), five world types with the student's character standing in each
- * scene, and, with the AI helper on, **"Or describe your own world…"** with **Imagine it ✦**. **Start**
- * makes the world from the picked seed (the hero drawn, everything else just bones) and opens it; **Not
- * now** leaves the character on the Trail. `?hero=` names the character; `?idea=1` focuses the idea box.
+ * scene, and, when wishes are available, **"Or describe a whole new world"** with **Imagine it**.
+ * **Start** makes the world from the picked seed (the hero drawn, everything else just bones) and opens
+ * it; **Not now** leaves the character on the Trail. `?hero=` names the character; `?idea=1` focuses the
+ * idea box.
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { navigate } from '../../app/router';
@@ -128,7 +129,7 @@ export function NewWorldSheet({ route }: { route: RouteOf<'new'> }) {
                 />
               ))}
             </div>
-            <IdeaBox variant="sheet" hero={heroForPlan} autoFocus={route.idea} onPlanning={() => setWaiting(true)} hideWhenOff className="new-world__idea" />
+            <IdeaBox variant="sheet" hero={heroForPlan} autoFocus={route.idea} onPlanning={() => setWaiting(true)} className="new-world__idea" />
           </>
         )}
       </Sheet>

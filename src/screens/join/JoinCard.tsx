@@ -11,17 +11,20 @@ import { useStore } from '../../state/store';
 import { Button, Dialog } from '../../ui/components';
 import './join.css';
 
-/** What joining does to the AI helper, in the student's words. */
+/**
+ * What joining does, in the student's words: the class's wishes work here (the machinery stays out of
+ * sight; the Teacher desk and Settings name it plainly). A class without wishes, or with Explain this only,
+ * just knows its students.
+ */
 export function joinBody(link: Pick<ClassLinkV1, 'ai' | 'mode'>): string {
-  if (!link.ai || link.mode === 'off') return t('school.joinBodyNoAi');
-  return link.mode === 'explain' ? t('school.joinBodyExplain') : t('school.joinBody');
+  return link.ai && link.mode === 'on' ? t('home.joinWishes') : t('home.joinClass');
 }
 
 /**
- * Where the student's words will go once the class's AI helper is on: the host of the link's AI address.
- * The class and district names come from the link itself, so the card also names the address the words
- * go to, and a link that points somewhere else looks different (§5.14: in the public build a class link
- * is the whole AI configuration).
+ * Where the student's words will go once the class's wishes are on: the host of the link's address. The
+ * class and district names come from the link itself, so the card also names the address the words go
+ * to, and a link that points somewhere else looks different (§5.14: in the public build a class link is
+ * the whole configuration).
  */
 export function joinHost(link: Pick<ClassLinkV1, 'ai' | 'mode'>): string | null {
   if (!link.ai || link.mode === 'off') return null;

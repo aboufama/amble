@@ -1,8 +1,8 @@
 /**
- * A world's sign on the trail (§2.4): a 170x96 frame on legs with a hanging lantern, the world's last
- * snapshot, and a paper name tag pinned at the bottom edge ("Edited 2 days ago", or "Starter · runner").
- * Assignment worlds carry a scroll and a "Due Fri" ribbon; handed-in worlds say so. The sign is a link
- * in the trail's list (roving focus: the Trail moves it with the arrow keys).
+ * A world's sign on the trail (§2.4): a white board on two posts with the world's last snapshot, its name
+ * and "Edited 2 days ago" (or "Starter · Runner"). Assignment worlds carry a scroll and a "Due Fri" tag;
+ * handed-in worlds say so. The sign is a link in the trail's list (roving focus: the Trail moves it with
+ * the arrow keys).
  */
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { hrefOf } from '../../app/router';
@@ -14,16 +14,17 @@ import type { StarterId, StarterInfo, WorldMeta } from '../../model/types';
 import { PlaceholderGlyph } from '../../ui/components';
 import { cx } from '../../ui/cx';
 import { SeedScene } from '../newworld/SeedScene';
-import { BracketLantern } from './Landscape';
 
 export type SignSource = { kind: 'world'; meta: WorldMeta } | { kind: 'starter'; info: StarterInfo };
 
 export interface WorldSignProps {
   source: SignSource;
   x: number;
-  /** Frame top, design px (bottom-anchored). */
+  /** Board top, design px (bottom-anchored). */
   top: number;
   legs: number;
+  /** The first sign's board reports its height (the Trail stands every sign by it). */
+  boardRef?(el: HTMLElement | null): void;
   index: number;
   focused: boolean;
   now: number;
@@ -57,7 +58,7 @@ function editedWords(at: number, now: number): string {
 
 function ScrollIcon() {
   return (
-    <svg className="sign__scroll" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <svg className="sign__scroll" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
       <path d="M6.2 4.6h10.6c1.3 0 2.2 1 2.2 2.2v10.6c0 1.2.9 2 2 2H8.4c-1.2 0-2.2-.9-2.2-2.1V4.6z" />
       <path d="M6.2 4.6C5 4.6 4 5.5 4 6.8v1.6h2.2" />
       <path d="M9.6 9h6M9.6 12.4h6" />
@@ -90,7 +91,7 @@ function useSnapshot(meta: WorldMeta | null): { snap: string | null; hero: strin
 
 const LONG_PRESS_MS = 550;
 
-export function WorldSign({ source, x, top, legs, index, focused, now, onFocus, onKeyDown, onOpen, onMenu, linkRef }: WorldSignProps) {
+export function WorldSign({ source, x, top, legs, boardRef, index, focused, now, onFocus, onKeyDown, onOpen, onMenu, linkRef }: WorldSignProps) {
   const meta = source.kind === 'world' ? source.meta : null;
   const info = source.kind === 'starter' ? source.info : null;
   const { snap, hero } = useSnapshot(meta);
@@ -148,35 +149,36 @@ export function WorldSign({ source, x, top, legs, index, focused, now, onFocus, 
         onPointerLeave={endPress}
         onPointerCancel={endPress}
       >
-        <span className="sign__bracket" aria-hidden="true">
-          <BracketLantern />
-        </span>
-        <span className="sign__frame" aria-hidden="true">
-          {snap ? (
-            <img src={snap} alt="" draggable={false} />
-          ) : info ? (
-            info.sign ? <img src={info.sign} alt="" draggable={false} /> : <SeedScene seed={info.id as StarterId} pose={null} ghosts={false} />
-          ) : hero ? (
-            <span className="sign__hero">
-              <img src={hero} alt="" draggable={false} />
+        <span ref={boardRef} className="sign__board">
+          <span className="sign__frame" aria-hidden="true">
+            {snap ? (
+              <img src={snap} alt="" draggable={false} />
+            ) : info ? (
+              info.sign ? <img src={info.sign} alt="" draggable={false} /> : <SeedScene seed={info.id as StarterId} pose={null} ghosts={false} />
+            ) : hero ? (
+              <span className="sign__hero">
+                <img src={hero} alt="" draggable={false} />
+              </span>
+            ) : (
+              <span className="sign__hero">
+                <PlaceholderGlyph rig="biped" role="hero" size={64} />
+              </span>
+            )}
+          </span>
+          <span className="sign__tag">
+            <span className="sign__name">
+              {meta?.assignment && <ScrollIcon />}
+              <span className="sign__title">{title}</span>
             </span>
-          ) : (
-            <span className="sign__hero">
-              <PlaceholderGlyph rig="biped" role="hero" size={64} />
-            </span>
-          )}
+            <small className="sign__sub">{meta ? <EditedLabel at={meta.updatedAt} now={now} /> : t('home.starterTag', { genre: info?.genre ?? '' })}</small>
+          </span>
+          {meta?.handedIn ? (
+            <span className="sign__ribbon sign__ribbon--done">{t('home.handedIn')}</span>
+          ) : meta?.assignment?.due ? (
+            <span className="sign__ribbon">{t('home.dueRibbon', { due: meta.assignment.due })}</span>
+          ) : null}
         </span>
         <span className="sign__legs" aria-hidden="true" />
-        <span className="sign__tag">
-          {meta?.assignment && <ScrollIcon />}
-          <span className="sign__name">{title}</span>
-          <small className={cx('sign__sub', info && 'sign__sub--caps')}>{meta ? <EditedLabel at={meta.updatedAt} now={now} /> : t('home.starterTag', { genre: info?.genre ?? '' })}</small>
-        </span>
-        {meta?.handedIn ? (
-          <span className="sign__ribbon sign__ribbon--done">{t('home.handedIn')}</span>
-        ) : meta?.assignment?.due ? (
-          <span className="sign__ribbon">{t('home.dueRibbon', { due: meta.assignment.due })}</span>
-        ) : null}
       </a>
     </li>
   );

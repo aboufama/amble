@@ -1,6 +1,6 @@
 /**
- * `#/trail` the Trail (§2.4; spec-mocks/03-trail.png): home for returning students. A night landscape
- * with a lit path where every world is a signboard and the student's drawings walk between them; the
+ * `#/trail` the Trail (§2.4; spec-mocks/03-trail.png): home for returning students. A daylight landscape
+ * with a sandy path where every world is a signboard and the student's drawings walk between them; the
  * student's worlds first, then the starter worlds. Also its List view (`#/trail/list`) and Lost and found
  * (`#/trail/lost`).
  *
@@ -16,7 +16,9 @@ import { transitionName } from '../../app/transitions';
 import { t } from '../../i18n';
 import { sweepStarterCopies } from '../../home/starterCopies';
 import {
+  BOARD_H,
   DESIGN_H,
+  groundTop,
   latestCharacter,
   legHeight,
   pathTop,
@@ -25,8 +27,11 @@ import {
   restingCharacters,
   signStops,
   signTop,
+  STROLL_MAX,
   trailStops,
   walkerFeet,
+  walkerRoom,
+  WALKER_H,
   type PlacedStop,
 } from '../../home/trailData';
 import type { ArtId, WorldMeta } from '../../model/types';
@@ -46,7 +51,7 @@ import { SpaceChip, UpdatedChip } from '../files/TrailChips';
 import { setLegacy } from '../../state/library';
 import { AssignmentNote } from './AssignmentNote';
 import { HomeHeader } from './HomeHeader';
-import { Fireflies, NightSky, ParallaxHills, TrailGround } from './Landscape';
+import { DaySky, ParallaxHills, TrailGround } from './Landscape';
 import { LampSpot } from './LampSpot';
 import { ListView } from './ListView';
 import { LostAndFound } from './LostAndFound';
@@ -58,22 +63,21 @@ import { Walker } from './Walker';
 import { WorldSign } from './WorldSign';
 import './trail.css';
 
-const LIT_KEY = 'amble.trailLit';
-const WALKER_H = 62;
+const CHIME_KEY = 'amble.trailLit';
 const LAMP_CHARACTER_H = 118;
 const NOTE_ROOM = 190;
 
 function firstLoadThisSession(): boolean {
   try {
-    if (sessionStorage.getItem(LIT_KEY)) return false;
-    sessionStorage.setItem(LIT_KEY, '1');
+    if (sessionStorage.getItem(CHIME_KEY)) return false;
+    sessionStorage.setItem(CHIME_KEY, '1');
     return true;
   } catch {
     return false;
   }
 }
 
-/** Whether the tab is hidden: the walkers, the fireflies and the lantern hold their place until it is back. */
+/** Whether the tab is hidden: the walkers hold their place until it is back. */
 function usePageHidden(): boolean {
   const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.visibilityState === 'hidden');
   useEffect(() => {
@@ -116,11 +120,11 @@ export function Trail({ route }: { route: RouteOf<'trail'> }) {
   );
 
   return (
-    <div className={cx('trail', still && 'trail--still', hidden && 'trail--hidden', firstLoad && 'trail--first-load', `trail--${route.view}`)} data-testid="screen-trail" data-view={route.view}>
-      <NightSky decor={route.view === 'trail'} />
-      <HomeHeader pulse={firstLoad && !reduced} extra={extra} />
+    <div className={cx('trail', still && 'trail--still', hidden && 'trail--hidden', `trail--${route.view}`)} data-testid="screen-trail" data-view={route.view}>
+      <DaySky clouds={route.view === 'trail'} />
+      <HomeHeader extra={extra} />
       {route.view === 'trail' ? (
-        <TrailScene still={still} lit={firstLoad && !reduced} />
+        <TrailScene still={still} />
       ) : (
         <main id="main" tabIndex={-1} className="trail__main trail__main--sheet">
           <StorageBanner />
@@ -135,10 +139,9 @@ export function Trail({ route }: { route: RouteOf<'trail'> }) {
 
 interface SceneProps {
   still: boolean;
-  lit: boolean;
 }
 
-function TrailScene({ still, lit }: SceneProps) {
+function TrailScene({ still }: SceneProps) {
   const { starters } = useServices();
   const worlds = useStore((s) => s.library.worlds);
   const characters = useStore((s) => s.library.characters);
@@ -148,12 +151,16 @@ function TrailScene({ still, lit }: SceneProps) {
   const classAsg = useStore((s) => s.config.classLink?.asg ?? null);
   const comeAlive = useStore((s) => s.session.comeAlive);
   const paused = useStore((s) => s.prefs.trailPaused);
+  // A short window (a Chromebook in a tab) keeps the big buttons to the usual size, so the signs keep room.
+  const ctaSize = useStore((s) => (s.app.layout === 'tab' || s.app.layout === 'small' ? 44 : 58));
 
   const scroller = useRef<HTMLDivElement>(null);
   const copy = useRef<HTMLDivElement>(null);
   const links = useRef<Array<HTMLAnchorElement | null>>([]);
   const [focus, setFocus] = useState(0);
   const [minTop, setMinTop] = useState(500);
+  const [boardH, setBoardH] = useState(BOARD_H);
+  const boardObserver = useRef<ResizeObserver | null>(null);
   const [edges, setEdges] = useState({ left: false, right: true });
   const [menu, setMenu] = useState<{ meta: WorldMeta; el: HTMLElement } | null>(null);
   const [landing, setLanding] = useState<{ id: ArtId; name: string } | null>(null);
@@ -195,6 +202,21 @@ function TrailScene({ still, lit }: SceneProps) {
       window.removeEventListener('resize', measure);
     };
   }, [returning]);
+
+  // Every sign stands by the first one's board (its height grows with larger text).
+  const measureBoard = useCallback((el: HTMLElement | null) => {
+    boardObserver.current?.disconnect();
+    boardObserver.current = null;
+    if (!el) return;
+    const measure = () => {
+      const h = Math.round(el.offsetHeight);
+      if (h > 0) setBoardH(h);
+    };
+    measure();
+    boardObserver.current = new ResizeObserver(measure);
+    boardObserver.current.observe(el);
+  }, []);
+  useEffect(() => () => boardObserver.current?.disconnect(), []);
 
   // ◂ ▸ know when the trail has more to show.
   useEffect(() => {
@@ -297,10 +319,25 @@ function TrailScene({ still, lit }: SceneProps) {
   const placedLamp = placed.find((p) => p.stop.kind === 'lamp');
   const lampFeet = placedLamp ? Math.round(pathTop(placedLamp.cx) + 15) : 0;
 
+  // Signs stand on the ground, clear of the walkers in front of them; walkers shrink to fit under a sign
+  // the hero copy pushed down, and stay home when not even a small one fits.
+  const signAt = new Map<string, { top: number; walkerH: number }>();
+  {
+    let i = 0;
+    for (const p of placed) {
+      if (p.stop.kind !== 'world' && p.stop.kind !== 'starter') continue;
+      const top = signTop(p.cx, i, minTop, boardH);
+      signAt.set(p.stop.id, { top, walkerH: walkerRoom(p.cx, top, boardH) });
+      i += 1;
+    }
+  }
+
   const walkerEls: ReactElement[] = [];
   const seen = new Set<ArtId>();
   const addWalker = (art: WalkerArt | undefined, p: PlacedStop, slot: number, k: number, onOpen?: () => void) => {
     if (!art) return;
+    const height = signAt.get(p.stop.id)?.walkerH ?? WALKER_H;
+    if (height <= 0) return;
     const feet = walkerFeet(p.cx, slot);
     walkerEls.push(
       <Walker
@@ -309,10 +346,11 @@ function TrailScene({ still, lit }: SceneProps) {
         name={art.name}
         strip={art.strip}
         still={art.still}
+        stillAt={art.stillAt}
         x={feet.x}
         y={feet.y}
-        height={WALKER_H}
-        travel={90 + (k % 3) * 20}
+        height={height}
+        travel={Math.min(STROLL_MAX, 90 + (k % 3) * 20)}
         duration={24 + ((k * 7) % 17)}
         delay={-((k * 5.3) % 20)}
         focusable={!seen.has(art.id)}
@@ -341,6 +379,7 @@ function TrailScene({ still, lit }: SceneProps) {
         name={latest.name}
         strip={lampArt.strip}
         still={lampArt.still}
+        stillAt={lampArt.stillAt}
         x={placedLamp.cx - placedLamp.x}
         y={262}
         height={LAMP_CHARACTER_H}
@@ -383,11 +422,11 @@ function TrailScene({ still, lit }: SceneProps) {
                 {t('home.lede')} <b>{t('home.ledeBold')}</b>
               </p>
               <div className="trail-copy__ctas">
-                <Link to={{ name: 'first' }} className="btn btn--lantern btn--h58" data-testid="draw-character">
-                  <Icon name="draw" size={24} />
+                <Link to={{ name: 'first' }} className={`btn btn--lantern btn--h${ctaSize}`} data-testid="draw-character">
+                  <Icon name="draw" size={ctaSize === 58 ? 24 : 20} />
                   <span className="btn__label">{t('home.drawCharacter')}</span>
                 </Link>
-                <Button variant="ghost" size={58} icon="play" onClick={playFirst} data-testid="play-first">
+                <Button variant="ghost" size={ctaSize} icon="play" onClick={playFirst} data-testid="play-first">
                   {t('home.playWorldFirst')}
                 </Button>
               </div>
@@ -418,9 +457,8 @@ function TrailScene({ still, lit }: SceneProps) {
         }}
       >
         <div className="trail__content" style={{ width } as CSSProperties}>
-          <TrailGround width={width} pools={placed.filter((p) => p.stop.kind !== 'signpost').map((p) => ({ cx: p.cx, big: p.stop.kind === 'lamp' }))} />
-          <Fireflies width={width} />
-          <div className={cx('trail__decor', lit && 'trail__decor--lit')}>
+          <TrailGround width={width} shadows={placedLamp ? [{ cx: placedLamp.cx }] : []} />
+          <div className="trail__decor">
             {placed.map((p) => {
               if (p.stop.kind === 'signpost') {
                 const top = Math.round(pathTop(p.cx) - 84);
@@ -446,17 +484,8 @@ function TrailScene({ still, lit }: SceneProps) {
               if (p.stop.kind === 'lamp') {
                 return (
                   <div key="lamp" className="lamp-wrap">
-                    {assignment && <AssignmentNote assignment={assignment} left={p.x - NOTE_ROOM + 8} top={lampFeet - 250} />}
-                    <LampSpot
-                      x={p.x}
-                      cx={p.cx}
-                      feet={lampFeet}
-                      empty={!latest}
-                      breathing={!latest && !still}
-                      character={lampCharacter}
-                      give={landing}
-                      lit={lit}
-                    />
+                    {assignment && <AssignmentNote assignment={assignment} left={p.x - NOTE_ROOM + 8} feet={Math.round(groundTop(p.x - NOTE_ROOM + 100) + 3)} />}
+                    <LampSpot x={p.x} cx={p.cx} feet={lampFeet} empty={!latest} character={lampCharacter} give={landing} />
                   </div>
                 );
               }
@@ -468,7 +497,7 @@ function TrailScene({ still, lit }: SceneProps) {
               if (p.stop.kind !== 'world' && p.stop.kind !== 'starter') return null;
               signIndex += 1;
               const i = signIndex;
-              const top = signTop(p.cx, i, minTop);
+              const top = signAt.get(p.stop.id)?.top ?? signTop(p.cx, i, minTop, boardH);
               const stop = p.stop;
               return (
                 <WorldSign
@@ -476,7 +505,8 @@ function TrailScene({ still, lit }: SceneProps) {
                   source={stop.kind === 'world' ? { kind: 'world', meta: stop.meta } : { kind: 'starter', info: stop.info }}
                   x={p.x}
                   top={top}
-                  legs={legHeight(p.cx, top)}
+                  legs={legHeight(p.cx, top, boardH)}
+                  boardRef={i === 0 ? measureBoard : undefined}
                   index={i}
                   focused={i === Math.min(focus, signs.length - 1)}
                   now={now}

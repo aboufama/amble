@@ -25,7 +25,12 @@ import {
   sortWorlds,
   trailStops,
   trailWorlds,
-  FRAME_H,
+  walkerFeet,
+  walkerRoom,
+  BOARD_H,
+  MIN_WALKER_H,
+  SIGN_CLEAR,
+  WALKER_H,
 } from '../../src/home/trailData';
 import type { ArtRecordLite, StarterInfo, WorldMeta } from '../../src/model/types';
 import { sampleAssignment } from '../foundation/samples';
@@ -192,9 +197,29 @@ describe('trail geometry', () => {
 
   it('stands signs on the ground, never above the hero copy', () => {
     const top = signTop(700, 0, 0);
-    expect(top + FRAME_H + legHeight(700, top)).toBeCloseTo(groundTop(700) + 3, 0);
+    expect(top + BOARD_H + legHeight(700, top)).toBeCloseTo(groundTop(700) + 3, 0);
     expect(signTop(1400, 0, 560)).toBe(560);
     expect(legHeight(1400, 700)).toBe(10);
+  });
+
+  it("keeps every sign's board clear of the walkers in front of it", () => {
+    for (let cx = 100; cx < 4000; cx += 37) {
+      for (const boardH of [BOARD_H, BOARD_H + 20]) {
+        const top = signTop(cx, 3, 0, boardH);
+        const heads = Math.min(walkerFeet(cx, 0).y, walkerFeet(cx, 1).y) - WALKER_H;
+        expect(top + boardH + SIGN_CLEAR, `sign at ${cx}`).toBeLessThanOrEqual(heads);
+        expect(walkerRoom(cx, top, boardH)).toBe(WALKER_H);
+      }
+    }
+  });
+
+  it('shrinks the walkers under a sign the hero copy pushed down, and keeps them home when none fit', () => {
+    const cx = 1100;
+    const feet = Math.min(walkerFeet(cx, 0).y, walkerFeet(cx, 1).y);
+    const low = feet - SIGN_CLEAR - BOARD_H - 44;
+    expect(signTop(cx, 0, low)).toBe(low);
+    expect(walkerRoom(cx, low)).toBe(44);
+    expect(walkerRoom(cx, feet - SIGN_CLEAR - BOARD_H - (MIN_WALKER_H - 1))).toBe(0);
   });
 
   it('draws smooth SVG paths', () => {

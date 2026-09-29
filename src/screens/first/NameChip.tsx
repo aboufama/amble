@@ -34,11 +34,11 @@ export function NameChip({ name, onRename }: { name: string; onRename(name: stri
 
   if (editing) {
     return (
-      <span className="paper-chip paper-chip--editing">
+      <span className="first-name first-name--editing">
         <span aria-hidden="true">{t('home.nameLabel')}</span>
         <input
           ref={input}
-          className="paper-chip__input"
+          className="first-name__input"
           value={draft}
           maxLength={24}
           aria-label={t('home.nameField', { name })}
@@ -68,7 +68,7 @@ export function NameChip({ name, onRename }: { name: string; onRename(name: stri
     <button
       ref={button}
       type="button"
-      className="paper-chip"
+      className="first-name"
       aria-label={t('home.nameEdit', { name })}
       onClick={() => {
         done.current = false;

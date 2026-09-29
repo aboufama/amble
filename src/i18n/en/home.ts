@@ -1,7 +1,8 @@
 /**
- * Student-facing strings for M1: the First page, the Trail, New world and the plan card (§2.3-2.5).
- * Keys are flat. `staff_` keys are for teachers and IT (exempt from the banned-word check); `page_` keys
- * may be long paragraphs (in-app pages); `legacy_` keys may name the old block editor.
+ * Student-facing strings for M1: the First page, the Trail, New world, the plan card and the Join card
+ * (§2.3-2.5, §2.14). Keys are flat. `staff_` keys are for teachers and IT (exempt from the banned-word
+ * check); `page_` keys may be long paragraphs (in-app pages); `legacy_` keys may name the old block editor.
+ * The AI is never named here: the student makes wishes, and the world changes.
  */
 import type { Strings } from '../types';
 
@@ -69,19 +70,12 @@ export const home = {
   seedCardNoHero: '{genre}. {blurb}',
   opening: 'Opening…',
 
-  ideaTitleFirst: 'Or tell Amble your idea',
-  ideaTitle: 'Tell Amble your idea',
+  ideaTitle: 'Or describe a whole new world',
   ideaField: 'Your idea for a world',
   ideaPlaceholder: 'A game where…',
   ideaPlaceholderHero: 'A game where {name}…',
   go: 'Go',
-  aiOnFrom: 'AI helper on · {district}',
-  aiOn: 'AI helper on',
-  ideaAiOff: 'The AI helper is off here. Pick a world above.',
-  ideaAiOffSchool: 'Your teacher can turn it on.',
-  setUpAi: 'Set up AI',
-  ideaAiBlocked: "Amble can't reach {host} right now. Your school's filter may be blocking it. Everything else works.",
-  aiHostFallback: 'the AI helper',
+  howWishesWork: 'How wishes work',
 
   fromTeacher: 'From your teacher',
   teacherDrawFirst: "Draw your hero first. Then we'll start it together.",
@@ -91,7 +85,7 @@ export const home = {
   headlineOne: 'Draw something.',
   headlineTwo: 'It comes alive.',
   lede: 'Draw a character and Amble gives it bones, so it can walk, jump and be the hero of a game you build.',
-  ledeBold: 'The art is always yours: the AI never draws.',
+  ledeBold: 'The art is always yours.',
   drawCharacter: 'Draw a character',
   playWorldFirst: 'Play a world first',
   trustTrail: 'No account. Your drawings stay on this Chromebook.',
@@ -164,10 +158,6 @@ export const home = {
   lastDay: 'Last day',
 
   asgYouDraw: 'You draw: {list}',
-  asgAi: 'AI helper: {mode}',
-  asgAiOn: 'on',
-  asgAiExplain: 'explain only',
-  asgAiOff: 'off',
   asgStart: 'Start',
   asgDue: 'Due {due}',
   asgYourHero: 'your hero',
@@ -177,7 +167,6 @@ export const home = {
   sheetTitle: 'Pick a world',
   sheetLede: 'Pick a world type. Everything else in it waits as just bones until you draw it.',
   seedsLabel: 'World types',
-  describe: 'Or describe your own world…',
   describePlaceholderHero: 'a jungle where {name} rides a snail and dodges coconuts',
   describePlaceholder: 'a jungle where a hero rides a snail and dodges coconuts',
   imagineIt: 'Imagine it',
@@ -186,14 +175,12 @@ export const home = {
   imagining: 'Imagining your world…',
   imaginingHint: 'This takes a few seconds. You can stop any time.',
   stop: 'Stop',
-  fallback: "The AI helper can't answer right now. Let's start from a world close to your idea: {starter} ({type}). You can change it later.",
+  fallback: "Let's start from a world close to your idea: {starter}.",
   startIt: 'Start it',
 
   // ---------------------------------------------------------------- the plan card (§2.5)
   youSaid: 'You said',
   edit: 'Edit',
-  plannedIn: 'Planned in {n} seconds',
-  plannedInOne: 'Planned in 1 second',
   howYouPlay: 'How you play',
   theTwist: 'The twist',
   youDrawThese: 'You draw these',
@@ -202,10 +189,6 @@ export const home = {
   alreadyDrawn: 'Drawn by you',
   ambleWillBuild: 'Amble will build',
   dialsYouGet: 'Dials you will get',
-  whatGoesDistrict: "What goes to {district}'s AI helper",
-  whatGoes: 'What goes to the AI helper',
-  whatGoesBody: "Your words and the game's code. Never your drawings or your name.",
-  seeSent: 'See what was sent',
   drawWhileBuild: 'Draw {hero} while I build',
   buildNow: 'Build it now',
   buildFirst: 'Build it first, draw later',
@@ -217,4 +200,8 @@ export const home = {
   noIdea: 'Tell Amble your idea first.',
   buildStarted: 'Amble is building {title}.',
   startedStep: 'You started {title}',
+
+  // ---------------------------------------------------------------- the Join card (§2.14)
+  joinWishes: "Your class's wishes will work in Amble on this Chromebook. Your drawings stay yours and stay here.",
+  joinClass: 'Amble will know your class on this Chromebook. Your drawings stay yours and stay here.',
 } satisfies Strings;

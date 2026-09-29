@@ -1,11 +1,11 @@
 /**
- * `#/first` the First page (§2.3): a sheet of cream paper taped over the night Trail. **"Draw a
- * creature."**, six marker caps, and **Bring it to life** once 1.5 % of the paper is inked: the doodle
- * is rigged as a blob in under a second and hops. Then the chips (kind, name) and **"Now give {name} a
- * world."** No AI, no menus, nothing to learn.
+ * `#/first` the First page (§2.3): a white sheet of drawing paper over the Trail's sky. **"Draw a
+ * creature."**, six pens, and **Bring it to life** once 1.5 % of the paper is inked: the doodle gets its
+ * bones in under a second and hops. Then the chips (kind, name) and **"Now give {name} a world."** No
+ * menus, nothing to learn.
  *
- * The paper is a rotated sheet; the drawing surface and the alive stage sit inside it unrotated (the
- * art engine maps pointers in page coordinates), inset so the sheet's edges always cover them.
+ * The paper is `--sheet`, white in every theme, so the default dark pen always shows. The drawing surface
+ * and the alive stage fill it, inside its 1 px edge.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { navigate } from '../../app/router';
@@ -29,7 +29,7 @@ import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
 import { playUiSound } from '../../ui/sounds';
 import { StorageBanner } from '../files/StorageBanner';
-import { BottomPath, NightSky } from '../trail/Landscape';
+import { BottomPath, DaySky } from '../trail/Landscape';
 import { HomeHeader } from '../trail/HomeHeader';
 import { AliveStage, type AliveGeometry, type AliveStageHandle } from './AliveStage';
 import { keepDoodle } from './doodle';
@@ -47,6 +47,8 @@ const GROUND_LINE = 0.88;
 /** Board pixels per CSS pixel of paper (crisp on 1.25-2x Chromebook screens), capped at 1024. */
 const BOARD_DENSITY = 1.5;
 const BOARD_MAX = 1024;
+/** How long "It's alive!" stays (it also goes at the first hop, so it never sits over the creature). */
+const ALIVE_NOTE_MS = 6000;
 
 type Phase = 'drawing' | 'rigging' | 'alive';
 
@@ -108,10 +110,15 @@ export function FirstPage() {
   const kindWant = useRef<{ kind: CharacterKind; facing: Facing } | null>(null);
   const kindRunning = useRef(false);
   const [note, setNote] = useState<string | null>(null);
+  const aliveNote = useRef<HTMLParagraphElement>(null);
+  const heading = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [notePlace, setNotePlace] = useState<{ left: number; top: number } | null>(null);
+  const [noteGone, setNoteGone] = useState(false);
   const [pose, setPose] = useState<PoseImage | null>(null);
   const [busySeed, setBusySeed] = useState<StarterId | null>(null);
 
-  // The night fades in, the lanterns light, then the paper slides up (§2.3 Motion).
+  // The page fades in, then the paper slides up (§2.3 Motion).
   useEffect(() => {
     const id = requestAnimationFrame(() => setEntered(true));
     return () => cancelAnimationFrame(id);
@@ -125,7 +132,8 @@ export function FirstPage() {
     const k = Math.min(BOARD_DENSITY, BOARD_MAX / Math.max(1, box.width, box.height));
     const W = Math.max(64, Math.round(box.width * k));
     const H = Math.max(64, Math.round(box.height * k));
-    const paper = cssToken('--paper', '#fdf8ec');
+    // The sheet is white in every theme (High contrast too), so the dark default pen always shows.
+    const paper = cssToken('--sheet', '#ffffff');
     const doc = newArtDoc({ name: '', kind: 'character', rig: 'blob', width: W, height: H, layers: 'dock' });
     const surface = createArtSurface(host, doc, { paper, workspace: paper, keyboard: false, rotate: false, pressure: getState().prefs.pressure, reducedMotion: document.documentElement.dataset.motion === 'reduced' });
     surfaceRef.current = surface;
@@ -338,6 +346,54 @@ export function FirstPage() {
     return () => clearTimeout(id);
   }, [awake]);
 
+  // "It's alive!" stands beside the creature's head, never over it: to its right, else its left, else
+  // above it, clear of the paper's title. It goes after a few seconds, or at the first hop.
+  useLayoutEffect(() => {
+    const el = aliveNote.current;
+    const inner = innerRef.current;
+    if (!awake || !alive || !el || !inner) return;
+    const place = () => {
+      const g = alive.geo;
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const gap = 14;
+      const edge = 10;
+      // The wake grows the creature 4 %; a little more keeps the note off its outline.
+      const lift = 1.06;
+      const body = { left: g.feetX - g.left * lift, right: g.feetX + g.right * lift, top: g.feetY - g.height * lift, bottom: g.feetY };
+      const box = inner.getBoundingClientRect();
+      // The paper's title and the line under it, and the chips along the bottom, stay uncovered too.
+      const words = [...(heading.current?.querySelectorAll('.first__title, .first__sub') ?? [])].map((n) => n.getBoundingClientRect());
+      const title = words.length
+        ? { left: Math.min(...words.map((r) => r.left)) - box.left, right: Math.max(...words.map((r) => r.right)) - box.left, top: Math.min(...words.map((r) => r.top)) - box.top, bottom: Math.max(...words.map((r) => r.bottom)) - box.top }
+        : null;
+      const floor = g.boxH - 76;
+      const meets = (o: { left: number; top: number }, r: { left: number; right: number; top: number; bottom: number }) => o.left < r.right + 6 && o.left + w > r.left - 6 && o.top < r.bottom + 6 && o.top + h > r.top - 6;
+      const fits = (o: { left: number; top: number }) => o.left >= edge && o.left + w <= g.boxW - edge && o.top >= edge && o.top + h <= floor && !meets(o, body) && !(title && meets(o, title));
+      const headY = Math.max(edge, Math.min(floor - h, body.top));
+      const midX = (body.left + body.right) / 2 - w / 2;
+      const options = [
+        { left: body.right + gap, top: headY },
+        { left: body.left - gap - w, top: headY },
+        { left: Math.max(edge, Math.min(g.boxW - edge - w, midX)), top: body.top - gap - h },
+        { left: body.right + gap, top: Math.max(edge, body.top - h) },
+        { left: body.left - gap - w, top: Math.max(edge, body.top - h) },
+      ];
+      const pick = options.find(fits) ?? { left: Math.max(edge, Math.min(g.boxW - edge - w, body.right + gap)), top: headY };
+      setNotePlace((cur) => (cur && Math.abs(cur.left - pick.left) < 1 && Math.abs(cur.top - pick.top) < 1 ? cur : pick));
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [awake, alive]);
+
+  useEffect(() => {
+    if (!awake) return;
+    const id = window.setTimeout(() => setNoteGone(true), ALIVE_NOTE_MS);
+    return () => clearTimeout(id);
+  }, [awake]);
+
   // ------------------------------------------------------------ the chips
   const rename = async (next: string) => {
     const cur = aliveRef.current;
@@ -452,8 +508,8 @@ export function FirstPage() {
 
   return (
     <div ref={rootRef} className={cx('first', entered && 'first--entered', reduced && 'first--still', landed && 'first--landed')} data-testid="screen-first" data-phase={phase} data-awake={awake || undefined}>
-      <NightSky decor={false} />
-      <BottomPath lit={entered} />
+      <DaySky clouds={false} />
+      <BottomPath />
       <HomeHeader />
       <main id="main" tabIndex={-1} className="first__main">
         <div className="first__banner">
@@ -472,40 +528,33 @@ export function FirstPage() {
           onMoreTools={() => void moreTools()}
         />
         <div className="first__paper-cell" style={paperStyle}>
-          <div ref={paperRef} className="first__sheet" aria-hidden="true">
-            <span className="first__tape first__tape--lemon" />
-            <span className="first__tape first__tape--lime" />
-          </div>
-          <div className="first__inner">
+          <div ref={paperRef} className="first__sheet" aria-hidden="true" />
+          <div ref={innerRef} className="first__inner">
             <div className={cx('first__board', hidden && 'first__board--gone')} ref={boardRef} data-testid="first-board" />
             <svg className="first__ground" preserveAspectRatio="none" viewBox="0 0 100 10" aria-hidden="true">
-              <path d="M3 5.2 C20 4.6 32 5.5 50 5 S80 4.4 97 5.1" />
+              <path d="M3 5 H97" />
             </svg>
-            {alive && <AliveStage ref={stageRef} flat={alive.flat} rig={alive.rig} geo={alive.geo} name={name} reduced={reduced} onShown={onShown} onAwake={onAwake} />}
+            {alive && <AliveStage ref={stageRef} flat={alive.flat} rig={alive.rig} geo={alive.geo} name={name} reduced={reduced} onShown={onShown} onAwake={onAwake} onHop={() => setNoteGone(true)} />}
             {awake && alive && (
               <p
-                className="first__alive-note"
-                style={
-                  {
-                    left: Math.max(8, Math.min(alive.geo.boxW - 200, alive.geo.feetX + alive.geo.right * 0.45)),
-                    top: Math.max(96, alive.geo.feetY - alive.geo.height - 24),
-                  } as CSSProperties
-                }
+                ref={aliveNote}
+                className={cx('first__alive-note', !notePlace && 'first__alive-note--measuring', noteGone && 'first__alive-note--gone')}
+                style={{ left: notePlace?.left ?? 0, top: notePlace?.top ?? 0 } as CSSProperties}
+                data-testid="alive-note"
               >
-                <span>{t('home.itsAlive')}</span>
+                {t('home.itsAlive')}
               </p>
             )}
           </div>
-          <div className="first__texture" aria-hidden="true" />
-          <div className="first__front on-paper">
-            <div className="first__heading">
+          <div className="first__front">
+            <div ref={heading} className="first__heading">
               <h1 className="first__title">{t('home.firstTitle')}</h1>
               <p className="first__sub">{t('home.firstSub')}</p>
               <p className={cx('first__hint', (touched || phase !== 'drawing') && 'first__hint--gone')} aria-hidden="true">
                 <span>{t('home.firstHint')}</span>
-                <svg width="70" height="64" viewBox="0 0 70 64" aria-hidden="true">
-                  <path className="first__hint-arrow" d="M8 6c18 6 34 18 42 38" />
-                  <path className="first__hint-arrow" d="M40 40l10 6 3-12" />
+                <svg width="56" height="48" viewBox="0 0 56 48" aria-hidden="true">
+                  <path className="first__hint-arrow" d="M6 6 C26 8 40 20 44 38" />
+                  <path className="first__hint-arrow" d="M36 32 L44 40 L50 30" />
                 </svg>
               </p>
             </div>
@@ -514,9 +563,9 @@ export function FirstPage() {
                 <p className="first__life-hint">{t('home.firstLifeHint')}</p>
                 <Button
                   ref={lifeButton}
-                  variant="paper"
+                  variant={canBring || phase === 'rigging' ? 'lantern' : 'ghost'}
                   size={44}
-                  icon="sparkle"
+                  icon="bones"
                   className={cx('first__life-button', canBring && 'first__life-button--ready')}
                   aria-disabled={!canBring || undefined}
                   busy={phase === 'rigging'}

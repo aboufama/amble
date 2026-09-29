@@ -47,6 +47,8 @@ export interface AliveStageProps {
   onShown(): void;
   /** The wake is over (It's alive! and the chips may follow). */
   onAwake(): void;
+  /** The creature hops (a tap or a key). */
+  onHop?(): void;
 }
 
 /** Arc height of a tap-hop, in drawing heights (§2.3). */
@@ -55,14 +57,14 @@ const HOP_ARC = 0.22;
 const HOP_MS = Math.round(((2 * Math.sqrt(2 * 5.5 * HOP_ARC)) / 5.5) * 1000);
 const LIFT = 1.04;
 
-export const AliveStage = forwardRef<AliveStageHandle, AliveStageProps>(function AliveStage({ flat, rig, geo, name, reduced, onShown, onAwake }, ref) {
+export const AliveStage = forwardRef<AliveStageHandle, AliveStageProps>(function AliveStage({ flat, rig, geo, name, reduced, onShown, onAwake, onHop }, ref) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const preview = useRef<RigPreview | null>(null);
   const [shown, setShown] = useState(false);
   const [shadow, setShadow] = useState<{ x: number; y: number; from: number; hop: number; on: boolean }>({ x: geo.feetX, y: geo.feetY, from: geo.feetX, hop: 0, on: false });
   const state = useRef({ x: geo.feetX, groundY: geo.feetY, height: geo.height, busyUntil: 0, dpr: 1 });
-  const callbacks = useRef({ onShown, onAwake });
-  callbacks.current = { onShown, onAwake };
+  const callbacks = useRef({ onShown, onAwake, onHop });
+  callbacks.current = { onShown, onAwake, onHop };
 
   useEffect(() => {
     const el = canvas.current;
@@ -134,6 +136,7 @@ export const AliveStage = forwardRef<AliveStageHandle, AliveStageProps>(function
     s.busyUntil = now + HOP_MS + 60;
     p.hop(tx * s.dpr, (s.groundY - HOP_ARC * h) * s.dpr);
     playUiSound('boing');
+    callbacks.current.onHop?.();
     const from = s.x;
     const groundY = s.groundY;
     setShadow((sh) => ({ x: tx, y: groundY, from, hop: sh.hop + 1, on: true }));

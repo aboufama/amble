@@ -1,7 +1,7 @@
 /**
  * The Trail's data (§2.4), pure and framework-free: what Home shows first, which worlds stand on the
- * trail and in what order, Lost and found expiry, "Edited 2 days ago", and the trail's geometry (the lit
- * path, the hills the signs stand on, where each stop goes).
+ * trail and in what order, Lost and found expiry, "Edited 2 days ago", and the trail's geometry (the
+ * path, the hills the signs stand on, where each stop goes, and room for the walkers).
  */
 import type { ArtId, ArtRecordLite, Assignment, Prefs, StarterId, StarterInfo, WorldId, WorldMeta } from '../model/types';
 
@@ -173,13 +173,23 @@ export function signStops(stops: readonly Stop[]): Array<Extract<Stop, { kind: '
 export const DESIGN_H = 768;
 export const FIRST_X = 92;
 export const SIGN_W = 170;
-export const FRAME_H = 96;
+/** A sign's board (its picture, name and "Edited 2 days ago") at 100 % text; the Trail measures the real one. */
+export const BOARD_H = 138;
 export const LEG_H = 34;
+
+/** Walkers stand in the path, their feet this far below its upper edge, and are this tall. */
+export const WALKER_FOOT = 20;
+export const WALKER_H = 58;
+/** Smaller than this, a walker would be a smudge: it stays home instead. */
+export const MIN_WALKER_H = 36;
+/** The longest stroll a walker takes (there and back, px), and the space kept above walkers' heads. */
+export const STROLL_MAX = 130;
+export const SIGN_CLEAR = 8;
 
 /** Slot widths along the trail. */
 export const STOP_W: Record<Stop['kind'], number> = { newWorld: 190, lamp: 380, world: 250, signpost: 150, starter: 250 };
 
-/** The lit path's upper edge, hand-traced from the mockup (x ≤ 1400), then gently rolling on. */
+/** The path's upper edge, hand-traced from the mockup (x ≤ 1400), then gently rolling on. */
 const PATH_POINTS: Array<[number, number]> = [
   [-30, 752],
   [120, 713],
@@ -250,17 +260,35 @@ export function placeStops(stops: readonly Stop[], o: { noteRoom?: number } = {}
   return { placed, width: x + FIRST_X };
 }
 
-/**
- * A sign's frame top (design px): legs standing on the ground, never higher than `minTop` (the hero copy
- * must stay readable when the trail scrolls under it).
- */
-export function signTop(cx: number, index: number, minTop: number): number {
-  return Math.max(minTop, Math.round(groundTop(cx) + 3 - LEG_H - FRAME_H + SIGN_WOBBLE[index % SIGN_WOBBLE.length]));
+/** The feet line of the walkers in front of a sign at `cx`, at its highest (they stroll sideways only). */
+function walkerFeetLine(cx: number): number {
+  return Math.min(walkerFeet(cx, 0).y, walkerFeet(cx, 1).y);
 }
 
-/** How long a sign's legs are, from its frame down to the ground (at least 10 px). */
-export function legHeight(cx: number, top: number): number {
-  return Math.max(10, Math.round(groundTop(cx) + 3 - (top + FRAME_H)));
+/**
+ * A sign's board top (design px): legs standing on the ground, the board clear of the heads of the
+ * walkers in front of it (their names stay readable), and never higher than `minTop` (the hero copy must
+ * stay readable when the trail scrolls under it). When the hero copy pushes a sign that low, its walkers
+ * shrink to fit under it (`walkerRoom`).
+ */
+export function signTop(cx: number, index: number, minTop: number, boardH = BOARD_H): number {
+  const standing = Math.round(groundTop(cx) + 3 - LEG_H - boardH + SIGN_WOBBLE[index % SIGN_WOBBLE.length]);
+  const clear = Math.floor(walkerFeetLine(cx) - WALKER_H - SIGN_CLEAR - boardH);
+  return Math.max(minTop, Math.min(standing, clear));
+}
+
+/** How long a sign's legs are, from its board down to the ground (at least 10 px). */
+export function legHeight(cx: number, top: number, boardH = BOARD_H): number {
+  return Math.max(10, Math.round(groundTop(cx) + 3 - (top + boardH)));
+}
+
+/**
+ * How tall the walkers in front of a sign may be, so they never cross its board: `WALKER_H` when there
+ * is room, less when the sign stands low, 0 (they stay home) when not even `MIN_WALKER_H` fits.
+ */
+export function walkerRoom(cx: number, top: number, boardH = BOARD_H): number {
+  const room = Math.floor(walkerFeetLine(cx) - SIGN_CLEAR - (top + boardH));
+  return room >= MIN_WALKER_H ? Math.min(WALKER_H, room) : 0;
 }
 
 /** A smooth SVG path through points (Catmull-Rom to cubic Béziers). */
@@ -280,8 +308,12 @@ export function smoothPath(points: Array<[number, number]>): string {
   return d;
 }
 
-/** Where walkers stand under a stop: feet in the lit band, left and right of the pool's centre. */
+function walkerX(cx: number, slot: number): number {
+  return cx + (slot === 0 ? 70 : -80);
+}
+
+/** Where walkers stand under a stop: feet in the path, right and left of the stop's centre. */
 export function walkerFeet(cx: number, slot: number): { x: number; y: number } {
-  const x = cx + (slot === 0 ? 70 : -80);
-  return { x, y: Math.round(pathTop(x) + 16) };
+  const x = walkerX(cx, slot);
+  return { x, y: Math.round(pathTop(x) + WALKER_FOOT) };
 }

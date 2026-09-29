@@ -1,4 +1,4 @@
-/* The Join card (§2.14) and its preview on the Teacher desk. Tokens only. */
+/* The Join card (§2.14) and its preview on the Teacher desk: flat, a white panel with a 1 px line. Tokens only. */
 .join-card__from {
   font: var(--type-meta);
   color: var(--text-2);
@@ -8,9 +8,9 @@
   display: grid;
   gap: var(--s2);
   padding: 14px 16px 16px;
-  border-radius: 14px;
-  background: var(--surface-raised);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 55%, transparent), var(--lift-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
 }
 
 .join-preview__title {

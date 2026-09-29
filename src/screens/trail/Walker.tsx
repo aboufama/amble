@@ -1,7 +1,8 @@
 /**
  * A drawing walking the trail (§2.4, §3.6): its baked walk strip played with `steps(8)` (0.8 s) while it
- * travels back and forth in its pool of light (24-40 s, turning with ease-soft). Paused, or under
- * reduced motion, it stands on its first frame. Clicking it opens the drawing on the Desk.
+ * travels back and forth along the path (24-40 s, turning with ease-soft). Until its strip is made, and
+ * for drawings without bones, it stands still as its picture, feet where the walk will put them. Paused,
+ * or under reduced motion, it stands on its first frame. Clicking it opens the drawing on the Desk.
  */
 import type { CSSProperties } from 'react';
 import { navigate } from '../../app/router';
@@ -9,12 +10,15 @@ import { t } from '../../i18n';
 import type { Strip } from '../../home/strips';
 import type { ArtId } from '../../model/types';
 import { cx } from '../../ui/cx';
+import type { StillAt } from './useStrips';
 
 export interface WalkerProps {
   id: ArtId;
   name: string;
   strip: Strip | null;
   still: string | null;
+  /** The still picture's feet (default: its bottom centre, in a square box). */
+  stillAt?: StillAt | null;
   /** Feet, in the trail's content px (y from the design's 768 px, bottom-anchored). */
   x: number;
   y: number;
@@ -35,7 +39,7 @@ export interface WalkerProps {
   className?: string;
 }
 
-export function Walker({ id, name, strip, still, x, y, height, travel, duration, delay, idle = false, focusable = false, onOpen, local = false, className }: WalkerProps) {
+export function Walker({ id, name, strip, still, stillAt = null, x, y, height, travel, duration, delay, idle = false, focusable = false, onOpen, local = false, className }: WalkerProps) {
   const label = t('home.walkerLabel', { name });
   const open = onOpen ?? (() => navigate({ name: 'drawFree', artId: id }));
   const topOf = (py: number) => (local ? `${py}px` : `calc(100% - 768px + ${py}px)`);
@@ -54,6 +58,8 @@ export function Walker({ id, name, strip, still, x, y, height, travel, duration,
       ['--frames' as string]: strip.frames,
       ['--strip-w' as string]: `${w * strip.frames}px`,
       ['--step' as string]: `${strip.dur}s`,
+      ['--foot-x' as string]: `${strip.footX * s}px`,
+      ['--foot-y' as string]: `${strip.footY * s}px`,
     } as CSSProperties;
     return (
       <button
@@ -66,6 +72,7 @@ export function Walker({ id, name, strip, still, x, y, height, travel, duration,
         data-testid="walker"
       >
         <span className="walker__turn">
+          <span className="walker__shadow" aria-hidden="true" />
           {/* The strip slides behind a one-frame window (a transform, so the walk plays on the compositor
               and the sticker edge is never repainted); the edge is drawn around the window. */}
           <span className="walker__frame">
@@ -78,17 +85,24 @@ export function Walker({ id, name, strip, still, x, y, height, travel, duration,
     );
   }
   if (!still) return null;
+  // The picture stands where its walk will start: feet on (x, y), as tall as its strip will be.
+  const at = stillAt ?? { w: 1, h: 1, footX: 0.5, footY: 1 };
+  const s = height / Math.max(1e-3, at.footY);
+  const box = { left: x - at.footX * s, top: topOf(y - at.footY * s), width: at.w * s, height: at.h * s };
   return (
     <button
       type="button"
       className={cx('walker', 'walker--still', className)}
-      style={{ left: x - height * 0.5, top: topOf(y - height), width: height, height } as CSSProperties}
+      style={{ ...box, ['--foot-x' as string]: `${at.footX * s}px`, ['--foot-y' as string]: `${at.footY * s}px` } as CSSProperties}
       aria-label={label}
       tabIndex={focusable ? 0 : -1}
       onClick={open}
       data-testid="walker"
     >
-      <img src={still} alt="" draggable={false} />
+      <span className="walker__turn">
+        <span className="walker__shadow" aria-hidden="true" />
+        <img src={still} alt="" draggable={false} />
+      </span>
     </button>
   );
 }

@@ -35,6 +35,38 @@ async function drawPerson(page: Page, board: Locator): Promise<void> {
   for (const [i, path] of strokes.entries()) await stroke(page, board, humanStroke(path, { seed: i + 1, speed: 900, p0: 0.5, p1: 0.9 }), { pointer: 'pen' });
 }
 
+/** The creature's head on screen: the top third of what the alive canvas draws (page px). */
+async function creatureHead(canvas: Locator): Promise<{ left: number; right: number; top: number; bottom: number }> {
+  return canvas.evaluate(async (c: HTMLCanvasElement) => {
+    const img = new Image();
+    img.src = c.toDataURL();
+    await img.decode();
+    const off = document.createElement('canvas');
+    off.width = c.width;
+    off.height = c.height;
+    const g = off.getContext('2d')!;
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let x0 = Infinity;
+    let x1 = -1;
+    let y0 = Infinity;
+    let y1 = -1;
+    for (let y = 0; y < c.height; y++) {
+      for (let x = 0; x < c.width; x++) {
+        if (d[(y * c.width + x) * 4 + 3] < 128) continue;
+        x0 = Math.min(x0, x);
+        x1 = Math.max(x1, x);
+        y0 = Math.min(y0, y);
+        y1 = Math.max(y1, y);
+      }
+    }
+    const r = c.getBoundingClientRect();
+    const k = r.width / c.width;
+    const top = r.top + y0 * k;
+    return { left: r.left + x0 * k, right: r.left + x1 * k, top, bottom: top + (y1 - y0) * k * 0.34 };
+  });
+}
+
 test('a first doodle comes alive, gets a kind and a name, and walks into Boss fight', async ({ page }) => {
   // The rig worker starts cold in a fresh profile, and test machines are slow: generous waits.
   test.setTimeout(180_000);
@@ -71,6 +103,14 @@ test('a first doodle comes alive, gets a kind and a name, and walks into Boss fi
     return false;
   });
   expect(moving, 'the alive canvas changes between frames').toBe(true);
+
+  // "It's alive!" stands beside the creature, never over its head (QA: it covered the head).
+  const note = page.getByTestId('alive-note');
+  await expect(note).toBeVisible();
+  const head = await creatureHead(canvas);
+  const noteBox = (await note.boundingBox())!;
+  const overlaps = noteBox.x < head.right && noteBox.x + noteBox.width > head.left && noteBox.y < head.bottom && noteBox.y + noteBox.height > head.top;
+  expect(overlaps, `the note (${JSON.stringify(noteBox)}) is clear of the head (${JSON.stringify(head)})`).toBe(false);
 
   // It is on the shelf, as a blob until told otherwise.
   const character = async () => page.evaluate(() => (window as unknown as { __amble: Amble }).__amble.getState().library.characters[0] ?? null);

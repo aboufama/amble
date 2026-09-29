@@ -1,7 +1,9 @@
 /*
- * The First page (§2.3; spec-mocks/01 and 02). At 1366x768: the paper 700x574 at (122, 92), rotated
- * −1.3°; the dock 64 wide at x 34; the right column x 872-1330. At 1280x800 (touch): the paper 640x600
- * at (100, 84), the column 420 wide, 48 px caps. Tokens only.
+ * The First page (§2.3; spec-mocks/01 and 02, in the Scratch look). At 1366x768: the paper 700x574 at
+ * (122, 86), square and untaped; the pen rail 64 wide at x 34; the right column x 872-1330. At 1280x800
+ * (touch): the paper 640x600, the column 420 wide, 48 px pens. The paper is --sheet (white in every
+ * theme), so the words and controls on it read their own dark ink. Flat: 8 px corners, 1 px lines, no
+ * shadows. Tokens only.
  */
 
 .first {
@@ -21,14 +23,13 @@
   --col-w: 458px;
   --top: 26px;
   --paper-h: 574px;
-  --cap: 44px;
+  --cap: 34px;
   --card-h: 160px;
-  --inset: 10px;
-  /* The lit path's room under the trust line: when a banner takes height above the paper, the paper gives it
+  /* The path's room under the trust line: when a banner takes height above the paper, the paper gives it
    * up instead of pushing the trust line onto the path. */
   --path-room: 72px;
   position: absolute;
-  inset: var(--header) 0 0 0;
+  inset: var(--topbar) 0 0 0;
   z-index: 1;
   display: grid;
   grid-template-columns: var(--pad-l) var(--dock-w) var(--gap-a) minmax(0, var(--paper-w)) minmax(16px, var(--gap-b)) minmax(0, var(--col-w)) minmax(8px, 1fr);
@@ -47,13 +48,17 @@
 
 :root[data-layout='tab'] .first__main {
   --path-room: 54px;
-  --paper-h: min(574px, calc(100vh - var(--header) - 26px - 84px));
+  --paper-h: min(574px, calc(100vh - var(--topbar) - 26px - 84px));
   --col-w: 430px;
   --gap-b: 36px;
-  --card-h: min(160px, calc((100vh - var(--header) - 26px - 250px) / 2));
+  --card-h: min(150px, calc((100vh - var(--topbar) - 300px) / 2));
+  --thumb-starter: calc(var(--card-h) - 70px);
+  --thumb-seed: calc(var(--card-h) - 86px);
 }
 
 :root[data-layout='touch'] .first__main {
+  --thumb-starter: 84px;
+  --thumb-seed: 64px;
   --pad-l: 20px;
   --dock-w: 68px;
   --gap-a: 12px;
@@ -62,12 +67,14 @@
   --col-w: 420px;
   --top: 18px;
   --path-room: 80px;
-  --paper-h: min(600px, calc(100vh - var(--header) - 18px - 64px));
-  --cap: 48px;
+  --paper-h: min(600px, calc(100vh - var(--topbar) - 18px - 64px));
+  --cap: 38px;
   --card-h: 150px;
 }
 
 :root[data-layout='small'] .first__main {
+  --thumb-starter: calc(var(--card-h) - 70px);
+  --thumb-seed: calc(var(--card-h) - 86px);
   --pad-l: 12px;
   --dock-w: 58px;
   --gap-a: 10px;
@@ -76,44 +83,20 @@
   --col-w: min(400px, 37vw);
   --top: 14px;
   --path-room: 60px;
-  --paper-h: calc(100vh - var(--header) - 14px - 96px);
+  --paper-h: calc(100vh - var(--topbar) - 14px - 96px);
   --dock-align: start;
-  --cap: 34px;
+  --cap: 28px;
   --cap-gap: 0px;
-  --card-h: min(146px, calc((100vh - var(--header) - 14px - 210px) / 2));
-}
-
-/* The touch layout's paper sits 18 px under the header: the lemon tape moves down so its end stays clear of
- * the wordmark. */
-:root[data-layout='touch'] .first__tape--lemon {
-  left: -36px;
-  top: 6px;
-}
-
-:root[data-layout='small'] .first__tape {
-  width: 84px;
-  height: 22px;
-}
-
-:root[data-layout='small'] .first__tape--lemon {
-  left: -18px;
-  top: 8px;
-  rotate: -28deg;
-}
-
-:root[data-layout='small'] .first__tape--lime {
-  right: -16px;
-  top: 6px;
-  rotate: 24deg;
+  --card-h: min(146px, calc((100vh - var(--topbar) - 14px - 210px) / 2));
 }
 
 :root[data-layout='small'] .first__heading {
-  left: 32px;
-  top: 28px;
+  left: 28px;
+  top: 24px;
 }
 
 :root[data-layout='small'] .first__title {
-  font-size: 2.125rem;
+  font-size: 2rem;
 }
 
 :root[data-layout='small'] .first__sub {
@@ -122,11 +105,7 @@
 }
 
 :root[data-layout='small'] .first__hint {
-  margin: 30px 0 0 52px;
-}
-
-:root[data-layout='small'] .first-col__title--give {
-  font-size: 1.75rem;
+  margin: 26px 0 0 48px;
 }
 
 :root[data-layout='small'] .first-col__cards {
@@ -134,16 +113,16 @@
   margin-top: 12px;
 }
 
-/* ---------- the entrance: the night fades in, the lanterns light, the paper slides up ---------- */
+/* ---------- the entrance: the page fades in, then the paper slides up ---------- */
 .first::after {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 30;
   pointer-events: none;
-  background: var(--bg-deep);
+  background: var(--bg);
   opacity: 1;
-  transition: opacity 420ms var(--ease-soft);
+  transition: opacity 320ms var(--ease-soft);
 }
 
 .first--entered::after {
@@ -154,14 +133,14 @@
 .pen-dock,
 .first__trust {
   transition:
-    transform var(--t-page) var(--ease-lift) 620ms,
-    opacity 260ms var(--ease-soft) 620ms;
+    transform var(--t-page) var(--ease-amble) 260ms,
+    opacity 260ms var(--ease-soft) 260ms;
 }
 
 .first:not(.first--entered) .first__paper-cell,
 .first:not(.first--entered) .pen-dock,
 .first:not(.first--entered) .first__trust {
-  transform: translateY(70px);
+  transform: translateY(40px);
   opacity: 0;
 }
 
@@ -173,7 +152,7 @@
 }
 
 .first__col {
-  transition: opacity 320ms var(--ease-soft) 760ms;
+  transition: opacity 320ms var(--ease-soft) 420ms;
 }
 
 .first:not(.first--entered) .first__col {
@@ -200,15 +179,13 @@
   align-self: end;
 }
 
-/* The paper's tapes reach about 44 px above it: the banner stays clear of them (they covered Why?). */
 .first__banner .files-banner {
   width: 100%;
-  margin: 10px 0 48px;
+  margin: 10px 0 14px;
 }
 
-/* ---------- the pen dock ---------- */
+/* ---------- the pen rail ---------- */
 .pen-dock {
-  --line-control: var(--line-control-panel);
   position: relative;
   z-index: 2;
   grid-column: 2;
@@ -218,15 +195,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--cap-gap, 6px);
+  gap: var(--cap-gap, 2px);
   width: var(--dock-w);
   margin-top: var(--dock-top, 0px);
-  padding: 12px 0 8px;
-  border-radius: 32px;
+  padding: 10px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent),
-    var(--lift);
 }
 
 .pen-dock__cap,
@@ -234,49 +209,36 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: max(var(--cap), var(--target));
-  height: max(var(--cap), var(--target));
+  width: var(--target);
+  height: var(--target);
   padding: 0;
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   color: var(--text-2);
   background: transparent;
 }
 
-.pen-dock__cap {
-  height: max(var(--cap), var(--target));
-}
-
-:root:not([data-layout='small']) .pen-dock__cap {
-  height: var(--cap);
-}
-
+/* A pen is a round swatch of its ink; a thin ring keeps the pale ones on the white rail. */
 .pen-dock__ink {
   width: var(--cap);
   height: var(--cap);
-  border-radius: 50%;
-  box-shadow:
-    inset 0 -4px 0 color-mix(in srgb, var(--bg-deep) 30%, transparent),
-    0 0 0 2px color-mix(in srgb, var(--text) 9%, transparent);
-  transition: box-shadow var(--t-micro) var(--ease-soft), transform var(--t-micro) var(--ease-soft);
+  border-radius: var(--r-round);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: box-shadow var(--t-micro) var(--ease-soft);
 }
 
-.pen-dock__cap:hover:not([aria-disabled='true']) .pen-dock__ink {
-  transform: translateY(-1px);
-}
-
-/* The picked pen's ring is the text colour: cream on the night dock, ink on Day's cream dock (a --paper
- * ring vanishes there), white in High contrast. */
+/* The picked pen: Scratch's selection, a purple ring and its halo. */
 .pen-dock__cap--on .pen-dock__ink {
   box-shadow:
-    inset 0 -4px 0 color-mix(in srgb, var(--bg-deep) 30%, transparent),
-    0 0 0 3px var(--surface-bottom),
-    0 0 0 6px var(--text);
+    inset 0 0 0 1px var(--line),
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--change-bright),
+    0 0 0 8px var(--select-ring);
 }
 
 .pen-dock__sep {
   flex: none;
-  width: 30px;
+  width: 32px;
   height: 1px;
   margin: 4px 0;
   background: var(--line);
@@ -284,18 +246,20 @@
 
 .pen-dock__tool:hover:not([aria-disabled='true']) {
   color: var(--text);
-  background: color-mix(in srgb, var(--text) 8%, transparent);
+  background: var(--bg);
 }
 
 .pen-dock__tool--on {
-  color: var(--text);
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  color: var(--change);
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 2px var(--change-bright),
+    0 0 0 4px var(--select-ring);
 }
 
 .pen-dock__dot {
   display: block;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   background: var(--text);
 }
 
@@ -310,90 +274,73 @@
 }
 
 .pen-dock__more {
-  width: calc(var(--dock-w) - 8px);
+  width: calc(var(--dock-w) - 10px);
   min-height: var(--target);
   margin-top: 2px;
   padding: 4px 2px;
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--r-btn);
   font: 600 0.8125rem/1rem var(--font-ui);
-  color: var(--text-2);
+  color: var(--accent-text);
   white-space: normal;
   background: transparent;
 }
 
 .pen-dock__more:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--text) 8%, transparent);
+  background: var(--bg);
 }
 
 /* ---------- the paper ---------- */
 .first__paper-cell {
+  /* Words and marks on the white sheet: the page's ink in Original, black in High contrast (where the
+     page's words are white). A shared --on-sheet token wins when there is one. */
+  --sheet-ink: var(--on-sheet, var(--text));
+  --sheet-ink-2: var(--on-sheet, var(--text-2));
+  --sheet-accent: var(--on-sheet, var(--accent-text));
   grid-area: paper;
   position: relative;
   min-width: 0;
   min-height: 0;
 }
 
+:root[data-theme='contrast'] .first__paper-cell {
+  --sheet-ink: var(--on-sheet, var(--on-accent));
+  --sheet-ink-2: var(--on-sheet, var(--on-accent));
+  --sheet-accent: var(--on-sheet, var(--on-accent));
+}
+
 .first__sheet,
-.first__texture,
 .first__front {
   position: absolute;
   inset: 0;
-  rotate: -1.3deg;
 }
 
 .first__sheet {
   z-index: 0;
-  border-radius: 6px;
-  background: var(--paper);
-  box-shadow:
-    0 22px 44px -14px color-mix(in srgb, var(--bg-deep) 92%, transparent),
-    0 6px 14px color-mix(in srgb, var(--bg-deep) 55%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 55%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--r-paper);
+  background: var(--sheet);
 }
 
-.first__tape {
-  position: absolute;
-  width: 112px;
-  height: 28px;
-  pointer-events: none;
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--bg-deep) 30%, transparent);
-  clip-path: polygon(2% 12%, 7% 0, 14% 10%, 22% 2%, 30% 11%, 40% 0, 50% 9%, 61% 1%, 72% 10%, 83% 0, 92% 9%, 100% 3%, 98% 88%, 91% 100%, 83% 90%, 71% 100%, 60% 91%, 48% 100%, 37% 90%, 25% 100%, 14% 91%, 6% 100%, 0 88%);
-}
-
-.first__tape--lemon {
-  left: -34px;
-  top: -6px;
-  background: var(--tape-lemon);
-  rotate: -34deg;
-}
-
-.first__tape--lime {
-  right: -30px;
-  top: -12px;
-  background: var(--tape-lime);
-  rotate: 30deg;
-}
-
-/* The drawing and the alive stage sit unrotated inside the sheet (the engine maps pointers on page axes). */
+/* The drawing and the alive stage fill the sheet inside its edge. */
 .first__inner {
   position: absolute;
-  inset: var(--inset);
+  inset: 1px;
   z-index: 1;
+  overflow: hidden;
+  border-radius: calc(var(--r-paper) - 1px);
 }
 
 .first__board {
   position: absolute;
   inset: 0;
   z-index: 1;
-  border-radius: 3px;
   touch-action: none;
 }
 
 .first__board:focus-visible {
-  outline: 3px solid var(--ink);
-  outline-offset: 2px;
+  outline: 3px solid var(--sheet-ink);
+  outline-offset: -4px;
   box-shadow: none;
 }
 
@@ -407,6 +354,7 @@
   transition: opacity 150ms var(--ease-soft);
 }
 
+/* The ground line the creature lands on. */
 .first__ground {
   position: absolute;
   left: 3%;
@@ -420,48 +368,26 @@
 
 .first__ground path {
   fill: none;
-  stroke: color-mix(in srgb, var(--paper-line) 55%, transparent);
+  stroke: color-mix(in srgb, var(--sheet-ink-2) 28%, transparent);
   stroke-width: 2px;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
 }
 
-/* Paper fibre and a soft vignette, over the sheet and the drawing alike (so the seam never shows). */
-.first__texture {
-  z-index: 4;
-  border-radius: 6px;
-  pointer-events: none;
-  mix-blend-mode: multiply;
-  background: radial-gradient(125% 100% at 30% 20%, transparent 58%, color-mix(in srgb, var(--paper-2) 70%, var(--paper-3)) 100%);
-}
-
-.first__texture::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: url('../../ui/assets/grain.png') 0 0 / 256px 256px;
-  opacity: 0.07;
-}
-
-:root[data-theme='contrast'] .first__texture {
-  display: none;
-}
-
 .first__front {
   z-index: 5;
   pointer-events: none;
+  color: var(--sheet-ink);
 }
 
 /*
- * The title, the line under it and the "start anywhere" hint flow in one block at (46, 40): at 1366x768 and
- * 100 % text they land where the mockup has them (the line at y 94, the hint at 172), and larger text or
+ * The title, the line under it and the "start anywhere" hint flow in one block at (44, 36): larger text or
  * Extra spacing moves each one down instead of stacking them (WCAG 1.4.12).
  */
 .first__heading {
   position: absolute;
-  left: 46px;
-  top: 40px;
+  left: 44px;
+  top: 36px;
   right: 40px;
   display: flex;
   flex-direction: column;
@@ -471,38 +397,36 @@
 .first__title {
   margin: 0;
   font: var(--display-l);
-  letter-spacing: -0.005em;
-  color: var(--ink);
+  color: var(--sheet-ink);
 }
 
 .first__sub {
-  margin: 10px 0 0 2px;
+  margin: 8px 0 0;
   font: 400 1.25rem/1.4 var(--font-ui);
-  color: var(--ink-2);
+  color: var(--sheet-ink-2);
 }
 
 .first__hint {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin: 50px 0 0 72px;
-  font: var(--weight-display) 1.1875rem/1 var(--font-display);
-  color: var(--pencil-ink);
+  margin: 46px 0 0 72px;
+  font: var(--type-heading);
+  color: var(--sheet-accent);
   transition: opacity var(--t-move) var(--ease-soft);
 }
 
 .first__hint svg {
-  margin: 6px 0 0 104px;
+  margin: 6px 0 0 96px;
   overflow: visible;
 }
 
 .first__hint-arrow {
   fill: none;
-  stroke: var(--pencil-ink);
-  stroke-width: 2.4px;
+  stroke: var(--sheet-accent);
+  stroke-width: 2px;
   stroke-linecap: round;
   stroke-linejoin: round;
-  opacity: 0.75;
 }
 
 .first__hint--gone {
@@ -511,63 +435,35 @@
 
 .first__life {
   position: absolute;
-  right: 26px;
-  bottom: 26px;
+  right: 24px;
+  bottom: 24px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 10px;
+  gap: 8px;
   pointer-events: auto;
 }
 
 .first__life-hint {
-  margin: 0 6px 0 0;
-  font: 600 0.875rem/1.1 var(--font-display);
-  color: var(--ink-2);
+  margin: 0 2px 0 0;
+  font: var(--type-meta);
+  font-weight: 600;
+  color: var(--sheet-ink-2);
 }
 
-.first__life-button.btn {
-  min-height: 50px;
-  padding: 0 22px 0 18px;
-  border-radius: var(--r-chip);
-  font-size: 1rem;
-}
-
-.first__life-button[aria-disabled='true'] {
-  opacity: 1;
-  color: color-mix(in srgb, var(--ink-2) 80%, transparent);
-  background: var(--paper-2);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--paper-line) 45%, transparent);
-  cursor: default;
-}
-
+/* Ready: a gentle nudge, three times (not under reduced motion). */
 .first__life-button--ready {
-  box-shadow:
-    inset 0 0 0 1.5px var(--paper-line),
-    0 3px 0 color-mix(in srgb, var(--ink) 18%, transparent),
-    0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent);
   animation: life-pulse 2s var(--ease-soft) 3;
-}
-
-.first__life-button--ready .icon {
-  color: color-mix(in srgb, var(--accent), var(--ink) 45%);
 }
 
 @keyframes life-pulse {
   0%,
   60%,
   100% {
-    box-shadow:
-      inset 0 0 0 1.5px var(--paper-line),
-      0 3px 0 color-mix(in srgb, var(--ink) 18%, transparent),
-      0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent);
+    scale: 1;
   }
   30% {
-    box-shadow:
-      inset 0 0 0 1.5px var(--paper-line),
-      0 3px 0 color-mix(in srgb, var(--ink) 18%, transparent),
-      0 0 0 9px color-mix(in srgb, var(--accent) 0%, transparent),
-      0 0 22px color-mix(in srgb, var(--accent) 60%, transparent);
+    scale: 1.05;
   }
 }
 
@@ -578,18 +474,18 @@
 /* ---------- alive: the chips, the note, the stage ---------- */
 .first__chips {
   position: absolute;
-  left: 42px;
-  right: 22px;
-  bottom: 24px;
+  left: 24px;
+  right: 24px;
+  bottom: 22px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px 10px;
   pointer-events: auto;
 }
 
 .first__chips--on > * {
-  animation: chip-in 280ms var(--ease-pop) both;
+  animation: chip-in 280ms var(--ease-amble) both;
 }
 
 .first__chips--on > :nth-child(2) {
@@ -610,28 +506,12 @@
 .first__tap-hint {
   flex: 1 1 180px;
   min-width: 0;
-  font: 500 0.9375rem/1.3 var(--font-ui);
-  color: var(--ink-2);
+  font: var(--type-meta);
+  font-size: 0.9375rem;
+  color: var(--sheet-ink-2);
 }
 
-.paper-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: var(--target);
-  padding: 0 14px;
-  border: 0;
-  border-radius: var(--r-btn);
-  font: var(--type-label);
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow:
-    inset 0 0 0 1.5px var(--paper-line),
-    0 3px 0 color-mix(in srgb, var(--ink) 18%, transparent);
-  cursor: pointer;
-}
-
-/* The kind picker's pill, as tall as the name chip beside it. */
+/* The kind picker's button, as tall as the name button beside it. */
 .first-kind {
   display: inline-flex;
 }
@@ -655,73 +535,90 @@
   animation: none;
 }
 
-.paper-chip b {
+/* **Name: Blorp ✎**: a secondary button, then a field while it is edited. */
+.first-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--target);
+  padding: 0 12px 0 14px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-btn);
+  font: var(--type-label);
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.first-name:hover {
+  background: var(--bg);
+}
+
+.first-name b {
   font-weight: 700;
 }
 
-.paper-chip:hover {
-  background: var(--paper-2);
+.first-name--editing {
+  padding-right: 4px;
+  cursor: default;
 }
 
-.paper-chip--busy {
-  color: var(--ink-2);
+.first-name--editing:hover {
+  background: var(--surface);
 }
 
-.paper-chip--editing {
-  padding-right: 6px;
-  box-shadow:
-    inset 0 0 0 2px var(--ink),
-    0 2px 0 color-mix(in srgb, var(--ink) 12%, transparent);
-}
-
-.paper-chip__input {
+.first-name__input {
   width: 13ch;
-  min-height: 32px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: 6px;
-  outline: none;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-btn);
   font: 700 0.96875rem/1.25rem var(--font-ui);
-  color: var(--ink);
-  background: var(--paper-2);
+  color: var(--text);
+  background: var(--surface);
 }
 
+.first-name__input:focus-visible {
+  border: 2px solid var(--brand);
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 4px var(--hover-ring),
+    0 0 0 3px var(--focus-gap);
+}
+
+/* "It's alive!": a flat label beside the creature's head (placed in FirstPage, never over it). */
 .first__alive-note {
   position: absolute;
   z-index: 6;
   margin: 0;
-  font: 700 2.125rem/1 var(--font-display);
-  color: var(--ink);
+  padding: 4px 12px 5px;
+  border-radius: var(--r-card);
+  font: var(--weight-display) 1.625rem/1.2 var(--font-display);
+  color: var(--sheet-ink);
   white-space: nowrap;
-  pointer-events: none;
-  rotate: -4deg;
-  animation: swash-in 200ms var(--ease-amble) both;
-}
-
-.first__alive-note span {
-  position: relative;
-  display: inline-block;
-  padding: 2px 8px;
-  isolation: isolate;
-}
-
-.first__alive-note span::before {
-  content: '';
-  position: absolute;
-  inset: 12px -12px -6px -10px;
-  z-index: -1;
-  border-radius: 10px 30px 14px 26px;
   background: var(--swash);
-  opacity: 0.9;
-  transform: skew(-8deg);
+  pointer-events: none;
+  animation: alive-in 240ms var(--ease-amble) both;
+  transition: opacity var(--t-move) var(--ease-soft);
 }
 
-@keyframes swash-in {
+:root[data-theme='contrast'] .first__alive-note {
+  color: var(--on-alive);
+  background: var(--alive);
+}
+
+.first__alive-note--measuring {
+  visibility: hidden;
+}
+
+.first__alive-note--gone {
+  opacity: 0;
+}
+
+@keyframes alive-in {
   from {
-    clip-path: inset(-20% 100% -20% -10%);
-  }
-  to {
-    clip-path: inset(-20% -10% -20% -10%);
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
   }
 }
 
@@ -739,14 +636,13 @@
   position: absolute;
   inset: 0;
   z-index: 3;
-  border-radius: 3px;
   cursor: pointer;
   touch-action: manipulation;
 }
 
 .alive-stage:focus-visible {
-  outline: 3px solid var(--ink);
-  outline-offset: 2px;
+  outline: 3px solid var(--sheet-ink);
+  outline-offset: -4px;
   box-shadow: none;
 }
 
@@ -768,9 +664,9 @@
 
 .alive-stage__shadow {
   position: absolute;
-  height: 14px;
+  height: 10px;
   border-radius: 50%;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--ink) 26%, transparent), transparent);
+  background: color-mix(in srgb, var(--sheet-ink) 16%, transparent);
   opacity: 0;
   pointer-events: none;
   transition: opacity 360ms var(--ease-soft);
@@ -803,37 +699,26 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 12px 0 0 10px;
+  margin: 10px 0 0 4px;
   font: var(--type-meta);
   color: var(--text-2);
 }
 
 /* ---------- the right column ---------- */
 /*
- * The column scrolls, and a scroller clips what it holds: the cards' and the idea box's shadows would end
- * in hard edges cutting across the lit path. So the scroller reaches into the (transparent) gutters by
- * --bleed on each side and pads its content back to where the grid put it.
+ * The column scrolls, and a scroller clips what it holds: it reaches into the gutters by --bleed on each
+ * side and pads its content back to where the grid put it, so focus rings on the cards stay whole.
  */
 .first__col {
-  --bleed-l: 30px;
-  --bleed-r: 30px;
+  --bleed: 10px;
   grid-column: 6;
   grid-row: 2 / 5;
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  margin: 0 calc(-1 * var(--bleed-r)) 0 calc(-1 * var(--bleed-l));
-  padding: 0 calc(6px + var(--bleed-r)) 20px calc(4px + var(--bleed-l));
+  margin: calc(-1 * var(--bleed)) calc(-1 * var(--bleed)) 0;
+  padding: var(--bleed) var(--bleed) 10px;
   scrollbar-width: thin;
-}
-
-:root[data-layout='tab'] .first__col {
-  --bleed-l: 24px;
-}
-
-:root[data-layout='small'] .first__col {
-  --bleed-l: 12px;
-  --bleed-r: 8px;
 }
 
 .first-col {
@@ -842,14 +727,8 @@
 }
 
 .first-col__title {
-  margin: 4px 0 0;
+  margin: 0;
   font: var(--display-m);
-}
-
-.first-col__title--give {
-  font: var(--display-l);
-  font-size: 2.25rem;
-  letter-spacing: -0.01em;
 }
 
 .first-col__name {
@@ -858,68 +737,30 @@
 
 .first-col__lede {
   max-width: 440px;
-  margin-top: 10px;
+  margin-top: 8px;
   font: var(--type-body);
   color: var(--text-2);
-}
-
-@media (max-height: 700px) {
-  .first-col__lede {
-    margin-top: 6px;
-    font-size: 0.9375rem;
-    line-height: 1.35;
-  }
-
-  .first-col__idea {
-    margin-top: 14px;
-  }
-
-  .first-col .seed-card {
-    --thumb-h: calc(var(--card-h) - 64px);
-  }
-
-  .first-col--alive .seed-card {
-    --thumb-h: calc(var(--card-h) - 84px);
-  }
-}
-
-@media (max-height: 640px) {
-  .first-col__lede {
-    display: none;
-  }
 }
 
 .first-col__cards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 20px;
-  margin-top: 20px;
+  gap: 16px;
+  margin-top: 16px;
 }
 
 /* A card is at least --card-h tall and grows with larger text (130 %) instead of spilling its words out of
- * the paper; the column scrolls. */
+ * the card; the column scrolls. */
 .first-col__card {
   min-height: var(--card-h);
 }
 
-.first-col__card:nth-child(2) .seed-card {
-  --tilt: 1.2deg;
-}
-
-.first-col__card:nth-child(3) .seed-card {
-  --tilt: -1deg;
-}
-
-.first-col__card:nth-child(4) .seed-card {
-  --tilt: 0.8deg;
-}
-
 .first-col .seed-card {
-  --thumb-h: 90px;
+  --thumb-h: var(--thumb-starter, 90px);
 }
 
 .first-col--alive .seed-card {
-  --thumb-h: 72px;
+  --thumb-h: var(--thumb-seed, 72px);
 }
 
 .first-col--alive .first-col__card {
@@ -930,7 +771,7 @@
 @keyframes card-rise {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(12px);
   }
 }
 
@@ -944,50 +785,92 @@
 }
 
 .first-col__idea {
-  margin-top: 22px;
+  margin-top: 18px;
 }
 
 .first-col--alive .first-col__idea {
   margin-top: 8px;
 }
 
+/* ▸ is ◂ turned around (the icon's meaning). */
 .icon--flip {
   transform: scaleX(-1);
 }
 
 .teacher-note {
   position: relative;
-  margin: 0 0 18px;
-  padding: 16px 18px 14px;
-  border-radius: var(--r-cut);
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: var(--lift-paper);
-  rotate: -1deg;
-}
-
-.teacher-note .tape--lemon {
-  left: 50%;
-  translate: -50% 0;
-  rotate: 2deg;
+  margin: 0 0 16px;
+  padding: 12px 16px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
+  background: var(--surface);
 }
 
 .teacher-note__from {
-  font: var(--type-caps);
-  letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
-  color: var(--ink-2);
+  font: var(--type-chip);
+  font-weight: 700;
+  color: var(--accent-text);
 }
 
 .teacher-note__title {
-  margin-top: 4px;
+  margin-top: 2px;
   font: var(--type-title);
 }
 
 .teacher-note__text {
   margin-top: 4px;
   font: var(--type-body);
-  color: var(--ink-2);
+  color: var(--text-2);
+}
+
+/* A short window (a Chromebook in a tab): the column keeps everything in view, the idea box included. */
+@media (max-height: 700px) {
+  .first-col__title {
+    font-size: 1.625rem;
+    line-height: 1.2;
+  }
+
+  .first-col__lede {
+    margin-top: 4px;
+    font-size: 0.9375rem;
+    line-height: 1.35;
+  }
+
+  .first-col__idea {
+    margin-top: 12px;
+  }
+
+  /* With the idea box (or the teacher's note) there too, the line under the title makes room, the note
+     tightens and the pictures shrink a little. */
+  .first-col--alive:has(.idea-box) .first-col__lede,
+  .first-col:has(.teacher-note):has(.idea-box) .first-col__lede {
+    display: none;
+  }
+
+  .teacher-note {
+    margin-bottom: 12px;
+    padding: 8px 14px 10px;
+  }
+
+  .teacher-note__title {
+    font: var(--type-heading);
+  }
+
+  .teacher-note__text {
+    font: var(--type-meta);
+  }
+
+  .first-col:has(.teacher-note):has(.idea-box) {
+    --card-h: 120px;
+    --thumb-starter: 52px;
+  }
+}
+
+@media (max-height: 640px) {
+  .first-col__lede {
+    display: none;
+  }
 }
 
 /* ---------- portrait: the paper first, then the column (the page may scroll here) ---------- */
@@ -1000,7 +883,7 @@
 :root[data-layout='portrait'] .first__main {
   position: relative;
   inset: auto;
-  padding-top: var(--header);
+  padding-top: var(--topbar);
   grid-template-columns: 12px 64px 12px minmax(0, 1fr) 12px;
   grid-template-rows: auto min(640px, 72vw) auto auto;
   grid-template-areas:

@@ -12,7 +12,6 @@ import { watchStarterCopy } from '../../home/starterCopies';
 import { showToast } from '../../state/app';
 import { refreshLibrary } from '../../state/library';
 import { Footprints } from '../../ui/components';
-import { NightSky } from '../trail/Landscape';
 import './newworld.css';
 
 /** Starter copies made in this page's life, by starter (StrictMode runs the effect twice in dev). */
@@ -52,7 +51,6 @@ export function OpenStarter({ route }: { route: RouteOf<'starter'> }) {
 
   return (
     <div className="open-starter" data-testid="screen-starter">
-      <NightSky decor={false} />
       <main id="main" tabIndex={-1} className="open-starter__main">
         <Footprints label={t('home.opening')} />
         <h1 className="open-starter__title">{starters.info(route.id).title}</h1>

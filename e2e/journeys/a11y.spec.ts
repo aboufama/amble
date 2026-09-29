@@ -113,11 +113,14 @@ test('the AI cards pass axe: the explainer, the plan card and the crisis card', 
   await openAmble(page, { ai: 'mock', clean: true });
   const found: string[] = [];
   await screen(page, '#/new?idea=1');
-  await page.getByTestId('idea-field').fill('a snail who rescues her friends from a grumpy salt king');
-  await page.getByTestId('idea-go').click();
+  // The explainer opens when the student asks (How wishes work), never on its own.
+  await page.getByTestId('how-wishes').click();
   await expect(page.getByTestId('ai-explainer')).toBeVisible();
   found.push(...(await axe(page, 'AI explainer')));
-  await page.getByRole('dialog').getByRole('button', { name: 'Got it' }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('ai-explainer')).toBeHidden();
+  await page.getByTestId('idea-field').fill('a snail who rescues her friends from a grumpy salt king');
+  await page.getByTestId('idea-go').click();
   await expect(page.getByTestId('plan-card')).toBeVisible();
   found.push(...(await axe(page, 'plan card')));
 
