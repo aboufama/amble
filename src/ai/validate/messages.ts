@@ -32,6 +32,8 @@ export function kidMessage(rule: RuleId, c: KidContext): string {
       return `${l}the game's class should be called Game.${done}`;
     case 'duplicate-game-class':
       return `${l}only game.js may have a class called Game.`;
+    case 'duplicate-declaration':
+      return `${l}${name} is already made in another file of this game. Each name can only be made once.`;
     case 'missing-super':
       return `${l}a constructor has to start with super().${done}`;
     case 'async-lifecycle':

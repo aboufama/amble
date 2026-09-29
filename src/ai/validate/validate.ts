@@ -3,12 +3,12 @@
  * auto-fixes, then a second pass over the fixed code so the result lists only what is still wrong.
  * About 1-3 ms for a typical game, so it can also run as the student types.
  */
-import type { AnyNode, Class, ClassDeclaration, Program } from 'acorn';
+import type { AnyNode, Class, ClassDeclaration, Identifier, Pattern, Program } from 'acorn';
 import { ancestor } from 'acorn-walk';
 import MagicString from 'magic-string';
 import type { JsonValue } from '../json/schema';
 import { byteLength, ENTRY_FILE, isSafeGamePath } from '../gameFiles';
-import { keyName, lineOf, memberPath, parseScript, src, thisIsScene } from './ast';
+import { columnOf, keyName, lineOf, memberPath, parseScript, src, thisIsScene } from './ast';
 import { FileContext, type GameFacts } from './context';
 import { checkManifestStatics, checkDialReads, declaredDials } from './art';
 import { checkDials, restartDials } from './dials';
@@ -131,6 +131,70 @@ function checkGameClass(ctx: FileContext, isEntry: boolean): void {
   }
 }
 
+/** The names a declaration pattern binds: `a`, `{ a, b: c }`, `[a, ...rest]`. */
+function boundNames(p: Pattern | null): Identifier[] {
+  if (!p) return [];
+  switch (p.type) {
+    case 'Identifier':
+      return [p];
+    case 'ObjectPattern':
+      return p.properties.flatMap((q) => (q.type === 'RestElement' ? boundNames(q.argument) : boundNames(q.value)));
+    case 'ArrayPattern':
+      return p.elements.flatMap((e) => boundNames(e));
+    case 'AssignmentPattern':
+      return boundNames(p.left);
+    case 'RestElement':
+      return boundNames(p.argument);
+    default:
+      return [];
+  }
+}
+
+/** A file's top-level names; `const`, `let` and `class` are lexical (they clash with any other declaration). */
+function topLevelDeclarations(ast: Program): Array<{ id: Identifier; lexical: boolean }> {
+  const out: Array<{ id: Identifier; lexical: boolean }> = [];
+  for (const n of ast.body) {
+    if (n.type === 'VariableDeclaration') for (const d of n.declarations) for (const id of boundNames(d.id)) out.push({ id, lexical: n.kind !== 'var' });
+    if (n.type === 'ClassDeclaration' && n.id) out.push({ id: n.id, lexical: true });
+    if (n.type === 'FunctionDeclaration' && n.id) out.push({ id: n.id, lexical: false });
+  }
+  return out;
+}
+
+/**
+ * Every file runs as its own classic script in one shared scope, so a `const`, `let` or `class` declared
+ * again in a later file (or next to a function or var of the same name) stops that file from loading at all.
+ * Files load helpers first in alphabetical order, then the entry file.
+ */
+function duplicateDeclarations(parsed: readonly Parsed[], entry: string): Issue[] {
+  const order = [...parsed].sort((a, b) => (a.file.path === entry ? 1 : b.file.path === entry ? -1 : a.file.path.localeCompare(b.file.path)));
+  const first = new Map<string, { file: string; lexical: boolean }>();
+  const out: Issue[] = [];
+  for (const p of order) {
+    for (const { id, lexical } of topLevelDeclarations(p.ast)) {
+      // Only game.js may declare the Game class: duplicate-game-class says so.
+      if (id.name === 'Game') continue;
+      const before = first.get(id.name);
+      if (!before) {
+        first.set(id.name, { file: p.file.path, lexical });
+        continue;
+      }
+      if (before.file === p.file.path || !(before.lexical || lexical)) continue;
+      const line = lineOf(id);
+      out.push({
+        rule: 'duplicate-declaration',
+        severity: 'error',
+        file: p.file.path,
+        line,
+        column: columnOf(id),
+        message: `\`${id.name}\` is already declared in ${before.file}. Every file runs as its own script, so each top-level name can be declared only once in the whole game: use the one in ${before.file}, or give this one another name.`,
+        kid: kidMessage('duplicate-declaration', { line, name: id.name }),
+      });
+    }
+  }
+  return out;
+}
+
 function sizeIssues(files: readonly GameFile[], limits: Limits, entry: string): Issue[] {
   const out: Issue[] = [];
   const issue = (rule: 'size' | 'bad-path', file: string, message: string, name?: string): Issue => ({ rule, severity: 'error', file, line: 0, column: 0, message, kid: kidMessage(rule, { line: 0, name }) });
@@ -194,6 +258,7 @@ function runPass(files: readonly GameFile[], api: Api, entry: string, fix: boole
     issues.push({ rule: 'no-game-class', severity: 'error', file: entry, line: 0, column: 0, message: `The game needs ${entry} with \`class Game extends Amble.Scene\`.`, kid: kidMessage('no-game-class', { line: 0 }) });
   }
 
+  issues.push(...duplicateDeclarations(parsed, entry));
   const entryParsed = parsed.find((p) => p.file.path === entry);
   const entryGame = entryParsed ? findGameClass(entryParsed.ast) : null;
   const asts = parsed.map((p) => p.ast);

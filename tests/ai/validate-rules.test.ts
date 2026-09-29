@@ -239,6 +239,22 @@ describe('names', () => {
     expect(r.warnings).toEqual([]);
   });
 
+  it('flags a top-level name declared in two files: each file runs as its own script', () => {
+    const files = [
+      { path: 'moves.js', content: 'const FLOOR = 496;\nfunction volley() {}\nvar tries = 1;\n' },
+      { path: 'zombies.js', content: '// The zombies.\nconst FLOOR = 480;\nfunction volley() {}\nvar tries = 2;\nclass Zed {}\n' },
+      { path: 'game.js', content: game('    const z = new Zed();\n    volley(FLOOR, tries);') },
+    ];
+    const r = validateGame(files, { manifest: KIT });
+    // Two functions or two vars may share a name (the later one wins); a const, let or class may not.
+    expect(r.errors.map((e) => [e.rule, e.file, e.line])).toEqual([['duplicate-declaration', 'zombies.js', 2]]);
+    expect(r.errors[0].message).toBe('`FLOOR` is already declared in moves.js. Every file runs as its own script, so each top-level name can be declared only once in the whole game: use the one in moves.js, or give this one another name.');
+    expect(r.errors[0].kid).toBe('Line 2: "FLOOR" is already made in another file of this game. Each name can only be made once.');
+    // Load order decides which one is "again": helpers alphabetically, then game.js.
+    const inGame = validateGame([{ path: 'a.js', content: 'const SPEED = 1;\n' }, { path: 'game.js', content: `const SPEED = 2;\n${game('')}` }], { manifest: KIT });
+    expect(inGame.errors.map((e) => [e.rule, e.file])).toEqual([['duplicate-declaration', 'game.js']]);
+  });
+
   it('only lets game.js declare the Game class', () => {
     const r = validateGame([{ path: 'extra.js', content: 'class Game {}' }, { path: 'game.js', content: game('') }], { manifest: KIT });
     expect(r.errors.map((e) => [e.rule, e.file])).toEqual([['duplicate-game-class', 'extra.js']]);
