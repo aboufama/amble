@@ -361,9 +361,9 @@ export function startChange(world: World, words: string, scope: CastKey | null =
   return run(world, 'change', words, (c) => getServices().ai.change(world, words, { ...jobOptions(world, c), scope: scope ?? undefined }));
 }
 
-/** Ask Amble to fix it (the problem card). */
-export function startFix(world: World, problems: PlayerError[]): Promise<AiOutcome> {
-  return run(world, 'fix', t('ai.stepFixedPlain'), (c) => getServices().ai.fix(world, problems, jobOptions(world, c)));
+/** Ask Amble to fix it (the problem card); `words` is what the Ask card shows while it works. */
+export function startFix(world: World, problems: PlayerError[], words = t('ai.stepFixedPlain')): Promise<AiOutcome> {
+  return run(world, 'fix', words, (c) => getServices().ai.fix(world, problems, jobOptions(world, c)));
 }
 
 /** Draw while it builds (§2.5): the build runs in the background; the stored world gets its result. */
