@@ -12,7 +12,7 @@ import { extractManifest, sourceFilesOf, type SourceFile } from '../../cores/ai'
 import type { PlayerError } from '../../cores/play';
 import { loadWorld, setSessionWorld } from '../../history/live';
 import { t } from '../../i18n';
-import type { Author, CodeFile, ExplainOutcome, Role, World } from '../../model/types';
+import type { Author, CodeFile, ExplainOutcome, ExplainReply, Role, World } from '../../model/types';
 import { announce } from '../../state/app';
 import type { ArtChipInfo } from './cm/artChips';
 import { chipsChanged } from './cm/artChips';
@@ -23,6 +23,7 @@ import { lineChanges, nearLine } from './cm/lineEdits';
 import { lintSources, toDiagnostic, type CodeIssue } from './cm/lint';
 import { isLineLocked, lockBypass, lockedLines, setLocked } from './cm/locked';
 import { createView, fileState } from './cm/setup';
+import type { LookInsideRequest } from './open';
 import { runIt, type FileEdit } from './run';
 
 export type RunState =
@@ -71,6 +72,12 @@ export function tabOrder(code: readonly CodeFile[]): string[] {
 
 function draftKey(worldId: string): string {
   return `code-draft:${worldId}`;
+}
+
+/** The AI helper's answer as a note (with its notes for line ranges). */
+function aiNote(id: number, pos: number, reply: ExplainReply): ExplainNote {
+  const lines = reply.lines.map((l) => ({ where: `${l.from === l.to ? t('history.lineOne', { n: l.from }) : t('history.linesRange', { from: l.from, to: l.to })}:`, note: l.note }));
+  return { id, pos, kind: 'ai', label: t('history.explainAi'), text: [reply.answer, reply.safetyNote].filter(Boolean).join(' '), lines };
 }
 
 export interface SessionOptions {
@@ -509,13 +516,10 @@ export class CodeSession {
       else this.dispatchTo(path, { effects: note ? addNote.of(note) : removeNote.of(id) });
     };
     switch (outcome.kind) {
-      case 'explained': {
-        const reply = outcome.reply;
-        const lines = reply.lines.map((l) => ({ where: `${l.from === l.to ? t('history.lineOne', { n: l.from }) : t('history.linesRange', { from: l.from, to: l.to })}:`, note: l.note }));
-        put({ id, pos, kind: 'ai', label: t('history.explainAi'), text: [reply.answer, reply.safetyNote].filter(Boolean).join(' '), lines });
-        announce(reply.answer);
+      case 'explained':
+        put(aiNote(id, pos, outcome.reply));
+        announce(outcome.reply.answer);
         break;
-      }
       case 'crisis':
         put(null);
         this.o.onCrisis();
@@ -530,6 +534,26 @@ export class CodeSession {
         put({ ...docsNote(t('history.explainFailed')), kind: 'problem' });
     }
     this.emit();
+  }
+
+  // ---------------------------------------------------------------- a place asked for from elsewhere
+
+  /** Opens a file at a line, or shows the AI helper's explanation beside its lines (`lookInside`). */
+  show(request: LookInsideRequest): void {
+    if (!this.states.has(request.file)) return;
+    this.open(request.file);
+    const view = this.view;
+    if (!view) return;
+    const explain = request.explain;
+    if (explain) {
+      const doc = view.state.doc;
+      const pos = doc.line(Math.min(Math.max(1, explain.to), doc.lines)).to;
+      view.dispatch({ effects: addNote.of(aiNote(++this.noteId, pos, explain.reply)) });
+      this.jumpTo(request.file, explain.from);
+      announce(explain.reply.answer);
+    } else if (request.line) {
+      this.jumpTo(request.file, request.line);
+    }
   }
 
   // ---------------------------------------------------------------- the cast, for art chips

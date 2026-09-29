@@ -21,6 +21,7 @@ import { Lamppost } from '../../ui/icons';
 import { CrisisCard } from '../ai/CrisisCard';
 import { FileTabs, tabId } from './FileTabs';
 import { HelpPanel } from './HelpPanel';
+import { onLookInside, takeLookInside } from './open';
 import { RunBar } from './RunBar';
 import type { CodeSession, CodeSnapshot } from './session';
 import './code.css';
@@ -126,6 +127,18 @@ export function CodeView({ route }: { route: RouteOf<'code'> }) {
   useEffect(() => {
     if (session && route.file) session.open(route.file);
   }, [session, route.file]);
+
+  // A place asked for from elsewhere ("Show me the line", an explanation for an explain-only class).
+  useEffect(() => {
+    if (!session) return;
+    const waiting = takeLookInside(worldId);
+    if (waiting) session.show(waiting);
+    return onLookInside((request) => {
+      if (request.worldId !== worldId) return;
+      takeLookInside(worldId);
+      session.show(request);
+    });
+  }, [session, worldId]);
 
   // A newer version of the world (an AI change, Go back, our own Run it) flows into the editors.
   useEffect(
