@@ -42,7 +42,7 @@ test('a clean profile: draw, bring it to life, name it, play Boss fight, draw th
   const kindChip = page.getByTestId('kind-chip');
   await kindChip.getByRole('button').click();
   await page.getByRole('radio', { name: /person/i }).click();
-  await expect(kindChip).toContainText('A person');
+  await expect(kindChip).toContainText("It's a person");
   await page.keyboard.press('Escape');
   await page.getByTestId('name-chip').click();
   await page.getByTestId('name-input').fill('Sir Hops');

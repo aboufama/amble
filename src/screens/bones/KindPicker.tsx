@@ -21,6 +21,8 @@ export interface KindPickerProps {
   onChange(kind: CharacterKind, facing: Facing): void;
   /** A smaller pill with the kind only (the First page's chips). */
   compact?: boolean;
+  /** The compact pill's words for a kind (default "A person"; the First page says "It's a person"). */
+  pillWords?(kind: CharacterKind): string;
   /** Controlled open state (Bones opens it when no bones could be found). */
   open?: boolean;
   onOpenChange?(open: boolean): void;
@@ -36,7 +38,7 @@ function lookWord(f: Facing): string {
   return t(f === 'right' ? 'bones.lookRight' : f === 'left' ? 'bones.lookLeft' : 'bones.lookYou');
 }
 
-export function KindPicker({ value, facing, onChange, compact = false, open, onOpenChange, unset = false, disabled, className }: KindPickerProps) {
+export function KindPicker({ value, facing, onChange, compact = false, pillWords, open, onOpenChange, unset = false, disabled, className }: KindPickerProps) {
   const [ownOpen, setOwnOpen] = useState(false);
   const isOpen = open ?? ownOpen;
   const setOpen = (o: boolean) => {
@@ -82,7 +84,7 @@ export function KindPicker({ value, facing, onChange, compact = false, open, onO
         <span className="kind-pill__pic" aria-hidden="true">
           {unset ? <Icon name="bones" size={compact ? 18 : 22} /> : <KindIcon kind={value} size={compact ? 18 : 22} />}
         </span>
-        <PillWords kind={value} facing={facing} compact={compact} unset={unset} />
+        <PillWords kind={value} facing={facing} compact={compact} unset={unset} words={pillWords} />
         <svg className="kind-pill__caret" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -156,10 +158,10 @@ export function KindPicker({ value, facing, onChange, compact = false, open, onO
  * "A person, facing you" in three pieces (the kind, the joiner, the facing), so a narrow toolbar can
  * stack the kind over the facing without the comma. The words come whole from the string table.
  */
-function PillWords({ kind, facing, compact, unset }: { kind: CharacterKind; facing: Facing; compact: boolean; unset: boolean }) {
+function PillWords({ kind, facing, compact, unset, words }: { kind: CharacterKind; facing: Facing; compact: boolean; unset: boolean; words?: (kind: CharacterKind) => string }) {
   if (unset) return <span className="kind-pill__text">{t('bones.kindAsk')}</span>;
   const kindText = kindPhrase(kind);
-  if (compact) return <span className="kind-pill__text">{kindText}</span>;
+  if (compact) return <span className="kind-pill__text">{words ? words(kind) : kindText}</span>;
   const facingText = facingPhrase(facing);
   const full = t('bones.kindPill', { kind: kindText, facing: facingText });
   const at = full.lastIndexOf(facingText);
