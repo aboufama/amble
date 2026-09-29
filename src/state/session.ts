@@ -242,11 +242,20 @@ export function gameSignature(world: World): string {
 }
 
 let loaded: string | null = null;
+/** The player's load count when `loaded` was put in it (another screen may have loaded another game since). */
+let loadedCount = -1;
 let loading: Promise<GameManifest | null> | null = null;
 
-/** Whether the player already runs this world as it is now (returning from the Desk). */
+function playerLoads(): number {
+  return getServices().player.loadCount?.() ?? -1;
+}
+
+/**
+ * Whether the player already runs this world as it is now (returning from the Desk), and nothing else was
+ * loaded into it meanwhile (a new world's Desk preview, the Teacher desk's gallery).
+ */
 export function isLoaded(world: World): boolean {
-  return loaded === gameSignature(world) && !getState().session.stopped;
+  return loaded === gameSignature(world) && !getState().session.stopped && playerLoads() === loadedCount;
 }
 
 /**
@@ -306,6 +315,7 @@ export function loadGame(world: World, o: { autostart?: boolean } = {}): Promise
     try {
       const manifest = await player.load(init);
       loaded = sig;
+      loadedCount = playerLoads();
       if (getState().session.world?.id === world.id) {
         patchSession({ manifest, ready: true });
         refreshCast();
@@ -339,7 +349,10 @@ export function pendingLoad(): Promise<GameManifest | null> | null {
  */
 export function noteLoaded(): void {
   const world = getState().session.world;
-  if (world && !loading) loaded = gameSignature(world);
+  if (world && !loading) {
+    loaded = gameSignature(world);
+    loadedCount = playerLoads();
+  }
 }
 
 // ------------------------------------------------------------------ live changes: dials, twists, modes
