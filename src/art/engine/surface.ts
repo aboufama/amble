@@ -1421,19 +1421,26 @@ class Surface implements ArtSurface {
       this.em.emit('toast', { message: 'That is a lot of layers! Merge some to add more.', kind: 'limit' });
       return null;
     }
-    const src = image instanceof Blob ? await createImageBitmap(image) : image;
-    const sw = 'naturalWidth' in src ? src.naturalWidth : src.width;
-    const sh = 'naturalHeight' in src ? src.naturalHeight : src.height;
-    if (!sw || !sh) return null;
-    // Fit the photo inside the board, centred.
-    const k = Math.min(b.W / sw, b.H / sh);
-    const w = Math.round(sw * k);
-    const h = Math.round(sh * k);
-    const c = new OffscreenCanvas(b.W, b.H);
-    const ctx = c.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return null;
-    ctx.drawImage(src, Math.round((b.W - w) / 2), Math.round((b.H - h) / 2), w, h);
-    const photo = new Uint8ClampedArray(ctx.getImageData(0, 0, b.W, b.H).data);
+    // A picture decoded here is let go of as soon as it is on the board (a camera photo is tens of MB).
+    const own = image instanceof Blob ? await createImageBitmap(image) : null;
+    let photo: Uint8ClampedArray;
+    try {
+      const src = own ?? (image as Exclude<typeof image, Blob>);
+      const sw = 'naturalWidth' in src ? src.naturalWidth : src.width;
+      const sh = 'naturalHeight' in src ? src.naturalHeight : src.height;
+      if (!sw || !sh) return null;
+      // Fit the photo inside the board, centred.
+      const k = Math.min(b.W / sw, b.H / sh);
+      const w = Math.round(sw * k);
+      const h = Math.round(sh * k);
+      const c = new OffscreenCanvas(b.W, b.H);
+      const ctx = c.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return null;
+      ctx.drawImage(src, Math.round((b.W - w) / 2), Math.round((b.H - h) / 2), w, h);
+      photo = new Uint8ClampedArray(ctx.getImageData(0, 0, b.W, b.H).data);
+    } finally {
+      own?.close();
+    }
     // A photo to trace goes at the bottom; a photo's lines (paper removed on the device) go on top.
     const lines = o.role === 'lines';
     const layer = makeLayer(uid('l'), lines ? 'lines' : 'trace', o.name ?? (lines ? 'Photo lines' : 'Photo to trace'));

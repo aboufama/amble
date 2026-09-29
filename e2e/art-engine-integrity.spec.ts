@@ -117,4 +117,31 @@ test.describe('art engine integrity', () => {
     const check = await harness<{ mismatched: string[] }>(page, 'replayCheck');
     expect(check.mismatched).toEqual([]);
   });
+
+  test('a photo placed on the paper lets go of its decoded picture', async ({ page }) => {
+    await open(page, 'w=512&h=512');
+    const r = await page.evaluate(async () => {
+      const w = window as unknown as HarnessWindow & { createImageBitmap: typeof createImageBitmap };
+      // A camera photo decodes to tens of MB on a Chromebook: keep hold of every picture the Desk decodes.
+      const made: ImageBitmap[] = [];
+      const real = w.createImageBitmap.bind(w);
+      w.createImageBitmap = ((...a: Parameters<typeof createImageBitmap>) => real(...a).then((b) => (made.push(b), b))) as typeof createImageBitmap;
+      const c = document.createElement('canvas');
+      c.width = 800;
+      c.height = 600;
+      const g = c.getContext('2d')!;
+      g.fillStyle = '#f4f1ea';
+      g.fillRect(0, 0, 800, 600);
+      g.fillStyle = '#222';
+      g.fillRect(200, 150, 400, 20);
+      const photo = await new Promise<Blob>((resolve) => c.toBlob((b) => resolve(b!), 'image/png'));
+      const s = w.__art.surface as unknown as { importTrace(b: Blob, o?: { role?: 'trace' | 'lines' }): Promise<string | null> };
+      const id = await s.importTrace(photo, { role: 'lines' });
+      w.createImageBitmap = real;
+      return { id, made: made.length, open: made.filter((b) => b.width > 0).length };
+    });
+    expect(r.id).not.toBeNull();
+    expect(r.made).toBeGreaterThan(0);
+    expect(r.open).toBe(0);
+  });
 });
