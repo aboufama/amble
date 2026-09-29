@@ -1,6 +1,6 @@
 /**
  * One student's world in the gallery grid (§2.14): the snapshot, the title, "by J.R.", and chips for
- * drawings done / needed (✎), AI changes (✦), own code edits (‹›) and problems (⚠) or ✓.
+ * drawings done / needed (✎), AI changes (the server), own code edits (‹›) and problems (⚠) or ✓.
  */
 import { t } from '../../i18n';
 import { tn } from '../../school/count';
@@ -30,7 +30,6 @@ export function GalleryCard({ item, selected, showNames, onOpen }: { item: Galle
       <button type="button" className={cx('gcard', selected && 'gcard--on', item.status !== 'ready' && `gcard--${item.status}`)} aria-pressed={selected} aria-label={label} onClick={onOpen} data-testid="gallery-card">
         <span className="gcard__thumb" aria-hidden="true">
           {item.thumb ? <img src={item.thumb} alt="" /> : <PlaceholderGlyph rig="biped" role="hero" size={56} />}
-          {item.status === 'loading' && <span className="gcard__shimmer" />}
         </span>
         <span className="gcard__body" aria-hidden="true">
           <span className="gcard__title">{item.status === 'problem' ? item.file.name : item.title}</span>
@@ -49,7 +48,7 @@ export function GalleryCard({ item, selected, showNames, onOpen }: { item: Galle
                 {item.drawn}/{item.needed}
               </span>
               <span className="gchip gchip--ai">
-                <Icon name="sparkle" size={14} />
+                <SchoolIcon name="server" size={14} />
                 {item.story?.aiChanges ?? 0}
               </span>
               <span className="gchip">

@@ -1,6 +1,8 @@
 /*
- * The Teacher desk (§2.14; spec-mocks/13-teacher-classlink.png, 14-teacher-gallery.png): the top bar and
- * tabs, the class link, assignments, the gallery, Present mode and Help & letters. Tokens only.
+ * The Teacher desk (§2.14; spec-mocks/13-teacher-classlink.png, 14-teacher-gallery.png) in Scratch's look:
+ * a blue menu bar with the tabs on it, white panels with a 1 px outline and 8 px corners on the light page,
+ * fields with a 1 px control edge, 4 px checkboxes, flat everything: nothing is taped, tilted or glowing.
+ * The class link, assignments, the gallery, Present mode and Help & letters. Tokens only.
  */
 
 /* ---------- the frame ---------- */
@@ -10,28 +12,34 @@
   grid-template-areas:
     'top'
     'main';
+  background: var(--bg);
 }
 
+/*
+ * The menu bar: Scratch blue with white words (`on-brand` gives the shared buttons on it their white look;
+ * the same tokens are set here so the bar reads right on its own). The chosen tab wears Scratch's selection:
+ * a white face with purple words, a 2 px purple edge and the purple halo.
+ */
 .teacher-top {
+  --text: var(--on-brand);
+  --text-2: var(--on-brand);
+  --line-control: var(--on-brand);
+  --line-control-panel: var(--on-brand);
+  --focus-ring: var(--on-brand);
+  --focus-gap: var(--brand);
   grid-area: top;
   display: flex;
   align-items: center;
   gap: var(--s3);
   height: var(--topbar);
   padding: 0 var(--s4);
+  color: var(--on-brand);
+  background: var(--brand);
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg-deep) 55%, var(--bg));
 }
 
 .teacher-top__mark {
-  display: grid;
   flex: none;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--bg-deep);
-  box-shadow: inset 0 0 0 1px var(--line-control);
 }
 
 .teacher-top__title {
@@ -46,35 +54,66 @@
 
 .teacher-tabs {
   display: flex;
-  gap: 2px;
+  gap: 6px;
   margin-left: var(--s3);
-  padding: 3px;
-  border-radius: var(--r-btn);
-  background: var(--well);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
 }
 
 .teacher-tabs__tab {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: calc(var(--control) - 6px);
+  min-height: 40px;
   padding: 0 14px;
-  border-radius: 11px;
+  border: 2px solid transparent;
+  border-radius: var(--r-btn);
   font: var(--type-label);
-  color: var(--text-2);
+  font-weight: 700;
+  color: var(--on-brand);
   text-decoration: none;
   white-space: nowrap;
 }
 
 .teacher-tabs__tab:hover {
-  color: var(--text);
+  background: var(--brand-hover);
 }
 
-.teacher-tabs__tab--on {
-  color: var(--text);
+.teacher-tabs__tab--on,
+.teacher-tabs__tab--on:hover {
+  border-color: var(--change-bright);
+  color: var(--change);
   background: var(--surface-raised);
-  box-shadow: inset 0 0 0 1.5px var(--line-control-panel);
+  box-shadow: 0 0 0 4px var(--select-ring);
+}
+
+/* Present and Back to Amble: white-outlined ghost buttons, as on every top bar. */
+.teacher-top__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: var(--control);
+  padding: 0 17px;
+  border: 1px solid var(--on-brand);
+  border-radius: var(--r-btn);
+  font: var(--type-label);
+  color: var(--on-brand);
+  text-decoration: none;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.teacher-top__btn:hover {
+  background: var(--brand-hover);
+}
+
+.teacher-tabs__tab:focus-visible,
+.teacher-top__btn:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+:root[data-theme='contrast'] :is(.teacher-tabs__tab, .teacher-top__btn):hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .teacher__main {
@@ -96,7 +135,6 @@
 .tcaps {
   font: var(--type-caps);
   letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
   color: var(--text-2);
 }
 
@@ -105,38 +143,32 @@
   font-weight: 500;
 }
 
-/* ---------- panels, rows and inputs ---------- */
+/* ---------- panels, rows and fields ---------- */
 .tpanel {
   --line-control: var(--line-control-panel);
   padding: 12px 16px;
+  border: 1px solid var(--line);
   border-radius: var(--r-card);
-  background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent),
-    var(--lift-sm);
+  color: var(--text);
+  background: var(--surface-raised);
 }
 
 .tpanel__h {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   font: var(--type-heading);
 }
 
 .tpanel__h > .icon {
   flex: none;
-  color: var(--accent);
-}
-
-.tpanel__h > .icon--ai {
-  color: var(--ai);
+  color: var(--accent-text);
 }
 
 .tpanel__h small {
   margin-left: auto;
   font: var(--type-meta);
-  font-weight: 600;
   color: var(--text-2);
 }
 
@@ -145,7 +177,7 @@
   grid-template-columns: 200px minmax(0, 1fr);
   align-items: center;
   gap: var(--s3);
-  padding: 3px 0;
+  padding: 4px 0;
 }
 
 .trow__label {
@@ -156,40 +188,45 @@
 
 .trow__label small {
   font: var(--type-meta);
-  font-weight: 600;
   color: var(--text-2);
 }
 
+/* A field: white, a 1 px control edge, 8 px corners; focused, a 2 px ring colour edge and the blue halo. */
 .tinput {
   display: flex;
   align-items: center;
   gap: var(--s2);
   min-height: var(--control);
   padding: 0 12px 0 0;
-  border-radius: 12px;
-  background: var(--well);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
 }
 
 .tinput:focus-within {
-  box-shadow: inset 0 0 0 2px var(--accent);
+  border-color: var(--focus-ring);
+  box-shadow:
+    inset 0 0 0 1px var(--focus-ring),
+    0 0 0 4px var(--hover-ring);
 }
 
-.tinput--bad {
-  box-shadow: inset 0 0 0 2px var(--warn);
+.tinput--bad,
+.tinput--bad:focus-within {
+  border-color: var(--warn);
+  box-shadow: inset 0 0 0 1px var(--warn);
 }
 
 .tinput--locked {
-  background: color-mix(in srgb, var(--well) 60%, transparent);
+  background: var(--well);
 }
 
 .tinput__field {
   flex: 1;
   min-width: 0;
-  min-height: calc(var(--control) - 4px);
+  min-height: calc(var(--control) - 2px);
   padding: 0 12px;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   font: var(--type-label);
   color: var(--text);
   background: transparent;
@@ -229,11 +266,7 @@
 .tinput--select .tinput__field option,
 .tinput--select .tinput__field optgroup {
   color: var(--text);
-  background: var(--surface-bottom);
-}
-
-.tinput--date .tinput__field {
-  color-scheme: inherit;
+  background: var(--surface-raised);
 }
 
 .tinput__suffix {
@@ -246,7 +279,6 @@
 
 .tinput__suffix--quiet {
   font: var(--type-meta);
-  font-weight: 600;
   color: var(--text-2);
 }
 
@@ -277,16 +309,16 @@
   grid-template-columns: minmax(0, 1fr) minmax(360px, 470px);
   gap: var(--s4);
   align-items: start;
-  padding: 10px var(--s5) var(--s4);
+  padding: var(--s4) var(--s5);
 }
 
 .cl__form {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .cl__form > .teacher__lede {
-  margin-top: -12px;
+  margin-top: -10px;
   margin-bottom: 2px;
 }
 
@@ -300,11 +332,12 @@
 .cl__note {
   margin-top: var(--s2);
   padding: 10px 12px;
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   font: var(--type-meta);
   font-size: 0.9375rem;
-  color: var(--text-2);
-  background: color-mix(in srgb, var(--well) 60%, transparent);
+  color: var(--text);
+  background: var(--bg-lift);
 }
 
 .cl__more {
@@ -315,7 +348,7 @@
   width: max-content;
   min-height: 32px;
   font: var(--type-chip);
-  color: var(--ai);
+  color: var(--accent-text);
   cursor: pointer;
 }
 
@@ -360,39 +393,38 @@
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--s3);
-  min-height: 36px;
-  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  min-height: 40px;
+  border-top: 1px solid var(--line);
 }
 
 .ready__row:first-child {
   border-top: 0;
 }
 
+/* A checkbox the teacher ticks: 4 px corners, a 2 px edge; ticked, a blue box with a white check. */
 .ready__box {
   position: relative;
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border: 0;
-  border-radius: 7px;
+  border: 2px solid var(--line-control);
+  border-radius: var(--r-sm);
   color: var(--on-accent);
-  background: transparent;
-  box-shadow: inset 0 0 0 2px var(--line-control);
+  background: var(--surface-raised);
 }
 
-/* A 44 px hit area around the 26 px box. */
+/* A 44 px hit area around the 24 px box. */
 .ready__box::before {
   content: '';
   position: absolute;
-  inset: -9px;
+  inset: -10px;
 }
 
 .ready__row--done .ready__box {
-  color: var(--on-alive);
-  background: var(--alive);
-  box-shadow: none;
+  border-color: var(--accent);
+  background: var(--accent);
 }
 
 .ready__words {
@@ -403,54 +435,57 @@
   font-size: 0.875rem;
 }
 
+.ready__row--done .ready__words {
+  color: var(--text-2);
+}
+
 .ready__action {
   font: var(--type-meta);
-  font-weight: 600;
   color: var(--text-2);
 }
 
 .ready__action a {
   font: var(--type-chip);
-  color: var(--ai);
+  color: var(--accent-text);
 }
 
 .cl__out {
   display: grid;
   gap: var(--s4);
-  /* Room for the link card's tape: the page scrolls, so anything above the card's top edge is cut. */
-  padding-top: 8px;
 }
 
+/* The card to post in Classroom: a flat white card. */
 .linkcard {
   display: grid;
   gap: 10px;
-  padding: 18px 20px 16px;
-  border-radius: 16px;
-}
-
-.linkcard .tape--lemon {
-  left: auto;
-  right: 36px;
-  top: -12px;
-  rotate: 4deg;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: none;
 }
 
 .linkcard__k {
   font: var(--type-caps);
   letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--accent), var(--ink) 62%);
+  color: var(--accent-text);
 }
 
 .linkcard__cls {
-  margin-top: -6px;
   font: var(--display-m);
   font-size: 1.75rem;
+  overflow-wrap: anywhere;
 }
 
-/* No class name yet: the example stays an example (quieter than a real name). */
-.linkcard__cls--example {
-  color: var(--ink-2);
+/* No class name yet: a blank to fill in, in quiet words, never a made-up name in display type. */
+.linkcard__cls--empty {
+  justify-self: start;
+  padding-bottom: 2px;
+  border-bottom: 2px dashed var(--line-control);
+  font: var(--type-heading);
+  font-weight: 400;
+  color: var(--text-2);
 }
 
 .linkcard__row {
@@ -460,15 +495,20 @@
   align-items: start;
 }
 
+.linkcard__qrcol {
+  display: grid;
+  gap: 6px;
+}
+
 .linkcard__qr {
   display: grid;
   place-items: center;
   width: 150px;
   height: 150px;
-  padding: 6px;
-  border-radius: 12px;
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1.5px var(--paper-3);
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--sheet);
 }
 
 .linkcard__qr .qr {
@@ -482,6 +522,14 @@
   text-align: center;
 }
 
+.linkcard__qr .linkcard__long {
+  color: var(--text-2);
+}
+
+:root[data-theme='contrast'] .linkcard__qr .linkcard__long {
+  color: var(--bg);
+}
+
 .linkcard__col {
   display: grid;
   gap: var(--s3);
@@ -491,12 +539,12 @@
 .linkcard__url {
   overflow: hidden;
   padding: 10px 12px;
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   font-size: 0.84375rem;
   line-height: 1.25rem;
-  color: var(--ink-2);
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1.5px var(--paper-3);
+  color: var(--text);
+  background: var(--well);
   word-break: break-all;
   user-select: all;
 }
@@ -507,14 +555,31 @@
   gap: var(--s2);
 }
 
+/* A long link: its code is dense. Says so, and offers the shorter link when an assignment makes it long. */
+.linkcard__dense {
+  display: grid;
+  gap: var(--s2);
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--warm);
+  border-radius: var(--r-md);
+  font: var(--type-meta);
+  font-size: 0.9375rem;
+  color: var(--text);
+  background: var(--well);
+}
+
+.linkcard__dense .btn {
+  justify-self: start;
+}
+
 .linkcard__wait {
   padding: 18px 14px;
-  border-radius: 12px;
+  border: 2px dashed var(--line-control);
+  border-radius: var(--r-md);
   font: var(--type-label);
-  color: var(--ink-2);
+  color: var(--text-2);
   text-align: center;
-  box-shadow: inset 0 0 0 2px var(--paper-3);
-  border: 2px dashed var(--paper-3);
 }
 
 .linkcard__exp {
@@ -524,7 +589,7 @@
   font: var(--type-meta);
   font-weight: 600;
   line-height: 1.75rem;
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 .linkcard__exp .icon {
@@ -535,14 +600,16 @@
 .linkcard__date {
   min-height: 30px;
   padding: 0 6px;
-  border: 0;
-  border-radius: 8px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-md);
   font: inherit;
   font-weight: 700;
-  color: var(--ink);
-  background: var(--paper-2);
-  box-shadow: inset 0 0 0 1.5px var(--paper-3);
-  color-scheme: light;
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+:root[data-theme='contrast'] .linkcard__date {
+  color-scheme: dark;
 }
 
 .preview {
@@ -562,7 +629,7 @@
 }
 
 .cl__trust {
-  padding: 0 var(--s4);
+  padding: 0 var(--s2);
 }
 
 .cl__trust .icon,
@@ -576,17 +643,13 @@
   color: var(--alive);
 }
 
+/* A QR code stays dark on white to scan, whatever the theme. */
 .qr__paper {
-  fill: var(--paper);
+  fill: var(--sheet);
 }
 
 .qr__ink {
   fill: var(--ink);
-}
-
-/* A QR code must stay dark on light to scan, whatever the theme. */
-:root[data-theme='contrast'] .qr__paper {
-  fill: var(--text);
 }
 
 :root[data-theme='contrast'] .qr__ink {
@@ -598,7 +661,6 @@
   max-width: none;
   height: calc(100vh - 32px);
   max-height: none;
-  background: var(--paper);
 }
 
 .qr-big .dialog__body {
@@ -620,7 +682,7 @@
 
 .qr-big__cls {
   font: var(--display-l);
-  color: var(--ink);
+  color: var(--text);
 }
 
 .qr-big__code {
@@ -632,7 +694,7 @@
 .qr-big__hint {
   font: var(--type-label);
   font-size: 1.25rem;
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 /* ---------- empty states ---------- */
@@ -647,7 +709,7 @@
 }
 
 .tempty > .icon {
-  color: var(--text-2);
+  color: var(--accent-text);
 }
 
 .tempty--big {
@@ -770,6 +832,7 @@
   gap: 4px var(--s3);
 }
 
+/* The desk's checkbox (Check): a real, visually hidden input and a 4 px box; ticked, blue with a white check. */
 .tcheck {
   position: relative;
   display: flex;
@@ -794,15 +857,15 @@
   place-items: center;
   width: 22px;
   height: 22px;
-  border-radius: 7px;
+  border: 2px solid var(--line-control);
+  border-radius: var(--r-sm);
   color: var(--on-accent);
-  box-shadow: inset 0 0 0 2px var(--line-control);
+  background: var(--surface-raised);
 }
 
 .tcheck__box--on {
-  color: var(--on-alive);
-  background: var(--alive);
-  box-shadow: none;
+  border-color: var(--accent);
+  background: var(--accent);
 }
 
 .tcheck__input:focus-visible + .tcheck__box {
@@ -901,9 +964,9 @@
   margin-left: auto;
   padding: 4px 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   font: var(--type-chip);
-  color: var(--ai);
+  color: var(--accent-text);
   background: none;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -930,10 +993,10 @@
   align-items: center;
   gap: 6px;
   padding: 2px 4px 2px 10px;
-  border-radius: 999px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
   font: var(--type-chip);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
+  background: var(--bg-lift);
 }
 
 .locklines__code {
@@ -941,7 +1004,8 @@
   margin: 0;
   padding: 6px 0;
   overflow: auto;
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   font-size: 0.8125rem;
   line-height: 1.25rem;
   background: var(--well);
@@ -955,15 +1019,16 @@
 }
 
 .locklines__line:hover {
-  background: color-mix(in srgb, var(--text) 6%, transparent);
+  background: var(--bg-lift);
 }
 
 .locklines__line--locked {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: color-mix(in srgb, var(--line-control) 16%, transparent);
 }
 
 .locklines__line--chosen {
-  background: color-mix(in srgb, var(--ai) 18%, transparent);
+  background: color-mix(in srgb, var(--change-bright) 18%, transparent);
+  box-shadow: inset 3px 0 0 var(--change-bright);
 }
 
 .locklines__n {
@@ -1031,7 +1096,7 @@
 
 .gallery__loading {
   margin-left: var(--s2);
-  color: var(--ai);
+  color: var(--accent-text);
 }
 
 .gallery__tools {
@@ -1061,22 +1126,6 @@
 
 .gfilter b {
   font-weight: 700;
-  color: var(--text);
-}
-
-.gfilter.chip--selected {
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: none;
-  --focus-ring: var(--ink);
-}
-
-.gfilter.chip--selected b {
-  color: var(--ink);
-}
-
-.gfilter--warn:not(.chip--selected) {
-  box-shadow: inset 0 0 0 1.5px var(--warn);
 }
 
 .gfilter--warn .icon {
@@ -1094,6 +1143,7 @@
   text-align: center;
 }
 
+/* The grid scrolls inside the page; its padding keeps the chosen card's halo from being cut. */
 .gallery__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(186px, 1fr));
@@ -1101,7 +1151,7 @@
   gap: var(--s3);
   min-height: 0;
   margin: 0;
-  padding: 4px 4px var(--s3) 2px;
+  padding: 6px 6px var(--s3);
   overflow: auto;
   list-style: none;
 }
@@ -1110,31 +1160,32 @@
   display: flex;
 }
 
+/* A world's tile, like a Scratch sprite tile: white with a 1 px outline; hover turns the edge blue, the
+ * chosen one gets the purple selection edge and halo. */
 .gcard {
   display: flex;
   flex-direction: column;
   width: 100%;
   padding: 0;
-  border: 0;
-  border-radius: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   overflow: hidden;
   color: var(--text);
   text-align: left;
-  background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent),
-    var(--lift-sm);
-  transition: box-shadow var(--t-micro) var(--ease-soft), translate var(--t-micro) var(--ease-soft);
+  background: var(--surface-raised);
+  transition: border-color var(--t-micro) var(--ease-soft), box-shadow var(--t-micro) var(--ease-soft);
 }
 
 .gcard:hover {
-  translate: 0 -2px;
+  border-color: var(--brand-bright);
 }
 
-.gcard--on {
+.gcard--on,
+.gcard--on:hover {
+  border-color: var(--change-bright);
   box-shadow:
-    0 0 0 2.5px var(--accent),
-    var(--glow-lantern);
+    0 0 0 1px var(--change-bright),
+    0 0 0 5px var(--select-ring);
 }
 
 .gcard__thumb {
@@ -1143,7 +1194,8 @@
   place-items: center;
   aspect-ratio: 16 / 8.2;
   overflow: hidden;
-  background: radial-gradient(ellipse at 50% 30%, var(--bg-lift), var(--bg-deep));
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-deep);
 }
 
 .gcard__thumb img {
@@ -1152,25 +1204,18 @@
   object-fit: cover;
 }
 
-.gcard__shimmer {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--text) 10%, transparent) 50%, transparent 70%);
-  background-size: 220% 100%;
-  animation: gcard-shimmer 1.4s linear infinite;
+/* Still reading the file: the tile breathes. */
+.gcard--loading .gcard__thumb {
+  animation: gcard-breathe 1.2s var(--ease-soft) infinite alternate;
 }
 
-:root[data-motion='reduced'] .gcard__shimmer {
+:root[data-motion='reduced'] .gcard--loading .gcard__thumb {
   animation: none;
 }
 
-@keyframes gcard-shimmer {
-  from {
-    background-position: 110% 0;
-  }
-
+@keyframes gcard-breathe {
   to {
-    background-position: -110% 0;
+    opacity: 0.55;
   }
 }
 
@@ -1191,7 +1236,6 @@
 
 .gcard__by {
   font: var(--type-meta);
-  font-weight: 600;
   color: var(--text-2);
 }
 
@@ -1211,26 +1255,23 @@
   margin-top: 6px;
 }
 
+/* Small counts on a tile: 4 px tags with a 1 px outline. */
 .gchip {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  min-height: 25px;
+  min-height: 24px;
   padding: 0 6px;
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
   font: var(--type-chip);
   font-size: 0.8125rem;
   color: var(--text-2);
-  background: color-mix(in srgb, var(--well) 80%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--well);
 }
 
 .gchip--done {
   color: var(--accent-text);
-}
-
-.gchip--ai .icon {
-  color: var(--ai);
 }
 
 .gchip--ok {
@@ -1238,9 +1279,8 @@
 }
 
 .gchip--warn {
+  border-color: var(--warn);
   color: var(--text);
-  background: color-mix(in srgb, var(--warn) 22%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 60%, transparent);
 }
 
 .gchip--warn .icon {
@@ -1312,9 +1352,9 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-world);
   background: var(--bg-deep);
-  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .gdetail__poster {
@@ -1346,17 +1386,21 @@
   align-items: center;
   gap: var(--s2);
   padding: 8px 14px;
-  border: 0;
-  border-radius: 999px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   font: var(--type-label);
   color: var(--text);
-  background: color-mix(in srgb, var(--bg-deep) 78%, transparent);
+  background: var(--surface-raised);
 }
 
 .gdetail__over--button {
   min-height: var(--target);
+  border-color: var(--line-control);
   cursor: pointer;
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+}
+
+.gdetail__over--button:hover {
+  background: var(--bg);
 }
 
 .gdetail__over--bad .icon {
@@ -1405,17 +1449,22 @@
 
 .gbox {
   padding: 10px 12px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--well) 70%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--well);
 }
 
 .gbox__h {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--s2);
+  gap: 2px var(--s2);
   margin-bottom: 6px;
   font: var(--type-label);
+}
+
+.gbox__h > .icon {
+  color: var(--accent-text);
 }
 
 .gbox__h small {
@@ -1441,28 +1490,30 @@
   min-height: 28px;
 }
 
+/* Amble's checks, as marks: done is a green edge and check, not yet is red, testing is a blue edge. */
 .gchecks__box {
   display: grid;
   place-items: center;
   width: 20px;
   height: 20px;
-  border-radius: 6px;
-  box-shadow: inset 0 0 0 2px var(--line-control);
+  border: 2px solid var(--line-control);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
 }
 
 .gchecks__row--pass .gchecks__box {
-  color: var(--on-alive);
-  background: var(--alive);
-  box-shadow: none;
+  border-color: var(--alive);
+  color: var(--alive);
 }
 
 .gchecks__row--fail .gchecks__box {
+  border-color: var(--warn);
   color: var(--warn);
-  box-shadow: inset 0 0 0 2px var(--warn);
 }
 
 .gchecks__row--testing .gchecks__box {
-  box-shadow: inset 0 0 0 2px var(--ai);
+  border-color: var(--accent-text);
+  border-style: dashed;
 }
 
 .gchecks__row--teacher {
@@ -1477,7 +1528,6 @@
 .gchecks__teacher .tcheck__box {
   width: 20px;
   height: 20px;
-  border-radius: 6px;
 }
 
 .gchecks__label,
@@ -1504,30 +1554,36 @@
   gap: 6px;
   min-height: 32px;
   padding: 0 10px;
-  border-radius: 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
   font: var(--type-chip);
   color: var(--text);
-  background: color-mix(in srgb, var(--text) 6%, transparent);
+  background: var(--surface-raised);
 }
 
 .gstat .icon {
   color: var(--text-2);
 }
 
-.gstat--draw .icon {
-  color: var(--accent);
-}
-
+.gstat--draw .icon,
 .gstat--ai .icon {
-  color: var(--ai);
+  color: var(--accent-text);
 }
 
+/* The student's own wishes, in their words. */
 .gquotes {
   display: grid;
   gap: 4px;
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
+}
+
+.gquotes__h {
+  margin-top: 10px;
+  font: var(--type-meta);
+  font-weight: 700;
+  color: var(--text-2);
 }
 
 .gquotes li {
@@ -1540,7 +1596,7 @@
 .gquotes .icon {
   flex: none;
   margin-top: 2px;
-  color: var(--ai);
+  color: var(--accent-text);
 }
 
 .gdetail__feedback {
@@ -1554,13 +1610,12 @@
   display: none;
 }
 
-.gdetail__feedback .btn {
+.gdetail__feedback > .btn {
   align-self: stretch;
   min-height: 58px;
-  border-radius: var(--r-btn-lg);
 }
 
-/* ---------- Present mode ---------- */
+/* ---------- Present mode: a light header like Scratch's stage row, and the world as big as it fits ---------- */
 :root[data-present='on'] {
   --text-scale: 1.5;
 }
@@ -1571,6 +1626,7 @@
   grid-template-areas:
     'top'
     'main';
+  background: var(--bg);
 }
 
 .present__top {
@@ -1580,6 +1636,7 @@
   gap: var(--s4);
   padding: var(--s3) var(--s5);
   border-bottom: 1px solid var(--line);
+  background: var(--bg-lift);
 }
 
 .present__title {
@@ -1652,10 +1709,11 @@
   height: 100%;
   color: var(--text);
   text-decoration: none;
+  transition: border-color var(--t-micro) var(--ease-soft);
 }
 
 .help-doc:hover {
-  background: var(--surface-raised);
+  border-color: var(--brand-bright);
 }
 
 .help-doc__icon {
@@ -1664,9 +1722,10 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: 12px;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: var(--r-md);
+  color: var(--accent-text);
+  background: var(--bg-lift);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .help-doc__words {
@@ -1691,9 +1750,9 @@
 }
 
 .faq {
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
 }
 
 .faq__q {

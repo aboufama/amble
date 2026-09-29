@@ -112,6 +112,6 @@ describe('counted words', () => {
     expect(tn('school.staff_aiChanges', 1)).toBe('1 AI change');
     expect(tn('school.staff_aiChanges', 3)).toBe('3 AI changes');
     expect(tn('school.staff_sessions', 1, { time: '5 min' })).toBe('1 session · 5 min');
-    expect(t('school.honesty', { drawings: tn('school.countDrawings', 1), ai: tn('school.countAi', 0), code: tn('school.countCode', 2) })).toContain('1 drawing, 0 AI changes, 2 code edits of your own.');
+    expect(t('school.honesty', { drawings: tn('school.countDrawings', 1), ai: tn('school.countAi', 0), code: tn('school.countCode', 2) })).toContain('1 drawing, 0 wishes, 2 code edits of your own.');
   });
 });

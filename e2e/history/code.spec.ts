@@ -72,6 +72,10 @@ test('a changed number runs, leaves a footstep and survives a reload', async ({ 
   await page.keyboard.type('1200');
   await expect(runBar).toContainText('You changed game.js. Press Run it to play it.');
   await expect(page.locator('.cm-prov--student')).toHaveCount(1);
+  // The gutter stays quiet: a bar whose hover and key say whose line it is, in wish words.
+  await expect(page.locator('.cm-prov--student')).toHaveAttribute('title', 'You wrote this');
+  const legend = page.getByRole('group', { name: 'Who wrote the code' });
+  for (const words of ['From a wish', 'You wrote this', 'From the starter', 'Locked by your teacher']) await expect(legend).toContainText(words);
   await expect(page.getByRole('tab', { name: /game\.js/ })).toContainText('You changed this file');
   await expect(page.getByRole('button', { name: 'Undo my edits' })).toBeEnabled();
 
@@ -187,7 +191,7 @@ test('teacher-locked lines are read-only', async ({ page }) => {
   await expect(page.getByTestId('run-bar')).toContainText('You changed game.js');
 });
 
-test('Explain this shows kit docs with the AI helper off, and its note when on', async ({ page }) => {
+test('Explain this shows kit docs when wishes are off, and an unlabelled note when on', async ({ page }) => {
   await openCode(page);
   await (await revealLine(page, 'this.ui.bossBar(')).click();
   await page.getByRole('button', { name: 'Explain this' }).click();
@@ -210,9 +214,12 @@ test('Explain this shows kit docs with the AI helper off, and its note when on',
   await (await revealLine(page, 'this.ui.bossBar(')).click();
   await page.getByRole('button', { name: 'Explain this' }).click();
   const note = page.locator('.cm-explain--ai');
-  await expect(note).toContainText('AI helper');
+  // The note says which lines it explains, never who (no AI words for students).
+  await expect(note).toContainText(/What line \d+ does/);
+  await expect(note).not.toContainText(/\bAI\b/);
   await expect(note).toContainText('This line puts the boss health bar at the top.');
   await expect(note).toContainText('The name shows above the bar.');
+  await expect(page.getByRole('button', { name: 'Explain this' })).not.toHaveClass(/btn--ai/);
 });
 
 test("the world's problem card opens Look inside at the line that broke", async ({ page }) => {

@@ -21,7 +21,7 @@ const DOCS: Doc[] = [
   { page: 'parents', title: 'school.staff_helpLetter', text: 'school.staff_helpLetterText', icon: { school: 'letter' } },
   { page: 'it', title: 'school.staff_helpIt', text: 'school.staff_helpItText', icon: { school: 'shield' } },
   { page: 'privacy', title: 'school.staff_helpPrivacy', text: 'school.staff_helpPrivacyText', icon: { app: 'lock' } },
-  { page: 'ai', title: 'school.staff_helpAi', text: 'school.staff_helpAiText', icon: { app: 'sparkle' } },
+  { page: 'ai', title: 'school.staff_helpAi', text: 'school.staff_helpAiText', icon: { school: 'server' } },
   { page: 'accessibility', title: 'school.staff_helpA11y', text: 'school.staff_helpA11yText', icon: { app: 'eye' } },
   { page: 'terms', title: 'school.staff_helpTerms', text: 'school.staff_helpTermsText', icon: { school: 'clipboard' } },
   { page: 'sent', title: 'school.staff_helpSent', text: 'school.staff_helpSentText', icon: { app: 'info' } },

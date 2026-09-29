@@ -1,7 +1,7 @@
 /**
  * `#/teacher/<tab>` the Teacher desk (§2.14): reached from **Teacher** on the Trail and the First page. No
- * account and no password; nothing is uploaded. Top bar: the lamppost, **Teacher desk**, the tabs, **Present**
- * and **◂ Back to Amble**.
+ * account and no password; nothing is uploaded. The blue menu bar (`on-brand`): the wordmark, **Teacher
+ * desk**, the tabs, **Present** and **◂ Back to Amble**.
  */
 import { useEffect } from 'react';
 import { Link } from '../../app/Link';
@@ -9,7 +9,8 @@ import type { RouteOf, TeacherTab } from '../../app/routes';
 import { useServices } from '../../app/services';
 import { t, type MessageKey } from '../../i18n';
 import { loadTeacherData } from '../../school/teacherData';
-import { Icon, Lamppost } from '../../ui/icons';
+import { Wordmark } from '../../ui/components';
+import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
 import { AssignmentsTab } from './AssignmentsTab';
 import { ClassLinkTab } from './ClassLinkTab';
@@ -36,10 +37,8 @@ export function TeacherDesk({ route }: { route: RouteOf<'teacher'> }) {
 
   return (
     <div className="screen teacher" data-testid="screen-teacher" data-tab={route.tab}>
-      <header className="teacher-top">
-        <span className="teacher-top__mark" aria-hidden="true">
-          <Lamppost height={30} />
-        </span>
+      <header className="teacher-top on-brand">
+        <Wordmark size={30} className="teacher-top__mark" />
         <h1 className="teacher-top__title">{t('common.routeTeacher')}</h1>
         <nav className="teacher-tabs" aria-label={t('common.routeTeacher')}>
           {TABS.map((tab) => (
@@ -50,13 +49,13 @@ export function TeacherDesk({ route }: { route: RouteOf<'teacher'> }) {
           ))}
         </nav>
         <span className="teacher-top__spacer" />
-        <Link to={{ name: 'teacher', tab: 'present' }} className="btn btn--ghost btn--h44 teacher-top__present">
+        <Link to={{ name: 'teacher', tab: 'present' }} className="teacher-top__btn teacher-top__present">
           <SchoolIcon name="present" size={20} />
-          <span className="btn__label">{t('school.staff_present')}</span>
+          <span>{t('school.staff_present')}</span>
         </Link>
-        <Link to={{ name: 'trail', view: 'trail' }} className="btn btn--ghost btn--h44">
+        <Link to={{ name: 'trail', view: 'trail' }} className="teacher-top__btn">
           <Icon name="back" size={20} />
-          <span className="btn__label">{t('school.staff_backToAmble')}</span>
+          <span>{t('school.staff_backToAmble')}</span>
         </Link>
       </header>
       <main id="main" tabIndex={-1} className="teacher__main">

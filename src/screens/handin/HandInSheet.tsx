@@ -305,21 +305,18 @@ export function HandInSheet({ route }: { route: RouteOf<'handin'> }) {
                 </div>
               )}
               {saved && (
-                <div className="handin-file">
+                <div className="handin-file" data-testid="handin-saved">
                   <span className="handin-file__icon" aria-hidden="true">
-                    <Icon name={saved.method === 'download' ? 'fileSave' : 'drive'} size={22} />
+                    <Icon name="check" size={22} />
                   </span>
                   <span className="handin-file__words">
                     <span className="handin-file__name">{saved.fileName}</span>
-                    <span className="handin-file__where">{saved.method === 'download' ? t('school.whereDownloads') : t('school.whereDrive')}</span>
-                  </span>
-                  <span className="handin-file__time">
-                    <Icon name="check" size={16} />
-                    {time(saved.savedAt ?? Date.now())}
+                    <span className="handin-file__where">
+                      {saved.method === 'download' ? t('school.savedDownload', { time: time(saved.savedAt ?? Date.now()) }) : t('school.savedDrive', { time: time(saved.savedAt ?? Date.now()) })}
+                    </span>
                   </span>
                 </div>
               )}
-              {saved && <p className="handin-step__status" role="status">{saved.method === 'download' ? t('school.savedDownload', { time: time(saved.savedAt ?? 0) }) : t('school.savedDrive', { time: time(saved.savedAt ?? 0) })}</p>}
               {(saved?.method === 'download' || (!saved && !picker)) && <p className="handin-step__hint">{t('school.downloadHint')}</p>}
               {saveProblem && (
                 <p className="handin-step__problem" role="alert">

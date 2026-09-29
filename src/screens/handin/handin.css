@@ -1,7 +1,9 @@
-/* Hand in (§2.13; spec-mocks/12-handin.png). Tokens only. */
+/*
+ * Hand in (§2.13; spec-mocks/12-handin.png) in Scratch's look: a white sheet, flat inset areas with a 1 px
+ * outline, 8 px corners, 4 px checkboxes and round step numbers. Nothing glows or tilts. Tokens only.
+ */
 .dialog.handin {
   width: min(880px, calc(100vw - 16px));
-  border-radius: 24px;
 }
 
 .handin .dialog__body {
@@ -30,23 +32,21 @@
   align-items: start;
 }
 
-/* ---------- the checklist ---------- */
+/* ---------- the checklist: an inset area ---------- */
 .handin__checklist {
   display: grid;
   gap: var(--s3);
   padding: 14px 16px 16px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--well) 72%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 40%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--well);
 }
 
 .handin__h {
   display: flex;
   align-items: center;
   gap: var(--s2);
-  font: var(--type-label);
-  font-size: 1.125rem;
-  line-height: 1.5rem;
+  font: var(--type-heading);
 }
 
 .handin__h .icon {
@@ -65,7 +65,7 @@
   grid-template-columns: 24px minmax(0, 1fr);
   gap: var(--s3);
   padding: 10px 0;
-  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-top: 1px solid var(--line);
 }
 
 .checklist__item:first-child {
@@ -73,45 +73,51 @@
   border-top: 0;
 }
 
+/* A checkbox: 4 px corners and a 2 px edge. Done is a green edge with a green check (no fill, so the mark
+ * never depends on a colour laid over green). */
 .checklist__box {
   display: grid;
   place-items: center;
   width: 24px;
   height: 24px;
   margin-top: 1px;
-  border-radius: 7px;
-  box-shadow: inset 0 0 0 2px var(--line-control);
+  border: 2px solid var(--line-control);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  background: var(--surface-raised);
 }
 
 .checklist__item--pass .checklist__box {
-  color: var(--on-alive);
-  background: var(--alive);
-  box-shadow: none;
+  border-color: var(--alive);
+  color: var(--alive);
 }
 
 .checklist__item--fail .checklist__box {
+  border-color: var(--warn);
   color: var(--warn);
-  box-shadow: inset 0 0 0 2px var(--warn);
 }
 
 .checklist__item--teacher .checklist__box {
-  color: var(--text-2);
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 2px var(--line-control);
+  border-style: dashed;
 }
 
+.checklist__item--running .checklist__box {
+  border-color: var(--accent-text);
+}
+
+/* The test is running: a spinner (turning is its meaning). */
 .checklist__spin {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--ai) 35%, transparent);
-  border-top-color: var(--ai);
+  border: 2px solid color-mix(in srgb, var(--accent-text) 30%, transparent);
+  border-top-color: var(--accent-text);
   animation: checklist-spin 900ms linear infinite;
 }
 
 :root[data-motion='reduced'] .checklist__spin {
   animation: none;
-  border-color: var(--ai);
+  border-color: var(--accent-text);
 }
 
 @keyframes checklist-spin {
@@ -133,7 +139,6 @@
 
 .checklist__evidence {
   font: var(--type-meta);
-  font-weight: 600;
   color: var(--text-2);
 }
 
@@ -148,7 +153,7 @@
   border: 0;
   font: inherit;
   font-weight: 700;
-  color: var(--ai);
+  color: var(--accent-text);
   background: none;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -168,34 +173,36 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px;
-  border-radius: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent-text);
+  border-radius: var(--r-md);
   font: var(--type-label);
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+.handin__verdict .icon {
+  flex: none;
+  color: var(--accent-text);
 }
 
 .handin__verdict--pass {
+  border-left-color: var(--alive);
+}
+
+.handin__verdict--pass .icon {
   color: var(--alive);
-  background: color-mix(in srgb, var(--alive) 10%, transparent);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--alive) 55%, transparent);
-}
-
-.handin__verdict--open {
-  color: var(--text);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent);
-}
-
-.handin__verdict--open .icon {
-  color: var(--accent);
 }
 
 .handin__snapshot {
   overflow: hidden;
-  border-radius: 12px;
-  box-shadow: inset 0 0 0 1px var(--line), var(--lift-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
 }
 
 .handin__snapshot img {
+  display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
@@ -224,29 +231,28 @@
   background: var(--line-control);
 }
 
+/* Step numbers are round: now in brand blue, done as a green ring with a check, later as a grey ring. */
 .handin-step__n {
   display: grid;
   place-items: center;
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border: 2px solid var(--line-control);
+  border-radius: var(--r-round);
   font: var(--type-heading);
   color: var(--text-2);
-  box-shadow: inset 0 0 0 2px var(--line-control);
+  background: var(--surface-raised);
 }
 
 .handin-step--now .handin-step__n {
+  border-color: var(--accent);
   color: var(--on-accent);
   background: var(--accent);
-  box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent),
-    var(--glow-lantern);
 }
 
 .handin-step--done .handin-step__n {
-  color: var(--on-alive);
-  background: var(--alive);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--alive) 16%, transparent);
+  border-color: var(--alive);
+  color: var(--alive);
 }
 
 .handin-step__body {
@@ -269,12 +275,6 @@
   color: var(--text-2);
 }
 
-.handin-step__status {
-  font: var(--type-meta);
-  font-weight: 600;
-  color: var(--alive);
-}
-
 .handin-step__problem {
   font: var(--type-meta);
   font-weight: 600;
@@ -292,25 +292,28 @@
   gap: var(--s2);
 }
 
+/* The saved file, said once: its name, then when and where. */
 .handin-file {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: 36px minmax(0, 1fr);
   align-items: center;
   gap: var(--s3);
-  padding: 10px 14px 10px 12px;
-  border-radius: 12px;
-  background: var(--surface-raised);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 60%, transparent);
+  padding: 10px 14px 10px 10px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--alive);
+  border-radius: var(--r-md);
+  background: var(--well);
 }
 
 .handin-file__icon {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  color: var(--ink);
-  background: var(--paper);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  color: var(--alive);
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .handin-file__words {
@@ -327,18 +330,10 @@
 
 .handin-file__where {
   font: var(--type-meta);
-  font-weight: 600;
   color: var(--text-2);
 }
 
-.handin-file__time {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font: var(--type-label);
-  color: var(--alive);
-}
-
+/* Step 2's four tiles show Classroom's own words and buttons, drawn flat. */
 .classroom-steps {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -354,11 +349,11 @@
   gap: var(--s3);
   min-height: 76px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   font: var(--type-label);
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: var(--lift-sm);
+  color: var(--text);
+  background: var(--surface-raised);
 }
 
 .classroom-steps__n {
@@ -367,11 +362,11 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   font: var(--type-chip);
-  color: var(--ink-2);
-  background: var(--paper-2);
-  box-shadow: inset 0 0 0 1.5px var(--paper-3);
+  color: var(--text);
+  background: var(--bg-lift);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .classroom-steps__fake {
@@ -380,37 +375,38 @@
   gap: 4px;
   margin: 2px 0;
   padding: 3px 10px;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   font: var(--type-chip);
   white-space: nowrap;
 }
 
 .classroom-steps__fake--add {
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--paper-line);
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--line-control);
 }
 
 .classroom-steps__fake--turnin {
-  color: var(--paper);
-  background: var(--pencil-ink);
+  color: var(--on-accent);
+  background: var(--accent);
 }
 
+/* What the teacher will see: a plain note, with the eye. */
 .handin__honesty {
   display: flex;
   align-items: flex-start;
   gap: var(--s3);
   padding: 12px 16px;
-  border-radius: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   font: var(--type-label);
-  background: color-mix(in srgb, var(--ai) 12%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ai) 40%, transparent);
+  background: var(--bg-lift);
 }
 
 .handin__honesty .icon {
   flex: none;
   margin-top: 1px;
-  color: var(--ai);
+  color: var(--accent-text);
 }
 
 .handin .dialog__actions {
@@ -423,7 +419,6 @@
   margin-right: auto;
   font: var(--type-meta);
   font-size: 0.9375rem;
-  font-weight: 600;
   color: var(--text-2);
 }
 
@@ -448,5 +443,9 @@
   .handin-step__n {
     width: 32px;
     height: 32px;
+  }
+
+  .handin-step + .handin-step::before {
+    left: 15px;
   }
 }

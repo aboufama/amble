@@ -18,7 +18,6 @@ import { t } from '../../i18n';
 import { openWorld } from '../../state/session';
 import { getState, subscribe, useStore } from '../../state/store';
 import { Button, Footprints } from '../../ui/components';
-import { Lamppost } from '../../ui/icons';
 import { CrisisCard } from '../ai/CrisisCard';
 import { FileTabs, tabId } from './FileTabs';
 import { HelpPanel } from './HelpPanel';
@@ -73,7 +72,6 @@ function WorldSlot({ title }: { title: string }) {
   return (
     <div className="code-world" ref={slot} data-testid="code-world-slot">
       <div className="code-world__idle" aria-hidden="true">
-        <Lamppost height={44} />
         <span className="code-world__title">{title}</span>
       </div>
       <GameAccess />
@@ -165,7 +163,6 @@ export function CodeView({ route }: { route: RouteOf<'code'> }) {
     return (
       <ScreenFrame testId="screen-code" header={<TopBar title={t('common.routeCode')} />} className="code-screen code-screen--empty">
         <div className="code-empty">
-          <Lamppost height={56} />
           <h2 className="code-empty__title">{t('history.worldMissing')}</h2>
           <Button variant="lantern" onClick={() => navigate({ name: 'trail', view: 'trail' })}>
             {t('history.backToTrail')}
@@ -217,7 +214,7 @@ export function CodeView({ route }: { route: RouteOf<'code'> }) {
                 <Button variant="quiet" size={38} icon="undo" disabled={!activeDirty} onClick={() => session?.undoEdits()}>
                   {t('history.undoEdits')}
                 </Button>
-                <Button variant="ai" size={38} icon="sparkle" disabled={!session || snap?.explaining} title={t('history.explainHint')} onClick={() => void session?.explain()}>
+                <Button variant="ghost" size={38} icon="info" disabled={!session || snap?.explaining} title={t('history.explainHint')} onClick={() => void session?.explain()}>
                   {t('history.explain')}
                 </Button>
                 <Button
@@ -234,27 +231,29 @@ export function CodeView({ route }: { route: RouteOf<'code'> }) {
                 </Button>
               </div>
             </div>
-            <div className="code-main__editor" id={PANEL_ID} role="tabpanel" aria-labelledby={snap ? tabId(snap.active) : undefined} ref={host}>
-              {!session && (
-                <div className="code-main__loading">
-                  <Footprints label={t('history.loadingEditor')} />
-                  <span>{t('history.loadingEditor')}</span>
-                </div>
+            <div className="code-main__box">
+              <div className="code-main__editor" id={PANEL_ID} role="tabpanel" aria-labelledby={snap ? tabId(snap.active) : undefined} ref={host}>
+                {!session && (
+                  <div className="code-main__loading">
+                    <Footprints label={t('history.loadingEditor')} />
+                    <span>{t('history.loadingEditor')}</span>
+                  </div>
+                )}
+              </div>
+              {snap && session && (
+                <RunBar
+                  run={snap.run}
+                  message={session.runMessage()}
+                  oldDraft={snap.oldDraft}
+                  onShow={() => {
+                    const r = snap.run;
+                    if (r.kind === 'blocked' || r.kind === 'words') session.jumpTo(r.file, r.line);
+                    else if ((r.kind === 'runtime' || r.kind === 'failed') && r.file && r.line) session.jumpTo(r.file, r.line);
+                  }}
+                  onBringBack={() => session.bringBackDraft()}
+                />
               )}
             </div>
-            {snap && session && (
-              <RunBar
-                run={snap.run}
-                message={session.runMessage()}
-                oldDraft={snap.oldDraft}
-                onShow={() => {
-                  const r = snap.run;
-                  if (r.kind === 'blocked' || r.kind === 'words') session.jumpTo(r.file, r.line);
-                  else if ((r.kind === 'runtime' || r.kind === 'failed') && r.file && r.line) session.jumpTo(r.file, r.line);
-                }}
-                onBringBack={() => session.bringBackDraft()}
-              />
-            )}
           </>
         )}
       </section>

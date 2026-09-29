@@ -57,7 +57,7 @@ export function LegacyCard({ legacy, onDone }: LegacyCardProps) {
   };
 
   return (
-    <PaperCard as="section" tape="lemon" tilt={-1} className="legacy-card" labelledBy={titleId}>
+    <PaperCard as="section" className="legacy-card" labelledBy={titleId}>
       <p className="legacy-card__eyebrow">{t('files.legacy_heading')}</p>
       <h2 id={titleId} className="legacy-card__title">
         {legacy.title}
@@ -74,10 +74,10 @@ export function LegacyCard({ legacy, onDone }: LegacyCardProps) {
       )}
       <p className="legacy-card__count">{countText(legacy)}</p>
       <div className="legacy-card__actions">
-        <Button variant="lantern" icon="sparkle" busy={busy} onClick={() => void bring()} data-testid="legacy-bring">
+        <Button variant="lantern" icon="fileOpen" busy={busy} onClick={() => void bring()} data-testid="legacy-bring">
           {busy ? t('files.legacy_bringing') : t('files.legacy_bring')}
         </Button>
-        <Button variant="paper" disabled={busy} onClick={() => void later()}>
+        <Button variant="ghost" disabled={busy} onClick={() => void later()}>
           {t('files.notNow')}
         </Button>
       </div>

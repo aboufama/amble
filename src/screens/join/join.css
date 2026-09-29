@@ -1,4 +1,4 @@
-/* The Join card (§2.14) and its preview on the Teacher desk: flat, a white panel with a 1 px line. Tokens only. */
+/* The Join card (§2.14) and its preview on the Teacher desk, flat and square like a Scratch dialog. Tokens only. */
 .join-card__from {
   font: var(--type-meta);
   color: var(--text-2);
@@ -10,7 +10,8 @@
   padding: 14px 16px 16px;
   border: 1px solid var(--line);
   border-radius: var(--r-card);
-  background: var(--surface);
+  color: var(--text);
+  background: var(--surface-raised);
 }
 
 .join-preview__title {

@@ -1,52 +1,59 @@
 /*
- * Look inside (§2.12): the code panel on the left, the running world (520x293) and help on the right.
- * Code colours are tokens mapped per theme here, so the editor follows Night, Day and High contrast.
+ * Look inside (§2.12): the code on the left, the running world (520x293) and help on the right. Scratch's
+ * look: file tabs sit on the page above a white editor box, the chosen tab joins the box, and everything is
+ * flat with 8 px corners. Code colours are tokens mapped here, so the editor follows Original and High
+ * contrast; every syntax colour is a text token that meets 4.5:1 on the editor and its gutter.
  */
 
 .code-screen {
-  --code-bg: var(--well);
+  --code-bg: var(--surface-raised);
+  --code-gutter: var(--well);
   --code-text: var(--text);
   --code-punct: var(--text-2);
   --code-comment: var(--text-2);
   --code-keyword: var(--change);
   --code-atom: var(--change);
-  --code-number: var(--accent);
+  --code-number: var(--accent-text);
   --code-string: var(--alive);
-  --code-class: var(--paper-3);
+  --code-class: var(--text);
   --code-call: var(--text);
   --code-def: var(--text);
   --code-prop: var(--text);
   --code-gutter-text: var(--text-2);
-  --code-selection: color-mix(in srgb, var(--accent) 24%, transparent);
-  --code-selection-match: color-mix(in srgb, var(--accent) 12%, transparent);
-  --code-active-line: color-mix(in srgb, var(--text) 4%, transparent);
-  --code-bracket: color-mix(in srgb, var(--alive) 16%, transparent);
-  --code-search: color-mix(in srgb, var(--accent) 30%, transparent);
-  --code-student: var(--accent);
+  --code-selection: color-mix(in srgb, var(--brand-bright) 26%, transparent);
+  --code-selection-match: color-mix(in srgb, var(--brand-bright) 14%, transparent);
+  --code-active-line: color-mix(in srgb, var(--brand-bright) 7%, transparent);
+  --code-bracket: color-mix(in srgb, var(--alive) 14%, transparent);
+  --code-search: color-mix(in srgb, var(--warm) 40%, transparent);
+  /* The provenance gutter: quiet 3 px bars, one hue each (a wish, you, your teacher; the starter has none). */
+  --code-wish: var(--ai);
+  --code-student: var(--alive);
+  --code-teacher: var(--change);
 }
 
-:root[data-theme='day'] .code-screen {
-  --code-bg: var(--surface-raised);
-  --code-number: var(--accent-border);
-  --code-class: var(--ink-2);
-  --code-student: var(--accent-border);
-  --code-selection: color-mix(in srgb, var(--accent) 45%, transparent);
+/* High contrast: plain black and white with the theme's own accents; no tinted rows under words. */
+:root[data-theme='contrast'] .code-screen {
+  --code-selection: color-mix(in srgb, var(--accent) 38%, transparent);
+  --code-selection-match: transparent;
+  --code-active-line: transparent;
+  --code-bracket: transparent;
+  --code-search: transparent;
 }
 
 /* ---------------------------------------------------------------- layout */
 
 .code-screen .screen__main {
   display: flex;
-  padding: 6px 0 20px 20px;
+  padding: 12px 0 20px 20px;
   overflow: hidden;
 }
 
 .code-screen .screen__aside {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   width: 560px;
-  padding: 6px 20px 20px;
+  padding: 12px 20px 20px;
   overflow: hidden;
   border: 0;
   background: none;
@@ -54,20 +61,20 @@
 
 :root[data-layout='touch'] .code-screen .screen__aside {
   width: 516px;
-  padding: 6px 16px 16px;
+  padding: 12px 16px 16px;
 }
 
 :root[data-layout='touch'] .code-screen .screen__main {
-  padding: 6px 0 16px 16px;
+  padding: 12px 0 16px 16px;
 }
 
 :root[data-layout='small'] .code-screen .screen__aside {
   width: 400px;
-  padding: 6px 14px 14px;
+  padding: 10px 14px 14px;
 }
 
 :root[data-layout='small'] .code-screen .screen__main {
-  padding: 6px 0 14px 14px;
+  padding: 10px 0 14px 14px;
 }
 
 :root[data-layout='portrait'] .code-screen .screen__aside {
@@ -78,7 +85,7 @@
 /* Portrait: the code (scrolling inside itself) and the running world share the first screenful. */
 :root[data-layout='portrait'] .code-screen .screen__main {
   height: max(420px, calc(100dvh - var(--topbar) - (100vw - 32px) * 9 / 16 - 16px));
-  padding: 6px 16px 14px;
+  padding: 10px 16px 14px;
 }
 
 /* ---------------------------------------------------------------- the world, still running */
@@ -88,11 +95,9 @@
   flex: none;
   width: 100%;
   aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
   border-radius: var(--r-world);
-  background: radial-gradient(ellipse at 50% 35%, var(--bg-lift), var(--bg-deep) 75%);
-  box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent),
-    0 0 26px color-mix(in srgb, var(--accent) 14%, transparent);
+  background: var(--bg-deep);
   overflow: hidden;
 }
 
@@ -107,10 +112,10 @@
 
 .code-world__title {
   font: var(--type-heading);
-  color: var(--text-2);
+  color: var(--text);
 }
 
-/* ---------------------------------------------------------------- the code panel */
+/* ---------------------------------------------------------------- the code: tabs over a white box */
 
 .code-main {
   --line-control: var(--line-control-panel);
@@ -119,16 +124,10 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  border-radius: var(--r-card);
-  background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent),
-    var(--lift);
-  overflow: hidden;
 }
 
 .code-main__header {
-  padding: 14px 18px 2px;
+  margin: 0 2px 8px;
   font: 600 1rem/1.4 var(--font-ui);
   color: var(--text);
 }
@@ -138,8 +137,6 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--s3);
-  padding: 8px 14px 0 12px;
-  border-bottom: 1px solid var(--line);
 }
 
 .code-main__actions {
@@ -150,53 +147,69 @@
   padding-bottom: 8px;
 }
 
+/* Scratch's tabs: square to the page, 8 px top corners, a 1 px outline; the chosen one is white and joins
+ * the box below it, with purple words and a purple top edge. The strip scrolls sideways when files pile up;
+ * its top padding keeps the chosen tab's edge and the focus ring inside it. */
 .code-tabs {
   display: flex;
   flex: 1;
+  align-items: flex-end;
   min-width: 0;
-  gap: 2px;
+  gap: 4px;
+  padding: 6px 4px 0 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
 .code-tab {
   position: relative;
-  top: 1px;
   display: inline-flex;
   flex: none;
   align-items: center;
   gap: 6px;
-  height: 44px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 12px 12px 0 0;
-  font: 500 0.875rem/1 var(--font-code);
-  color: var(--text-2);
-  background: transparent;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: var(--r-md) var(--r-md) 0 0;
+  font: 600 0.875rem/1 var(--font-code);
+  color: var(--text);
+  background: var(--bg-deep);
   cursor: pointer;
 }
 
 .code-tab:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--text) 5%, transparent);
+  background: var(--bg-lift);
 }
 
-.code-tab--on {
-  color: var(--text);
+.code-tab--on,
+.code-tab--on:hover {
+  z-index: 1;
+  height: 44px;
+  margin-bottom: -1px;
+  color: var(--change);
   background: var(--code-bg);
-  box-shadow:
-    inset 0 2px 0 var(--accent),
-    inset 1px 0 0 var(--line),
-    inset -1px 0 0 var(--line);
+  box-shadow: inset 0 3px 0 var(--change-bright);
 }
 
 .code-tab:focus-visible {
-  outline-offset: -3px;
+  outline-offset: -4px;
 }
 
 .code-tab__edited {
   display: inline-flex;
   color: var(--code-student);
+}
+
+.code-main__box {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 0 var(--r-md) var(--r-md) var(--r-md);
+  background: var(--code-bg);
+  overflow: hidden;
 }
 
 .code-main__editor {
@@ -210,8 +223,9 @@
   height: 100%;
 }
 
+/* Where the keyboard is: a 2 px brand edge inside the box while the code has focus. */
 .code-main__editor:has(.cm-focused) {
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: inset 0 0 0 2px var(--focus-ring);
 }
 
 .code-main__loading {
@@ -233,9 +247,9 @@
   justify-content: space-between;
   gap: var(--s3);
   min-height: 52px;
-  padding: 4px 14px 4px 18px;
+  padding: 4px 14px 4px 16px;
   border-top: 1px solid var(--line);
-  background: var(--surface-bottom);
+  background: var(--code-gutter);
 }
 
 .run-bar__status {
@@ -256,7 +270,7 @@
 }
 
 .run-bar--accent .run-bar__icon {
-  color: var(--code-student);
+  color: var(--accent-text);
 }
 
 .run-bar--warn .run-bar__icon {
@@ -290,7 +304,7 @@
 }
 
 .run-bar__draft .icon {
-  color: var(--ai);
+  color: var(--accent-text);
 }
 
 /* ---------------------------------------------------------------- empty and missing */
@@ -305,6 +319,12 @@
   text-align: center;
 }
 
+.code-empty--inline {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface-raised);
+}
+
 .code-empty__title {
   font: var(--display-m);
 }
@@ -317,12 +337,17 @@
 
 /* ---------------------------------------------------------------- help */
 
-.panel.code-help {
+.code-help {
+  --line-control: var(--line-control-panel);
   display: flex;
   flex: 1;
   flex-direction: column;
   min-height: 0;
   padding: 14px 16px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
+  background: var(--surface-raised);
 }
 
 .code-help__scroll {
@@ -332,7 +357,7 @@
   padding-right: 8px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  scrollbar-color: var(--line-control) transparent;
 }
 
 .code-help__title {
@@ -348,21 +373,24 @@
   margin-top: 14px;
 }
 
+/* A count badge: a circle (Scratch's round count). Problems in red are a red ring, so the number keeps a
+ * text colour that meets 4.5:1 in both themes. */
 .code-help__count {
   display: inline-grid;
   place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: var(--r-chip);
-  font: 700 0.75rem/1 var(--font-ui);
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: var(--r-round);
+  font: 700 0.8125rem/1 var(--font-ui);
   color: var(--on-accent);
   background: var(--accent);
 }
 
 .code-help__count--error {
-  color: var(--bg-deep);
-  background: var(--warn);
+  color: var(--warn);
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--warn);
 }
 
 .code-help__none,
@@ -391,9 +419,15 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 6px 6px 6px 4px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--text) 4%, transparent);
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+}
+
+.problem--error {
+  border-left-color: var(--warn);
 }
 
 .problem__jump {
@@ -404,7 +438,7 @@
   min-height: var(--target);
   padding: 4px 6px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   text-align: left;
   color: var(--text);
   background: none;
@@ -412,13 +446,13 @@
 }
 
 .problem__jump:hover {
-  background: color-mix(in srgb, var(--text) 6%, transparent);
+  background: var(--bg-lift);
 }
 
 .problem__icon {
   grid-row: span 2;
   margin-top: 2px;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .problem--error .problem__icon {
@@ -428,7 +462,6 @@
 .problem__where {
   font: var(--type-caps);
   letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
   color: var(--text-2);
 }
 
@@ -438,10 +471,11 @@
 
 .problem__text code {
   padding: 0 4px;
-  border-radius: 4px;
+  border-radius: var(--r-sm);
   font: var(--type-code-diff);
   font-variant-ligatures: none;
-  background: var(--code-bg);
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .problem__fix {
@@ -457,9 +491,10 @@
 
 .code-help__doc {
   padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--code-bg);
-  box-shadow: inset 3px 0 0 var(--change);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--change);
+  border-radius: var(--r-md);
+  background: var(--well);
 }
 
 .code-help__doc code {
@@ -488,8 +523,9 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  border-radius: 10px;
-  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--well);
 }
 
 .code-help__art-chip img {
@@ -498,11 +534,10 @@
   object-fit: contain;
 }
 
+/* A drawing that is still just bones: the role's tint under a dashed edge (as the game shows it). */
 .code-help__art-chip--bones {
-  background: color-mix(in srgb, var(--tint, var(--tint-prop)) 45%, transparent);
-  box-shadow: inset 0 0 0 2px var(--dash-halo);
-  outline: 2px dashed var(--dash);
-  outline-offset: -4px;
+  border: 2px dashed var(--line-control);
+  background: color-mix(in srgb, var(--tint, var(--tint-prop)) 45%, var(--surface-raised));
 }
 
 .code-help__line {
@@ -523,6 +558,7 @@
   color: var(--text);
 }
 
+/* The key to the gutter: the same quiet 4 px bars, and the lock. */
 .code-help__swatch {
   display: inline-block;
   flex: none;
@@ -535,7 +571,7 @@
 }
 
 .code-help__swatch--ai {
-  background: var(--ai);
+  background: var(--code-wish);
   box-shadow: none;
 }
 
@@ -545,7 +581,7 @@
 }
 
 .code-help__swatch--teacher {
-  background: var(--change);
+  background: var(--code-teacher);
   box-shadow: none;
 }
 
@@ -580,7 +616,7 @@
 }
 
 .cm-prov--ai {
-  background: var(--ai);
+  background: var(--code-wish);
 }
 
 .cm-prov--student {
@@ -588,7 +624,7 @@
 }
 
 .cm-prov--teacher {
-  background: var(--change);
+  background: var(--code-teacher);
 }
 
 .code-screen .cm-prov-gutter {
@@ -617,17 +653,18 @@
 }
 
 .cm-locked-line {
-  background: color-mix(in srgb, var(--paper-line) 14%, transparent);
+  background: color-mix(in srgb, var(--line-control) 12%, transparent);
 }
 
-/* The note is the tooltip itself, so it outranks the editor theme's tooltip look: sticky paper. */
+/* The note is the tooltip itself, so it outranks the editor theme's tooltip look: a Scratch comment note. */
 .code-screen .cm-tooltip.cm-locked-note {
   padding: 7px 12px;
-  border-radius: var(--r-cut);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   font: var(--type-chip);
   color: var(--ink);
   background: var(--note);
-  box-shadow: var(--lift-paper);
+  box-shadow: var(--lift);
 }
 
 .code-screen .cm-lint-marker {
@@ -641,20 +678,20 @@
 .code-screen .cm-lint-marker-error {
   border-radius: 50%;
   background: var(--warn);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 30%, transparent);
 }
 
 .code-screen .cm-lint-marker-warning {
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
-  background: var(--accent);
+  background: var(--accent-text);
 }
 
 .code-screen .cm-kid-message code {
   padding: 0 4px;
-  border-radius: 4px;
+  border-radius: var(--r-sm);
   font: var(--type-code-diff);
   font-variant-ligatures: none;
   background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .cm-kit-doc {
@@ -666,6 +703,7 @@
   display: block;
   font: var(--type-code-diff);
   font-variant-ligatures: none;
+  color: var(--text);
   overflow-wrap: anywhere;
 }
 
@@ -697,7 +735,7 @@
   border: 0;
   border-radius: var(--r-chip);
   font: 700 0.6875rem/1 var(--font-ui);
-  color: var(--ink);
+  color: var(--text);
   background: transparent;
   cursor: pointer;
 }
@@ -709,7 +747,8 @@
 .cm-art-chip--bones:hover,
 .cm-art-chip--bones:focus-visible {
   padding: 0 7px 0 2px;
-  background: var(--paper);
+  background: var(--bg-lift);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .cm-art-chip--bones:hover .cm-art-chip__label,
@@ -724,19 +763,14 @@
 
 .cm-art-glyph__edge {
   fill: none;
-  stroke: var(--dash);
+  stroke: var(--text);
   stroke-width: 1.2;
   stroke-dasharray: 2 1.6;
 }
 
-:root[data-theme='day'] .cm-art-glyph__edge,
-.cm-art-chip--bones:hover .cm-art-glyph__edge {
-  stroke: var(--ink);
-}
-
 .cm-art-glyph__joint {
   fill: var(--bones);
-  stroke: var(--ink);
+  stroke: var(--text);
   stroke-width: 0.6;
 }
 
@@ -754,26 +788,23 @@
   object-fit: contain;
 }
 
+/* Explain this: a note under the lines, like a Scratch comment on a block (yellow, flat, square). */
 .cm-explain {
   max-width: 620px;
   margin: 6px 16px 10px 12px;
   padding: 10px 14px 12px;
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   font: var(--type-body);
-  color: var(--text);
-  background: var(--surface-raised);
-  box-shadow: inset 4px 0 0 var(--change);
+  color: var(--ink);
+  background: var(--note);
   white-space: normal;
 }
 
-.cm-explain--ai,
-.cm-explain--waiting {
-  background: color-mix(in srgb, var(--ai) 13%, var(--code-bg));
-  box-shadow: inset 4px 0 0 var(--ai);
-}
-
 .cm-explain--problem {
-  box-shadow: inset 4px 0 0 var(--warn);
+  border-left: 4px solid var(--warn);
+  background: var(--well);
+  color: var(--text);
 }
 
 .cm-explain__head {
@@ -786,13 +817,7 @@
 .cm-explain__label {
   font: var(--type-caps);
   letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
-  color: var(--text-2);
-}
-
-.cm-explain--ai .cm-explain__label,
-.cm-explain--waiting .cm-explain__label {
-  color: var(--ai);
+  color: inherit;
 }
 
 .cm-explain__close {
@@ -802,15 +827,14 @@
   height: 32px;
   margin: -6px -8px -6px 0;
   border: 0;
-  border-radius: 50%;
-  color: var(--text-2);
+  border-radius: var(--r-round);
+  color: inherit;
   background: none;
   cursor: pointer;
 }
 
 .cm-explain__close:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--text) 8%, transparent);
+  background: color-mix(in srgb, currentColor 10%, transparent);
 }
 
 .cm-explain__text {
@@ -818,13 +842,12 @@
 }
 
 .cm-explain--waiting .cm-explain__text {
-  color: var(--text-2);
   animation: explain-breathe 1.6s var(--ease-soft) infinite alternate;
 }
 
 @keyframes explain-breathe {
   to {
-    opacity: 0.55;
+    opacity: 0.6;
   }
 }
 

@@ -1,7 +1,8 @@
 /**
  * Help beside the code: the validator's **Problems** (kid words, where, and **Fix**), **What's this?** for
- * the cursor (the kit call's docs, the drawing an art key names, who wrote the line, a teacher's lock),
- * and the key to the provenance colours. Keyboard users get here what hovering gives mouse users.
+ * the cursor (the kit call's docs, the drawing an art key names, where the line came from, a teacher's
+ * lock), and the key to the quiet gutter bars: From a wish, You wrote this, From your teacher, From the
+ * starter, Locked by your teacher. Keyboard users get here what hovering gives mouse users.
  */
 import { t } from '../../i18n';
 import type { Author } from '../../model/types';
@@ -58,7 +59,7 @@ function Problems({ issues, multiFile, onJump, onFix }: Pick<HelpPanelProps, 'is
             </span>
           </button>
           {issue.fixed && (
-            <Button variant="paper" size={38} className="problem__fix" onClick={() => onFix(issue)}>
+            <Button variant="ghost" size={38} className="problem__fix" onClick={() => onFix(issue)}>
               {t('history.fix')}
             </Button>
           )}
@@ -85,7 +86,7 @@ function Cursor({ cursor, onDraw }: Pick<HelpPanelProps, 'cursor' | 'onDraw'>) {
           </span>
           <span>{cursor.art.label}</span>
           {!cursor.art.drawn && (
-            <Button variant="paper" size={38} icon="draw" onClick={() => onDraw(cursor.art!.key)}>
+            <Button variant="ghost" size={38} icon="draw" onClick={() => onDraw(cursor.art!.key)}>
               {t('history.drawIt')}
             </Button>
           )}
@@ -95,13 +96,13 @@ function Cursor({ cursor, onDraw }: Pick<HelpPanelProps, 'cursor' | 'onDraw'>) {
       <p className="code-help__line">
         <span className={cx('code-help__swatch', `code-help__swatch--${cursor.author}`)} aria-hidden="true" />
         <span>
-          <b>{t('history.cursorAt', { line: cursor.line, file: cursor.file })}</b> {t(AUTHOR_TEXT[cursor.author])}
+          <b>{t('history.cursorAt', { line: cursor.line, file: cursor.file })}</b> · {t(AUTHOR_TEXT[cursor.author])}
         </span>
       </p>
       {cursor.locked && (
         <p className="code-help__line code-help__line--locked">
           <Icon name="lock" size={16} />
-          <span>{t('history.lockedLines')}</span>
+          <span>{t('history.authorLocked')}</span>
         </p>
       )}
     </div>
@@ -111,7 +112,7 @@ function Cursor({ cursor, onDraw }: Pick<HelpPanelProps, 'cursor' | 'onDraw'>) {
 export function HelpPanel({ issues, multiFile, cursor, onJump, onFix, onDraw }: HelpPanelProps) {
   const errors = issues.filter((i) => i.severity === 'error').length;
   return (
-    <section className="panel code-help" aria-label={t('history.helpLabel')}>
+    <section className="code-help" aria-label={t('history.helpLabel')}>
       <div className="code-help__scroll">
         <h2 className="code-help__title">
           {t('history.problems')}
@@ -121,7 +122,7 @@ export function HelpPanel({ issues, multiFile, cursor, onJump, onFix, onDraw }: 
         <h2 className="code-help__title">{t('history.whatsThis')}</h2>
         <Cursor cursor={cursor} onDraw={onDraw} />
       </div>
-      <p className="code-help__legend" aria-label={t('history.legendLabel')}>
+      <div className="code-help__legend" role="group" aria-label={t('history.legendLabel')}>
         <span>
           <i className="code-help__swatch code-help__swatch--ai" aria-hidden="true" />
           {t('history.legendAi')}
@@ -135,10 +136,14 @@ export function HelpPanel({ issues, multiFile, cursor, onJump, onFix, onDraw }: 
           {t('history.legendTeacher')}
         </span>
         <span>
+          <i className="code-help__swatch" aria-hidden="true" />
+          {t('history.legendStarter')}
+        </span>
+        <span>
           <Icon name="lock" size={14} />
           {t('history.legendLocked')}
         </span>
-      </p>
+      </div>
     </section>
   );
 }
