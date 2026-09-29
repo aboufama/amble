@@ -242,11 +242,13 @@
   transform: translateY(-1px);
 }
 
+/* The picked pen's ring is the text colour: cream on the night dock, ink on Day's cream dock (a --paper
+ * ring vanishes there), white in High contrast. */
 .pen-dock__cap--on .pen-dock__ink {
   box-shadow:
     inset 0 -4px 0 color-mix(in srgb, var(--bg-deep) 30%, transparent),
     0 0 0 3px var(--surface-bottom),
-    0 0 0 6px var(--paper);
+    0 0 0 6px var(--text);
 }
 
 .pen-dock__sep {
@@ -680,7 +682,7 @@
   inset: 12px -12px -6px -10px;
   z-index: -1;
   border-radius: 10px 30px 14px 26px;
-  background: var(--alive);
+  background: var(--swash);
   opacity: 0.9;
   transform: skew(-8deg);
 }
