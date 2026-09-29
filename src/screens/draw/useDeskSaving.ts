@@ -5,6 +5,7 @@
  * save says so once and offers Save to Drive; drawing goes on (drafts and the stroke log still work).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { savesSettled, trackSave as track } from '../../draw/artId';
 import type { FilesApi } from '../../files/api';
 import type { DeskController } from '../../draw/deskController';
 import { saveDrawing, writeDraft } from '../../draw/drafts';
@@ -21,17 +22,7 @@ const DRAFT_MS = 1000;
 const IDLE_MS = 20_000;
 
 /** Saves still running when the Desk closed: the next Desk waits for them before it opens a drawing. */
-const pending = new Set<Promise<unknown>>();
-
-export function savesSettled(): Promise<void> {
-  return Promise.allSettled([...pending]).then(() => undefined);
-}
-
-function track<T>(p: Promise<T>): Promise<T> {
-  pending.add(p);
-  void p.finally(() => pending.delete(p)).catch(() => undefined);
-  return p;
-}
+export { savesSettled };
 
 export interface DeskSaving {
   status: SaveStatus;
