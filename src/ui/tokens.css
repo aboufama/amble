@@ -76,14 +76,14 @@
   --tint-decor: #bfc6e0;
   --bones: #0b8e69; /* Scratch pen-tertiary: bones over white sheets (4.1:1) */
   --hatch: #ffffff;
-  --dash: #f4ecdc;
-  --dash-halo: rgba(8, 9, 30, 0.55);
+  --dash: var(--line-control); /* the flat dashed outline of a "just bones" member (3.8:1 on white) */
+  --dash-halo: transparent; /* retired: outlines sit flat, with no dark halo */
 
   /* retired: no tape anywhere */
   --tape-lemon: transparent;
   --tape-lime: transparent;
 
-  /* ---------- type (§3.2) ---------- */
+  /* ---------- type (§3.2): everything in Atkinson Hyperlegible Next; Fredoka only in the wordmark ---------- */
   --font-display: 'Atkinson Hyperlegible Next', system-ui, sans-serif; /* headings are the UI font, bold */
   --font-wordmark: 'Fredoka', 'Atkinson Hyperlegible Next', system-ui, sans-serif; /* the amble wordmark only */
   --font-ui: 'Atkinson Hyperlegible Next', system-ui, sans-serif;
@@ -124,10 +124,10 @@
   --r-cut: 8px; /* retired: no hand-cut corners */
   --r-sm: 4px;
   --r-md: 8px;
-  --r-round: 999px; /* only round icon buttons, switch knobs and count badges */
-  --lift: 0 4px 12px rgba(0, 0, 0, 0.12); /* menus, popovers, dialogs; cards are flat with a border */
+  --r-round: 999px; /* only round icon buttons, switch knobs, avatars and count badges */
+  --lift: 0 4px 12px rgba(0, 0, 0, 0.12); /* menus, popovers, dialogs, toasts; cards are flat with a border */
   --lift-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --lift-paper: 0 0 0 1px rgba(0, 0, 0, 0.15);
+  --lift-paper: 0 0 0 1px rgba(0, 0, 0, 0.15); /* a 1 px --line ring, for paper that cannot take a border */
 
   /* ---------- controls ---------- */
   --control-sm: 38px;

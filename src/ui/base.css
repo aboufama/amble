@@ -110,7 +110,7 @@ button:disabled {
 }
 
 a {
-  color: var(--ai);
+  color: var(--accent-text);
   text-underline-offset: 2px;
 }
 
@@ -121,7 +121,7 @@ canvas {
 }
 
 ::selection {
-  background: rgba(255, 193, 94, 0.35);
+  background: var(--hover-ring);
 }
 
 * {
@@ -129,7 +129,7 @@ canvas {
   scrollbar-color: var(--line-control) transparent;
 }
 
-/* ---------- focus (§3.9): a 3 px lantern ring with a 3 px night gap; ink on paper ---------- */
+/* ---------- focus (§3.9): a 3 px blue ring with a 3 px gap (4 px yellow in High contrast), everywhere ---------- */
 :focus {
   outline: none;
 }
@@ -138,16 +138,6 @@ canvas {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: 3px;
   box-shadow: 0 0 0 3px var(--focus-gap);
-}
-
-.on-paper {
-  --focus-ring: var(--ink);
-  --focus-gap: var(--paper);
-}
-
-:root[data-theme='contrast'] .on-paper {
-  --focus-ring: #ffff00;
-  --focus-gap: #000000;
 }
 
 [tabindex='-1']:focus-visible {
@@ -246,7 +236,7 @@ pre {
   gap: var(--s3);
 }
 
-/* Grain is retired: surfaces are flat, as in Scratch. The class stays for older markup. */
+/* Surfaces are flat, as in Scratch: `.grain` draws nothing and only keeps older markup's layout. */
 .grain {
   position: relative;
 }
@@ -274,9 +264,7 @@ pre {
   border: 0;
 }
 
-.player-layer[data-slot='world'] {
-  box-shadow: 0 0 0 2px var(--accent), 0 0 26px rgba(255, 193, 94, 0.2);
-}
+/* The layer draws no frame of its own: the slot under it (the world view) has its 1 px --line. */
 
 [data-player-fullscreen] {
   position: fixed !important;
