@@ -331,7 +331,8 @@ export class Character extends Phaser.GameObjects.Container implements ArtListen
     }
     if (this.tagImg) {
       const up = this.kit.gravitySign > 0 ? -1 : 1;
-      const lift = this.tagKind === 'tag' ? 13 : 9;
+      // Clear of the head even when the stand-in breathes, bobs or squashes.
+      const lift = (this.tagKind === 'tag' ? 13 : 9) + this.spec.h * Math.abs(this.scaleY) * 0.08;
       this.tagImg.setPosition(this.x, this.y + up * (this.spec.h * Math.abs(this.scaleY) * 0.5 + lift)).setVisible(this.visible && this.alive);
     }
   }

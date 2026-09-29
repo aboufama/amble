@@ -5,9 +5,9 @@
  * flashes, WebGL contexts) and measured (stats, the robot test).
  */
 import Phaser from 'phaser';
-import { DEFAULT_PREFS, PROTOCOL_VERSION, type Action, type DrawnArt, type FontAsset, type FromPlayer, type GameState, type InitMessage, type PlayerPrefs, type RobotOptions, type RuntimeStats, type SoundAsset, type ToPlayer } from '../../play/protocol';
+import { DEFAULT_PREFS, PROTOCOL_VERSION, type Action, type DrawnArt, type FromPlayer, type GameState, type InitMessage, type PlayerPrefs, type RobotOptions, type RuntimeStats, type ToPlayer } from '../../play/protocol';
 import { registryFor } from '../kit/art';
-import { buildManifest, configureGame, counters, gameTexturesReady, restartLevel, scheduleManifest } from '../kit/boot';
+import { configureGame, gameTexturesReady, restartLevel, scheduleManifest } from '../kit/boot';
 import { DialRegistry } from '../kit/dials';
 import type { KitEnv, VirtualInput } from '../kit/env';
 import { installKit } from '../kit/index';
@@ -20,6 +20,7 @@ import { seeded } from '../kit/util';
 import { DrawnStore } from './assets';
 import { AudioHub } from './audio';
 import { now, useManualClock } from './clock';
+import { applyQuality, rendererInfo } from './device';
 import { countDrawCalls, drawCallsFrameDone, drawCallsLastFrame } from './drawCalls';
 import { ErrorReporter } from './errors';
 import { FlashLimiter, flashPolicy } from './flash';
@@ -27,12 +28,13 @@ import { GhostTaps } from './ghosts';
 import { harden } from './harden';
 import { KeyInjector } from './keys';
 import { createLink } from './link';
+import { loadArt, loadFonts, loadSounds, runFiles, runStart } from './load';
 import { hideErrorPanel, hideSoundChip, showSoundChip } from './overlay';
 import { currentGame, patchPhaser, renderOnly, retire } from './patches';
 import { runRobot, type RobotRecorder } from './robot';
-import { sourceUrlFor } from './stack';
 import { readStandalone, showPlayCard } from './standalone';
 import { createStorage, installStorage } from './storage';
+import { installTestHook } from './testHook';
 import { TouchOverlay } from './touch';
 
 const embedded = readStandalone();
@@ -82,6 +84,26 @@ const keys = new KeyInjector();
 const input: VirtualInput = { actions: {}, taps: {}, stick: null };
 const touch = new TouchOverlay(input);
 
+/** Keys a touch control presses in a plain Phaser game (which reads the keyboard, not the kit's actions). */
+const TOUCH_KEYS: Partial<Record<Action, { key: string; code: string }>> = {
+  left: { key: 'ArrowLeft', code: 'ArrowLeft' },
+  right: { key: 'ArrowRight', code: 'ArrowRight' },
+  up: { key: 'ArrowUp', code: 'ArrowUp' },
+  down: { key: 'ArrowDown', code: 'ArrowDown' },
+  jump: { key: ' ', code: 'Space' },
+  fire: { key: 'x', code: 'KeyX' },
+};
+
+function plainGameTouch(): void {
+  touch.useKeys((action, down) => {
+    const k = TOUCH_KEYS[action];
+    if (!k) return;
+    if (down) keys.down(k.key, k.code);
+    else keys.up(k.code);
+  });
+  touch.setActions(['left', 'right', 'up', 'down', 'jump'], { jump: 'SPACE' });
+}
+
 const env: KitEnv = {
   mode: 'play',
   standalone: !!embedded,
@@ -113,28 +135,6 @@ const ghosts = new GhostTaps(post, currentGame, () => env.prefs.ghostTaps && !en
 
 // ---------------------------------------------------------------- Phaser
 
-function gpuName(game: Phaser.Game): { renderer: 'webgl' | 'canvas'; gpu: string; maxTexture: number } {
-  const r = game.renderer;
-  if (!(r instanceof Phaser.Renderer.WebGL.WebGLRenderer)) return { renderer: 'canvas', gpu: '', maxTexture: 4096 };
-  const gl = r.gl;
-  const info = gl.getExtension('WEBGL_debug_renderer_info');
-  const gpu = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)).slice(0, 200);
-  return { renderer: 'webgl', gpu, maxTexture: Number(gl.getParameter(gl.MAX_TEXTURE_SIZE)) || 4096 };
-}
-
-function applyQuality(gpu: string): void {
-  const q = env.prefs.quality;
-  if (q !== 'auto') {
-    quality.level = q;
-    quality.cap = q;
-    return;
-  }
-  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
-  const software = /swiftshader|llvmpipe|software/i.test(gpu);
-  quality.cap = memory >= 8 && !software && gpu !== '' ? 2 : 1;
-  quality.level = 1;
-}
-
 function applySound(game: Phaser.Game): void {
   const sm = game.sound;
   sm.mute = env.prefs.muted || mode === 'robot';
@@ -149,8 +149,8 @@ function whenBooted(game: Phaser.Game, fn: () => void): void {
 function gameCreated(game: Phaser.Game): void {
   firstFrame = false;
   whenBooted(game, () => {
-    const info = gpuName(game);
-    applyQuality(info.gpu);
+    const info = rendererInfo(game);
+    applyQuality(env.prefs, info.gpu);
     applySound(game);
     const r = game.renderer;
     if (r instanceof Phaser.Renderer.WebGL.WebGLRenderer) countDrawCalls(r.gl);
@@ -170,8 +170,11 @@ function gameStepped(game: Phaser.Game, ms: number): void {
   if (!firstFrame) {
     firstFrame = true;
     post({ type: 'firstFrame' });
-    // Kit games report title/running themselves; a plain Phaser game is simply running.
-    if (!currentScene() && !errors.crashed && !editorPaused) post({ type: 'state', state: 'running' });
+    // Kit games report title/running themselves; a plain Phaser game is simply running, and reads keys.
+    if (!currentScene()) {
+      plainGameTouch();
+      if (!errors.crashed && !editorPaused) post({ type: 'state', state: 'running' });
+    }
     if (mode === 'play' && !env.standalone) {
       window.setTimeout(() => {
         if (audio.state === 'suspended' && !env.prefs.muted && currentGame() === game) showSoundChip(() => audio.unlock());
@@ -225,8 +228,18 @@ function collectStats(): RuntimeStats {
   };
 }
 
+/** Decoded textures past this make weak Chromebooks swap (drawings arrive at 2x their size). */
+const TEXTURE_BUDGET_MB = 32;
+let warnedTextures = false;
+
 window.setInterval(() => {
-  if (started && mode === 'play' && !env.standalone) post({ type: 'stats', stats: collectStats() });
+  if (!started || mode !== 'play' || env.standalone) return;
+  const stats = collectStats();
+  post({ type: 'stats', stats });
+  if (stats.textureMB > TEXTURE_BUDGET_MB && !warnedTextures) {
+    warnedTextures = true;
+    post({ type: 'warn', message: `This game holds ${Math.round(stats.textureMB)} MB of pictures; slower Chromebooks may struggle past ${TEXTURE_BUDGET_MB} MB.` });
+  }
 }, 1000);
 
 // ---------------------------------------------------------------- the robot test
@@ -251,69 +264,12 @@ function robotFailedEarly(): void {
 
 // ---------------------------------------------------------------- loading a game
 
-function runScript(url: string): Promise<void> {
-  return new Promise((resolve) => {
-    const s = document.createElement('script');
-    s.async = false;
-    s.src = url;
-    s.onload = () => resolve();
-    s.onerror = () => resolve();
-    document.head.append(s);
-  });
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-async function loadFonts(fonts: FontAsset[]): Promise<void> {
-  const jobs = fonts.map(async (f) => {
-    try {
-      const face = new FontFace(f.family, f.bytes, { weight: String(f.weight ?? 400) });
-      await face.load();
-      document.fonts.add(face);
-    } catch {
-      post({ type: 'warn', message: `The font ${f.family} could not load.` });
-    }
-  });
-  await Promise.race([Promise.all(jobs), delay(1500)]);
-}
-
-async function loadArt(list: DrawnArt[]): Promise<void> {
-  await Promise.all(
-    list.map(async (a) => {
-      try {
-        env.drawn.set(await env.drawn.decode(a));
-      } catch {
-        post({ type: 'warn', message: `The drawing for ${a.key} could not load.` });
-      }
-    }),
-  );
-}
-
-async function loadSounds(list: SoundAsset[]): Promise<void> {
-  await Promise.all(
-    list.map(async (s) => {
-      try {
-        const buf = await audio.decode(s);
-        if (buf) env.sounds.set(s.key, buf);
-      } catch {
-        post({ type: 'warn', message: `The sound ${s.key} could not load.` });
-      }
-    }),
-  );
-}
-
 function applyPrefs(prefs: PlayerPrefs): void {
   env.prefs = mode === 'robot' ? { ...prefs, muted: true, touch: 'off', errorPanel: false } : prefs;
   flash.setPolicy(flashPolicy(env.prefs.reducedMotion));
   errors.showPanel = env.prefs.errorPanel;
   touch.setMode(env.prefs.touch);
-  const q = env.prefs.quality;
-  if (q !== 'auto') {
-    quality.level = q;
-    quality.cap = q;
-  }
+  applyQuality(env.prefs, null);
   const game = currentGame();
   if (game) applySound(game);
 }
@@ -333,17 +289,11 @@ async function init(msg: InitMessage): Promise<void> {
   env.storage = local;
   env.dials = new DialRegistry(msg.dials);
   env.twistsOn = new Set(msg.twists.filter(isTwistId));
-  await Promise.all([loadFonts(msg.fonts), loadArt(msg.art), loadSounds(msg.sounds)]);
+  const warn = (message: string) => post({ type: 'warn', message });
+  await Promise.all([loadFonts(msg.fonts, warn), loadArt(msg.art, env.drawn, warn), loadSounds(msg.sounds, audio, env.sounds, warn)]);
   errors.globalPhase = 'load';
-  for (const f of msg.files) {
-    const url = URL.createObjectURL(new Blob([`${f.source}\n//# sourceURL=${sourceUrlFor(f.name)}\n`], { type: 'text/javascript' }));
-    errors.scripts.add(f.name, url);
-    await runScript(url);
-  }
-  if (!errors.crashed) {
-    const start = URL.createObjectURL(new Blob(["Amble.__start(typeof Game !== 'undefined' ? Game : undefined);"], { type: 'text/javascript' }));
-    await runScript(start);
-  }
+  await runFiles(msg.files, errors.scripts);
+  if (!errors.crashed) await runStart();
   errors.globalPhase = 'uncaught';
   started = true;
   if (!currentGame()) {
@@ -502,52 +452,16 @@ window.addEventListener(
 
 // ---------------------------------------------------------------- the test hook
 
-Object.defineProperty(window, '__ambleGame', {
-  configurable: false,
-  value: Object.freeze({
-    get state() {
-      return state;
-    },
-    get scene() {
-      return currentScene();
-    },
-    get game() {
-      return currentGame();
-    },
-    find: findByKey,
-    all: (group: string) => currentScene()?.all(group) ?? [],
-    stats: collectStats,
-    manifest: buildManifest,
-    get errors() {
-      return errors.errors;
-    },
-    get swaps() {
-      return swaps;
-    },
-    get createCount() {
-      return counters.creates;
-    },
-    dial: (name: string) => env.dials.values()[name],
-    twists: () => [...env.twistsOn],
-    prefs: () => ({ ...env.prefs }),
-    /** When the flash limiter let flashes through (ms, the runtime's clock). */
-    flashes: () => [...flash.allowed],
-  }),
+installTestHook({
+  state: () => state,
+  errors: () => errors.errors,
+  swaps: () => swaps,
+  stats: collectStats,
+  dials: () => env.dials.values(),
+  twists: () => [...env.twistsOn],
+  prefs: () => ({ ...env.prefs }),
+  flashes: () => [...flash.allowed],
 });
-
-/** The first live thing showing an art key (a kit character or sprite, or a plain image). */
-function findByKey(key: string): Phaser.GameObjects.GameObject | null {
-  const game = currentGame();
-  if (!game) return null;
-  for (const scene of game.scene.getScenes(true)) {
-    for (const o of scene.children.list) {
-      const k = (o as { key?: unknown }).key;
-      const tex = (o as { texture?: Phaser.Textures.Texture }).texture?.key;
-      if (o.active && (k === key || tex === key || tex === key + '~hd')) return o;
-    }
-  }
-  return null;
-}
 
 // ---------------------------------------------------------------- go
 

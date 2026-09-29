@@ -2,7 +2,8 @@
  * The on-screen controls for touchscreens: a stick (or ◀ ▶ for side-scrollers) on the left and up to three
  * worded buttons on the right, built from the actions the game reads. DOM inside the iframe (multi-touch
  * with pointer capture), 64 px targets at 55 % opacity, kept out of the top 60 px where the HUD lives.
- * Shown on the first touch, always with `touch: 'on'`, never with 'off'. Writes the kit's virtual input.
+ * Shown on the first touch, always with `touch: 'on'`, never with 'off'. Writes the kit's virtual input,
+ * or (for plain Phaser games, which read the keyboard) presses keys: arrows, Space and X.
  */
 import type { Action } from '../../play/protocol';
 import type { VirtualInput } from '../kit/env';
@@ -46,8 +47,13 @@ function icon(name: string): string {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] ?? ''}</svg>`;
 }
 
+/** Sends an action as a key press (plain Phaser games). */
+export type KeySink = (action: Action, down: boolean) => void;
+
 export class TouchOverlay {
   private readonly root: HTMLDivElement;
+  private keySink: KeySink | null = null;
+  private readonly keyHeld = new Set<Action>();
   private mode: 'auto' | 'on' | 'off' = 'auto';
   private touched = false;
   private actions: Action[] = [];
@@ -75,6 +81,11 @@ export class TouchOverlay {
   setMode(mode: 'auto' | 'on' | 'off'): void {
     this.mode = mode;
     this.update();
+  }
+
+  /** Plain Phaser games read keys, not the kit's actions: the controls press keys instead. */
+  useKeys(sink: KeySink | null): void {
+    this.keySink = sink;
   }
 
   /** The actions the game reads (and its own button words from `config.controls`). */
@@ -129,8 +140,7 @@ export class TouchOverlay {
       b.style.bottom = `${bottomOrLeft}px`;
     }
     const set = (on: boolean) => {
-      this.input.actions[action] = on;
-      if (on) this.input.taps[action] = true;
+      this.press(action, on);
       b.classList.toggle('down', on);
     };
     b.addEventListener('pointerdown', (e) => {
@@ -160,11 +170,13 @@ export class TouchOverlay {
         y /= len;
       }
       this.input.stick = { x, y };
+      this.stickKeys(x, y);
       knob.style.transform = `translate(${x * radius * 0.55}px, ${y * radius * 0.55}px)`;
     };
     const end = () => {
       id = null;
       this.input.stick = null;
+      this.stickKeys(0, 0);
       knob.style.transform = '';
     };
     pad.addEventListener('pointerdown', (e) => {
@@ -180,9 +192,29 @@ export class TouchOverlay {
     this.root.append(pad);
   }
 
+  private press(action: Action, on: boolean): void {
+    this.input.actions[action] = on;
+    if (on) this.input.taps[action] = true;
+    const sink = this.keySink;
+    if (!sink || on === this.keyHeld.has(action)) return;
+    if (on) this.keyHeld.add(action);
+    else this.keyHeld.delete(action);
+    sink(action, on);
+  }
+
+  /** In key mode the stick presses arrow keys past a dead zone. */
+  private stickKeys(x: number, y: number): void {
+    if (!this.keySink) return;
+    this.press('left', x < -0.35);
+    this.press('right', x > 0.35);
+    this.press('up', y < -0.45);
+    this.press('down', y > 0.45);
+  }
+
   /** Lets go of everything (blur, pause, rebuild). */
   release(): void {
     for (const a of Object.keys(this.input.actions) as Action[]) this.input.actions[a] = false;
+    for (const a of [...this.keyHeld]) this.press(a, false);
     this.input.stick = null;
     for (const b of this.root.querySelectorAll('.down')) b.classList.remove('down');
   }

@@ -158,7 +158,8 @@ export class PlayerFrame {
     const win = this.iframe.contentWindow;
     if (!win || this.dead) return;
     if (protocol !== PROTOCOL_VERSION) {
-      this.fail(`The game engine is version ${protocol}, the editor expects ${PROTOCOL_VERSION}. Reload the page.`);
+      // The editor and the runtime file are from different releases (a deploy happened meanwhile).
+      this.fail('Amble was just updated. Reload to keep going (your work is saved).');
       return;
     }
     const channel = new MessageChannel();
