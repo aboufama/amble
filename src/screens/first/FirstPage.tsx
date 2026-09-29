@@ -486,15 +486,17 @@ export function FirstPage() {
           </div>
           <div className="first__texture" aria-hidden="true" />
           <div className="first__front on-paper">
-            <h1 className="first__title">{t('home.firstTitle')}</h1>
-            <p className="first__sub">{t('home.firstSub')}</p>
-            <p className={cx('first__hint', (touched || phase !== 'drawing') && 'first__hint--gone')} aria-hidden="true">
-              <span>{t('home.firstHint')}</span>
-              <svg width="70" height="64" viewBox="0 0 70 64" aria-hidden="true">
-                <path className="first__hint-arrow" d="M8 6c18 6 34 18 42 38" />
-                <path className="first__hint-arrow" d="M40 40l10 6 3-12" />
-              </svg>
-            </p>
+            <div className="first__heading">
+              <h1 className="first__title">{t('home.firstTitle')}</h1>
+              <p className="first__sub">{t('home.firstSub')}</p>
+              <p className={cx('first__hint', (touched || phase !== 'drawing') && 'first__hint--gone')} aria-hidden="true">
+                <span>{t('home.firstHint')}</span>
+                <svg width="70" height="64" viewBox="0 0 70 64" aria-hidden="true">
+                  <path className="first__hint-arrow" d="M8 6c18 6 34 18 42 38" />
+                  <path className="first__hint-arrow" d="M40 40l10 6 3-12" />
+                </svg>
+              </p>
+            </div>
             {phase !== 'alive' ? (
               <div className="first__life">
                 <p className="first__life-hint">{t('home.firstLifeHint')}</p>

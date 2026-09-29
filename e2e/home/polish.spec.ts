@@ -89,4 +89,16 @@ test.describe('large text on 1280x600', () => {
     );
     for (const s of spill) expect(s, 'the world type line stays on its card').toBeLessThanOrEqual(0);
   });
+
+  test("the paper's title, line and hint never run into each other with 130 % text and extra spacing", async ({ page }) => {
+    await openAmble(page, { clean: true, prefs: { textScale: 1.3, extraSpacing: true } });
+    await expect(page.getByTestId('screen-first')).toBeVisible();
+    const gap = await page.evaluate(() => {
+      const box = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+      return { titleToSub: box('.first__sub').top - box('.first__title').bottom, subToHint: box('.first__hint').top - box('.first__sub').bottom };
+    });
+    // Line boxes may touch by a few pixels (the display face sits high in its box); glyphs never meet.
+    expect(gap.titleToSub).toBeGreaterThanOrEqual(-8);
+    expect(gap.subToHint).toBeGreaterThanOrEqual(8);
+  });
 });

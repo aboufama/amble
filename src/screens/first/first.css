@@ -101,21 +101,22 @@
   rotate: 24deg;
 }
 
-:root[data-layout='small'] .first__title {
+:root[data-layout='small'] .first__heading {
   left: 32px;
   top: 28px;
+}
+
+:root[data-layout='small'] .first__title {
   font-size: 2.125rem;
 }
 
 :root[data-layout='small'] .first__sub {
-  left: 34px;
-  top: 74px;
+  margin-top: 2px;
   font-size: 1.0625rem;
 }
 
 :root[data-layout='small'] .first__hint {
-  left: 84px;
-  top: 128px;
+  margin: 30px 0 0 52px;
 }
 
 :root[data-layout='small'] .first-col__title--give {
@@ -437,10 +438,22 @@
   pointer-events: none;
 }
 
-.first__title {
+/*
+ * The title, the line under it and the "start anywhere" hint flow in one block at (46, 40): at 1366x768 and
+ * 100 % text they land where the mockup has them (the line at y 94, the hint at 172), and larger text or
+ * Extra spacing moves each one down instead of stacking them (WCAG 1.4.12).
+ */
+.first__heading {
   position: absolute;
   left: 46px;
   top: 40px;
+  right: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.first__title {
   margin: 0;
   font: var(--display-l);
   letter-spacing: -0.005em;
@@ -448,22 +461,16 @@
 }
 
 .first__sub {
-  position: absolute;
-  left: 48px;
-  top: 94px;
-  margin: 0;
+  margin: 10px 0 0 2px;
   font: 400 1.25rem/1.4 var(--font-ui);
   color: var(--ink-2);
 }
 
 .first__hint {
-  position: absolute;
-  left: 118px;
-  top: 172px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin: 0;
+  margin: 50px 0 0 72px;
   font: var(--weight-display) 1.1875rem/1 var(--font-display);
   color: var(--pencil-ink);
   transition: opacity var(--t-move) var(--ease-soft);
