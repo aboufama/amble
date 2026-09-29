@@ -256,15 +256,20 @@ describe('names', () => {
     expect(inGame.errors.map((e) => [e.rule, e.file])).toEqual([['duplicate-declaration', 'game.js']]);
   });
 
-  it('flags storing things in names the kit or Phaser already use on the scene, but not in the kit setters', () => {
-    const body = ['this.level = 1;', 'this.time = 0;', 'this.portal = null;', 'this.hero = null;', 'this.score = 5;', 'this.timeScale = 0.5;', 'this.stage = 2;'].map((l) => `    ${l}`).join('\n');
-    const r = validateCode(game(body), { manifest: kitManifest(), fix: false });
-    expect(r.errors.map((e) => [e.rule, e.line])).toEqual([['kit-overwrite', 3], ['kit-overwrite', 4], ['kit-overwrite', 5]]);
+  it('flags game state stored in names the kit or Phaser use on the scene: an error when that breaks something', () => {
+    const lines = ['this.level = 1;', 'this.time = 0;', 'this.portal = null;', 'this.hero = null;', 'this.score = 5;', 'this.timeScale = 0.5;', 'this.stage = 2;', "this.level(['#']);", 'this.win = true;'];
+    const r = validateCode(game(lines.map((l) => `    ${l}`).join('\n')), { manifest: kitManifest(), fix: false });
+    // The game calls level(), time is Phaser's, and the kit itself calls win(): errors. Nothing calls portal(): a warning.
+    expect(r.errors.filter((e) => e.rule === 'kit-overwrite').map((e) => e.line)).toEqual([3, 4, 11]);
     expect(r.errors[0].message).toBe('`this.level` is already a kit method; storing something else in it breaks the kit. Pick another name for yours, like this.myLevel.');
     expect(r.errors[1].message).toBe('`this.time` is already part of the Phaser scene; storing something else in it breaks the game. Pick another name for yours, like this.myTime.');
-    // A class field is the same thing.
-    const field = validateCode('class Game extends Amble.Scene {\n  platform = null;\n  create() {}\n}\n', { manifest: kitManifest(), fix: false });
-    expect(field.errors.map((e) => [e.rule, e.line])).toEqual([['kit-overwrite', 2]]);
+    expect(r.warnings.filter((w) => w.rule === 'kit-overwrite').map((w) => [w.line, w.message])).toEqual([
+      [5, '`this.portal` hides the kit method this.portal(); pick another name for yours, like this.myPortal, so both keep working.'],
+    ]);
+    // A class field is the same thing: sfx() is one the kit calls itself.
+    const field = validateCode('class Game extends Amble.Scene {\n  platform = null;\n  sfx = null;\n  create() {}\n}\n', { manifest: kitManifest(), fix: false });
+    expect(field.errors.map((e) => [e.rule, e.line])).toEqual([['kit-overwrite', 3]]);
+    expect(field.warnings.map((w) => [w.rule, w.line])).toEqual([['kit-overwrite', 2]]);
   });
 
   it('only lets game.js declare the Game class', () => {

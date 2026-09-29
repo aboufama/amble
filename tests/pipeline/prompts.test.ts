@@ -40,14 +40,15 @@ describe('the prompts', () => {
     expect(SYSTEM_PROMPT).toContain('this.setLevel(n) then this.restart() builds level n');
   });
 
-  it('name the scene members a game may not take, and the validator stops each one', () => {
+  it('name the scene members a game may not take, and the validator flags each one', () => {
     const rule = /Never store your own things in a name the kit or Phaser already uses on this: ([^]*?)\. this\.hero/.exec(SYSTEM_PROMPT);
     expect(rule).not.toBeNull();
     const named = [...(rule?.[1] ?? '').matchAll(/\b(?:this\.)?([a-z]\w*)(?:\(\))?(?=[,)]| builds|$| \(|, or)/g)].map((m) => m[1]);
     for (const name of ['fx', 'ui', 'controls', 'music', 'combo', 'pattern', 'twists', 'dials', 'dial', 'clock', 'level', 'add', 'physics', 'time', 'events', 'input', 'cameras', 'tweens']) {
       expect(named, name).toContain(name);
       const game = `class Game extends Amble.Scene {\n  create() {\n    this.${name} = 1;\n  }\n}\n`;
-      expect(check([{ path: 'game.js', content: game }], NO_WORLD).errors.map((e) => e.rule), name).toContain('kit-overwrite');
+      const r = check([{ path: 'game.js', content: game }], NO_WORLD);
+      expect([...r.errors, ...r.warnings].map((e) => e.rule), name).toContain('kit-overwrite');
     }
   });
 

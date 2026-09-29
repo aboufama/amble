@@ -131,6 +131,20 @@ function checkGameClass(ctx: FileContext, isEntry: boolean): void {
   }
 }
 
+/** Every method name the game calls, on anything: `this.level(...)`, `scene.shoot(...)`. */
+function calledMethods(asts: readonly Program[]): Set<string> {
+  const out = new Set<string>();
+  for (const ast of asts) {
+    ancestor(ast, {
+      CallExpression(n) {
+        const c = n.callee;
+        if (c.type === 'MemberExpression' && !c.computed && c.property.type === 'Identifier') out.add(c.property.name);
+      },
+    });
+  }
+  return out;
+}
+
 /** The names a declaration pattern binds: `a`, `{ a, b: c }`, `[a, ...rest]`. */
 function boundNames(p: Pattern | null): Identifier[] {
   if (!p) return [];
@@ -262,7 +276,7 @@ function runPass(files: readonly GameFile[], api: Api, entry: string, fix: boole
   const entryParsed = parsed.find((p) => p.file.path === entry);
   const entryGame = entryParsed ? findGameClass(entryParsed.ast) : null;
   const asts = parsed.map((p) => p.ast);
-  const facts: GameFacts = { api, own: new Set(), declared: new Set(), artDeclared: new Set(), artUsed: new Set(), restartDials: restartDials(entryGame, asts) };
+  const facts: GameFacts = { api, own: new Set(), declared: new Set(), artDeclared: new Set(), artUsed: new Set(), restartDials: restartDials(entryGame, asts), called: calledMethods(asts) };
   const scenes = new Map<Parsed, Set<AnyNode>>();
   for (const p of parsed) {
     collectDeclared(p.ast, facts.declared);

@@ -201,10 +201,14 @@ function kitCalls(ctx: FileContext, n: CallExpression, anc: readonly AnyNode[], 
 /** Scene members game code may set: the kit's setters for the hero, the score and the game's speed. */
 const SETTABLE = new Set(['hero', 'score', 'timeScale']);
 
+/** Scene methods the kit itself calls (shots, pickups, bosses, waves, restarts), whatever the game calls. */
+const KIT_CALLS = new Set(['sfx', 'shoot', 'spawn', 'spawnItem', 'phases', 'flipGravity', 'brain', 'win', 'lose', 'blast', 'restart']);
+
 /**
  * Storing a game's own things in a name the kit or Phaser already uses on the scene: `this.level = 2` hides
  * the kit's level() (and the scene object is reused when the level restarts, so the next create() breaks),
- * `this.time = 0` breaks Phaser's clock.
+ * `this.time = 0` breaks Phaser's clock. A kit method that neither the kit nor the game ever calls
+ * (`this.portal = null` in a game with no this.portal(...)) is only hidden, so that is a warning.
  */
 function overwrite(ctx: FileContext, node: AnyNode, name: string): void {
   const alt = `my${name[0].toUpperCase()}${name.slice(1)}`;
@@ -214,8 +218,10 @@ function overwrite(ctx: FileContext, node: AnyNode, name: string): void {
     return;
   } else if (PHASER_SCENE_MEMBERS.includes(name)) {
     ctx.add('error', 'kit-overwrite', node, `\`this.${name}\` is already part of the Phaser scene; storing something else in it breaks the game. Pick another name for yours, like this.${alt}.`, { name });
-  } else if (ctx.api.sceneMethods.has(name)) {
+  } else if (ctx.api.sceneMethods.has(name) && (KIT_CALLS.has(name) || ctx.facts.called.has(name))) {
     ctx.add('error', 'kit-overwrite', node, `\`this.${name}\` is already a kit method; storing something else in it breaks the kit. Pick another name for yours, like this.${alt}.`, { name });
+  } else if (ctx.api.sceneMethods.has(name)) {
+    ctx.add('warning', 'kit-overwrite', node, `\`this.${name}\` hides the kit method this.${name}(); pick another name for yours, like this.${alt}, so both keep working.`, { name });
   }
 }
 
