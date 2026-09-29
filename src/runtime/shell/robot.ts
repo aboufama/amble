@@ -38,14 +38,18 @@ export interface RobotContext {
   stats(): RuntimeStats;
   state(): GameState;
   /**
-   * Told the stats (with the frames stepped so far) when the run starts and then at most every
-   * `PROGRESS_MS` of wall time, mid-batch too: the editor's watchdog judges the run by its progress.
+   * Told the stats (with the frames stepped so far) when the run starts and then every `PROGRESS_MS` of
+   * wall time, mid-batch too: the editor's watchdog judges the run by its progress, and when a frame never
+   * ends, the last report says how far the game got.
    */
   progress?(stats: RuntimeStats): void;
 }
 
-/** How often the run reports its progress (wall time). */
-const PROGRESS_MS = 500;
+/**
+ * How often the run reports its progress (wall time). The editor takes at most 4 stats messages a second
+ * from a player (src/play/limits.ts) and drops the rest, so more often would tell it less.
+ */
+const PROGRESS_MS = 300;
 
 function yieldTask(): Promise<void> {
   return new Promise((resolve) => {

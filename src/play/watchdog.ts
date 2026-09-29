@@ -85,7 +85,7 @@ export class FrozenWatch {
 /**
  * The robot test's watchdog, judged by progress rather than a flat wall-clock limit: a slow machine plays
  * the 6 s of game time slowly, and that is fine as long as frames keep finishing. The runtime reports the
- * frames it has stepped when the run starts and then twice a second (mid-frame-batch too), so:
+ * frames it has stepped when the run starts and then about three times a second (mid-frame-batch too), so:
  * - `start`: the run has not begun this long after the game booted (its `create()` never ended);
  * - `stall`: no frame has finished for `stallMs` (a loop that never ends, even unguarded);
  * - `ceiling`: the run is still going after `ceilingMs` in all (generous: only a hopelessly slow game).

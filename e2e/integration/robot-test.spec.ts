@@ -77,15 +77,25 @@ test('a heavy but healthy game takes its time and is not called frozen', async (
 test('a frame that never finishes is stopped within seconds, with the speed it had', async ({ page }) => {
   test.setTimeout(120_000);
   await openWorld(page);
-  // After 3 s of play one frame blocks for 12 s (an endless loop, as far as anyone can tell).
-  const run = await robot(page, game('    if (this.clock > 3000 && !this.stuck) {\n      this.stuck = true;\n      const end = performance.now() + 12000;\n      while (performance.now() < end) {}\n    }'));
+  // Frames cost 10 ms each; after 3 s of play (180 frames) one frame blocks for 12 s (an endless loop, as
+  // far as anyone can tell).
+  const run = await robot(
+    page,
+    game(
+      '    const slow = performance.now() + 10;\n    while (performance.now() < slow) {}\n' +
+        '    if (this.clock > 3000 && !this.stuck) {\n      this.stuck = true;\n      const end = performance.now() + 12000;\n      while (performance.now() < end) {}\n    }',
+    ),
+  );
   test.info().annotations.push({ type: 'run', description: JSON.stringify(run) });
   expect(run.pass).toBe(false);
   expect(run.errors).toContainEqual(expect.stringMatching(/^frozen: The game froze: no frame finished for 4 seconds/));
   // Stopped about 4 s after its last finished frame, long before the frame itself would have ended.
   expect(run.wallMs).toBeGreaterThan(3500);
   expect(run.wallMs).toBeLessThan(12_000);
-  expect(run.frames).toBeGreaterThan(0);
+  // The report says how far the game got: the frames seen finishing, at most a few tenths of a second short
+  // of the 180 or so before the frame that never ends.
+  expect(run.frames).toBeGreaterThanOrEqual(100);
+  expect(run.frames).toBeLessThan(200);
   expect(run.speed).toBeGreaterThan(0);
   // The visible game may share that renderer process; the watchdog held while the robot played.
   await page.waitForTimeout(8000);
