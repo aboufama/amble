@@ -311,7 +311,7 @@
 .plan-card__twist b {
   display: block;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .plan-card__sub {

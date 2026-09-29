@@ -1226,7 +1226,7 @@
 }
 
 .gchip--done {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .gchip--ai .icon {

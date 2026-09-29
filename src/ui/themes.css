@@ -19,6 +19,7 @@
   --text-2: #4a4058;
   --accent: #ffc15e;
   --accent-border: #8a6a00;
+  --accent-text: #8a5a00;
   --alive: #17744a;
   --on-alive: #ffffff;
   --ai: #2c5fb8;
@@ -51,6 +52,7 @@
   --text-2: #ffffff;
   --accent: #ffff00;
   --accent-border: #ffffff;
+  --accent-text: #ffff00;
   --on-accent: #000000;
   --paper: #000000;
   --paper-2: #000000;

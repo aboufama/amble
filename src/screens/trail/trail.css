@@ -76,7 +76,7 @@
 }
 
 .trail-copy__alive {
-  color: var(--accent);
+  color: var(--accent-text);
   text-shadow: 0 0 28px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 

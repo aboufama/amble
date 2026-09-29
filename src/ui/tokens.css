@@ -21,6 +21,7 @@
   --text-2: #a7acdc;
   --accent: #ffc15e;
   --accent-border: transparent;
+  --accent-text: #ffc15e; /* lantern as words (a headline's second line, a twist's name): Day darkens it */
   --on-accent: #221b2e;
   --alive: #86f3cb;
   --on-alive: #221b2e; /* checks, numbers and knobs drawn on --alive */
