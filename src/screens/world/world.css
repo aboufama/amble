@@ -47,9 +47,18 @@
 
 :root[data-layout='tab'] .world-screen {
   --wv-w: min(880px, calc(100vw - 488px), calc((100vh - 220px) * 16 / 9));
-  --cast-h: max(88px, calc(100vh - var(--topbar) - 6px - var(--wv-h) - 12px - var(--ctl-h) - 7px));
+  --cast-h: max(84px, calc(100vh - var(--topbar) - 6px - var(--wv-h) - 12px - var(--ctl-h) - 7px));
   --card-w: 96px;
-  --card-h: 84px;
+  --card-h: 72px;
+}
+
+:root[data-layout='tab'] .cast-line__cards {
+  padding-top: 11px;
+}
+
+:root[data-layout='tab'] .cast-card__pin {
+  top: -7px;
+  height: 14px;
 }
 
 :root[data-layout='touch'] .world-screen {
@@ -1022,11 +1031,23 @@
 }
 
 :root[data-layout='tab'] .cast-card__pic {
-  height: 48px;
+  height: 40px;
+}
+
+:root[data-layout='tab'] .cast-card__pic .ph-glyph,
+:root[data-layout='tab'] .cast-card__pic .sticker {
+  max-height: 40px;
 }
 
 :root[data-layout='tab'] .cast-line__head {
-  top: 12px;
+  top: 8px;
+}
+
+:root[data-layout='tab'] .cast-line__progress {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 @media (max-height: 759px) {

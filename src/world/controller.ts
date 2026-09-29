@@ -14,6 +14,7 @@ import {
   flushWorld,
   isLoaded,
   loadGame,
+  noteLoaded,
   openWorld,
   patchSession,
   playNewVersion,
@@ -147,7 +148,10 @@ export class WorldController {
       patchSession({ manifest: m.manifest });
       refreshCast();
     });
-    this.on('firstFrame', () => patchSession({ ready: true, snapshot: null }));
+    this.on('firstFrame', () => {
+      patchSession({ ready: true, snapshot: null, stopped: null });
+      noteLoaded();
+    });
     this.on('error', (m) => {
       addProblem(m.error);
       if (m.error.phase === 'frozen' || /keeps trying to open a web page/.test(m.error.message)) patchSession({ stopped: 'crashed' });

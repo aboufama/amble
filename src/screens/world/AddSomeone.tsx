@@ -9,7 +9,7 @@ import { t, type MessageKey } from '../../i18n';
 import { CAST_KEY_RE } from '../../model/ids';
 import type { ArtKind, CastKey, CastMember, RigKind, Role, World } from '../../model/types';
 import { flushWorld, getSessionMember, refreshCast, updateWorld } from '../../state/session';
-import { useStore } from '../../state/store';
+import { useAiOn } from './hooks';
 import { Button, Field, PlaceholderGlyph, Sheet, TextArea } from '../../ui/components';
 import { cx } from '../../ui/cx';
 
@@ -70,7 +70,7 @@ export function takePendingAdd(worldId: string, key: CastKey | null): PendingAdd
 }
 
 export function AddSomeone({ open, world, onClose, onDraw }: { open: boolean; world: World; onClose(): void; onDraw(member: CastMember): void }) {
-  const aiOn = useStore((s) => s.ai.status === 'ready');
+  const aiOn = useAiOn(world.assignment);
   const [pick, setPick] = useState<Pick>('friend');
   const [name, setName] = useState('');
   const [what, setWhat] = useState('');

@@ -15,6 +15,7 @@ import { withViewTransition } from '../../app/transitions';
 import { t } from '../../i18n';
 import type { CastMember } from '../../model/types';
 import { announce, showToast } from '../../state/app';
+import { effectiveAiMode } from '../../state/config';
 import { markSeen } from '../../state/prefs';
 import { confirmUser } from '../../ui/dialogs';
 import { runAsk } from '../../world/ask';
@@ -169,7 +170,8 @@ export function World({ route }: { route: RouteOf<'world'> }) {
     async (worldId: string, key: string | null, artId: string) => {
       const added = takePendingAdd(worldId, key);
       if (!added) return;
-      if (ai.status() === 'ready') {
+      const w = getState().session.world;
+      if (ai.status() === 'ready' && effectiveAiMode(w?.assignment ?? null) === 'on') {
         const words = added.what ? t('world.addRequest', { name: added.name, role: added.roleWord, what: added.what }) : t('world.addRequestPlain', { name: added.name, role: added.roleWord });
         void runAsk('change', words);
         return;

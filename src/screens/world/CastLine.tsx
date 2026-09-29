@@ -18,7 +18,7 @@ import { rovingIndex } from '../../ui/a11y';
 import { castProgress, nextNeeded } from '../../world/cast';
 import { askBusy, runAsk } from '../../world/ask';
 import { AddCard, CastCard, pronounWord } from './CastCard';
-import { useLayout } from './hooks';
+import { useAiOn, useLayout } from './hooks';
 
 interface MenuAction {
   id: string;
@@ -76,7 +76,7 @@ export function CastLine({ world, onDraw, onAdd }: CastLineProps) {
   const cast = useStore((s) => s.session.cast);
   const fresh = useStore((s) => s.session.fresh);
   const selected = useStore((s) => s.session.selected);
-  const aiOn = useStore((s) => s.ai.status === 'ready');
+  const aiOn = useAiOn(world.assignment);
   const layout = useLayout();
   const [menu, setMenu] = useState<{ member: CastMember; anchor: HTMLElement } | null>(null);
   const [sheet, setSheet] = useState(false);

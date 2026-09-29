@@ -18,7 +18,7 @@ import { isSupersededLoad } from '../app/player/host';
 import { getServices } from '../app/services';
 import type { GameManifest, GameState, WorldObject } from '../cores/play';
 import { t } from '../i18n';
-import type { AiOutcome, CastKey, CastMember, CastSlot, LocalSteer, PlayerError, SaveState, StepInput, TwistId, World, WorldId } from '../model/types';
+import type { AiOutcome, CastKey, CastMember, CastSlot, PlayerError, SaveState, StepInput, TwistId, World, WorldId } from '../model/types';
 import { createAutosave, type Autosave } from '../store/autosave';
 import { deriveCast } from '../world/cast';
 import { DialBurst, type DialCommit } from '../world/dialBurst';
@@ -52,8 +52,6 @@ export interface SessionSlice {
   heavy: boolean;
   /** The request tag: which member Amble is asking for, and why now. */
   request: { key: CastKey; trigger: TagTrigger } | null;
-  /** A local steer to show over the world (when the AI slice does not keep one). */
-  steer: { steer: LocalSteer; words: string } | null;
   /** Members the last AI change added (their cards wear a NEW ribbon). */
   fresh: CastKey[];
   /** Object URL of the world's last snapshot (shown dimmed while it loads). */
@@ -79,7 +77,6 @@ export function initialSession(): SessionSlice {
     stopped: null,
     heavy: false,
     request: null,
-    steer: null,
     fresh: [],
     snapshot: null,
   };
@@ -251,6 +248,10 @@ export async function openWorld(id: WorldId): Promise<World | null> {
   });
   if (world) {
     refreshCast();
+    // Footsteps: a world is born with a first step but no snapshot of it.
+    void getServices()
+      .history.ensureHead(world)
+      .catch(() => undefined);
     void store.worlds
       .list()
       .then((metas) => metas.find((m) => m.id === id)?.snapshot ?? null)
@@ -299,6 +300,15 @@ export function loadGame(world: World, o: { autostart?: boolean } = {}): Promise
 /** The running load, if any (the World screen waits on it before measuring things). */
 export function pendingLoad(): Promise<GameManifest | null> | null {
   return loading;
+}
+
+/**
+ * Someone else put the open world into play (Footsteps' Go back, Look inside's Run it): the player runs
+ * the session's world as it is now, so coming back from the Desk needs no reload.
+ */
+export function noteLoaded(): void {
+  const world = getState().session.world;
+  if (world && !loading) loaded = gameSignature(world);
 }
 
 // ------------------------------------------------------------------ live changes: dials, twists, modes
@@ -400,6 +410,10 @@ export async function applyAccepted(
 ): Promise<World> {
   const world = getState().session.world;
   if (!world) throw new Error('No world is open.');
+  // The AI pipeline calls this with the outcome alone: its job still holds the student's words.
+  const job = getState().ai.job;
+  const task = o.task ?? (job?.worldId === world.id ? job.task : undefined);
+  const request = o.request ?? (job?.worldId === world.id && job.task !== 'fix' ? job.request : undefined);
   const { history } = getServices();
   const code = history.attribute(world.code, outcome.files, 'ai');
   const cast: Record<CastKey, CastSlot> = { ...world.cast };
@@ -417,15 +431,15 @@ export async function applyAccepted(
   const files = outcome.files.map((f) => f.path);
   const step: StepInput =
     outcome.kind === 'fallback'
-      ? { kind: 'code', by: 'ai', text: outcome.message, files, ...(o.request ? { request: o.request } : {}) }
+      ? { kind: 'code', by: 'ai', text: outcome.message, files, ...(request ? { request } : {}) }
       : {
-          kind: o.task === 'fix' ? 'fix' : 'ask',
+          kind: task === 'fix' ? 'fix' : 'ask',
           by: 'ai',
           text: outcome.summary || t('world.stepAiChanged'),
           files,
           tested: outcome.tested,
           handEdits: outcome.handEditsTouched,
-          ...(o.request ? { request: o.request } : {}),
+          ...(request ? { request } : {}),
         };
   const recorded = (await recordStep(step)) ?? getState().session.world ?? world;
   const summary = outcome.kind === 'accepted' ? outcome.summary : outcome.message;
@@ -451,11 +465,6 @@ export function setComeAlive(c: ComeAlive | null): void {
   setState((s) => {
     s.session.comeAlive = c;
   });
-}
-
-/** Shows the steer toast over the world ("Turned Jump power up to 900. No AI needed."). */
-export function setSteer(steer: SessionSlice['steer']): void {
-  patchSession({ steer });
 }
 
 /** Resets the session (tests, "Delete everything"). */

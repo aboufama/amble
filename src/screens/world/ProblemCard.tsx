@@ -5,13 +5,14 @@
  * The ⋯ menu's Problems sheet lists them all.
  */
 import { useState } from 'react';
-import { navigate } from '../../app/router';
+import { lookInside } from '../code/open';
 import { t } from '../../i18n';
 import type { PlayerError, World } from '../../model/types';
 import { setTwist } from '../../state/session';
 import { useStore } from '../../state/store';
 import { Button, Dialog, IconButton } from '../../ui/components';
 import { askBusy, runAsk } from '../../world/ask';
+import { useAiOn } from './hooks';
 
 /** The problem the card shows: the latest fatal one, else the latest one seen more than once. */
 export function problemToShow(problems: readonly PlayerError[]): PlayerError | null {
@@ -29,7 +30,7 @@ export function ProblemCard({ world, onRestart }: { world: World; onRestart(): v
   const problem = useStore((s) => problemToShow(s.session.problems));
   const dismissed = useStore((s) => s.session.stopped !== null);
   const twistName = useStore((s) => (problem?.twist ? s.session.manifest?.twists.find((x) => x.id === problem.twist)?.name ?? null : null));
-  const aiOn = useStore((s) => s.ai.status === 'ready');
+  const aiOn = useAiOn(world.assignment);
   const busy = useStore((s) => !!s.ai.job);
   const [hidden, setHidden] = useState<PlayerError | null>(null);
   if (!problem || dismissed || problem === hidden) return null;
@@ -58,7 +59,7 @@ export function ProblemCard({ world, onRestart }: { world: World; onRestart(): v
           )
         )}
         {problem.file && !problem.twist && (
-          <Button variant="paper" size={38} onClick={() => navigate({ name: 'code', worldId: world.id, file: problem.file ?? null })}>
+          <Button variant="paper" size={38} onClick={() => lookInside({ worldId: world.id, file: problem.file ?? 'game.js', line: problem.line })}>
             {t('world.showLine')}
           </Button>
         )}

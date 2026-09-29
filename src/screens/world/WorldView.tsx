@@ -7,15 +7,13 @@
 import { forwardRef, useEffect, useState, type ReactNode, type RefObject } from 'react';
 import { t } from '../../i18n';
 import type { CastMember, World } from '../../model/types';
-import { patchSession, setDial, setSteer, setTwist } from '../../state/session';
 import { useStore } from '../../state/store';
 import { Button, Footprints } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
-import { runAsk } from '../../world/ask';
 import type { Box } from '../../world/objects';
 import { isWarmup } from '../../world/controller';
-import { SteerToast } from '../ai/SteerToast';
+import { SteerToastHost } from '../ai/SteerToast';
 import { ChangeLayer } from './ChangeLayer';
 import { NewVersionCard } from './NewVersionCard';
 import { ProblemCard } from './ProblemCard';
@@ -85,28 +83,6 @@ function AiPill({ world }: { world: World }) {
   );
 }
 
-function Steer() {
-  const steer = useStore((s) => s.session.steer);
-  if (!steer) return null;
-  return (
-    <div className="world-view__steer">
-      <SteerToast
-        steer={steer.steer}
-        onUndo={() => {
-          const st = steer.steer;
-          if (st.kind === 'dial') setDial(st.key, st.from);
-          else setTwist(st.id, !st.on);
-          setSteer(null);
-        }}
-        onAskAi={() => {
-          setSteer(null);
-          void runAsk('change', steer.words);
-        }}
-      />
-    </div>
-  );
-}
-
 export interface WorldViewProps {
   world: World;
   slotRef: RefObject<HTMLDivElement | null>;
@@ -137,14 +113,9 @@ export const WorldView = forwardRef<HTMLDivElement, WorldViewProps>(function Wor
     return () => clearTimeout(timer);
   }, [fullscreen]);
 
-  useEffect(() => {
-    // A new game drops the old steer toast.
-    return () => patchSession({ steer: null });
-  }, [world.id]);
-
   return (
     <div ref={ref} className={cx('world-view', mode === 'change' && 'world-view--change')} data-testid="world-view">
-      <div ref={slotRef} id="game" className="world-view__slot" tabIndex={-1} aria-label={t('world.worldRegion', { title: world.title })} data-testid="world-slot" />
+      <div ref={slotRef} id="game" className="world-view__slot" role="region" tabIndex={-1} aria-label={t('world.worldRegion', { title: world.title })} data-testid="world-slot" />
       <Loading title={world.title} />
       <Stopped onRestart={onReload} />
       <Notices />
@@ -154,7 +125,9 @@ export const WorldView = forwardRef<HTMLDivElement, WorldViewProps>(function Wor
           <RequestTag onDraw={(m, el) => onDraw(m, el)} />
           <CoachMark pointer={pointerGame} frame={frame} locate={locate} />
           <NewVersionCard />
-          <Steer />
+          <div className="world-view__steer">
+            <SteerToastHost worldId={world.id} />
+          </div>
         </>
       )}
       <ProblemCard world={world} onRestart={onRestart} />

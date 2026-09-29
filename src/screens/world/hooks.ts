@@ -1,7 +1,8 @@
 /** Small hooks the world screen shares: drawings' stickers, the world view's rect, the layout class. */
 import { useEffect, useState, type RefObject } from 'react';
 import { useServices } from '../../app/services';
-import type { ArtId, ArtRecord } from '../../model/types';
+import type { ArtId, ArtRecord, Assignment } from '../../model/types';
+import { effectiveAiMode } from '../../state/config';
 import { useStore } from '../../state/store';
 
 /** The art record of a drawing (null while it loads, or when there is none). */
@@ -78,6 +79,11 @@ export function useRect(ref: RefObject<HTMLElement | null>, ready = true): DOMRe
     };
   }, [ref, ready]);
   return rect;
+}
+
+/** Whether the AI helper may change this world now (ready, and "on" for its class and assignment). */
+export function useAiOn(assignment: Pick<Assignment, 'ai'> | null): boolean {
+  return useStore((s) => s.ai.status === 'ready' && effectiveAiMode(assignment, s.config) === 'on');
 }
 
 export function useLayout() {

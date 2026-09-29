@@ -10,6 +10,7 @@ import { getServices } from '../app/services';
 import { loadGameFonts } from '../app/player/fonts';
 import type { DrawnArt, GameFile, InitMessage, PlayerPrefs, RobotOptions, SoundAsset } from '../cores/play';
 import type { Action, SoundPiece, World } from '../model/types';
+import { instrument } from '../cores/ai';
 import type { Store } from '../store/api';
 import { presetRecipe } from './sounds';
 
@@ -20,11 +21,18 @@ export interface ToInitOptions {
   autostart?: boolean;
 }
 
-/** Helper files first (alphabetical), `game.js` last (§4.2), then the student's keys when they set any. */
+/** The runtime's loop guard (`Amble.__loop`), the same one the AI pipeline's robot test uses. */
+export const LOOP_GUARD = 'Amble.__loop()';
+
+/**
+ * Helper files first (alphabetical), `game.js` last (§4.2), then the student's keys when they set any.
+ * Every loop gets the guard at the top of its body (line numbers unchanged), so a loop that never ends
+ * is stopped with "This loop never ends" instead of freezing the Chromebook.
+ */
 export function orderFiles(world: World): GameFile[] {
   const helpers = world.code.filter((f) => f.path !== 'game.js').sort((a, b) => a.path.localeCompare(b.path));
   const game = world.code.filter((f) => f.path === 'game.js');
-  const files = [...helpers, ...game].map((f) => ({ name: f.path, source: f.source }));
+  const files = [...helpers, ...game].map((f) => ({ name: f.path, source: instrument(f.source, { guard: LOOP_GUARD }).code }));
   const keys = controlsFile(world.controls);
   return keys ? [...files, keys] : files;
 }
