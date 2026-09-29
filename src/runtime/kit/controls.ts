@@ -20,6 +20,12 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   pause: ['P', 'ESC'],
 };
 
+/**
+ * Marks the kit's own input listeners (the press latch below). They are not the game reading the pointer,
+ * so a tap on a "just bones" member in a running game still lifts it onto the Desk (editor/play.ts).
+ */
+export const KIT_OWN = '__ambleKitOwn';
+
 /** Standard gamepad mapping: A jump, X fire, B dash, Y action, Start pause. */
 const PAD: Partial<Record<Action, number[]>> = { jump: [0], fire: [2, 7], dash: [1, 5], action: [3], pause: [9] };
 
@@ -57,9 +63,12 @@ export class Controls {
       kb.on('keydown', onAny);
       scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => kb.off('keydown', onAny));
     }
-    const onPointer = () => {
-      this.pointerLatch = true;
-    };
+    const onPointer = Object.assign(
+      () => {
+        this.pointerLatch = true;
+      },
+      { [KIT_OWN]: true },
+    );
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, onPointer);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => scene.input.off(Phaser.Input.Events.POINTER_DOWN, onPointer));
   }

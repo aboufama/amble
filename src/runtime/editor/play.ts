@@ -7,6 +7,7 @@
  */
 import type Phaser from 'phaser';
 import type { Rect } from '../../play/protocol';
+import { KIT_OWN } from '../kit/controls';
 import { currentScene, type AmbleScene } from '../kit/scene';
 import { isActor, type Actor } from '../kit/types';
 import type { EditorShell } from '../shell/editor';
@@ -21,12 +22,17 @@ const INPUT_EVENTS = ['keydown', 'pointerdown', 'touchstart', 'wheel'] as const;
 
 type Shooter = Actor & { shooterState?: { opts: { aim?: string } } };
 
+/** Pointer listeners the game itself added (the kit's own press latch is not the game reading taps). */
+function gameListeners(input: Phaser.Input.InputPlugin, event: string): number {
+  return input.listeners(event).filter((fn) => !(fn as unknown as Record<string, unknown>)[KIT_OWN]).length;
+}
+
 /** True when the game reads the pointer, so a tap is part of playing. */
 export function usesPointer(scene: AmbleScene): boolean {
   const k = scene.__kit;
   if (k?.physicsType === 'matter') return true;
   const input = scene.input;
-  if (input && input.listenerCount('pointerdown') + input.listenerCount('pointerup') + input.listenerCount('gameobjectdown') > 0) return true;
+  if (input && gameListeners(input, 'pointerdown') + gameListeners(input, 'pointerup') + gameListeners(input, 'gameobjectdown') > 0) return true;
   return scene.children.list.some((o) => isActor(o) && (o as Shooter).shooterState?.opts.aim === 'pointer');
 }
 
