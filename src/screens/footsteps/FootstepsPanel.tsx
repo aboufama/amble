@@ -1,9 +1,9 @@
 /**
- * Footsteps (§2.9): the notebook's lower panel. Every change to the world is a step on a dotted trail,
+ * Footsteps (§2.9): the side panel's lower panel. Every change to the world is a step in a clean list,
  * newest first; hovering or focusing a step offers ↺ Go back to this step, which adds a step (nothing is
- * ever deleted). AI steps show the student's words and See the change. The newest 60 steps are listed;
- * older ones fold into "Earlier (n)". Keyboard: the list is one tab stop, ↑ ↓ Home End move between
- * steps, Tab reaches the focused step's buttons.
+ * ever deleted). A wish shows the student's words ("You wished: '…'") and See what changed. The newest 60
+ * steps are listed; older ones fold into "Earlier (n)". Keyboard: the list is one tab stop, ↑ ↓ Home End
+ * move between steps, Tab reaches the focused step's buttons.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { useServices } from '../../app/services';
@@ -32,8 +32,8 @@ export interface FootstepsPanelProps {
   compact?: boolean;
 }
 
-/** Height of the bottom band the "13 more steps ▾" button and its fade cover. */
-const MORE_BUTTON_ZONE = 34;
+/** Height of the list's bottom band the "13 more steps ▾" strip covers (44 px and its line, less the panel's 8 px foot). */
+const MORE_BUTTON_ZONE = 38;
 
 /** Counts the steps below the visible part of the list (for "13 more steps ▾"); `layout` re-measures. */
 function useMoreBelow(scroller: RefObject<HTMLDivElement | null>, layout: string): number {

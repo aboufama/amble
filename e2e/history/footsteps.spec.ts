@@ -1,7 +1,7 @@
 /**
  * Footsteps (§2.9, §8.5 M9), on the Footsteps harness (the panel in the notebook's place over a world with
  * fifteen seeded steps; the world screen hosts the same panel once M2 lands): Go back restores code,
- * drawings and dials and appends a step; See the change shows the diff; the list works by keyboard.
+ * drawings and dials and appends a step; See what changed shows the diff; the list works by keyboard.
  */
 import type { Page } from '@playwright/test';
 import { expect, test } from '../helpers/app';
@@ -104,17 +104,20 @@ test('Go back restores code, drawings and dials, and appends a step', async ({ p
   await expect.poll(async () => (await lastLoad(page))?.art ?? []).toEqual(['hero', 'boss']);
 });
 
-test('See the change shows the words, the diff and the drawing', async ({ page }) => {
+test('See what changed shows the wish, the diff and the drawing', async ({ page }) => {
   await openHarness(page);
   const ai = page.locator('.footsteps__trail > .step').filter({ hasText: 'Amble made the Moon King throw orbs' });
-  await expect(ai).toContainText('You asked: "make him attack in circles"');
+  await expect(ai).toContainText("You wished: 'make him attack in circles'");
   await expect(ai).toContainText('tested');
-  await ai.getByRole('button', { name: 'See the change' }).click();
+  await expect(ai).not.toContainText('AI');
+  await ai.getByRole('button', { name: 'See what changed' }).click();
 
-  const sheet = page.getByRole('dialog', { name: 'See the change' });
+  const sheet = page.getByRole('dialog', { name: 'What changed' });
   await expect(sheet).toBeVisible();
   await expect(sheet).toContainText('Amble made the Moon King throw orbs in rings, then in fans.');
-  await expect(sheet).toContainText('You asked: "make him attack in circles"');
+  await expect(sheet).toContainText("You wished: 'make him attack in circles'");
+  await expect(sheet).toContainText('Your wish ·');
+  await expect(sheet).not.toContainText('AI');
   await expect(sheet.locator('.diff-file__name')).toHaveText('game.js');
   await expect(sheet.locator('.diff-line--del').first()).toContainText("fan: { time: 2100, next: 'ring'");
   await expect(sheet.locator('.diff-line--add').first()).toContainText("fan: { time: 1800, next: 'spiral'");
@@ -125,7 +128,7 @@ test('See the change shows the words, the diff and the drawing', async ({ page }
   // A drawing step shows the drawing before and after.
   const drew = page.locator('.footsteps__trail > .step').filter({ hasText: 'You drew the Moon King' });
   await drew.hover();
-  await drew.getByRole('button', { name: 'See the change' }).click();
+  await drew.getByRole('button', { name: 'See what changed' }).click();
   await expect(sheet.locator('.diff-art')).toContainText('The Moon King');
   await expect(sheet.locator('.diff-art__side')).toHaveCount(2);
   await expect(sheet.getByRole('img', { name: "The Moon King's drawing" })).toBeVisible();

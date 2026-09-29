@@ -52,10 +52,10 @@ test('a change asked in the world is robot-tested, waits as a new version, plays
   expect(code?.authors.some(([who]) => who === 'ai')).toBe(true);
   expect(after?.steps.at(-1)).toMatchObject({ kind: 'ask', by: 'ai', text: SUMMARY, request: WORDS, tested: true });
 
-  // The footstep: the AI's words, the student's, and ✓ tested.
+  // The footstep: the student's wish, what changed, and ✓ tested.
   const step = footsteps(page).first();
   await expect(step).toContainText(SUMMARY);
-  await expect(step).toContainText(`You asked: "${WORDS}"`);
+  await expect(step).toContainText(`You wished: '${WORDS}'`);
   await expect(step).toContainText('tested');
 
   // The toast's See the change shows this change in the Footsteps sheet (as the footstep's link does), and goes.

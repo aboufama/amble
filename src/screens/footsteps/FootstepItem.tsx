@@ -1,7 +1,8 @@
 /**
- * One footstep (§2.9): its footprint (the student's cream, the AI's dusk blue, a small dot for fixes, the
- * lantern for "now"), its words, "You asked: …" with See the change, a drawing's sticker, the ✓ tested
- * chip, and — on hover or focus — ↺ Go back to this step.
+ * One footstep (§2.9): a row with its footprint (the newest filled blue, a small dot for Amble's own
+ * fixes), its words, a drawing's picture, the ✓ tested tag, the time, and — on hover or focus — ↺ Go back
+ * to this step. A wish reads as the student's own step: "You wished: '…'", then what changed with See what
+ * changed.
  */
 import type { KeyboardEvent, Ref } from 'react';
 import { t } from '../../i18n';
@@ -33,23 +34,14 @@ export interface FootstepItemProps {
   onSeeChange(): void;
 }
 
-/** A pair of footprints, filled (the trail's own mark, drawn like the mockup's). */
-function Prints() {
-  return (
-    <svg className="step__prints" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
-      <ellipse cx="9" cy="14.2" rx="3.6" ry="5.4" transform="rotate(-12 9 14.2)" />
-      <ellipse cx="16.4" cy="8.4" rx="3.3" ry="5" transform="rotate(10 16.4 8.4)" />
-    </svg>
-  );
-}
-
 export function FootstepItem({ step, now, isNow, canGoBack, folded, tabbable, fresh, compact, busy, itemRef, onFocusStep, onKeyDown, onGoBack, onSeeChange }: FootstepItemProps) {
   const look = lookOf(step);
+  const wish = step.request !== undefined;
   const { lead, rest } = splitText(step);
   const sticker = useStepSticker(step, !compact);
   const inner = tabbable ? 0 : -1;
   const change = canSeeChange(step) && look !== 'fix';
-  const inlineChange = change && step.request !== undefined;
+  const inlineChange = change && wish;
   const seeChange = (
     <button type="button" className="step__link" tabIndex={inner} onClick={onSeeChange}>
       {t('history.seeChange')}
@@ -66,17 +58,24 @@ export function FootstepItem({ step, now, isNow, canGoBack, folded, tabbable, fr
       onKeyDown={onKeyDown}
     >
       <span className="step__fp" aria-hidden="true">
-        {look !== 'fix' && <Prints />}
+        {look !== 'fix' && <Icon name="footprint" size={16} />}
       </span>
       <div className="step__body">
-        <p className="step__text">
-          {isNow && <span className="sr-only">{t('history.now')} </span>}
-          {lead && <b className={cx('step__lead', look === 'ai' && 'step__lead--ai')}>{lead}</b>}
-          {rest}
-        </p>
-        {step.request !== undefined && (
-          <p className="step__sub">
-            {t('history.youAsked', { request: step.request })} {inlineChange && seeChange}
+        {wish ? (
+          <>
+            <p className="step__text">
+              {isNow && <span className="sr-only">{t('history.now')} </span>}
+              <b className="step__lead">{t('history.youWishedLead')}</b> {t('history.youWishedWords', { request: step.request ?? '' })}
+            </p>
+            <p className="step__sub">
+              {step.text} {inlineChange && seeChange}
+            </p>
+          </>
+        ) : (
+          <p className="step__text">
+            {isNow && <span className="sr-only">{t('history.now')} </span>}
+            {lead && <b className="step__lead">{lead}</b>}
+            {rest}
           </p>
         )}
         {(sticker || step.tested) && (

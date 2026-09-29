@@ -1,15 +1,16 @@
 /*
- * Footsteps (§2.9, spec-mocks/04-world-play.png): a dotted trail of steps, newest first, in the notebook's
- * lower panel; and See the change, a sheet over the notebook. Tokens only.
+ * Footsteps (§2.9) in Scratch's look: a clean list of steps, newest first, in the side panel's lower
+ * panel (a round footprint per step on a thin line, the newest filled blue); and What changed, a sheet over
+ * the side panel. Flat, 1 px lines, 4 px tags and 8 px corners. Tokens only.
  */
 
 .panel.footsteps {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  padding: 16px 18px 10px;
-  position: relative;
+  padding-bottom: 8px;
 }
 
 .footsteps .panel__head {
@@ -26,25 +27,12 @@
   position: relative;
   flex: 1;
   min-height: 0;
-  margin: 0 -10px 0 0;
-  padding: 2px 10px 12px 0;
+  margin: 0 -10px 0 -6px;
+  padding: 2px 10px 8px 6px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
-}
-
-/* The fade under the list while steps are hidden below it. */
-.panel.footsteps:has(.footsteps__scroller--more)::after {
-  content: '';
-  position: absolute;
-  left: 1px;
-  right: 1px;
-  bottom: 1px;
-  height: 64px;
-  border-radius: 0 0 var(--r-card) var(--r-card);
-  background: linear-gradient(180deg, transparent, var(--surface-bottom) 78%);
-  pointer-events: none;
+  scrollbar-color: var(--line-control) transparent;
 }
 
 .footsteps__trail {
@@ -54,14 +42,15 @@
   list-style: none;
 }
 
-/* The dotted trail behind the footprints. */
+/* The thin line the footprints stand on. */
 .footsteps__trail::before {
   content: '';
   position: absolute;
-  left: 15px;
-  top: 16px;
-  bottom: 16px;
-  border-left: 2px dotted color-mix(in srgb, var(--text) 28%, transparent);
+  left: 19px;
+  top: 20px;
+  bottom: 20px;
+  width: 2px;
+  background: var(--bg-deep);
 }
 
 .step {
@@ -70,24 +59,20 @@
   grid-template-columns: 32px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: start;
-  padding: 8px 8px 8px 0;
-  border-radius: 12px;
+  padding: 8px 8px 8px 4px;
+  border-radius: var(--r-card);
   outline: none;
 }
 
 .step:hover,
 .step:focus-within {
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control) 70%, transparent);
+  background: var(--bg-lift);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .step:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.step__prints {
-  display: block;
+  outline-offset: -3px;
 }
 
 .step__fp {
@@ -97,14 +82,10 @@
   place-items: center;
   width: 32px;
   height: 32px;
-  border-radius: 50%;
-  color: var(--text);
-  background: var(--surface-bottom);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
-}
-
-.step--ai .step__fp {
-  color: var(--ai);
+  border: 1px solid var(--line);
+  border-radius: var(--r-round);
+  color: var(--text-2);
+  background: var(--surface-top);
 }
 
 .step--teacher .step__fp {
@@ -112,23 +93,21 @@
 }
 
 .step--now .step__fp {
+  border-color: var(--accent);
   color: var(--on-accent);
   background: var(--accent);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
-:root[data-theme='day'] .step--now .step__fp {
-  box-shadow: inset 0 0 0 1.5px var(--accent-border);
-}
-
+/* Amble's own small fixes (and wishes it couldn't make): a small dot. */
 .step--fix .step__fp {
-  width: 20px;
-  height: 20px;
-  margin: 6px;
-  background: var(--surface-raised);
+  width: 14px;
+  height: 14px;
+  margin: 9px;
+  border: 2px solid var(--line-control);
 }
 
 .step--now.step--fix .step__fp {
+  border-color: var(--accent);
   background: var(--accent);
 }
 
@@ -137,18 +116,13 @@
 }
 
 .step__text {
-  font: 400 0.90625rem/1.4 var(--font-ui);
+  font: 400 0.90625rem/1.35 var(--font-ui);
   color: var(--text);
   overflow-wrap: anywhere;
 }
 
 .step__lead {
   font-weight: 700;
-  font-size: 0.9375rem;
-}
-
-.step__lead--ai {
-  color: var(--ai);
 }
 
 .step--fix .step__text {
@@ -173,7 +147,8 @@
   padding: 0;
   border: 0;
   font: inherit;
-  color: var(--ai);
+  font-weight: 700;
+  color: var(--accent-text);
   background: none;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -197,7 +172,6 @@
   width: auto;
   max-width: 80px;
   object-fit: contain;
-  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--bg-deep) 60%, transparent));
 }
 
 .step__tested {
@@ -205,12 +179,12 @@
   align-items: center;
   gap: 3px;
   height: 20px;
-  padding: 0 8px 0 6px;
+  padding: 0 6px 0 4px;
+  border: 1px solid color-mix(in srgb, var(--alive) 40%, transparent);
   border-radius: var(--r-chip);
   font: 700 0.75rem/1 var(--font-ui);
   color: var(--alive);
-  background: color-mix(in srgb, var(--alive) 12%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alive) 45%, transparent);
+  background: color-mix(in srgb, var(--alive-bright) 12%, var(--surface-top));
 }
 
 .step__time {
@@ -220,7 +194,7 @@
   white-space: nowrap;
 }
 
-/* ↺ Go back to this step (and See the change): shown on hover and focus. */
+/* ↺ Go back to this step (and See what changed): shown on hover and focus. */
 .step__actions {
   display: none;
   align-items: center;
@@ -233,22 +207,22 @@
   display: flex;
 }
 
-/* A 44 px hit area around a 32 px pill. */
+/* A secondary button, 32 px, with a 44 px hit area around it. */
 .step__goback {
+  --focus-ring: var(--accent);
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 32px;
   padding: 0 12px;
-  border: 0;
-  border-radius: 10px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-btn);
   font: var(--type-chip);
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: 0 2px 0 color-mix(in srgb, var(--bg-deep) 45%, transparent);
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface-top);
   cursor: pointer;
-  --focus-ring: var(--accent);
 }
 
 .step__goback::before {
@@ -257,12 +231,8 @@
   inset: -6px -4px;
 }
 
-:root[data-theme='day'] .step__goback {
-  box-shadow: inset 0 0 0 1.5px var(--paper-line);
-}
-
 .step__goback:hover:not(:disabled) {
-  background: var(--paper-2);
+  background: var(--bg);
 }
 
 .step__goback:disabled {
@@ -282,7 +252,7 @@
   display: block;
 }
 
-/* The footstep print (§3.6): scale 1.3 → 1 and fade in, 240 ms. */
+/* A new step appears (§3.6): scale 1.3 → 1 and fade in, 240 ms. */
 .step--fresh .step__fp {
   animation: footstep-print 240ms var(--ease-pop);
 }
@@ -305,57 +275,55 @@
 }
 
 .footsteps__empty {
-  margin: 4px 0 0 42px;
+  margin: 4px 0 0 46px;
   font: var(--type-meta);
   color: var(--text-2);
 }
 
 .footsteps__earlier,
 .footsteps__more {
+  min-height: var(--target);
+  padding: 0 14px;
   border: 0;
+  border-radius: var(--r-btn);
   font: 700 0.84375rem/1 var(--font-ui);
-  color: var(--text);
+  color: var(--accent-text);
   background: none;
   cursor: pointer;
 }
 
 .footsteps__earlier {
   display: block;
-  min-height: var(--target);
   margin: 4px auto 0;
-  padding: 0 14px;
-  border-radius: var(--r-chip);
 }
 
-.footsteps__earlier:hover {
-  background: color-mix(in srgb, var(--text) 7%, transparent);
+.footsteps__earlier:hover,
+.footsteps__more:hover {
+  background: var(--bg-lift);
 }
 
+/* "13 more steps ▾" sits on a white strip at the foot of the panel while steps are hidden below. */
 .footsteps__more {
   position: absolute;
   z-index: 2;
-  left: 50%;
-  bottom: 4px;
-  min-height: var(--target);
-  padding: 0 16px;
-  border-radius: var(--r-chip);
-  translate: -50% 0;
-}
-
-.footsteps__more:hover {
-  background: color-mix(in srgb, var(--text) 7%, transparent);
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--r-card) var(--r-card);
+  background: var(--surface-top);
 }
 
 .footsteps__loading {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   padding-top: 8px;
 }
 
 .footsteps__ghost {
   height: 38px;
-  border-radius: 12px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--text) 6%, transparent), color-mix(in srgb, var(--text) 3%, transparent));
+  border-radius: var(--r-card);
+  background: var(--bg-lift);
 }
 
 /* Compact: the small layout's drawer and other tight places. */
@@ -366,7 +334,7 @@
 .step--compact {
   grid-template-columns: 26px minmax(0, 1fr) auto;
   gap: 8px;
-  padding: 5px 6px 5px 0;
+  padding: 5px 6px 5px 2px;
 }
 
 .step--compact .step__fp {
@@ -375,16 +343,16 @@
 }
 
 .step--compact.step--fix .step__fp {
-  width: 16px;
-  height: 16px;
-  margin: 5px;
+  width: 12px;
+  height: 12px;
+  margin: 7px;
 }
 
 .footsteps--compact .footsteps__trail::before {
-  left: 12px;
+  left: 14px;
 }
 
-/* ---------------------------------------------------------------- See the change */
+/* ---------------------------------------------------------------- What changed */
 
 .dialog.diff-sheet {
   position: fixed;
@@ -429,22 +397,24 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font: var(--type-caps);
-  letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
+  font: var(--type-meta);
+  font-weight: 700;
   color: var(--text-2);
 }
 
-.diff-sheet__who--ai {
-  color: var(--ai);
+.diff-sheet__request {
+  font: 700 1rem/1.45 var(--font-ui);
+  overflow-wrap: anywhere;
 }
 
 .diff-sheet__summary {
   font: 700 1rem/1.45 var(--font-ui);
 }
 
-.diff-sheet__request {
-  font: var(--type-body);
+/* After the wish, the words of what changed are the plain line under it. */
+.diff-sheet__request + .diff-sheet__summary {
+  margin-top: -6px;
+  font-weight: 400;
   color: var(--text-2);
 }
 
@@ -453,15 +423,15 @@
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   font: var(--type-meta);
-  background: color-mix(in srgb, var(--ai) 12%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ai) 45%, transparent);
+  background: var(--bg-lift);
 }
 
 .diff-sheet__note .icon {
   flex: none;
-  color: var(--ai);
+  color: var(--accent-text);
 }
 
 .diff-sheet__empty {
@@ -478,14 +448,12 @@
 }
 
 .diff-section__title {
-  font: var(--type-caps);
-  letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
-  color: var(--text-2);
+  font: var(--type-label);
 }
 
 .diff-art__name {
   font: var(--type-label);
+  font-weight: 400;
 }
 
 .diff-art__pair {
@@ -501,6 +469,9 @@
   align-items: center;
   gap: 4px;
   margin: 0;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
 }
 
 .diff-art__caption {
@@ -535,9 +506,9 @@
 }
 
 .diff-file {
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   background: var(--well);
-  box-shadow: inset 0 0 0 1px var(--line);
   overflow: hidden;
 }
 
@@ -553,6 +524,7 @@
   padding: 8px 12px;
   border-bottom: 1px solid var(--line);
   font: var(--type-chip);
+  background: var(--surface-top);
 }
 
 .diff-file__name {
@@ -573,14 +545,13 @@
 }
 
 .diff-hunk + .diff-hunk {
-  border-top: 1px dashed var(--line);
+  border-top: 1px solid var(--line);
 }
 
 .diff-hunk__head {
   padding: 6px 12px 2px;
-  font: var(--type-caps);
-  letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
+  font: var(--type-meta);
+  font-weight: 700;
   color: var(--text-2);
 }
 
@@ -599,7 +570,7 @@
 .diff-line__no {
   padding-right: 6px;
   text-align: right;
-  color: color-mix(in srgb, var(--text-2) 70%, transparent);
+  color: var(--text-2);
   user-select: none;
 }
 
@@ -617,12 +588,12 @@
 
 .diff-line--add {
   color: var(--alive);
-  background: color-mix(in srgb, var(--alive) 11%, transparent);
+  background: color-mix(in srgb, var(--alive-bright) 12%, transparent);
 }
 
 .diff-line--del {
   color: var(--warn);
-  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
 }
 
 .diff-line--del .diff-line__text {
@@ -632,14 +603,10 @@
 
 /* The words that changed inside a changed line. */
 .diff-line__mark {
-  border-radius: 3px;
+  border-radius: var(--r-sm);
   color: inherit;
-  background: color-mix(in srgb, currentColor 24%, transparent);
+  background: color-mix(in srgb, currentColor 20%, transparent);
   text-decoration: inherit;
-}
-
-.diff-line--add .diff-line__mark {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--alive) 45%, transparent);
 }
 
 /* Go back to before this sits at the foot of the sheet, and stays in reach under a long diff. */
@@ -648,6 +615,6 @@
   bottom: -16px;
   margin: auto -18px -16px;
   padding: 12px 18px 16px;
-  background: var(--surface-bottom);
-  box-shadow: 0 -1px 0 var(--line);
+  border-top: 1px solid var(--line);
+  background: var(--surface-top);
 }
