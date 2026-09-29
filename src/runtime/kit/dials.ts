@@ -61,6 +61,8 @@ export function normalizeDial(key: string, input: unknown, fallbackValue?: numbe
   const label = typeof o.label === 'string' && o.label.trim() ? o.label.trim().slice(0, LABEL_MAX) : labelFromKey(key);
   const words = typeof o.words === 'string' ? o.words.slice(0, 120) : '';
   const spec: DialSpec = { label, value: 0, min, max, step, live: o.live !== false, words };
+  if (typeof o.for === 'string' && /^[A-Za-z_][\w-]{0,63}$/.test(o.for)) spec.for = o.for;
+  if (typeof o.unit === 'string' && o.unit.trim()) spec.unit = o.unit.trim().slice(0, 8);
   spec.value = clampDial(spec, value);
   return spec;
 }
