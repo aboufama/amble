@@ -246,6 +246,8 @@ export class Kit {
     if (env().crashed()) return;
     const dt = delta / 1000;
     const view = this.scene.cameras.main.worldView;
+    // The camera's view is only known after its first render: until then nothing counts as off screen.
+    const viewKnown = view.width > 0 && view.height > 0;
     for (const name of this.pools) {
       const g = this.groups.get(name);
       if (!g) continue;
@@ -268,7 +270,7 @@ export class Kit {
           const expire = s.onExpire;
           if (expire) this.guard(() => expire(s), expire);
           this.killShot(s, !!expire);
-        } else if (s.x < view.x - m || s.x > view.right + m || s.y < view.y - m - 300 || s.y > view.bottom + m) this.killShot(s, false);
+        } else if (viewKnown && (s.x < view.x - m || s.x > view.right + m || s.y < view.y - m - 300 || s.y > view.bottom + m)) this.killShot(s, false);
       }
     }
     for (let i = this.followers.length - 1; i >= 0; i--) {

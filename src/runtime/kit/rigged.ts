@@ -1,8 +1,9 @@
 /**
  * The contract between the kit and the rig module: how a student's drawing with bones becomes a character
- * in the game. The rig module implements `createRiggedMesh: RiggedFactory`; the runtime registers it with
- * `registerRiggedFactory` (from src/runtime/shell). Until one is registered, the kit animates drawn
- * characters with a simple sprite puppet (bob and squash), and stand-ins with its own "just bones" rigs.
+ * in the game. The rig module implements `createRiggedMesh: RiggedFactory`; the runtime entry
+ * (src/runtime/shell/index.ts) registers it with `registerRiggedFactory` below (also `Amble.registerRiggedFactory`).
+ * Until one is registered, the kit animates drawn characters with a simple sprite puppet (bob and squash),
+ * and stand-ins with its own "just bones" rigs.
  *
  * How the kit uses a RiggedCharacter:
  * - it calls the factory with (scene, 0, 0, binding), then puts `object` inside the character's container

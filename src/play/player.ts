@@ -94,7 +94,7 @@ export interface PlayerOptions {
   /** Accessible name of the game iframe ("Moon King (game)"). */
   title?: string;
   prefs?: Partial<PlayerPrefs>;
-  /** Keep a spare iframe booted so Run is fast (default true; turn off on low-memory machines). */
+  /** Keep a spare iframe booted so Run is fast (default: yes, unless the machine reports under 4 GB). */
   prewarm?: boolean;
   /** Milliseconds without any message from a running game before it counts as frozen (default 10000). */
   frozenAfterMs?: number;
@@ -154,7 +154,8 @@ export class Player {
     this.runtimeUrl = options.runtimeUrl;
     this.title = options.title ?? 'Game';
     this.prefs = { ...DEFAULT_PREFS, ...options.prefs };
-    this.prewarmEnabled = options.prewarm !== false;
+    // Each renderer costs 45-60 MB plus textures: a 2 GB Chromebook cannot afford a spare.
+    this.prewarmEnabled = options.prewarm ?? ((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4) >= 4;
     this.frozenAfterMs = options.frozenAfterMs ?? 10_000;
     if (getComputedStyle(this.container).position === 'static') this.container.style.position = 'relative';
     document.addEventListener('visibilitychange', this.onVisibility);

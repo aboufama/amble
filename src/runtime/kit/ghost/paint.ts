@@ -370,7 +370,8 @@ export function paintThing(spec: ArtSpec, scale: number, phase = 0): HTMLCanvasE
   const inset = Math.min(OUTLINE_REACH, minSide * 0.12) * scale;
   paintSilhouette(ctx, shape, w / 2, h / 2, w - inset * 2, h - inset * 2, spec.color, scale, hash(spec.key), phase);
   if (spec.kind !== 'character' && minSide >= 34) labelInside(ctx, spec.name.toUpperCase(), w / 2, h / 2 + h * 0.04, (w - inset * 4) * 0.8, scale);
-  if (minSide >= 30) paintBadge(ctx, w - inset - 6 * scale, inset + 6 * scale, 5.5 * scale);
+  // Big props wear the pencil badge; small things (coins, gems) would be covered by it.
+  if (minSide >= 44) paintBadge(ctx, w - inset - 6 * scale, inset + 6 * scale, 5.5 * scale);
   return canvas;
 }
 

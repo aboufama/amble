@@ -121,18 +121,20 @@ function quadruped(w: number, h: number): Template {
 
 function flyer(w: number, h: number): Template {
   const bodyW = w * 0.62;
-  const bodyH = h * 0.44;
+  const bodyH = h * 0.4;
   const head = h * 0.36;
-  const wingW = w * 0.5;
-  const wingH = h * 0.5;
+  // Big wings: they are what makes a flyer read as one. The body sits low so that even a raised wing stays
+  // inside the art's box (the name tag sits just above it).
+  const wingW = w * 0.42;
+  const wingH = h * 0.62;
   return {
     kind: 'flyer',
     bones: [
-      { name: 'body', parent: null, x: 0, y: -h * 0.42, rest: 0, length: 0, depth: 3, part: { shape: 'ellipse', w: bodyW, h: bodyH, cx: 0, cy: 0 } },
-      { name: 'wingB', parent: 'body', x: -w * 0.04, y: -bodyH * 0.25, rest: Math.PI, length: wingH * 0.8, depth: 1, far: true, end: true, part: { shape: 'wing', w: wingW, h: wingH, cx: -wingW * 0.1, cy: wingH * 0.45 } },
+      { name: 'body', parent: null, x: 0, y: -h * 0.3, rest: 0, length: 0, depth: 3, part: { shape: 'ellipse', w: bodyW, h: bodyH, cx: 0, cy: 0 } },
+      { name: 'wingB', parent: 'body', x: -w * 0.04, y: -bodyH * 0.25, rest: Math.PI - 0.45, length: wingH * 0.8, depth: 1, far: true, end: true, part: { shape: 'wing', w: wingW, h: wingH, cx: -wingW * 0.1, cy: wingH * 0.45 } },
       { name: 'tail', parent: 'body', x: -bodyW * 0.45, y: 0, rest: Math.PI / 2, length: w * 0.16, depth: 2, end: true, part: { shape: 'fin', w: h * 0.26, h: w * 0.2, cx: 0, cy: w * 0.09 } },
       { name: 'head', parent: 'body', x: bodyW * 0.42, y: -bodyH * 0.3, rest: 0, length: 0, depth: 4, end: true, part: { shape: 'circle', w: head, h: head, cx: head * 0.2, cy: -head * 0.1 } },
-      { name: 'wingF', parent: 'body', x: w * 0.02, y: -bodyH * 0.3, rest: Math.PI, length: wingH * 0.8, depth: 5, end: true, part: { shape: 'wing', w: wingW, h: wingH, cx: -wingW * 0.1, cy: wingH * 0.45 } },
+      { name: 'wingF', parent: 'body', x: w * 0.02, y: -bodyH * 0.3, rest: Math.PI - 0.15, length: wingH * 0.8, depth: 5, end: true, part: { shape: 'wing', w: wingW, h: wingH, cx: -wingW * 0.1, cy: wingH * 0.45 } },
     ],
   };
 }
