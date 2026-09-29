@@ -34,6 +34,8 @@ test('a change asked in the world is robot-tested, waits as a new version, plays
     await page.waitForTimeout(1000);
   }
   await expect(version).toContainText(`New version ready: ${SUMMARY}`);
+  // The card has its corner to itself: a request tag waits until it is gone.
+  await expect(page.getByTestId('request-tag')).toHaveCount(0);
   const outcome = await page.evaluate(() => (window as unknown as { __amble: { getState(): { ai: { lastOutcome: { kind: string; tested?: boolean } | null } } } }).__amble.getState().ai.lastOutcome);
   expect(outcome).toMatchObject({ kind: 'accepted', tested: true });
   // The game on screen was not replaced while the change was tested.

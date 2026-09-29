@@ -65,5 +65,9 @@ describe('the request tag words', () => {
     const grumbles = { name: 'Grumble', ask: 'Draw a little moon minion', count: 2, pronoun: 'them' as const };
     expect(requestCopy(grumbles, false)).toEqual({ title: 'The Grumbles are only bones.', body: 'Draw one and they all come alive.', button: 'Draw a Grumble' });
     expect(requestCopy({ ...boss, name: 'Rae', ask: 'Draw Rae, a space kid' }, true).title).toBe('While Amble builds, draw Rae?');
+    // The Moon King starter names him "The Moon King": the button reads like a sentence.
+    const named = { ...boss, name: 'The Moon King' };
+    expect(requestCopy(named, false)).toEqual({ title: 'The Moon King is only bones.', body: 'Draw him and he comes alive.', button: 'Draw the Moon King' });
+    expect(requestCopy(named, true).title).toBe('While Amble builds, draw the Moon King?');
   });
 });

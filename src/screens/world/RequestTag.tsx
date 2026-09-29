@@ -15,12 +15,15 @@ import { cx } from '../../ui/cx';
 import type { Box } from '../../world/objects';
 import { requestCopy } from '../../world/hints';
 import { laterUntil } from '../../world/requestPolicy';
+import { problemToShow } from './ProblemCard';
 
 export function RequestTag({ onDraw }: { onDraw(member: CastMember, from: HTMLElement): void }) {
   const request = useStore((s) => s.session.request);
   const member = useStore((s) => (s.session.request ? s.session.cast.find((m) => m.key === s.session.request?.key) ?? null : null));
+  // The new-version card and the problem card sit in the same corner and matter more: the tag waits.
+  const busyCorner = useStore((s) => !!s.session.newVersion?.ready || !!problemToShow(s.session.problems));
   const glyph = useRef<HTMLSpanElement>(null);
-  if (!request || !member) return null;
+  if (!request || !member || busyCorner) return null;
   const copy = requestCopy(member, request.trigger === 'warmup');
   const later = () => {
     const key = member.key;

@@ -2,7 +2,7 @@
  * The controls row's key hints (§2.6) and the request tag's words (§2.6), as pure functions: which keys
  * to show for a game, and how Amble names a member it asks for ("The Grumbles are only bones.").
  */
-import { t, type MessageKey } from '../i18n';
+import { midSentence, t, type MessageKey } from '../i18n';
 import type { Action, CastMember, Pronoun, World } from '../model/types';
 
 export interface Hint {
@@ -116,10 +116,10 @@ export interface RequestCopy {
 /** The tag's words for a member (a group when several play at once; the Warm-up's own words). */
 export function requestCopy(m: Pick<CastMember, 'name' | 'ask' | 'count' | 'pronoun'>, warmup: boolean): RequestCopy {
   if (warmup) {
-    return { title: t('world.requestWarmup', { name: withArticle(m) }), body: t('world.requestWarmupSub'), button: t('world.drawOne', { name: withArticle(m) }) };
+    return { title: t('world.requestWarmup', { name: midSentence(withArticle(m)) }), body: t('world.requestWarmupSub'), button: t('world.drawOne', { name: midSentence(withArticle(m)) }) };
   }
   if (m.count > 1) {
     return { title: t('world.requestAre', { names: plural(m.name) }), body: t('world.requestGroup'), button: t('world.drawOne', { name: aOrAn(m.name) }) };
   }
-  return { title: t('world.requestIs', { name: capital(withArticle(m)) }), body: t(PRONOUN_LINES[m.pronoun]), button: t('world.drawOne', { name: withArticle(m) }) };
+  return { title: t('world.requestIs', { name: capital(withArticle(m)) }), body: t(PRONOUN_LINES[m.pronoun]), button: t('world.drawOne', { name: midSentence(withArticle(m)) }) };
 }
