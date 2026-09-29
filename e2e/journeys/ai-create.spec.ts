@@ -79,9 +79,14 @@ test('idea → plan → draw while it builds → tested build → Bring to life 
   }
   expect(ai.errors).toEqual([]);
 
-  // What Amble sends lists exactly those requests.
+  // What Amble sends lists exactly what went over the wire, body for body, and says where each went.
+  const wire = ai.requests.filter((r) => r.raw);
+  const logged = await page.evaluate(() => (window as unknown as { __amble: { store: { ailog: { list(): Promise<Array<{ body: string }>> } } } }).__amble.store.ailog.list());
+  expect(logged.map((e) => e.body).sort()).toEqual(wire.map((r) => r.raw).sort());
   await gotoRoute(page, '#/sent');
-  const items = page.getByTestId('ai-sent-item');
-  await expect(items).toHaveCount(sent.length);
-  expect((await items.evaluateAll((els) => els.map((e) => e.getAttribute('data-kind')))).sort()).toEqual(['build', 'plan']);
+  const rows = page.getByTestId('sent-entry');
+  await expect(rows).toHaveCount(wire.length);
+  const kinds = await rows.locator('.sent__kind').allTextContents();
+  expect(kinds).toEqual(expect.arrayContaining(['Plan for a new world', 'Build a world']));
+  for (const to of await rows.locator('.sent__to').allTextContents()) expect(to).toContain('ai.test');
 });

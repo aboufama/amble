@@ -18,8 +18,9 @@ import type { DeskArt, DeskController, DeskState } from '../../draw/deskControll
 import type { DeskSetup } from '../../draw/load';
 import { drawnArtOf, previewRig, type PreviewRig } from '../../draw/preview';
 import { t } from '../../i18n';
+import type { CodeFile } from '../../model/types';
 import type { Store } from '../../store/api';
-import { getState } from '../../state/store';
+import { getState, useStore } from '../../state/store';
 import { useReducedMotion } from '../../ui/a11y';
 import { cx } from '../../ui/cx';
 import { Icon } from '../../ui/icons';
@@ -183,6 +184,11 @@ async function savedArt(store: Store, setup: DeskSetup, key: string): Promise<Dr
   return out;
 }
 
+/** A world's code as one comparable string (a new copy of the same code must not reload the preview). */
+function codeKey(code: readonly CodeFile[]): string {
+  return code.map((f) => `${f.path}\u0000${f.source}`).join('\u0000\u0000');
+}
+
 function WorldView({ ctrl, setup, player, store, art, rigged, brought }: { ctrl: DeskController; setup: DeskSetup; player: PlayerHost; store: Store; art: DeskArt | null; rigged: PreviewRig | null; brought: () => boolean }) {
   const slot = useRef<HTMLDivElement>(null);
   const key = setup.request.key ?? '';
@@ -191,11 +197,38 @@ function WorldView({ ctrl, setup, player, store, art, rigged, brought }: { ctrl:
   const [trying, setTrying] = useState(false);
   const swapped = useRef(false);
   const tryTimer = useRef(0);
-
-  // The world, paused. Loaded here when the Desk was opened straight from a link. (Declared before the
-  // slot, so on the way out the game resumes while still in view, and the player pauses it as it hides.)
+  // A plan's build can land while the student draws: the preview then plays the real game, not the Warm-up.
+  // The open world's code when the world screen has it, else the stored world's newest code.
+  const liveCode = useStore((s) => (world && s.session.world?.id === world.id ? s.session.world.code : null));
+  /** undefined until the stored world has been read (the build may have landed before this view opened). */
+  const [storedCode, setStoredCode] = useState<readonly CodeFile[] | null | undefined>(undefined);
   useEffect(() => {
     if (!world) return;
+    let live = true;
+    const read = () =>
+      void store.worlds
+        .get(world.id)
+        .then((w) => live && setStoredCode(w?.code ?? null))
+        .catch(() => live && setStoredCode(null));
+    read();
+    const off = store.onChange((e) => {
+      if (e.worlds?.includes(world.id)) read();
+    });
+    return () => {
+      live = false;
+      off();
+    };
+  }, [store, world]);
+  const code = liveCode ?? (storedCode === undefined ? null : (storedCode ?? world?.code ?? null));
+  const shownKey = code ? codeKey(code) : '';
+  /** The code the preview's game runs ('' until known). */
+  const running = useRef('');
+
+  // The world, paused. Loaded here when the Desk was opened straight from a link, or when its code changed
+  // (declared before the slot, so on the way out the game resumes while still in view, and the player
+  // pauses it as it hides).
+  useEffect(() => {
+    if (!world || !code) return;
     let live = true;
     // Paused only once a game is up (a game paused while it loads never shows its first frame). Once the
     // game's frame has moved into the small slot, one step lets the paused game fit itself to it.
@@ -207,11 +240,16 @@ function WorldView({ ctrl, setup, player, store, art, rigged, brought }: { ctrl:
         if (live) player.step(1);
       }, SETTLE_MS);
     };
-    if (worldLoaded(player, world.id)) pauseSoon();
-    else {
+    // Already running this code: the preview's own game, or the world screen's game it came from.
+    if (running.current === shownKey || (!running.current && worldLoaded(player, world.id))) {
+      running.current = shownKey;
+      pauseSoon();
+    } else {
+      setReady(false);
       void (async () => {
-        const init = await toInitMessage(world, { mode: 'play', prefs: playerPrefsFrom(getState().prefs) });
+        const init = await toInitMessage({ ...world, code: [...code] }, { mode: 'play', prefs: playerPrefsFrom(getState().prefs) });
         await player.load(init);
+        running.current = shownKey;
         if (live) pauseSoon();
       })().catch((err: unknown) => {
         if (!isSupersededLoad(err)) console.warn('The world preview could not start:', err);
@@ -227,7 +265,7 @@ function WorldView({ ctrl, setup, player, store, art, rigged, brought }: { ctrl:
       player.resume();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [player, world]);
+  }, [player, world, shownKey]);
   usePlayerSlot('desk-preview', slot);
 
   // The slot changes size (a window resize, the touch layout): one step refits the paused game.

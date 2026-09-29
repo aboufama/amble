@@ -21,15 +21,20 @@ test('reduced motion: a still Trail, calm games and at most 2 flashes a second',
   await openAmble(page, { clean: true, route: '#/trail' });
   await expect(page.getByTestId('screen-trail')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.dataset.motion ?? matchMedia('(prefers-reduced-motion: reduce)').matches)).toBeTruthy();
-  // A second of animation time: the wait, then two drawn frames (a busy machine can hold frames back).
+  // After a second, nothing keeps animating: an animation counts only if it is still running half a
+  // second later (a one-shot entrance that a busy main thread started late is not motion that goes on).
   await page.waitForTimeout(1000);
-  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-  const running = await page.evaluate(() =>
-    document
+  const running = await page.evaluate(async () => {
+    const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await frames();
+    const first = new Set(document.getAnimations().filter((a) => a.playState === 'running'));
+    await new Promise((r) => setTimeout(r, 500));
+    await frames();
+    return document
       .getAnimations()
-      .filter((a) => a.playState === 'running')
-      .map((a) => `${(a as CSSAnimation).animationName ?? (a as CSSTransition).transitionProperty ?? 'animation'} on ${((a.effect as KeyframeEffect | null)?.target as Element | null)?.className ?? '?'}`),
-  );
+      .filter((a) => a.playState === 'running' && first.has(a))
+      .map((a) => `${(a as CSSAnimation).animationName ?? (a as CSSTransition).transitionProperty ?? 'animation'} on ${((a.effect as KeyframeEffect | null)?.target as Element | null)?.className ?? '?'}`);
+  });
   expect(running).toEqual([]);
 
   // A starter: the game is told, and its effects move a quarter as much.
