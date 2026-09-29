@@ -155,10 +155,12 @@
     var(--lift);
 }
 
+/* With a long district name the status drops under the title instead of breaking the title in two. */
 .idea-box__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 4px 10px;
   min-width: 0;
 }
 
