@@ -20,6 +20,7 @@
   --accent: #ffc15e;
   --accent-border: #8a6a00;
   --alive: #17744a;
+  --on-alive: #ffffff;
   --ai: #2c5fb8;
   --warn: #b3263e;
   --change: #6f3fc0;
@@ -57,6 +58,8 @@
   --paper-line: #ffffff;
   --ink: #ffffff;
   --ink-2: #ffffff;
+  --on-alive: #000000;
+  --swash: #000000;
   --pencil-ink: #ffff00;
   --note: #000000;
   --glow-lantern: 0 0 0 2px #ffff00;

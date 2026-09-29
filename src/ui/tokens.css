@@ -23,6 +23,8 @@
   --accent-border: transparent;
   --on-accent: #221b2e;
   --alive: #86f3cb;
+  --on-alive: #221b2e; /* checks, numbers and knobs drawn on --alive */
+  --swash: #86f3cb; /* the highlighter behind ink on paper ("It's alive!"); paper stays light, so it does too */
   --ai: #9cc3ff;
   --warn: #ff7a8e;
   --change: #c79bff;

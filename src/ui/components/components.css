@@ -365,7 +365,7 @@
 
 .toggle__switch--on .toggle__knob {
   transform: translateX(20px);
-  background: var(--on-accent);
+  background: var(--on-alive);
 }
 
 .toggle__label {

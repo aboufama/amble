@@ -83,6 +83,8 @@ const PAIRS: Array<[string, string[], number]> = [
   ['--ink', PAPERS, 4.5],
   ['--ink-2', PAPERS, 4.5],
   ['--pencil-ink', ['--paper', '--paper-2', '--paper-3'], 4.5],
+  ['--on-alive', ['--alive'], 4.5],
+  ['--ink', ['--swash'], 4.5],
   // controls, boundaries and focus (3:1)
   ['--line-control', ['--bg'], 3],
   ['--line-control-panel', PANELS, 3],

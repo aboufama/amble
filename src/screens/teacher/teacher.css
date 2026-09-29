@@ -390,6 +390,7 @@
 }
 
 .ready__row--done .ready__box {
+  color: var(--on-alive);
   background: var(--alive);
   box-shadow: none;
 }
@@ -799,6 +800,7 @@
 }
 
 .tcheck__box--on {
+  color: var(--on-alive);
   background: var(--alive);
   box-shadow: none;
 }
@@ -1436,7 +1438,7 @@
 }
 
 .gchecks__row--pass .gchecks__box {
-  color: var(--on-accent);
+  color: var(--on-alive);
   background: var(--alive);
   box-shadow: none;
 }
