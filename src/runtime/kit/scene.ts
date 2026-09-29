@@ -267,7 +267,10 @@ export class AmbleScene extends Phaser.Scene {
   }
 
   set timeScale(v: number) {
-    if (this.__kit) this.__kit.userScale = Math.max(0, Number(v) || 0);
+    // At most 10x: the physics catches up on game time in fixed steps, so an endless speed (a ratio with a
+    // zero under it) would never finish a frame, and a huge one freezes the game just the same.
+    const n = Number(v);
+    if (this.__kit) this.__kit.userScale = n > 0 ? Math.min(10, n) : 0;
   }
 
   get gravityFlipped(): boolean {

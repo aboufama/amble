@@ -247,7 +247,9 @@ export class Fx {
 
   /** Slows the game to `scale` for `ms` of real time, then eases back. */
   slowmo(scale = 0.3, ms = 900): void {
-    this.k.slowTarget = util.clamp(scale, 0.05, 1);
+    // A NaN scale would stick in the eased game speed, and the game's physics would stop for good.
+    const n = Number(scale);
+    this.k.slowTarget = util.clamp(Number.isNaN(n) ? 0.3 : n, 0.05, 1);
     this.k.slowUntil = this.k.now() + ms;
   }
 
