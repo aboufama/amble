@@ -1598,8 +1598,21 @@
   overflow: hidden;
 }
 
+/*
+ * The world is as big as the room above the controls allows, at 16:9 (a guess in rem left about 150 px of a
+ * 768 px projector empty at the 150 % scale). The stage is a size container: the view measures it.
+ */
+.present__stage {
+  display: grid;
+  flex: 1 1 0;
+  place-items: center;
+  width: 100%;
+  min-height: 0;
+  container-type: size;
+}
+
 .present__view {
-  width: min(100%, calc((100vh - 13rem) * 16 / 9));
+  width: min(100cqw, 100cqh * 16 / 9);
 }
 
 .present__foot {

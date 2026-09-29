@@ -5,6 +5,7 @@
  */
 import { expect, gotoRoute, openAmble, test, waitForApp } from '../helpers/app';
 import { AI_BASE, CLASS_CODE, mockAi } from '../helpers/mockAi';
+import { fakePickers, putClassFolder } from './school';
 
 test('a class link: live test, QR code, Copy link, and a student joins with it', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -81,4 +82,23 @@ test('Help & letters opens every page, and Present hides names', async ({ page }
   await expect(page.getByRole('switch', { name: 'Show names' })).not.toBeChecked();
   await page.getByRole('link', { name: 'Back to the gallery' }).click();
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'day');
+});
+
+test('Present shows the world as big as the projector allows', async ({ page }) => {
+  await fakePickers(page);
+  await openAmble(page, { clean: true });
+  await putClassFolder(page, [{ name: 'Moon Slime Rumble - J.R.amble', title: 'Moon Slime Rumble', madeBy: 'J.R.' }]);
+  await gotoRoute(page, '#/teacher/gallery');
+  await page.getByTestId('teacher-gallery').getByTestId('open-folder').click();
+  await expect(page.getByTestId('gallery-card')).toHaveCount(1);
+  await gotoRoute(page, '#/teacher/present');
+  const view = page.getByTestId('gallery-slot');
+  await expect(view).toBeVisible();
+  const box = (await view.boundingBox())!;
+  const foot = (await page.locator('.present__foot').boundingBox())!;
+  expect(Math.abs(box.width / box.height - 16 / 9), 'the world stays 16:9').toBeLessThan(0.02);
+  // At 1366x768 with the 150 % scale, the room above the controls fits a world over 1000 px wide.
+  expect(box.width).toBeGreaterThan(1000);
+  expect(box.y + box.height, 'the controls stay below the world').toBeLessThanOrEqual(foot.y);
+  expect(foot.y + foot.height, 'the controls stay on screen').toBeLessThanOrEqual(768);
 });

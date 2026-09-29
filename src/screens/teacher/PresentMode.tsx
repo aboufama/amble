@@ -74,26 +74,28 @@ export function PresentMode() {
           </div>
         ) : (
           <>
-            <div className={cx('present__view', `gdetail__view--${game.state}`)} ref={slot} data-testid="gallery-slot">
-              {game.state !== 'playing' && selected.thumb && <img className="gdetail__poster" src={selected.thumb} alt="" />}
-              {game.state === 'loading' && (
-                <span className="gdetail__over">
-                  <Footprints label={t('school.staff_starting')} />
-                  {t('school.staff_starting')}
-                </span>
-              )}
-              {game.state === 'stopped' && (
-                <button type="button" className="gdetail__over gdetail__over--button" onClick={game.start}>
-                  <Icon name="play" size={24} />
-                  {t('school.staff_playAgain')}
-                </button>
-              )}
-              {game.state === 'failed' && (
-                <span className="gdetail__over gdetail__over--bad">
-                  <Icon name="warning" size={22} />
-                  {t('school.staff_cantStart')}
-                </span>
-              )}
+            <div className="present__stage">
+              <div className={cx('present__view', `gdetail__view--${game.state}`)} ref={slot} data-testid="gallery-slot">
+                {game.state !== 'playing' && selected.thumb && <img className="gdetail__poster" src={selected.thumb} alt="" />}
+                {game.state === 'loading' && (
+                  <span className="gdetail__over">
+                    <Footprints label={t('school.staff_starting')} />
+                    {t('school.staff_starting')}
+                  </span>
+                )}
+                {game.state === 'stopped' && (
+                  <button type="button" className="gdetail__over gdetail__over--button" onClick={game.start}>
+                    <Icon name="play" size={24} />
+                    {t('school.staff_playAgain')}
+                  </button>
+                )}
+                {game.state === 'failed' && (
+                  <span className="gdetail__over gdetail__over--bad">
+                    <Icon name="warning" size={22} />
+                    {t('school.staff_cantStart')}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="present__foot">
               <Button variant="ghost" size={58} icon="back" onClick={() => move(-1)} disabled={items.length < 2}>
