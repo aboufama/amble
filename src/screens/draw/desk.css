@@ -631,18 +631,19 @@
   animation: none;
 }
 
-/* A damaged drawing (its saved file can't be read) says so while it is drawn again. */
+/* A damaged drawing (its saved file can't be read) says so while it is drawn again, in a corner of the stage
+   (the guides and their labels stay clear), until the student puts it away. */
 .desk-damaged {
   position: absolute;
-  top: 16px;
   right: 16px;
+  bottom: 16px;
   z-index: 3;
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  max-width: min(360px, calc(100% - 240px));
+  max-width: min(380px, calc(100% - 240px));
   margin: 0;
-  padding: 11px 16px 12px 14px;
+  padding: 11px 6px 10px 14px;
   border-radius: var(--r-btn);
   font: var(--type-label);
   color: var(--text);
@@ -650,12 +651,21 @@
   box-shadow:
     inset 0 0 0 1.5px var(--line-control-panel),
     var(--lift-sm);
-  pointer-events: none;
 }
 
-.desk-damaged .icon {
+.desk-damaged > .icon {
   flex: none;
+  margin-top: 1px;
   color: var(--warn);
+}
+
+.desk-damaged__text {
+  margin: 0;
+}
+
+.desk-damaged .btn {
+  flex: none;
+  margin: -6px 0 -4px;
 }
 
 /* The app's toasts stay clear of the view bar while the Desk is open. */

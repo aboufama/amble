@@ -72,6 +72,8 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
   const [bringing, setBringing] = useState(false);
   const [watching, setWatching] = useState(false);
   const [photo, setPhoto] = useState<'lines' | 'trace' | null>(null);
+  // A damaged drawing says so until the student puts the note away (like the request note, off the drawing).
+  const [damagedNote, setDamagedNote] = useState(setup.damaged);
   const brought = useRef(false);
   const memoryWarned = useRef(false);
   // "Draw this move yourself?" from Bones: the Flipbook opens on that move (read once, then cleared).
@@ -408,11 +410,14 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
             {t('draw.sheetHelp')}
           </p>
           <RequestNote request={ctrl?.request ?? request} readAloudOn={prefs.readAloud} onToast={setToast} />
-          {setup.damaged && (
-            <p className="desk-damaged" role="status" data-testid="desk-damaged">
+          {damagedNote && (
+            <div className="desk-damaged" data-testid="desk-damaged">
               <Icon name="warning" size={18} />
-              <span>{t(setup.world ? 'draw.damaged' : 'draw.damagedFree')}</span>
-            </p>
+              <p className="desk-damaged__text" role="status">
+                {t(setup.world ? 'draw.damaged' : 'draw.damagedFree')}
+              </p>
+              <IconButton icon="close" size={38} label={t('common.dismiss')} tooltip={false} onClick={() => setDamagedNote(false)} />
+            </div>
           )}
           {ctrl && s?.guides && <PivotPin ctrl={ctrl} pin={s.pin} name={name} stage={stage} />}
           <DeskToast text={toast} onDone={clearToast} />

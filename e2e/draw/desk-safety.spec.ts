@@ -3,6 +3,7 @@
  * opening stalls, and a drawing whose saved file can't be read opens to draw again, says so, and is never
  * saved over (the new drawing waits in its draft until Bring to life).
  */
+import type { Page } from '@playwright/test';
 import { expect, gotoRoute, openAmble, test } from '../helpers/app';
 import { boardSize, circle, drawOnBoard, inkedLayers, openDesk, openStarterWorld, settle } from './desk';
 
@@ -15,6 +16,19 @@ type Amble = {
   };
   getState(): { draw: { artId: string | null } };
 };
+
+/** Draws a circle and waits for its ink (a stroke into a sheet still settling on a busy machine is drawn again). */
+async function ink(page: Page, cx: number, cy: number, r: number): Promise<void> {
+  for (let tries = 0; tries < 3; tries++) {
+    await drawOnBoard(page, circle(cx, cy, r, 0, 360));
+    const landed = await expect
+      .poll(async () => (await inkedLayers(page)).length, { timeout: 6000 })
+      .toBeGreaterThan(0)
+      .then(() => true, () => false);
+    if (landed) return;
+  }
+  throw new Error('No stroke landed on the sheet.');
+}
 
 test("the Desk's loading sheet has a way back when opening stalls", async ({ page }) => {
   await openAmble(page);
@@ -49,8 +63,8 @@ test('a drawing whose file is damaged opens to draw again, and is never saved ov
   // A saved drawing (Ctrl+S commits it), then its file goes missing.
   await openDesk(page, hash);
   const { w, h } = await boardSize(page);
-  await drawOnBoard(page, circle(w / 2, h * 0.5, w * 0.12, 0, 360));
-  await expect.poll(async () => (await inkedLayers(page)).length).toBeGreaterThan(0);
+  await settle(page, 500);
+  await ink(page, w / 2, h * 0.5, w * 0.12);
   await settle(page, 300);
   await page.keyboard.press('Control+s');
   const artId = await page.evaluate(() => (window as unknown as { __amble: Amble }).__amble.getState().draw.artId);
@@ -72,8 +86,7 @@ test('a drawing whose file is damaged opens to draw again, and is never saved ov
   expect(await inkedLayers(page)).toEqual([]);
 
   // Drawing it again and saving: the new drawing goes into its draft, the record stays as it was.
-  await drawOnBoard(page, circle(w / 2, h * 0.45, w * 0.1, 0, 360));
-  await expect.poll(async () => (await inkedLayers(page)).length).toBeGreaterThan(0);
+  await ink(page, w / 2, h * 0.45, w * 0.1);
   await settle(page, 1400);
   await page.keyboard.press('Control+s');
   await settle(page, 600);
