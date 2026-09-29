@@ -31,7 +31,8 @@ export type RunState =
   | { kind: 'starting' }
   | { kind: 'done' }
   | { kind: 'blocked'; count: number; line: number; file: string }
-  | { kind: 'failed' }
+  /** The new version broke as it started (at `line` of `file` when the game said where); the last one plays. */
+  | { kind: 'failed'; line: number | null; file: string | null }
   | { kind: 'runtime'; line: number | null; file: string | null };
 
 export interface CursorInfo {
@@ -260,7 +261,7 @@ export class CodeSession {
     const file = error.file && this.states.has(error.file) ? error.file : null;
     this.run = { kind: 'runtime', line: file ? (error.line ?? null) : null, file };
     if (file && error.line) {
-      this.runtime = [{ file, line: error.line, column: error.column ?? 0, severity: 'error', rule: 'runtime', message: error.message, fixed: null, runtime: true }];
+      this.runtime = [{ file, line: error.line, column: error.column ?? 0, severity: 'error', rule: 'runtime', message: t('history.runtimeProblem', { message: error.message }), fixed: null, runtime: true }];
       this.applyDiagnostics();
     }
     this.emit();
@@ -303,8 +304,9 @@ export class CodeSession {
       this.run = { kind: 'blocked', count: outcome.errors.length, line: first.line, file: first.file };
       announce(this.runMessage(), 'polite');
     } else if (outcome.kind === 'failed') {
-      this.run = { kind: 'failed' };
-      announce(t('history.runFailed'), 'assertive');
+      const where = this.runtime[0];
+      this.run = { kind: 'failed', line: where?.line ?? null, file: where?.file ?? null };
+      announce(this.runMessage(), 'assertive');
     } else if (outcome.kind === 'superseded') {
       this.run = this.dirtyFiles().length ? { kind: 'dirty' } : { kind: 'clean' };
     } else {
@@ -333,7 +335,7 @@ export class CodeSession {
       case 'done':
         return t('history.runDone');
       case 'failed':
-        return t('history.runFailed');
+        return r.line && r.file ? t('history.runBrokeAt', { line: r.line, file: r.file }) : t('history.runFailed');
       case 'runtime':
         return r.line && r.file ? t('history.runtimeBroke', { line: r.line, file: r.file }) : t('history.runtimeBrokeNoLine');
       case 'blocked': {

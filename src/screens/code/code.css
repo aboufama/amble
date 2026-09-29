@@ -606,9 +606,12 @@
   color: var(--text-2);
 }
 
+/* On the first line of a locked block, level with its first row of text (wrapped lines grow below). */
 .cm-lock--first {
   display: grid;
-  place-items: center;
+  justify-items: center;
+  align-items: start;
+  padding-top: 4px;
   color: var(--text);
 }
 
@@ -616,11 +619,14 @@
   background: color-mix(in srgb, var(--paper-line) 14%, transparent);
 }
 
-.cm-locked-note {
-  padding: 6px 10px;
+/* The note is the tooltip itself, so it outranks the editor theme's tooltip look: sticky paper. */
+.code-screen .cm-tooltip.cm-locked-note {
+  padding: 7px 12px;
+  border-radius: var(--r-cut);
   font: var(--type-chip);
   color: var(--ink);
   background: var(--note);
+  box-shadow: var(--lift-paper);
 }
 
 .code-screen .cm-lint-marker {

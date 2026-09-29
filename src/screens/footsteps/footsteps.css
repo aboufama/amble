@@ -642,11 +642,11 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--alive) 45%, transparent);
 }
 
-/* Go back to before this stays in reach under a long diff. */
+/* Go back to before this sits at the foot of the sheet, and stays in reach under a long diff. */
 .diff-sheet .dialog__actions {
   position: sticky;
   bottom: -16px;
-  margin: 0 -18px -16px;
+  margin: auto -18px -16px;
   padding: 12px 18px 16px;
   background: var(--surface-bottom);
   box-shadow: 0 -1px 0 var(--line);

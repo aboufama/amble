@@ -138,6 +138,7 @@ async function seed(services: Services): Promise<World> {
   let world: World = { ...opened.world, createdAt: clock, steps: opened.world.steps.map((s) => ({ ...s, at: clock })) };
   await services.store.commit({ worlds: [world] });
   await history.ensureHead(world);
+  if (params.has('fresh')) return world;
 
   const step = async (minutesAgo: number, input: StepInput, change: (w: World) => World | Promise<World> = (w) => w) => {
     clock = now - minutesAgo * MIN;

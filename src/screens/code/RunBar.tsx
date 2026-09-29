@@ -29,7 +29,7 @@ const LOOK: Record<RunState['kind'], { icon: IconName | null; tone: string }> = 
 
 export function RunBar({ run, message, oldDraft, onShow, onBringBack }: RunBarProps) {
   const look = LOOK[run.kind];
-  const canShow = run.kind === 'blocked' || (run.kind === 'runtime' && run.line !== null);
+  const canShow = run.kind === 'blocked' || ((run.kind === 'runtime' || run.kind === 'failed') && run.line !== null);
   return (
     <div className={cx('run-bar', `run-bar--${look.tone}`)} data-testid="run-bar" data-run={run.kind}>
       <p className="run-bar__status">

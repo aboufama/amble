@@ -150,6 +150,7 @@ export function CodeView({ route }: { route: RouteOf<'code'> }) {
     return (
       <ScreenFrame testId="screen-code" header={<TopBar title={t('common.routeCode')} />} className="code-screen code-screen--empty">
         <div className="code-empty">
+          <Lamppost height={56} />
           <h2 className="code-empty__title">{t('history.worldMissing')}</h2>
           <Button variant="lantern" onClick={() => navigate({ name: 'trail', view: 'trail' })}>
             {t('history.backToTrail')}
@@ -182,17 +183,19 @@ export function CodeView({ route }: { route: RouteOf<'code'> }) {
       }
     >
       <section className="code-main" aria-labelledby="code-header">
-        <p id="code-header" className="code-main__header">
-          {t('history.codeHeader')}
-        </p>
         {phase === 'ready' && world && !hasCode ? (
           <div className="code-empty code-empty--inline">
             <Footprints label={t('history.noCodeTitle')} />
-            <h2 className="code-empty__title">{t('history.noCodeTitle')}</h2>
+            <h2 id="code-header" className="code-empty__title">
+              {t('history.noCodeTitle')}
+            </h2>
             <p className="code-empty__body">{t('history.noCodeBody')}</p>
           </div>
         ) : (
           <>
+            <p id="code-header" className="code-main__header">
+              {t('history.codeHeader')}
+            </p>
             <div className="code-main__bar">
               {snap && <FileTabs files={snap.files} active={snap.active} panelId={PANEL_ID} onOpen={(p) => session?.open(p)} />}
               <div className="code-main__actions">
@@ -232,7 +235,7 @@ export function CodeView({ route }: { route: RouteOf<'code'> }) {
                 onShow={() => {
                   const r = snap.run;
                   if (r.kind === 'blocked') session.jumpTo(r.file, r.line);
-                  else if (r.kind === 'runtime' && r.file && r.line) session.jumpTo(r.file, r.line);
+                  else if ((r.kind === 'runtime' || r.kind === 'failed') && r.file && r.line) session.jumpTo(r.file, r.line);
                 }}
                 onBringBack={() => session.bringBackDraft()}
               />
