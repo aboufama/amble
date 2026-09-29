@@ -1306,6 +1306,11 @@ aside.notebook > * {
   color: var(--accent);
 }
 
+/* Lantern yellow is 1.4:1 on Day's light tiles (and fades on a projector): Day's darker lantern edge. */
+:root[data-theme='day'] .twist-tile :is(.twist-icon, .icon) {
+  color: var(--accent-border);
+}
+
 .twist-tile__switch {
   position: relative;
   width: 36px;
