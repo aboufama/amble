@@ -1,0 +1,171 @@
+{
+ "format": "amble-rig",
+ "v": 1,
+ "kind": "biped",
+ "facing": 1,
+ "anchor": [
+  46.75,
+  226
+ ],
+ "bones": [
+  {
+   "name": "hips",
+   "role": "hips",
+   "parent": -1,
+   "x": 42.71,
+   "y": 158.59,
+   "x2": 42.71,
+   "y2": 167.29
+  },
+  {
+   "name": "spine",
+   "role": "spine",
+   "parent": -1,
+   "x": 42.71,
+   "y": 158.59,
+   "x2": 50.73,
+   "y2": 94.8
+  },
+  {
+   "name": "head",
+   "role": "head",
+   "parent": 1,
+   "x": 50.73,
+   "y": 94.8,
+   "x2": 51.66,
+   "y2": 0.63
+  },
+  {
+   "name": "armL1",
+   "role": "armL1",
+   "parent": 1,
+   "x": 20.52,
+   "y": 118.65,
+   "x2": 11.53,
+   "y2": 141.3
+  },
+  {
+   "name": "armL2",
+   "role": "armL2",
+   "parent": 3,
+   "x": 11.53,
+   "y": 141.3,
+   "x2": 10.28,
+   "y2": 168.15
+  },
+  {
+   "name": "legL1",
+   "role": "legL1",
+   "parent": 0,
+   "x": 29.05,
+   "y": 166.44,
+   "x2": 27.35,
+   "y2": 191.89
+  },
+  {
+   "name": "legL2",
+   "role": "legL2",
+   "parent": 5,
+   "x": 27.35,
+   "y": 191.89,
+   "x2": 53.6,
+   "y2": 220.02
+  },
+  {
+   "name": "armR1",
+   "role": "armR1",
+   "parent": 1,
+   "x": 64.89,
+   "y": 113.53,
+   "x2": 76.39,
+   "y2": 140.39
+  },
+  {
+   "name": "armR2",
+   "role": "armR2",
+   "parent": 7,
+   "x": 76.39,
+   "y": 140.39,
+   "x2": 89.39,
+   "y2": 167.65
+  },
+  {
+   "name": "legR1",
+   "role": "legR1",
+   "parent": 0,
+   "x": 56.36,
+   "y": 168.15,
+   "x2": 59.77,
+   "y2": 192.04
+  },
+  {
+   "name": "legR2",
+   "role": "legR2",
+   "parent": 9,
+   "x": 59.77,
+   "y": 192.04,
+   "x2": 87.76,
+   "y2": 219.74
+  }
+ ],
+ "parts": [
+  {
+   "name": "armL",
+   "bones": [
+    "armL1",
+    "armL2"
+   ],
+   "order": 0,
+   "layer": "part:armL"
+  },
+  {
+   "name": "legL",
+   "bones": [
+    "legL1",
+    "legL2"
+   ],
+   "order": 2,
+   "layer": "part:legL"
+  },
+  {
+   "name": "legR",
+   "bones": [
+    "legR1",
+    "legR2"
+   ],
+   "order": 4,
+   "layer": "part:legR"
+  },
+  {
+   "name": "torso",
+   "bones": [
+    "hips",
+    "spine"
+   ],
+   "order": 6,
+   "layer": "part:torso"
+  },
+  {
+   "name": "head",
+   "bones": [
+    "head"
+   ],
+   "order": 8,
+   "layer": "part:head"
+  },
+  {
+   "name": "armR",
+   "bones": [
+    "armR1",
+    "armR2"
+   ],
+   "order": 10,
+   "layer": "part:armR"
+  }
+ ],
+ "artHash": "96x226:32b005b1f549cc9a",
+ "made": "hand",
+ "skin": {
+  "cell": 13
+ }
+}

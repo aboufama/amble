@@ -1,0 +1,64 @@
+{
+ "v": 1,
+ "key": "ball",
+ "script": "ball",
+ "name": "Ball",
+ "kind": "prop",
+ "rig": "none",
+ "facing": "viewer",
+ "role": "prop",
+ "mode": "free",
+ "board": {
+  "w": 128,
+  "h": 128,
+  "pixelArt": false
+ },
+ "doc": "sha256:5c5d5c65893afdadca47fac1dec57bc08d539d307eb22f1c0608d062f14dc9a7",
+ "cels": [
+  "sha256:601098ae4a9f8d0a80e197f4e0c8a8464c46b08759e2f499f02cb70002035d5d",
+  "sha256:83fe662ccf32a35f3d3e64d1badb07353020d4525e7fe76e5caad73cc6355928"
+ ],
+ "parts": {},
+ "export": {
+  "hash": "57bbf0a49afd8d6fa0a3c1c356ca63726a33a91815abc48b933251d292da8d61",
+  "flat": "sha256:57bbf0a49afd8d6fa0a3c1c356ca63726a33a91815abc48b933251d292da8d61",
+  "w": 113,
+  "h": 113,
+  "anchor": [
+   56.5,
+   56.5
+  ],
+  "inkMask": "sha256:1dc6bdf4d2e2bc2aeffcf86162dbdc6e7646bbcb27dad09c751a3d2754950353",
+  "parts": {},
+  "sticker": "sha256:d68848596863c84aa35e6d3c2232402d03627ae7989d70173b0a998c8fed84fd",
+  "thumb": "sha256:57bbf0a49afd8d6fa0a3c1c356ca63726a33a91815abc48b933251d292da8d61",
+  "frames": null
+ },
+ "rigData": null,
+ "rigInfo": null,
+ "palette": [
+  "#fbf7ee",
+  "#2b1f33",
+  "#e8453c",
+  "#ffd23f",
+  "#4fb3ea",
+  "#3f8fbb",
+  "#4eb1e7",
+  "#f1ac2b",
+  "#4190bd",
+  "#2d2135",
+  "#4394c2",
+  "#4dade3",
+  "#459bcb",
+  "#c3bdbc",
+  "#fccc3d"
+ ],
+ "files": {
+  "sha256:57bbf0a49afd8d6fa0a3c1c356ca63726a33a91815abc48b933251d292da8d61": "thumb.png",
+  "sha256:1dc6bdf4d2e2bc2aeffcf86162dbdc6e7646bbcb27dad09c751a3d2754950353": "ink.png",
+  "sha256:d68848596863c84aa35e6d3c2232402d03627ae7989d70173b0a998c8fed84fd": "sticker.png",
+  "sha256:5c5d5c65893afdadca47fac1dec57bc08d539d307eb22f1c0608d062f14dc9a7": "doc.json",
+  "sha256:601098ae4a9f8d0a80e197f4e0c8a8464c46b08759e2f499f02cb70002035d5d": "cels/colors.png",
+  "sha256:83fe662ccf32a35f3d3e64d1badb07353020d4525e7fe76e5caad73cc6355928": "cels/lines.png"
+ }
+}

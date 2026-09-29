@@ -1,0 +1,74 @@
+{
+ "v": 1,
+ "key": "city",
+ "script": "city-night",
+ "name": "City at night",
+ "kind": "background",
+ "rig": "none",
+ "facing": "viewer",
+ "role": "background",
+ "mode": "free",
+ "board": {
+  "w": 960,
+  "h": 540,
+  "pixelArt": false
+ },
+ "doc": "sha256:40d3d630bc6fe3ba15ed9e345e37a4691a7f57f713fabf9bde3abdff166c1163",
+ "cels": [
+  "sha256:b0e68e0ec2b5a8459566c6e4b856b15fc97ec8e1544e7506e2b4dcd6bd661065",
+  "sha256:6b921184ee1318a896e0ac9b835f6293543ce233c702919c81ea891efe8c593a"
+ ],
+ "parts": {},
+ "export": {
+  "hash": "81368f1b39c91572ce4807be7fce949ad24f91bdd6e1d76a4f1e0135a57a95d2",
+  "flat": "sha256:81368f1b39c91572ce4807be7fce949ad24f91bdd6e1d76a4f1e0135a57a95d2",
+  "w": 960,
+  "h": 540,
+  "anchor": [
+   480,
+   270
+  ],
+  "inkMask": "sha256:d845728c606a5826206caf31ced2aea88877ef332fba6c74684b2ec838c407bb",
+  "parts": {},
+  "sticker": "sha256:630168b9b3576782a201513311dca650b342ed65293ed87206fde45202b0b43c",
+  "thumb": "sha256:f985bb133843079171da2909cf4f7d720d8eb685db4eee9ed1a4a5e60d6f9446",
+  "frames": null
+ },
+ "rigData": null,
+ "rigInfo": null,
+ "palette": [
+  "#161d45",
+  "#1f2a5c",
+  "#27285c",
+  "#1c1e3c",
+  "#6a4a8f",
+  "#15172f",
+  "#2f5f8f",
+  "#7a4a86",
+  "#534fa0",
+  "#4d4a93",
+  "#2f6390",
+  "#4a4a8f",
+  "#3f7280",
+  "#2a3872",
+  "#ffd66b",
+  "#243066",
+  "#15163a",
+  "#2a2250",
+  "#fff1b0",
+  "#ffe9a8",
+  "#a0653a",
+  "#2f3d7a",
+  "#3c3b74",
+  "#1c1e43"
+ ],
+ "files": {
+  "sha256:81368f1b39c91572ce4807be7fce949ad24f91bdd6e1d76a4f1e0135a57a95d2": "flat.png",
+  "sha256:d845728c606a5826206caf31ced2aea88877ef332fba6c74684b2ec838c407bb": "ink.png",
+  "sha256:630168b9b3576782a201513311dca650b342ed65293ed87206fde45202b0b43c": "sticker.png",
+  "sha256:f985bb133843079171da2909cf4f7d720d8eb685db4eee9ed1a4a5e60d6f9446": "thumb.png",
+  "sha256:40d3d630bc6fe3ba15ed9e345e37a4691a7f57f713fabf9bde3abdff166c1163": "doc.json",
+  "sha256:b0e68e0ec2b5a8459566c6e4b856b15fc97ec8e1544e7506e2b4dcd6bd661065": "cels/colors.png",
+  "sha256:6b921184ee1318a896e0ac9b835f6293543ce233c702919c81ea891efe8c593a": "cels/lines.png"
+ }
+}

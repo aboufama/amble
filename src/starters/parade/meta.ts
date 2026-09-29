@@ -22,7 +22,8 @@ export const parade: StarterMeta = {
     rig: 'biped' as const,
     role: i === 0 ? ('hero' as const) : ('npc' as const),
     facing: 'right' as const,
-    state: i === 0 ? ('bones' as const) : ('spare' as const),
+    // The walkers are declared `spare` in static art (never asked for), and walk only once drawn.
+    state: 'bones' as const,
   })),
   files: [{ path: 'game.js', source: game }],
   scripts: {},

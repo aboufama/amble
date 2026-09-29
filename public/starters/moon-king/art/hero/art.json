@@ -1,0 +1,342 @@
+{
+ "v": 1,
+ "key": "hero",
+ "script": "pip",
+ "name": "Pip",
+ "kind": "character",
+ "rig": "biped",
+ "facing": "right",
+ "role": "hero",
+ "mode": "bones",
+ "board": {
+  "w": 256,
+  "h": 256,
+  "pixelArt": false
+ },
+ "doc": "sha256:c0ff039bf2e793f88d693140920e7ed767985e3435be518785740c34fdce74a1",
+ "cels": [
+  "sha256:a244e8b1e76e847be0c0a0988f10a65c2842a275f0affe24f12fd990c1d97ae3",
+  "sha256:5797bb1e101e2889470484a8e79e17bae7dbe90a2818f265d73fde48547b4c1b",
+  "sha256:678b265ae5321aa8e9e77a58611b4dbfd8cb26c58c770d628474118efe7bc878",
+  "sha256:27c6420e74397ccfd1c8a20c6de72b8b30874bef3d85a30e23e2b9db7b8de5a1",
+  "sha256:bd0033cb44620e60477f5753fe774f71b60bd7c88018fa60446e8ad645167ed6",
+  "sha256:d50c908359ced5fee500db2cc2a7cb5c9bcc139497ed3882394344cd16927995",
+  "sha256:73400f17387c56a9994d6d6083983141ce43b79928ca5654db673e76899ab64b",
+  "sha256:1a9c7fadb3639bd8246c8e38d1fd6b789040e5ba9ba4cd85e6114b6c755cb54d",
+  "sha256:0b45e143be69e4c71d7fff1901bb6dc8273f0b025a8fbf6a90f218477594a916",
+  "sha256:3c64100cabd1874b68aef591cf2e99796827cf96b45298c3086d0188eb5c3879",
+  "sha256:e5d5117e3becb3ad64548a0e6e0f7fec3ff297bf4afaadda210108d589ce6bd5",
+  "sha256:92a3d9fcd179c9e01cf34f8e82e42185872887e3d7463ad37cc46cef22c76389"
+ ],
+ "parts": {
+  "armL": {
+   "lines": "armL-lines",
+   "colors": "armL"
+  },
+  "legL": {
+   "lines": "legL-lines",
+   "colors": "legL"
+  },
+  "legR": {
+   "lines": "legR-lines",
+   "colors": "legR"
+  },
+  "torso": {
+   "lines": "torso-lines",
+   "colors": "torso"
+  },
+  "head": {
+   "lines": "head-lines",
+   "colors": "head"
+  },
+  "armR": {
+   "lines": "armR-lines",
+   "colors": "armR"
+  }
+ },
+ "export": {
+  "hash": "7523352ff7973adf5963b03d542da127e04f81cc37331f5c45df44aa73b24092",
+  "flat": "sha256:7523352ff7973adf5963b03d542da127e04f81cc37331f5c45df44aa73b24092",
+  "w": 96,
+  "h": 226,
+  "anchor": [
+   45,
+   225
+  ],
+  "inkMask": "sha256:97764193aa91f53a87ff5c607600bb89525073cc3f1b39bf0d3334febb3abaf9",
+  "parts": {
+   "part:armL": {
+    "blob": "sha256:87f0dc114b87da3a0e1ea4a9790e463e27a8662074692b8b62b544ed7f703f40",
+    "x": 0,
+    "y": 0,
+    "w": 96,
+    "h": 226
+   },
+   "part:legL": {
+    "blob": "sha256:2df56796807b2262510a65395b33bcaba1a00ce52233c4e5f3a910a6574e42b3",
+    "x": 0,
+    "y": 0,
+    "w": 96,
+    "h": 226
+   },
+   "part:legR": {
+    "blob": "sha256:c17536b83b48a7e6b9c4166ef52ecae0b18401b2920fc6a31f9ecd1ce253c106",
+    "x": 0,
+    "y": 0,
+    "w": 96,
+    "h": 226
+   },
+   "part:torso": {
+    "blob": "sha256:68a03356c43f2616169b6d0ca1768b7e17637c8d95bc32ef61730f97a973c347",
+    "x": 0,
+    "y": 0,
+    "w": 96,
+    "h": 226
+   },
+   "part:head": {
+    "blob": "sha256:c4e9abc12495308355056d6b5a83a40438540ce35f384bac7ade809ce595b902",
+    "x": 0,
+    "y": 0,
+    "w": 96,
+    "h": 226
+   },
+   "part:armR": {
+    "blob": "sha256:bb321c2a3989d1bffdc14be2197314a17fd516fa92cc1f1dd181f4f7974e8c37",
+    "x": 0,
+    "y": 0,
+    "w": 96,
+    "h": 226
+   }
+  },
+  "sticker": "sha256:d4bbec0c2f5cab7fb53d4495d7a65bd52245a676f58ebb4fa8c35bd551cc3723",
+  "thumb": "sha256:ad5de483c76d0b07e623e4d292f253c911e42f8f06cb51c305ea83b163f900f0",
+  "frames": null
+ },
+ "rigData": {
+  "format": "amble-rig",
+  "v": 1,
+  "kind": "biped",
+  "facing": 1,
+  "anchor": [
+   46.75,
+   226
+  ],
+  "bones": [
+   {
+    "name": "hips",
+    "role": "hips",
+    "parent": -1,
+    "x": 42.71,
+    "y": 158.59,
+    "x2": 42.71,
+    "y2": 167.29
+   },
+   {
+    "name": "spine",
+    "role": "spine",
+    "parent": -1,
+    "x": 42.71,
+    "y": 158.59,
+    "x2": 50.73,
+    "y2": 94.8
+   },
+   {
+    "name": "head",
+    "role": "head",
+    "parent": 1,
+    "x": 50.73,
+    "y": 94.8,
+    "x2": 51.66,
+    "y2": 0.63
+   },
+   {
+    "name": "armL1",
+    "role": "armL1",
+    "parent": 1,
+    "x": 20.52,
+    "y": 118.65,
+    "x2": 11.53,
+    "y2": 141.3
+   },
+   {
+    "name": "armL2",
+    "role": "armL2",
+    "parent": 3,
+    "x": 11.53,
+    "y": 141.3,
+    "x2": 10.28,
+    "y2": 168.15
+   },
+   {
+    "name": "legL1",
+    "role": "legL1",
+    "parent": 0,
+    "x": 29.05,
+    "y": 166.44,
+    "x2": 27.35,
+    "y2": 191.89
+   },
+   {
+    "name": "legL2",
+    "role": "legL2",
+    "parent": 5,
+    "x": 27.35,
+    "y": 191.89,
+    "x2": 53.6,
+    "y2": 220.02
+   },
+   {
+    "name": "armR1",
+    "role": "armR1",
+    "parent": 1,
+    "x": 64.89,
+    "y": 113.53,
+    "x2": 76.39,
+    "y2": 140.39
+   },
+   {
+    "name": "armR2",
+    "role": "armR2",
+    "parent": 7,
+    "x": 76.39,
+    "y": 140.39,
+    "x2": 89.39,
+    "y2": 167.65
+   },
+   {
+    "name": "legR1",
+    "role": "legR1",
+    "parent": 0,
+    "x": 56.36,
+    "y": 168.15,
+    "x2": 59.77,
+    "y2": 192.04
+   },
+   {
+    "name": "legR2",
+    "role": "legR2",
+    "parent": 9,
+    "x": 59.77,
+    "y": 192.04,
+    "x2": 87.76,
+    "y2": 219.74
+   }
+  ],
+  "parts": [
+   {
+    "name": "armL",
+    "bones": [
+     "armL1",
+     "armL2"
+    ],
+    "order": 0,
+    "layer": "part:armL"
+   },
+   {
+    "name": "legL",
+    "bones": [
+     "legL1",
+     "legL2"
+    ],
+    "order": 2,
+    "layer": "part:legL"
+   },
+   {
+    "name": "legR",
+    "bones": [
+     "legR1",
+     "legR2"
+    ],
+    "order": 4,
+    "layer": "part:legR"
+   },
+   {
+    "name": "torso",
+    "bones": [
+     "hips",
+     "spine"
+    ],
+    "order": 6,
+    "layer": "part:torso"
+   },
+   {
+    "name": "head",
+    "bones": [
+     "head"
+    ],
+    "order": 8,
+    "layer": "part:head"
+   },
+   {
+    "name": "armR",
+    "bones": [
+     "armR1",
+     "armR2"
+    ],
+    "order": 10,
+    "layer": "part:armR"
+   }
+  ],
+  "artHash": "96x226:32b005b1f549cc9a",
+  "made": "hand",
+  "skin": {
+   "cell": 13
+  }
+ },
+ "rigInfo": {
+  "made": "hand",
+  "confidence": 1,
+  "notes": []
+ },
+ "palette": [
+  "#2b1f33",
+  "#e8453c",
+  "#e9ac7d",
+  "#4f68c8",
+  "#6a3b1f",
+  "#6c3d22",
+  "#93715c",
+  "#465cb0",
+  "#d29b71",
+  "#fbf7ee",
+  "#be3831",
+  "#e5443b",
+  "#332333",
+  "#7d543b",
+  "#e7e3db",
+  "#2d2134",
+  "#ffd23f",
+  "#825b43",
+  "#71452a",
+  "#6e4126",
+  "#dc423a",
+  "#c43b33",
+  "#89644d",
+  "#e6aa7c"
+ ],
+ "files": {
+  "sha256:7523352ff7973adf5963b03d542da127e04f81cc37331f5c45df44aa73b24092": "flat.png",
+  "sha256:97764193aa91f53a87ff5c607600bb89525073cc3f1b39bf0d3334febb3abaf9": "ink.png",
+  "sha256:87f0dc114b87da3a0e1ea4a9790e463e27a8662074692b8b62b544ed7f703f40": "parts/armL.png",
+  "sha256:2df56796807b2262510a65395b33bcaba1a00ce52233c4e5f3a910a6574e42b3": "parts/legL.png",
+  "sha256:c17536b83b48a7e6b9c4166ef52ecae0b18401b2920fc6a31f9ecd1ce253c106": "parts/legR.png",
+  "sha256:68a03356c43f2616169b6d0ca1768b7e17637c8d95bc32ef61730f97a973c347": "parts/torso.png",
+  "sha256:c4e9abc12495308355056d6b5a83a40438540ce35f384bac7ade809ce595b902": "parts/head.png",
+  "sha256:bb321c2a3989d1bffdc14be2197314a17fd516fa92cc1f1dd181f4f7974e8c37": "parts/armR.png",
+  "sha256:d4bbec0c2f5cab7fb53d4495d7a65bd52245a676f58ebb4fa8c35bd551cc3723": "sticker.png",
+  "sha256:ad5de483c76d0b07e623e4d292f253c911e42f8f06cb51c305ea83b163f900f0": "thumb.png",
+  "sha256:c0ff039bf2e793f88d693140920e7ed767985e3435be518785740c34fdce74a1": "doc.json",
+  "sha256:a244e8b1e76e847be0c0a0988f10a65c2842a275f0affe24f12fd990c1d97ae3": "cels/armL.png",
+  "sha256:5797bb1e101e2889470484a8e79e17bae7dbe90a2818f265d73fde48547b4c1b": "cels/armL-lines.png",
+  "sha256:678b265ae5321aa8e9e77a58611b4dbfd8cb26c58c770d628474118efe7bc878": "cels/legL.png",
+  "sha256:27c6420e74397ccfd1c8a20c6de72b8b30874bef3d85a30e23e2b9db7b8de5a1": "cels/legL-lines.png",
+  "sha256:bd0033cb44620e60477f5753fe774f71b60bd7c88018fa60446e8ad645167ed6": "cels/legR.png",
+  "sha256:d50c908359ced5fee500db2cc2a7cb5c9bcc139497ed3882394344cd16927995": "cels/legR-lines.png",
+  "sha256:73400f17387c56a9994d6d6083983141ce43b79928ca5654db673e76899ab64b": "cels/torso.png",
+  "sha256:1a9c7fadb3639bd8246c8e38d1fd6b789040e5ba9ba4cd85e6114b6c755cb54d": "cels/torso-lines.png",
+  "sha256:0b45e143be69e4c71d7fff1901bb6dc8273f0b025a8fbf6a90f218477594a916": "cels/head.png",
+  "sha256:3c64100cabd1874b68aef591cf2e99796827cf96b45298c3086d0188eb5c3879": "cels/head-lines.png",
+  "sha256:e5d5117e3becb3ad64548a0e6e0f7fec3ff297bf4afaadda210108d589ce6bd5": "cels/armR.png",
+  "sha256:92a3d9fcd179c9e01cf34f8e82e42185872887e3d7463ad37cc46cef22c76389": "cels/armR-lines.png"
+ }
+}

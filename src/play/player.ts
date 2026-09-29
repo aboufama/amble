@@ -518,7 +518,8 @@ export class Player {
     const frame = this.current;
     if (!frame?.ready || document.visibilityState === 'hidden') return;
     if (this.state !== 'running' && this.state !== 'title' && this.state !== 'loading') return;
-    const quiet = performance.now() - frame.lastMessageAt;
+    // A pre-warmed spare may have been quiet for a long time before this load started: count from the load.
+    const quiet = performance.now() - Math.max(frame.lastMessageAt, this.state === 'loading' ? this.loadStartedAt : 0);
     if (quiet < this.frozenAfterMs) return;
     const error: PlayerError = { phase: 'frozen', message: 'The game froze (a loop that never ends?), so Amble stopped it.', count: 1, fatal: true };
     this.errors.push(error);

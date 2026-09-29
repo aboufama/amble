@@ -1,0 +1,73 @@
+{
+ "v": 1,
+ "key": "lantern",
+ "script": "lantern",
+ "name": "Lantern",
+ "kind": "item",
+ "rig": "none",
+ "facing": "viewer",
+ "role": "item",
+ "mode": "free",
+ "board": {
+  "w": 128,
+  "h": 128,
+  "pixelArt": false
+ },
+ "doc": "sha256:640772cc1b6c130889037f419f6cd1b3fb504b1c7c5bba55d0b57f08710f103c",
+ "cels": [
+  "sha256:0f47c30512190a932fb6d683fdd49b4683b95e0a8dd08139d5de0a30d02f4d39",
+  "sha256:ed8c1a3d385bf9525a363921018d81e6f10887fd54d252938b8793920787f7f3"
+ ],
+ "parts": {},
+ "export": {
+  "hash": "eb032dfca5e723c3e05fe768e84cca6afdd01647d2108192847c93699c7456c2",
+  "flat": "sha256:eb032dfca5e723c3e05fe768e84cca6afdd01647d2108192847c93699c7456c2",
+  "w": 108,
+  "h": 117,
+  "anchor": [
+   54,
+   58.5
+  ],
+  "inkMask": "sha256:f2f82a90633a3ee0c10623766ac2a546b15a92cb946baf2a289032914b882282",
+  "parts": {},
+  "sticker": "sha256:f16b1d3bd4aef2e0ac3346dea02b002f8ee27857ba73ff5b6294b62ee7052d03",
+  "thumb": "sha256:eb032dfca5e723c3e05fe768e84cca6afdd01647d2108192847c93699c7456c2",
+  "frames": null
+ },
+ "rigData": null,
+ "rigInfo": null,
+ "palette": [
+  "#2b1f33",
+  "#ffeb9c",
+  "#dd4b3e",
+  "#fff1a6",
+  "#ffd23f",
+  "#ffd562",
+  "#ff9a3c",
+  "#ffefa2",
+  "#5d2b36",
+  "#ffe066",
+  "#332535",
+  "#2d2134",
+  "#41343d",
+  "#632b34",
+  "#3b2e3b",
+  "#ffe68c",
+  "#6b2c34",
+  "#ffd962",
+  "#c3b483",
+  "#b3413b",
+  "#bdac7c",
+  "#ffe17e",
+  "#d4c58c",
+  "#ccbb84"
+ ],
+ "files": {
+  "sha256:eb032dfca5e723c3e05fe768e84cca6afdd01647d2108192847c93699c7456c2": "thumb.png",
+  "sha256:f2f82a90633a3ee0c10623766ac2a546b15a92cb946baf2a289032914b882282": "ink.png",
+  "sha256:f16b1d3bd4aef2e0ac3346dea02b002f8ee27857ba73ff5b6294b62ee7052d03": "sticker.png",
+  "sha256:640772cc1b6c130889037f419f6cd1b3fb504b1c7c5bba55d0b57f08710f103c": "doc.json",
+  "sha256:0f47c30512190a932fb6d683fdd49b4683b95e0a8dd08139d5de0a30d02f4d39": "cels/colors.png",
+  "sha256:ed8c1a3d385bf9525a363921018d81e6f10887fd54d252938b8793920787f7f3": "cels/lines.png"
+ }
+}

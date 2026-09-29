@@ -1,0 +1,73 @@
+{
+ "v": 1,
+ "key": "star",
+ "script": "star-shard",
+ "name": "Star shard",
+ "kind": "item",
+ "rig": "none",
+ "facing": "viewer",
+ "role": "item",
+ "mode": "free",
+ "board": {
+  "w": 128,
+  "h": 128,
+  "pixelArt": false
+ },
+ "doc": "sha256:b64fc5ca21814adf70d0571ecf351f0657e64ee179ae4b692c626058286e074b",
+ "cels": [
+  "sha256:411cc38cc58208704ce0fca9999cd53a9dcb4e9cedc2c71f0b12c86cad00b20f",
+  "sha256:37e132e2b861b3a6c1f7d359e30a8c83a9f2272294ca1fb0e594dde03be51d2a"
+ ],
+ "parts": {},
+ "export": {
+  "hash": "ede9694c5d63f9a78358b6330c9cf1771ad9ba01039213082cd815b84202f28e",
+  "flat": "sha256:ede9694c5d63f9a78358b6330c9cf1771ad9ba01039213082cd815b84202f28e",
+  "w": 109,
+  "h": 110,
+  "anchor": [
+   54.5,
+   55
+  ],
+  "inkMask": "sha256:ff826cb0e5b08e21938fea7652d51a2fe83385a945b58bdc8f29b3e2b9c9aa53",
+  "parts": {},
+  "sticker": "sha256:2e150fd80a8e3384cb5e30858d7e0269e21a37431cd1eb3a7542b259d1e1deb8",
+  "thumb": "sha256:ede9694c5d63f9a78358b6330c9cf1771ad9ba01039213082cd815b84202f28e",
+  "frames": null
+ },
+ "rigData": null,
+ "rigInfo": null,
+ "palette": [
+  "#ffd23f",
+  "#2b1f33",
+  "#ffa932",
+  "#fff6c4",
+  "#ff92ac",
+  "#fecd3e",
+  "#ffce45",
+  "#ffd142",
+  "#fff3a3",
+  "#332534",
+  "#ffb235",
+  "#3b2c34",
+  "#edc23e",
+  "#453434",
+  "#e3ba3d",
+  "#ffc43b",
+  "#2d2134",
+  "#b4923b",
+  "#634e36",
+  "#dcb43d",
+  "#846a38",
+  "#bd9a3b",
+  "#ac8c3a",
+  "#a3833a"
+ ],
+ "files": {
+  "sha256:ede9694c5d63f9a78358b6330c9cf1771ad9ba01039213082cd815b84202f28e": "thumb.png",
+  "sha256:ff826cb0e5b08e21938fea7652d51a2fe83385a945b58bdc8f29b3e2b9c9aa53": "ink.png",
+  "sha256:2e150fd80a8e3384cb5e30858d7e0269e21a37431cd1eb3a7542b259d1e1deb8": "sticker.png",
+  "sha256:b64fc5ca21814adf70d0571ecf351f0657e64ee179ae4b692c626058286e074b": "doc.json",
+  "sha256:411cc38cc58208704ce0fca9999cd53a9dcb4e9cedc2c71f0b12c86cad00b20f": "cels/colors.png",
+  "sha256:37e132e2b861b3a6c1f7d359e30a8c83a9f2272294ca1fb0e594dde03be51d2a": "cels/lines.png"
+ }
+}
