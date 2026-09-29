@@ -46,6 +46,8 @@ describe('StarterCatalog.open', () => {
           expect(rec?.name, m.key).toBe(m.name);
           expect(rec?.madeBy).toBe('example');
           expect(slot.madeBy).toBe('example');
+          // The student did not place an example's bones (Bones says "Amble found…", not "You placed…").
+          if (rec?.rigInfo) expect(rec.rigInfo.made, m.key).not.toBe('hand');
         } else expect(slot.art, m.key).toBeNull();
       }
       // Every blob a drawing refers to came along (content addresses match).

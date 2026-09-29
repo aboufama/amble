@@ -55,7 +55,9 @@ async function loadArt(meta: StarterMeta, key: CastKey, deps: OpenDeps): Promise
       parts: json.parts,
       export: json.export,
       rigData: json.rigData,
-      rigInfo: json.rigInfo,
+      // Drawn on the bones, and to the student these bones are Amble's (Bones: "Amble found 13 bones"), even
+      // where Amble's own team checked them by hand: "You placed these bones" is for the student's changes.
+      rigInfo: json.rigInfo && json.rigInfo.made === 'hand' ? { ...json.rigInfo, made: 'parts' } : json.rigInfo,
       palette: json.palette,
       madeBy: 'example',
       shelf: false,
