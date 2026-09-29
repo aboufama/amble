@@ -19,7 +19,7 @@
  *   into shapes, "fill under the lines"; analysis precomputed in a worker.
  * - Hold to perfect (line, circle, ellipse, triangle, rectangle) and a "make it perfect" button; mirror
  *   (vertical axis, optional horizontal); lasso/rectangle selection with move/scale/rotate/flip and "make
- *   this a part"; eyedropper; flipbook frames with onion skin; undo/redo for everything; the stroke log and
+ *   this a part" (it lifts the lines, colours and paint layers together unless scope is 'layer'); eyedropper; flipbook frames with onion skin; undo/redo for everything; the stroke log and
  *   "Watch it drawn"; a guide overlay; export for the game and the rigger; headless replay of ArtScripts.
  *
  * USAGE (the Draw room)
@@ -98,6 +98,8 @@ export type { BrushId, Brush } from './brushes';
 export { BRUSHES, BRUSH_IDS, STEADY_MAX_PX } from './brushes';
 export type { PerfectKind } from './shape';
 export type { SelectionTransform } from './select';
+export type { SelectScope } from './selection-tool';
+export { selectionLayers } from './selection-tool';
 export type { ViewState } from './view';
 export { encodePng, decodePng } from './png';
 

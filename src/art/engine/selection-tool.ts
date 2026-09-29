@@ -2,19 +2,36 @@
  * The lasso and rectangle selection tools: draw an outline, lift the pixels, then move (drag inside),
  * scale (corner handles), rotate (the round handle) or flip them, and put them down (commit), back
  * (cancel), away (delete) or onto a new body-part layer ("make this a part").
+ *
+ * A selection lifts the whole drawing there (every visible, unlocked lines, colors and paint layer), so
+ * moving a head moves its lines and its colours together. Scope 'layer', or an active part, sketch or
+ * trace layer, lifts just the active layer.
  */
 import { type Point, type Rect, isEmpty, union } from './geom';
 import type { Board } from './board';
 import type { Compositor, SelectionOverlay } from './compositor';
 import { copyIn } from './blend';
 import { type History, type PixelChange, type Step, tilesOf } from './history';
-import type { LogTransform } from './log';
+import type { Affine6, LogTransform } from './log';
 import { makeLayer, uid } from './model';
-import { type Floating, IDENTITY, type SelectionTransform, apply, lift, matrixOf, rectPolygon, stamp, stampInto, stampRect } from './select';
+import { type Floating, IDENTITY, type SelectionTransform, apply, lift, matrixOf, mergeFloating, polygonMask, rectPolygon, stamp, stampInto, stampRect } from './select';
 import { addLayer } from './structure';
 import type { SelectionInfo } from './surface-types';
 import { type ViewState, docToView } from './view';
 import type { Sample } from './input';
+
+/** What a selection lifts: the drawing (its lines, colors and paint layers together) or the active layer. */
+export type SelectScope = 'drawing' | 'layer';
+
+const DRAWING_ROLES: ReadonlySet<string> = new Set(['lines', 'colors', 'paint']);
+
+/** The layers a selection lifts, bottom to top (visible and unlocked ones only). */
+export function selectionLayers(board: Board, active: string, scope: SelectScope): string[] {
+  const a = board.layer(active);
+  if (!a) return [];
+  if (scope === 'layer' || !DRAWING_ROLES.has(a.role)) return a.visible && !a.locked ? [active] : [];
+  return board.layers.filter((l) => DRAWING_ROLES.has(l.role) && l.visible && !l.locked).map((l) => l.id);
+}
 
 export interface SelectionHost {
   readonly board: Board;
@@ -22,6 +39,7 @@ export interface SelectionHost {
   readonly history: History;
   frame(): string;
   layer(): string;
+  scope(): SelectScope;
   view(): ViewState;
   preview(): { buf: Uint8ClampedArray; img: ImageData };
   /** Records a finished operation (history entry + log) and announces it. */
@@ -36,13 +54,20 @@ type Drag = { kind: 'move' | 'scale' | 'rotate'; start: SelectionTransform; p0: 
 
 const HANDLE_HIT = 22; // view px (44 px targets)
 
+/** One lifted layer, and its pixels as they were (the lifted box's tiles; commit adds where they land). */
+interface Item {
+  fl: Floating;
+  before: PixelChange;
+}
+
 export class SelectionTool {
   private phase: 'idle' | 'drawing' | 'floating' = 'idle';
   private mode: 'lasso' | 'select' = 'lasso';
   private path: Point[] = [];
   private start: Point = { x: 0, y: 0 };
-  private fl: Floating | null = null;
-  private before: PixelChange | null = null;
+  private items: Item[] = [];
+  /** The active layer when the pixels were lifted. */
+  private owner = '';
   private t: SelectionTransform = { ...IDENTITY };
   private cx = 0;
   private cy = 0;
@@ -61,11 +86,17 @@ export class SelectionTool {
 
   info(): SelectionInfo | null {
     if (this.phase === 'idle') return null;
-    const b = this.fl?.box;
-    return { layer: this.fl?.layer ?? this.host.layer(), floating: this.phase === 'floating', transform: { ...this.t }, box: b ? [b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0] : [0, 0, 0, 0] };
+    const b = this.items[0]?.fl.box;
+    return {
+      layer: this.items.length ? this.owner : this.host.layer(),
+      layers: this.items.map((it) => it.fl.layer),
+      floating: this.phase === 'floating',
+      transform: { ...this.t },
+      box: b ? [b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0] : [0, 0, 0, 0],
+    };
   }
 
-  private matrix(): ReturnType<typeof matrixOf> {
+  private matrix(): Affine6 {
     return matrixOf(this.t, this.cx, this.cy);
   }
 
@@ -128,22 +159,31 @@ export class SelectionTool {
       this.liftPolygon(poly);
       return;
     }
-    this.drag = null;
+    if (this.drag) {
+      this.drag = null;
+      this.host.changed(this.info());
+    }
   }
 
   /** Renders the floating pixels at the current transform (called under the render budget). */
   render(): void {
-    if (this.phase !== 'floating' || !this.fl) return;
+    if (this.phase !== 'floating' || !this.items.length) return;
     const { board, comp } = this.host;
     const m = this.matrix();
-    const now = stampRect(this.fl, m, board.W, board.H);
-    const rect = union(now, this.lastRect ?? this.fl.box);
+    const first = this.items[0].fl;
+    const now = stampRect(first, m, board.W, board.H);
+    const rect = union(now, this.lastRect ?? first.box);
     if (!isEmpty(rect)) {
       const { buf, img } = this.host.preview();
-      const src = board.pixels(this.fl.frame, this.fl.layer, true);
-      for (let y = rect.y0; y < rect.y1; y++) buf.set(src.subarray((y * board.W + rect.x0) * 4, (y * board.W + rect.x1) * 4), (y * board.W + rect.x0) * 4);
-      stampInto(buf, board.W, board.H, this.fl, m, board.pixelArt, rect);
-      comp.showPreview(this.fl.layer, img, rect);
+      let caches = false;
+      for (const { fl } of this.items) {
+        const src = board.pixels(fl.frame, fl.layer, true);
+        for (let y = rect.y0; y < rect.y1; y++) buf.set(src.subarray((y * board.W + rect.x0) * 4, (y * board.W + rect.x1) * 4), (y * board.W + rect.x0) * 4);
+        stampInto(buf, board.W, board.H, fl, m, board.pixelArt, rect);
+        comp.showPreview(fl.layer, img, rect);
+        if (fl.layer !== comp.active) caches = true;
+      }
+      if (caches) comp.rebuildCaches(rect);
       comp.invalidateDoc(rect);
     }
     this.lastRect = now;
@@ -161,27 +201,31 @@ export class SelectionTool {
   private liftPolygon(poly: Point[]): void {
     const { board, history } = this.host;
     const frame = this.host.frame();
-    const layer = this.host.layer();
-    const l = board.layer(layer);
-    if (!l || l.locked || !l.visible) {
+    const owner = this.host.layer();
+    const ids = selectionLayers(board, owner, this.host.scope());
+    const pm = ids.length ? polygonMask(poly, board.W, board.H, board.pixelArt) : null;
+    const items: Item[] = [];
+    if (pm) {
+      const tiles = tilesOf(pm.box, board.W, board.H);
+      for (const id of ids) {
+        const before = history.snapshot(frame, id, tiles);
+        const fl = lift(board, frame, id, poly, pm);
+        if (fl) items.push({ fl, before });
+      }
+    }
+    if (!items.length) {
+      const l = board.layer(owner);
       this.phase = 'idle';
-      this.host.toast(l?.locked ? 'This layer is locked' : 'This layer is hidden');
+      this.host.toast(!ids.length && l?.locked ? 'This layer is locked' : !ids.length && l && !l.visible ? 'This layer is hidden' : 'Nothing to select there');
       this.host.changed(null);
       return;
     }
-    const before = history.snapshot(frame, layer, tilesOf({ x0: 0, y0: 0, x1: board.W, y1: board.H }, board.W, board.H));
-    const fl = lift(board, frame, layer, poly);
-    if (!fl) {
-      this.phase = 'idle';
-      this.host.toast('Nothing to select there');
-      this.host.changed(null);
-      return;
-    }
-    this.fl = fl;
-    this.before = before;
+    const box = items[0].fl.box;
+    this.items = items;
+    this.owner = owner;
     this.t = { ...IDENTITY };
-    this.cx = (fl.box.x0 + fl.box.x1) / 2;
-    this.cy = (fl.box.y0 + fl.box.y1) / 2;
+    this.cx = (box.x0 + box.x1) / 2;
+    this.cy = (box.y0 + box.y1) / 2;
     this.lastRect = null;
     this.phase = 'floating';
     this.render();
@@ -207,73 +251,87 @@ export class SelectionTool {
       this.reset();
       return;
     }
-    if (this.phase !== 'floating' || !this.fl || !this.before) return;
+    if (this.phase !== 'floating' || !this.items.length) return;
     const { board } = this.host;
-    const fl = this.fl;
     const m = this.matrix();
-    stamp(board, fl.frame, fl.layer, fl, m);
-    this.host.commit('Move', [{ pixels: this.before }], { op: 'transform', layer: fl.layer, frame: fl.frame, polygon: fl.polygon.map((p) => [p.x, p.y]), matrix: m, action: 'move' });
+    const dest = stampRect(this.items[0].fl, m, board.W, board.H);
+    for (const it of this.items) {
+      this.coverBefore(it, dest);
+      stamp(board, it.fl.frame, it.fl.layer, it.fl, m);
+    }
+    this.host.commit('Move', this.beforeSteps(), this.logOp('move', m));
     this.reset();
   }
 
   /** Puts everything back as it was (no undo step). */
   cancel(): void {
-    if (this.phase === 'floating' && this.before && this.fl) {
-      // The snapshot is not in the history yet, so its tiles are raw (never packed).
+    if (this.phase === 'floating') {
+      // The snapshots are not in the history yet, so their tiles are raw (never packed).
       const { board } = this.host;
-      const b = this.before;
-      const data = board.pixels(b.frame, b.layer, true);
-      for (const t of b.tiles) copyIn(data, board.W, { x0: t.x, y0: t.y, x1: t.x + t.w, y1: t.y + t.h }, t.before instanceof Uint8ClampedArray ? t.before : null);
-      board.changed(b.frame, b.layer, null);
+      for (const { fl, before } of this.items) {
+        const data = board.pixels(before.frame, before.layer, true);
+        for (const t of before.tiles) copyIn(data, board.W, { x0: t.x, y0: t.y, x1: t.x + t.w, y1: t.y + t.h }, t.before instanceof Uint8ClampedArray ? t.before : null);
+        board.changed(before.frame, before.layer, this.lastRect ? union(fl.box, this.lastRect) : fl.box);
+      }
     }
     this.reset();
   }
 
   /** Throws the lifted pixels away (one undo step). */
   remove(): void {
-    if (this.phase !== 'floating' || !this.fl || !this.before) return;
-    const fl = this.fl;
-    if (this.lastRect) this.host.comp.layerChanged(fl.layer, this.lastRect);
-    this.host.commit('Delete', [{ pixels: this.before }], { op: 'transform', layer: fl.layer, frame: fl.frame, polygon: fl.polygon.map((p) => [p.x, p.y]), matrix: [1, 0, 0, 1, 0, 0], action: 'delete' });
+    if (this.phase !== 'floating' || !this.items.length) return;
+    for (const { fl } of this.items) if (this.lastRect) this.host.comp.layerChanged(fl.layer, this.lastRect);
+    this.host.commit('Delete', this.beforeSteps(), this.logOp('delete', [1, 0, 0, 1, 0, 0]));
     this.reset();
   }
 
-  /** Moves the selection onto a new part:<name> layer above its layer; returns the new layer id. */
+  /**
+   * Moves the selection onto a new part:<name> layer above the layers it came from, merged into one piece
+   * (lines, colours and shading together); returns the new layer id.
+   */
   toPart(name: string): string | null {
-    if (this.phase !== 'floating' || !this.fl || !this.before) return null;
+    if (this.phase !== 'floating' || !this.items.length) return null;
     if (!this.host.canAddLayer()) {
       this.host.toast('That is a lot of layers! Merge some first.');
       return null;
     }
     const clean = name.trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32) || 'part';
     const { board, history } = this.host;
-    const fl = this.fl;
+    const frame = this.items[0].fl.frame;
     const m = this.matrix();
     const meta = makeLayer(uid('l'), `part:${clean}`, name.trim().slice(0, 40) || clean);
-    const index = board.layerIndex(fl.layer) + 1;
+    const index = Math.max(...this.items.map((it) => board.layerIndex(it.fl.layer))) + 1;
     const add = addLayer(board, meta, index);
-    const dest = history.snapshot(fl.frame, meta.id, tilesOf(stampRect(fl, m, board.W, board.H), board.W, board.H));
-    stamp(board, fl.frame, meta.id, fl, m);
-    if (this.lastRect) this.host.comp.layerChanged(fl.layer, this.lastRect);
-    this.host.commit('Make a part', [{ pixels: this.before }, { struct: add }, { pixels: dest }], {
-      op: 'transform',
-      layer: fl.layer,
-      frame: fl.frame,
-      polygon: fl.polygon.map((p) => [p.x, p.y]),
-      matrix: m,
-      action: 'part',
-      to: meta,
-      index,
-    });
+    const piece = mergeFloating(board, this.items.map((it) => it.fl));
+    const dest = history.snapshot(frame, meta.id, tilesOf(stampRect(piece, m, board.W, board.H), board.W, board.H));
+    stamp(board, frame, meta.id, piece, m);
+    for (const { fl } of this.items) if (this.lastRect) this.host.comp.layerChanged(fl.layer, this.lastRect);
+    this.host.commit('Make a part', [...this.beforeSteps(), { struct: add }, { pixels: dest }], { ...this.logOp('part', m), to: meta, index });
     this.reset();
     this.host.setActiveLayer(meta.id);
     return meta.id;
   }
 
+  private beforeSteps(): Step[] {
+    return this.items.map((it) => ({ pixels: it.before }));
+  }
+
+  /** Adds the tiles the pixels land on to the undo snapshot (outside the lifted box they are unchanged). */
+  private coverBefore(it: Item, dest: Rect): void {
+    const { board, history } = this.host;
+    const have = new Set(it.before.tiles.map((t) => t.y * board.W + t.x));
+    const extra = tilesOf(dest, board.W, board.H).filter((t) => !have.has(t.y0 * board.W + t.x0));
+    if (extra.length) it.before.tiles.push(...history.snapshot(it.before.frame, it.before.layer, extra).tiles);
+  }
+
+  private logOp(action: LogTransform['action'], matrix: Affine6): LogTransform {
+    const fl = this.items[0].fl;
+    return { op: 'transform', layer: this.owner, layers: this.items.map((it) => it.fl.layer), frame: fl.frame, polygon: fl.polygon.map((p) => [p.x, p.y]), matrix, action };
+  }
+
   private reset(): void {
     this.phase = 'idle';
-    this.fl = null;
-    this.before = null;
+    this.items = [];
     this.drag = null;
     this.lastRect = null;
     this.path = [];
@@ -287,9 +345,10 @@ export class SelectionTool {
   // ------------------------------------------------------------------------------------------ overlay
 
   private handles(): { corners: Point[]; rotate: Point; outline: Point[] } | null {
-    if (!this.fl) return null;
+    const fl = this.items[0]?.fl;
+    if (!fl) return null;
     const m = this.matrix();
-    const b = this.fl.box;
+    const b = fl.box;
     const corners = [apply(m, b.x0, b.y0), apply(m, b.x1, b.y0), apply(m, b.x1, b.y1), apply(m, b.x0, b.y1)];
     // Beyond the (local) top edge, away from the centre, 30 view px out.
     const top = apply(m, (b.x0 + b.x1) / 2, b.y0);
@@ -297,7 +356,7 @@ export class SelectionTool {
     const len = Math.hypot(up.x, up.y) || 1;
     const k = 30 / this.host.view().zoom;
     const rotate = { x: top.x + (up.x / len) * k, y: top.y + (up.y / len) * k };
-    return { corners, rotate, outline: this.fl.polygon.map((p) => apply(m, p.x, p.y)) };
+    return { corners, rotate, outline: fl.polygon.map((p) => apply(m, p.x, p.y)) };
   }
 
   private hitTest(s: Sample): Drag['kind'] | null {

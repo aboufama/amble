@@ -5,6 +5,7 @@
  */
 import { type Point, type Rect, emptyRect, isEmpty, toPixels } from './geom';
 import { fillPolygon, makeTarget } from './raster';
+import { compositeLayer } from './blend';
 import type { Board } from './board';
 import type { Affine6 } from './log';
 
@@ -87,8 +88,13 @@ export function polygonMask(polygon: Point[], W: number, H: number, hard: boolea
  * Lifts the pixels inside `polygon` off the layer (leaving a hole) and returns them, or null when the
  * selection is empty. The caller snapshots the layer for undo first.
  */
-export function lift(board: Board, frame: string, layer: string, polygon: Point[]): Floating | null {
-  const pm = polygonMask(polygon, board.W, board.H, board.pixelArt);
+export function lift(
+  board: Board,
+  frame: string,
+  layer: string,
+  polygon: Point[],
+  pm: { box: Rect; mask: Float32Array } | null = polygonMask(polygon, board.W, board.H, board.pixelArt),
+): Floating | null {
   if (!pm) return null;
   const { box, mask } = pm;
   const W = board.W;
@@ -114,6 +120,22 @@ export function lift(board: Board, frame: string, layer: string, polygon: Point[
   if (!any) return null;
   board.changed(frame, layer, box);
   return { frame, layer, polygon, box, rgba };
+}
+
+/**
+ * One floating image from several layers lifted with the same outline (bottom to top), each composited
+ * with its layer's opacity and blend: what the drawing looks like there, as a single piece.
+ */
+export function mergeFloating(board: Board, fls: readonly Floating[]): Floating {
+  const f0 = fls[0];
+  const bw = f0.box.x1 - f0.box.x0;
+  const bh = f0.box.y1 - f0.box.y0;
+  const rgba = new Uint8ClampedArray(bw * bh * 4);
+  for (const fl of fls) {
+    const l = board.layer(fl.layer);
+    compositeLayer(rgba, fl.rgba, bw, bh, null, l?.opacity ?? 1, l?.blend ?? 'normal');
+  }
+  return { ...f0, rgba };
 }
 
 /** Halves an RGBA image (box filter in premultiplied space). */

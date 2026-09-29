@@ -68,13 +68,19 @@ export type Affine6 = [number, number, number, number, number, number];
 
 export interface LogTransform {
   op: 'transform';
+  /** The active layer. */
   layer: string;
+  /** Every layer the selection lifted, bottom to top (default [layer]). */
+  layers?: string[];
   frame: string;
   /** The selection outline (document px). */
   polygon: [number, number][];
   /** Where the lifted pixels land: x' = a x + c y + e, y' = b x + d y + f. */
   matrix: Affine6;
-  /** move: put back transformed; delete: drop them; part: onto a new layer `to` (created by this op). */
+  /**
+   * move: put back transformed; delete: drop them; part: all of them, merged (each layer's opacity and
+   * blend), onto a new layer `to` (created by this op).
+   */
   action: 'move' | 'delete' | 'part';
   /** part: the new layer and its index (bottom = 0). */
   to?: ArtLayer;

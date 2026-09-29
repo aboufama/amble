@@ -119,6 +119,7 @@ class Surface implements ArtSurface {
       holdToPerfect: !pixelArt,
       fill: { gaps: 'auto', tolerance: 40 },
       pressure: { feel: 'normal', calibrate: true },
+      select: { scope: 'drawing' },
     };
     if (doc) {
       this.ready = (async () => {
@@ -178,6 +179,7 @@ class Surface implements ArtSurface {
       history: this.hist,
       frame: () => this.frameId,
       layer: () => this.layerId,
+      scope: () => this.state.select.scope,
       view: () => this.comp.view,
       preview: () => ({ buf: this.previewBuf, img: this.previewImg }),
       commit: (label, steps, op) => this.record(label, steps, op, op.layer),
@@ -407,7 +409,8 @@ class Surface implements ArtSurface {
       this.moveView({ ...st, panX: st.panX + last.vx - this.panDrag.x, panY: st.panY + last.vy - this.panDrag.y });
       return;
     }
-    if (this.sel.active && last) this.sel.move(last);
+    // Every sample: a lasso outline needs the whole path, not one point per frame.
+    if (this.sel.active) for (const s of samples) this.sel.move(s);
   }
 
   private up(s: Sample | null, cancelled: boolean): void {
@@ -900,6 +903,11 @@ class Surface implements ArtSurface {
     this.emitTool();
   }
 
+  setSelect(o: Partial<ToolState['select']>): void {
+    this.state.select = { scope: o.scope === 'layer' ? 'layer' : o.scope === 'drawing' ? 'drawing' : this.state.select.scope };
+    this.emitTool();
+  }
+
   setPressure(o: Partial<ToolState['pressure']>): void {
     this.state.pressure = { ...this.state.pressure, ...o };
     this.calibrator.feel = this.state.pressure.feel;
@@ -1155,7 +1163,7 @@ class Surface implements ArtSurface {
   }
 
   setOnion(o: { enabled?: boolean; range?: number }): void {
-    this.comp.setOnion(o.enabled ?? this.comp.onionEnabled, o.range ?? 1);
+    this.comp.setOnion(o.enabled ?? this.comp.onionEnabled, o.range ?? this.comp.onionSpan);
     if (!this.comp.onionEnabled) {
       this.comp.rebuildCaches(null);
       this.comp.renderAll();

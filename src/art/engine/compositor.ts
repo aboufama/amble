@@ -92,7 +92,7 @@ export class Compositor {
   private aboveSimple = true;
   private onion: Surface2D | null = null;
   private onionOn = false;
-  private onionRange = 1;
+  private onionRange = 2;
   private onionStale = true;
   private guide: Guide | null = null;
   private guideLayer: Surface2D | null = null;
@@ -269,11 +269,18 @@ export class Compositor {
     return this.onionOn;
   }
 
+  get onionSpan(): number {
+    return this.onionRange;
+  }
+
   markOnionStale(): void {
     this.onionStale = true;
   }
 
-  /** Rebuilds the onion skin (neighbour frames tinted: earlier red, later green, fading with distance). */
+  /**
+   * Rebuilds the onion skin: neighbour frames tinted (earlier red, later green), fading with distance. Dark
+   * pixels (the lines) ghost stronger than light fills, so the previous page's lines stay easy to follow.
+   */
   async refreshOnion(): Promise<void> {
     if (!this.onionOn || !this.onionStale) return;
     this.onionStale = false;
@@ -293,13 +300,14 @@ export class Compositor {
           if (d) compositeLayer(flat, d, W, H, null, l.opacity, 'normal');
         }
         const [r, g, b] = ONION_TINTS[dir < 0 ? 0 : 1];
-        const k = dist === 1 ? 0.32 : 0.14;
+        const fade = dist === 1 ? 1 : 0.45;
         for (let j = 3; j < flat.length; j += 4) {
           if (!flat[j]) continue;
+          const lum = (0.3 * flat[j - 3] + 0.59 * flat[j - 2] + 0.11 * flat[j - 1]) / 255;
+          flat[j] = flat[j] * (0.6 - 0.44 * lum) * fade;
           flat[j - 3] = r;
           flat[j - 2] = g;
           flat[j - 1] = b;
-          flat[j] = flat[j] * k;
         }
         compositeLayer(rgba, flat, W, H, null, 1, 'normal');
       }
@@ -380,6 +388,19 @@ export class Compositor {
     if (this.guideLayer && this.guide?.onTop) v.drawImage(this.guideLayer.canvas, S.x0, S.y0, sw, sh, S.x0, S.y0, sw, sh);
   }
 
+  private drawPaper(v: Ctx2D, shadow: boolean): void {
+    if (shadow) {
+      v.shadowColor = 'rgba(40,30,20,0.22)';
+      v.shadowBlur = 14 * this.dpr;
+      v.shadowOffsetY = 3 * this.dpr;
+    }
+    v.fillStyle = this.paper;
+    v.fillRect(0, 0, this.board.W, this.board.H);
+    v.shadowColor = 'transparent';
+    v.shadowBlur = 0;
+    v.shadowOffsetY = 0;
+  }
+
   /** Full redraw now. */
   renderAll(): void {
     if (this.raf) {
@@ -394,12 +415,7 @@ export class Compositor {
     v.fillRect(0, 0, this.canvas.width, this.canvas.height);
     v.save();
     v.setTransform(...viewMatrix(this.view, this.dpr));
-    v.shadowColor = 'rgba(40,30,20,0.22)';
-    v.shadowBlur = 14 * this.dpr;
-    v.shadowOffsetY = 3 * this.dpr;
-    v.fillStyle = this.paper;
-    v.fillRect(0, 0, this.board.W, this.board.H);
-    v.shadowColor = 'transparent';
+    this.drawPaper(v, true);
     this.smoothing(v);
     if (this.playback) this.drawPlayback(v);
     else this.drawDoc(v, { x0: 0, y0: 0, x1: this.board.W, y1: this.board.H });
@@ -527,8 +543,8 @@ export class Compositor {
     v.fillStyle = this.workspace;
     v.fillRect(d.x0, d.y0, d.x1 - d.x0, d.y1 - d.y0);
     v.setTransform(...m);
-    v.fillStyle = this.paper;
-    v.fillRect(0, 0, this.board.W, this.board.H);
+    // The shadow only shows where the redrawn area reaches past the paper's edge.
+    this.drawPaper(v, sx0 < 0 || sy0 < 0 || sx1 > this.board.W || sy1 > this.board.H);
     this.smoothing(v);
     const S = toPixels({ x0: sx0, y0: sy0, x1: sx1, y1: sy1 }, this.board.W, this.board.H, 2);
     if (!isEmpty(S)) {

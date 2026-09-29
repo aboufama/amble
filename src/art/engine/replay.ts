@@ -10,7 +10,7 @@ import { PROBE_GAPS } from './fill';
 import { type LogFill, type LogInit, type LogOp, type LogStroke, effectiveOps, qdt, qp, qxy } from './log';
 import { type ArtDoc, type ArtLayer, type ArtOp, type ArtScript, ART_KINDS, LIMITS, RIG_KINDS, isLayerRole, makeLayer, uid } from './model';
 import { Painter } from './paint';
-import { lift, stamp } from './select';
+import { type Floating, lift, mergeFloating, polygonMask, stamp } from './select';
 import { addFrame, addLayer, clearLayer, duplicateLayer, mergeDown, moveFrame, moveLayer, noSnapshot, removeFrame, removeLayer, setFrameHold, setLayer } from './structure';
 import { boardToArtDoc } from './serialize';
 
@@ -184,10 +184,16 @@ export async function applyOp(painter: Painter, op: LogOp): Promise<void> {
     case 'transform': {
       await board.ensureFrame(op.frame);
       if (op.action === 'part' && op.to && !board.layer(op.to.id)) addLayer(board, op.to, op.index ?? board.layers.length);
-      const fl = lift(board, op.frame, op.layer, op.polygon.map(([x, y]) => ({ x, y })));
-      if (!fl) return;
-      if (op.action === 'move') stamp(board, op.frame, op.layer, fl, op.matrix);
-      else if (op.action === 'part' && op.to) stamp(board, op.frame, op.to.id, fl, op.matrix);
+      const polygon = op.polygon.map(([x, y]) => ({ x, y }));
+      const pm = polygonMask(polygon, board.W, board.H, board.pixelArt);
+      const fls: Floating[] = [];
+      for (const id of op.layers ?? [op.layer]) {
+        const fl = board.layer(id) ? lift(board, op.frame, id, polygon, pm) : null;
+        if (fl) fls.push(fl);
+      }
+      if (!fls.length) return;
+      if (op.action === 'move') for (const fl of fls) stamp(board, op.frame, fl.layer, fl, op.matrix);
+      else if (op.action === 'part' && op.to) stamp(board, op.frame, op.to.id, mergeFloating(board, fls), op.matrix);
       return;
     }
     case 'layer':

@@ -7,6 +7,7 @@ import type { LogOp } from './log';
 import type { ArtDoc, ArtKind, LayerBlendMode, LayerRole, RigKind } from './model';
 import type { PerfectKind } from './shape';
 import type { SelectionTransform } from './select';
+import type { SelectScope } from './selection-tool';
 import type { ViewState } from './view';
 
 export type ToolId = BrushId | 'fill' | 'eyedropper' | 'lasso' | 'select' | 'pan';
@@ -36,6 +37,8 @@ export interface ToolState {
   holdToPerfect: boolean;
   fill: { gaps: GapsMode; tolerance: number };
   pressure: { feel: PressureFeel; calibrate: boolean };
+  /** What lasso and box selections lift: the drawing (lines, colors and paint together) or the active layer. */
+  select: { scope: SelectScope };
 }
 
 export interface LayerInfo {
@@ -71,7 +74,10 @@ export interface HistoryState {
 }
 
 export interface SelectionInfo {
+  /** The active layer. */
   layer: string;
+  /** The layers whose pixels are lifted, bottom to top. */
+  layers: string[];
   /** Floating pixels being transformed; false while the outline is being drawn. */
   floating: boolean;
   transform: SelectionTransform;
@@ -169,6 +175,8 @@ export interface ArtSurface {
   setMirror(m: { x?: boolean | number | null; y?: boolean | number | null } | null): void;
   setHoldToPerfect(on: boolean): void;
   setFill(o: Partial<ToolState['fill']>): void;
+  /** Selection scope: 'drawing' (default) lifts lines, colors and paint layers together; 'layer' just the active one. */
+  setSelect(o: Partial<ToolState['select']>): void;
   setPressure(o: Partial<ToolState['pressure']>): void;
   /** "Make it perfect" for the last stroke (a timing-free alternative to holding still). */
   makeLastStrokePerfect(): Promise<PerfectKind | null>;
@@ -208,6 +216,7 @@ export interface ArtSurface {
   removeFrame(id: string): void;
   moveFrame(id: string, index: number): void;
   setFrameHold(id: string, hold: number): void;
+  /** Onion skin: the pages before (red) and after (green), `range` 1 or 2 each side (default 2). */
   setOnion(o: { enabled?: boolean; range?: number }): void;
   /** Plays the flipbook in place of the editable view; returns stop(). */
   playFrames(fps: number, onFrame?: (index: number) => void): Promise<() => void>;
