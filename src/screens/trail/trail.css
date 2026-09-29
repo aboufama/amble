@@ -965,6 +965,10 @@
 }
 
 .trail-list__empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
   padding: 30px 0;
   font: var(--type-body);
   color: var(--text-2);

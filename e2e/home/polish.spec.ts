@@ -61,3 +61,12 @@ test('a student with worlds but no free drawing is welcomed back with New world'
   await page.getByTestId('new-world').click();
   await expect(page).toHaveURL(/#\/new$/);
 });
+
+test('the empty world list offers a New world', async ({ page }) => {
+  await openAmble(page, { clean: true, route: '#/trail/list' });
+  const make = page.getByTestId('list-new-world');
+  await expect(make).toBeVisible();
+  await make.click();
+  await expect(page).toHaveURL(/#\/new$/);
+  await expect(page.getByTestId('screen-new')).toBeVisible();
+});

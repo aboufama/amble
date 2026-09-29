@@ -152,7 +152,7 @@ export const home = {
 
   lostTitle: 'Lost and found',
   lostLede: 'Worlds you put away wait here for 30 days. Then they are gone.',
-  lostEmpty: 'Nothing here. Worlds you put away wait here for 30 days.',
+  lostEmpty: 'Nothing here. All your worlds are on the Trail.',
   daysLeft: '{n} days left',
   lastDay: 'Last day',
 

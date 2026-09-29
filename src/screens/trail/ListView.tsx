@@ -136,7 +136,13 @@ export function ListView() {
           ))}
         </ul>
       ) : (
-        <p className="trail-list__empty">{t('home.listEmpty')}</p>
+        <div className="trail-list__empty">
+          <p>{t('home.listEmpty')}</p>
+          <Link to={{ name: 'new', hero: null, idea: false }} className="btn btn--lantern btn--h44" data-testid="list-new-world">
+            <Icon name="plus" size={20} />
+            <span className="btn__label">{t('home.newWorld')}</span>
+          </Link>
+        </div>
       )}
       {lost > 0 && (
         <Link to={{ name: 'trail', view: 'lost' }} className="btn btn--quiet btn--h44 trail-list__lost" data-testid="lost-link">
