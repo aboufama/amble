@@ -16,3 +16,20 @@ test("the First page column leaves room for its cards' and idea box's shadows", 
   expect(room.left).toBeGreaterThanOrEqual(24);
   expect(room.right).toBeGreaterThanOrEqual(24);
 });
+
+test('a picked world card keeps its ring while the pointer is still on it', async ({ page }) => {
+  await openAmble(page, { clean: true, route: '#/new' });
+  const card = page.getByTestId('screen-new').getByRole('radio').first();
+  await card.click();
+  await expect(card).toHaveAttribute('aria-checked', 'true');
+  await card.hover();
+  const [shadow, accent] = await card.evaluate((el) => {
+    const probe = document.createElement('i');
+    probe.style.color = 'var(--accent)';
+    document.body.append(probe);
+    const c = getComputedStyle(probe).color;
+    probe.remove();
+    return [getComputedStyle(el).boxShadow, c];
+  });
+  expect(shadow).toContain(accent);
+});

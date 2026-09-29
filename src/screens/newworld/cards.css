@@ -44,7 +44,9 @@
   box-shadow: 0 0 0 3px var(--bg-deep);
 }
 
-.seed-card--checked {
+/* The picked card keeps its ring while the pointer is still on it (the hover rule would drop it). */
+.seed-card--checked,
+.seed-card--checked:hover:not(:disabled) {
   box-shadow:
     0 0 0 3px var(--bg),
     0 0 0 6px var(--accent),
