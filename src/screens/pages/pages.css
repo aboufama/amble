@@ -1,0 +1,517 @@
+/* The in-app pages (§2.15): plain, readable articles in the app shell; printable. Tokens only. */
+.page-screen .screen__main {
+  padding: var(--s6) var(--s5) var(--s10);
+}
+
+.page {
+  display: grid;
+  gap: var(--s3);
+  max-width: 76ch;
+  margin: 0 auto;
+  font: var(--type-body);
+}
+
+.page--wide {
+  max-width: 96ch;
+}
+
+.page__head {
+  display: grid;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+
+.page__title {
+  font: var(--display-l);
+}
+
+.page__meta {
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.page__lede {
+  font: var(--type-body);
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  color: var(--text-2);
+}
+
+.page__h2 {
+  margin-top: var(--s6);
+  font: var(--type-title);
+  font-size: 1.625rem;
+  line-height: 2rem;
+}
+
+.page__h {
+  margin-top: var(--s4);
+  font: var(--type-heading);
+}
+
+.page__h4 {
+  font: var(--type-label);
+  font-size: 1.0625rem;
+}
+
+.page p,
+.page li {
+  max-width: 72ch;
+}
+
+.page ul,
+.page ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.page li::marker {
+  color: var(--accent);
+}
+
+.page strong {
+  font-weight: 700;
+}
+
+.page code,
+.page__code {
+  font: var(--type-code);
+  font-size: 0.875rem;
+}
+
+.page p code,
+.page li code,
+.page td code,
+.page th code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--line);
+  word-break: break-all;
+}
+
+.page__code {
+  margin: 0;
+  padding: 14px 16px;
+  overflow: auto;
+  border-radius: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.page__note {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ai) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ai) 35%, transparent);
+}
+
+.page__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+}
+
+.page__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
+  font: var(--type-label);
+}
+
+.page__kid {
+  display: grid;
+  gap: var(--s2);
+  padding: 20px 24px;
+  border-radius: var(--r-paper);
+  background: var(--paper);
+  box-shadow: var(--lift-paper);
+}
+
+.page__kid .page__h2 {
+  margin-top: 0;
+  color: var(--ink);
+}
+
+.page__kid ul,
+.page__kid p {
+  color: var(--ink);
+  font-size: 1.0625rem;
+}
+
+.page__table-wrap {
+  overflow-x: auto;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.page__table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-meta);
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+}
+
+.page__table caption {
+  padding: 10px 14px 0;
+  font: var(--type-label);
+  text-align: left;
+}
+
+.page__table th,
+.page__table td {
+  padding: 10px 14px;
+  vertical-align: top;
+  text-align: left;
+  border-top: 1px solid var(--line);
+}
+
+.page__table thead th {
+  font: var(--type-caps);
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--text-2);
+  border-top: 0;
+}
+
+.page__table tbody th {
+  font-weight: 700;
+}
+
+.page__hosts {
+  list-style: none;
+  padding: 0 !important;
+}
+
+.page__hosts li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.page__hosts code {
+  font-size: 1rem;
+}
+
+.page__hosts span {
+  color: var(--text-2);
+}
+
+.page__empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--s3);
+  padding: var(--s8) var(--s5);
+  border-radius: var(--r-card);
+  color: var(--text-2);
+  text-align: center;
+  background: var(--surface);
+}
+
+/* ---------- the AI instructions ---------- */
+.prompt {
+  display: grid;
+  gap: var(--s2);
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent);
+}
+
+.prompt__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.prompt__tools {
+  display: flex;
+  gap: var(--s2);
+}
+
+.prompt__text {
+  max-height: 60vh;
+  margin: 0;
+  padding: 14px 16px;
+  overflow: auto;
+  border-radius: 12px;
+  font: var(--type-code-diff);
+  white-space: pre-wrap;
+  background: var(--well);
+}
+
+/* ---------- What Amble sends ---------- */
+.sent__tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.sent__list {
+  list-style: none;
+  padding: 0 !important;
+}
+
+.sent {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent);
+}
+
+.sent__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+}
+
+.sent__kind {
+  font: var(--type-heading);
+}
+
+.sent__head .chip {
+  margin-left: auto;
+}
+
+.sent__to {
+  font: var(--type-label);
+}
+
+.sent__label {
+  font: var(--type-caps);
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.sent__reply {
+  color: var(--text-2);
+}
+
+.sent__body {
+  max-height: 50vh;
+}
+
+.sent .btn {
+  justify-self: start;
+}
+
+/* ---------- the letter and the poster ---------- */
+.letter {
+  display: grid;
+  gap: var(--s3);
+  padding: 40px 48px;
+  border-radius: var(--r-paper);
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  background: var(--paper);
+  box-shadow: var(--lift-paper);
+}
+
+.letter__date {
+  color: var(--ink-2);
+}
+
+.letter__url {
+  font-family: var(--font-code);
+  font-size: 0.9375rem;
+  word-break: break-all;
+}
+
+.letter__sign {
+  margin-top: var(--s3);
+}
+
+.letter__blank {
+  color: var(--ink-2);
+}
+
+.letter__contact {
+  color: var(--ink-2);
+}
+
+.poster {
+  display: grid;
+  gap: var(--s5);
+  padding: 36px 40px;
+  border-radius: var(--r-paper);
+  background: var(--paper);
+  box-shadow: var(--lift-paper);
+}
+
+.poster__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3) var(--s4);
+}
+
+.poster__mark {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: var(--bg-deep);
+}
+
+.poster__title {
+  font: var(--display-l);
+  color: var(--ink);
+}
+
+.poster__cls {
+  margin-left: auto;
+  font: var(--type-title);
+  color: var(--ink-2);
+}
+
+.poster__steps {
+  display: grid;
+  gap: var(--s3);
+  list-style: none;
+  padding: 0 !important;
+}
+
+.poster__step {
+  display: grid;
+  grid-template-columns: 56px 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s4);
+  max-width: none !important;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1.5px var(--paper-3);
+}
+
+.poster__n {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  font: var(--display-m);
+  color: var(--on-accent);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1.5px var(--accent-border);
+}
+
+.poster__icon {
+  color: var(--ink);
+}
+
+.poster__words {
+  display: grid;
+  gap: 2px;
+}
+
+.poster__step-title {
+  font: var(--display-m);
+  font-size: 1.75rem;
+  color: var(--ink);
+}
+
+.poster__step-text {
+  font: var(--type-body);
+  font-size: 1.1875rem;
+  line-height: 1.6rem;
+  color: var(--ink-2);
+}
+
+.poster__qr {
+  width: 132px;
+  height: 132px;
+}
+
+.poster__foot {
+  font: var(--type-label);
+  font-size: 1.0625rem;
+  color: var(--ink-2);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .poster__step {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .poster__icon,
+  .poster__qr {
+    display: none;
+  }
+
+  .letter,
+  .poster {
+    padding: 24px 20px;
+  }
+}
+
+/* ---------- print: black on white, no app chrome ---------- */
+@media print {
+  :root {
+    --text: CanvasText;
+    --text-2: CanvasText;
+    --ink: CanvasText;
+    --ink-2: CanvasText;
+    --paper: Canvas;
+    --paper-2: Canvas;
+    --surface: Canvas;
+    --well: Canvas;
+    --bg: Canvas;
+  }
+
+  html,
+  body {
+    overflow: visible !important;
+    background: Canvas !important;
+  }
+
+  .topbar,
+  .skip-link,
+  .toast-region,
+  .player-layer,
+  .no-print {
+    display: none !important;
+  }
+
+  .screen,
+  .page-screen .screen__main {
+    display: block;
+    height: auto;
+    padding: 0;
+    overflow: visible;
+    background: Canvas;
+  }
+
+  .page {
+    max-width: none;
+    color: CanvasText;
+  }
+
+  .letter,
+  .poster,
+  .page__kid {
+    box-shadow: none;
+  }
+
+  .page a {
+    color: CanvasText;
+  }
+}
