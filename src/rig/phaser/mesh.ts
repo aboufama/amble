@@ -331,9 +331,11 @@ class CutoutCharacter extends Base {
       const o = pr.bone * 6;
       const a = K[o], b = K[o + 1], c = K[o + 2], d = K[o + 3];
       const sx = Math.hypot(a, b) || 1;
+      // atlas px → art px (the atlas of a big drawing is cut at a smaller size)
+      const up = pr.atlas.w > 0 ? pr.art.w / pr.atlas.w : 1;
       img.setPosition(a * pr.art.x + c * pr.art.y + K[o + 4] - ax, b * pr.art.x + d * pr.art.y + K[o + 5] - ay);
       img.setRotation(Math.atan2(b, a));
-      img.setScale(sx, (a * d - b * c) / sx);
+      img.setScale(sx * up, ((a * d - b * c) / sx) * up);
     }
     this.inner.scaleX = this.puppet.flip;
     this.object.setAlpha(this.puppet.pose.alpha);

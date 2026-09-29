@@ -163,6 +163,8 @@ export interface BindStats {
   atlasH: number;
   cell: number;
   ms: number;
+  /** Milliseconds per stage: analyze, ownership, cut, mesh. */
+  stages?: Record<string, number>;
 }
 
 /** Everything derived from art + `RigData` (never stored as the source of truth). */

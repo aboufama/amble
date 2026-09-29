@@ -4,6 +4,7 @@
  */
 import { analyze } from '../../../src/rig/analyze';
 import { autoRig } from '../../../src/rig/autorig';
+import { bindRig, BIND_WORK_SIZE } from '../../../src/rig/bind';
 import { SAMPLES } from '../../../src/rig/samples/kid-art';
 
 const median = (v: number[]) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)];
@@ -25,6 +26,10 @@ export function runPerf(names: string[]): void {
     const a150 = t(() => analyze(s, { workSize: 150 }));
     const a240 = t(() => analyze(s, { workSize: 240 }));
     const rig = t(() => autoRig(s, s.kind));
-    console.log(`${s.name.padEnd(10)} ${s.image.width}x${s.image.height} analyze150 ${a150.toFixed(1)}ms analyze240 ${a240.toFixed(1)}ms autoRig ${rig.toFixed(1)}ms`);
+    const r = autoRig(s, s.kind);
+    const a = analyze(s, { workSize: BIND_WORK_SIZE });
+    const bind = t(() => bindRig(s, r.rig));
+    const rebind = t(() => bindRig(s, r.rig, { analysis: a }));
+    console.log(`${s.name.padEnd(10)} ${s.image.width}x${s.image.height} analyze150 ${a150.toFixed(1)}ms analyze240 ${a240.toFixed(1)}ms autoRig ${rig.toFixed(1)}ms bind ${bind.toFixed(1)}ms rebind ${rebind.toFixed(1)}ms`);
   }
 }

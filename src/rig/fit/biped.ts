@@ -181,6 +181,9 @@ export function fitBiped(a: Analysis, guide: Guide | null): Fit {
   if (arms.length === 1) {
     fit.issues.push('missing-arm');
     fit.notes.push('I found one arm. Press Mirror sides to copy it to the other side.');
+  } else if (!arms.length) {
+    fit.issues.push('no-arms');
+    fit.notes.push('I couldn\'t find the arms, so they won\'t swing. If they are drawn close to the body, try Magic bones, or add them as wiggly bits.');
   }
 
   // --- neck above the highest shoulder, then the head bone through the head's centre to its top

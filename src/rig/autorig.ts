@@ -65,12 +65,12 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /** Issues that a larger working size can fix, weighted. */
 const RETRY_WEIGHT: Partial<Record<FitIssue, number>> = {
-  'no-legs': 3, 'one-leg': 3, 'legs-merged': 2, 'few-legs': 2, 'missing-arm': 1, 'missing-wing': 1, 'no-head': 2,
+  'no-legs': 3, 'one-leg': 3, 'legs-merged': 2, 'few-legs': 2, 'missing-arm': 1, 'no-arms': 1, 'missing-wing': 1, 'no-head': 2,
 };
 
 /** How much each issue costs in confidence. */
 const PENALTY: Partial<Record<FitIssue, number>> = {
-  'no-legs': 0.5, 'one-leg': 0.45, 'legs-merged': 0.45, 'few-legs': 0.4, 'no-head': 0.4, 'missing-arm': 0.45,
+  'no-legs': 0.5, 'one-leg': 0.45, 'legs-merged': 0.45, 'few-legs': 0.4, 'no-head': 0.4, 'missing-arm': 0.45, 'no-arms': 0.45,
   'missing-wing': 0.45, 'hint-dropped': 0.3, 'short-body': 0.3, 'no-tail': 0.05,
 };
 

@@ -60,6 +60,7 @@ export class Animator {
     this.tmp2 = new Pose(sk.n);
     this.tweaks = opts.tweaks ?? {};
     this.armCap = (opts.flat ?? true) ? 45 * D : 150 * D;
+    this.ctx.armCap = this.armCap / D;
     const idle = resolveClip(kind, 'idle')!;
     this.base = { clip: idle, t: 0, loop: true, rate: 1 };
     // upper body: those roles and everything hanging off them (a held wand, an antenna)
@@ -187,13 +188,20 @@ export class Animator {
     this.capArms(out);
   }
 
-  /** On flat drawings a raised arm shows a torso side nobody drew: cap the raise. */
+  /**
+   * On flat drawings a raised arm shows a torso side nobody drew: cap the raise. And no arm swings up
+   * past nearly straight up, so an arm drawn raised (holding a wand) never sweeps across the face.
+   */
   private capArms(out: Pose): void {
     for (const role of ['armL1', 'armR1']) {
       const i = this.sk.role(role);
       if (i < 0) continue;
       const up = this.sk.up[i];
-      if (out.rot[i] * up > this.armCap) out.rot[i] = this.armCap * up;
+      // how far the drawn arm already is from hanging straight down
+      const a = this.sk.restA[i] - Math.PI / 2;
+      const elev = Math.abs(Math.atan2(Math.sin(a), Math.cos(a)));
+      const cap = Math.max(0, Math.min(this.armCap, 165 * D - elev));
+      if (out.rot[i] * up > cap) out.rot[i] = cap * up;
     }
   }
 

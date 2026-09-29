@@ -27,6 +27,11 @@ export class ClipCtx {
   distance = 0;
   /** True when the distance comes from real motion (else wheels use the clip's own speed). */
   moving = false;
+  /**
+   * How far (degrees) an upper arm may rise from where it was drawn: 45 on flat drawings, whose
+   * torso side under the arm was never drawn. Clips that lift hands high bend the elbow instead.
+   */
+  armCap = 150;
 
   constructor(readonly sk: Skeleton) {}
 

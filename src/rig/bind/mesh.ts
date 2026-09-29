@@ -41,17 +41,20 @@ export function buildMesh(
   // --- lattice mesh per part
   let area = 0;
   const any = new Uint8Array(W * H);
-  for (const im of images) for (let i = 0; i < W * H; i++) if (im.mask[i] && !any[i]) {
-    any[i] = 1;
-    area++;
+  for (const im of images) {
+    const b = im.box;
+    for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0, i = y * W + x; x <= b.x1; x++, i++) if (im.mask[i] && !any[i]) {
+      any[i] = 1;
+      area++;
+    }
   }
   const cell = Math.max(6, Math.min(28, Math.round(opts.cell ?? rig.skin?.cell ?? Math.sqrt(area / 160))));
   const cols = Math.ceil(W / cell), rows = Math.ceil(H / cell);
   const meshes: PartMesh[] = images.map((im) => {
     const has = new Uint8Array(cols * rows);
-    for (let y = 0; y < H; y++) {
+    for (let y = im.box.y0; y <= im.box.y1; y++) {
       const cj = Math.floor(y / cell);
-      for (let x = 0; x < W; x++) if (im.mask[y * W + x]) has[cj * cols + Math.floor(x / cell)] = 1;
+      for (let x = im.box.x0; x <= im.box.x1; x++) if (im.mask[y * W + x]) has[cj * cols + Math.floor(x / cell)] = 1;
     }
     const cells: number[] = [];
     let ci0 = cols, cj0 = rows, ci1 = -1, cj1 = -1;

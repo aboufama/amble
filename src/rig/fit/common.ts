@@ -21,7 +21,7 @@ export interface FitBone {
 
 /** Machine-readable problems found while fitting (they lower confidence and may trigger a retry). */
 export type FitIssue =
-  | 'no-head' | 'no-legs' | 'one-leg' | 'legs-merged' | 'missing-arm' | 'few-legs' | 'missing-wing'
+  | 'no-head' | 'no-legs' | 'one-leg' | 'legs-merged' | 'missing-arm' | 'no-arms' | 'few-legs' | 'missing-wing'
   | 'no-tail' | 'short-body' | 'hint-dropped' | 'thin-strokes';
 
 export interface Fit {

@@ -138,11 +138,14 @@ function legsTuck(c: ClipCtx, p: Pose, tuck: number): void {
   c.swing(p, 'legR2', -40 * tuck);
 }
 
+/** Both arms up by `up` degrees: past what the shoulders may do (flat drawings), the elbows bend. */
 function armsUp(c: ClipCtx, p: Pose, up: number): void {
-  c.raise(p, 'armL1', up);
-  c.raise(p, 'armR1', up);
-  c.raise(p, 'armL2', up * 0.3);
-  c.raise(p, 'armR2', up * 0.3);
+  const shoulder = Math.min(up, c.armCap);
+  const elbow = up * 0.3 + Math.max(0, up - shoulder) * 0.8;
+  c.raise(p, 'armL1', shoulder);
+  c.raise(p, 'armR1', shoulder);
+  c.raise(p, 'armL2', elbow);
+  c.raise(p, 'armR2', elbow);
 }
 
 const jump: Clip = {
@@ -186,8 +189,10 @@ const wave: Clip = {
   name: 'wave', loop: false, dur: 1.4, upper: true,
   fn(c, t, p) {
     const up = ease(clamp01(t / 0.2)) * (1 - ease(clamp01((t - 1.15) / 0.25)));
-    c.raise(p, 'armR1', 120 * up);
-    c.raise(p, 'armR2', (20 + 25 * Math.sin(TAU * 3 * t)) * up);
+    // the hand goes up by the shoulder as far as it may, the rest by the elbow
+    const shoulder = Math.min(120, c.armCap);
+    c.raise(p, 'armR1', shoulder * up);
+    c.raise(p, 'armR2', (Math.max(20, 110 - shoulder) + 25 * Math.sin(TAU * 3 * t)) * up);
     c.rot(p, 'head', 4 * up * Math.sin(TAU * 1.5 * t));
     c.swing(p, 'spine', -2 * up);
     p.ground = 1;
