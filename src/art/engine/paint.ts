@@ -148,8 +148,12 @@ export class StrokeSession {
     return this.pixel ? this.pixel.box() : this.engine ? this.engine.box() : emptyRect();
   }
 
-  /** Applies the finished stroke to its layer; returns the changed box. */
-  commit(): Rect {
+  /**
+   * Applies the finished stroke to its layer; returns the changed box. `preview`: the buffer every change
+   * of this stroke was previewed into (after finish); it already holds the blended pixels, so they are
+   * copied rather than blended again (same values, a faster pen-up).
+   */
+  commit(preview: Uint8ClampedArray | null = null): Rect {
     this.finish();
     const board = this.painter.board;
     const t = this.target();
@@ -158,12 +162,32 @@ export class StrokeSession {
       const tiles = tilesFromFlags(t.prefix.tiles!, t.prefix.tilesW, board.W, board.H);
       this.painter.hooks.before?.(this.spec.frame, this.spec.layer, tiles);
       const data = board.pixels(this.spec.frame, this.spec.layer, true);
-      blendCoverage(data, data, board.W, box, t.prefix.buf, null, this.spec.rgb, this.spec.brush.opacity, this.mode);
+      if (preview && this.mode !== 'atop') copyCovered(data, preview, board.W, box, t.prefix.buf, this.spec.brush.opacity);
+      else blendCoverage(data, data, board.W, box, t.prefix.buf, null, this.spec.rgb, this.spec.brush.opacity, this.mode);
       board.changed(this.spec.frame, this.spec.layer, box);
     }
     if (this.pixel) this.pixel.clearBuffers();
     else this.engine?.clearBuffers();
     return box;
+  }
+}
+
+/**
+ * Copies the pixels a stroke covers from its preview, run by run (blendCoverage leaves the same ones
+ * alone), as whole 32-bit pixels.
+ */
+function copyCovered(data: Uint8ClampedArray, preview: Uint8ClampedArray, W: number, box: Rect, cov: Float32Array, opacity: number): void {
+  const d32 = new Uint32Array(data.buffer, data.byteOffset, data.length >> 2);
+  const p32 = new Uint32Array(preview.buffer, preview.byteOffset, preview.length >> 2);
+  for (let y = box.y0; y < box.y1; y++) {
+    const end = y * W + box.x1;
+    let i = y * W + box.x0;
+    while (i < end) {
+      while (i < end && !(cov[i] * opacity > 0)) i++;
+      const s = i;
+      while (i < end && cov[i] * opacity > 0) i++;
+      if (i > s) d32.set(p32.subarray(s, i), s);
+    }
   }
 }
 

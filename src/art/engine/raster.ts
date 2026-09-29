@@ -53,9 +53,64 @@ export function touch(t: Target, x0: number, y0: number, x1: number, y1: number)
   markTiles(t, x0, y0, x1, y1);
 }
 
+const SPAN = new Float64Array(2);
+
+/**
+ * Where the horizontal line at y crosses the stadium of radius R around segment A-B (all points within R of
+ * it): sets s = [lo, hi], lo > hi when it misses. The stadium is convex: its crossing is the hull of the
+ * crossings of the two end discs and of the band between them (0 <= t <= 1 along A-B, |offset| <= R).
+ */
+export function stadiumSpan(ax: number, ay: number, bx: number, by: number, R: number, y: number, s: Float64Array): void {
+  let lo = Infinity;
+  let hi = -Infinity;
+  const da = y - ay;
+  if (da * da <= R * R) {
+    const w = Math.sqrt(R * R - da * da);
+    lo = ax - w;
+    hi = ax + w;
+  }
+  const db = y - by;
+  if (db * db <= R * R) {
+    const w = Math.sqrt(R * R - db * db);
+    if (bx - w < lo) lo = bx - w;
+    if (bx + w > hi) hi = bx + w;
+  }
+  const dx = bx - ax;
+  const dy = by - ay;
+  const L2 = dx * dx + dy * dy;
+  if (L2 > 1e-12) {
+    const L = Math.sqrt(L2);
+    const ey = y - ay;
+    // Along: t(x) * L2 = (x - ax) dx + ey dy, in [0, L2]. Across: off(x) * L = (x - ax) dy - ey dx, in [-RL, RL].
+    let b0 = -Infinity;
+    let b1 = Infinity;
+    if (dx !== 0) {
+      const u = ax + (0 - ey * dy) / dx;
+      const v = ax + (L2 - ey * dy) / dx;
+      b0 = u < v ? u : v;
+      b1 = u < v ? v : u;
+    } else if (ey * dy < 0 || ey * dy > L2) b0 = Infinity;
+    if (dy !== 0) {
+      const u = ax + (ey * dx - R * L) / dy;
+      const v = ax + (ey * dx + R * L) / dy;
+      if ((u < v ? u : v) > b0) b0 = u < v ? u : v;
+      if ((u < v ? v : u) < b1) b1 = u < v ? v : u;
+    } else if (Math.abs(ey * dx) > R * L) b0 = Infinity;
+    if (b0 <= b1) {
+      if (b0 < lo) lo = b0;
+      if (b1 > hi) hi = b1;
+    }
+  }
+  s[0] = lo;
+  s[1] = hi;
+}
+
 /**
  * One stroke piece from A (radius ra, pressure pa) to B (rb, pb), max-combined into t.buf.
  * Radii under 0.5px are drawn at 0.5px with proportionally less alpha, so hairline tips fade instead of breaking up.
+ * Each row only visits the pixels near the piece, and pixels deep inside a grainless piece (whose value is
+ * exactly `opacity`) skip the distance function: the same pixels as a plain full scan, several times faster
+ * for thick brushes.
  */
 export function capsule(
   t: Target,
@@ -99,12 +154,44 @@ export function capsule(
   const cx = degenerate ? 0 : Math.sqrt(h - bb * bb);
   const tex = grain ? grain.tex : null;
   const lut = grain ? grain.lut : null;
+  // The stadium holding everything this piece covers, and (grainless, full-alpha radii) the one inside
+  // which coverage is certainly 1 (margin 1e-3 against rounding).
+  const sax = degenerate ? cxD : ax;
+  const say = degenerate ? cyD : ay;
+  const sbx = degenerate ? cxD : bx;
+  const sby = degenerate ? cyD : by;
+  const rOut = (degenerate ? crD : rmax) + 1;
+  const rIn = !grain && fa === 1 && fb === 1 ? (degenerate ? crD : raC < rbC ? raC : rbC) - 0.5 - 1e-3 : 0;
+  const inner = opacity;
+  const s = SPAN;
 
   for (let y = y0; y <= y1; y++) {
-    const py = y + 0.5 - ay;
-    let i = y * W + x0;
+    const yc = y + 0.5;
+    stadiumSpan(sax, say, sbx, sby, rOut, yc, s);
+    if (!(s[0] <= s[1])) continue;
+    const xs = Math.max(x0, Math.floor(s[0] - 0.5));
+    const xe = Math.min(x1, Math.ceil(s[1] - 0.5));
+    let ixs = 1;
+    let ixe = 0;
+    if (rIn > 0) {
+      stadiumSpan(sax, say, sbx, sby, rIn, yc, s);
+      if (s[0] <= s[1]) {
+        ixs = Math.max(xs, Math.ceil(s[0] - 0.5));
+        ixe = Math.min(xe, Math.floor(s[1] - 0.5));
+      }
+    }
+    const py = yc - ay;
+    const rowBase = y * W;
     const trow = (y & 255) << 8;
-    for (let x = x0; x <= x1; x++, i++) {
+    for (let x = xs; x <= xe; x++) {
+      const i = rowBase + x;
+      if (x === ixs && ixs <= ixe) {
+        for (let k = i, e = rowBase + ixe; k <= e; k++) if (inner > buf[k]) buf[k] = inner;
+        x = ixe;
+        continue;
+      }
+      // Coverage never exceeds `opacity`, so an already saturated pixel cannot change (overlapping pieces).
+      if (buf[i] >= opacity) continue;
       const px = x + 0.5 - ax;
       let sd: number;
       let tt: number;

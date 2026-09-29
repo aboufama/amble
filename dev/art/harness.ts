@@ -11,6 +11,7 @@ import {
   exportArtDoc,
   playTimelapse,
   replayArtScript,
+  replayLog,
   serializeArtDoc,
 } from '../../src/art/engine';
 
@@ -314,6 +315,32 @@ const api = {
         }
       }
     return { bad, checked: w * h, first };
+  },
+  /** Replays the stroke log headlessly and compares every layer of every frame with the live pixels. */
+  async replayCheck(): Promise<{ layers: number; mismatched: string[]; ms: number }> {
+    await surface.settled();
+    const t0 = performance.now();
+    const board = await replayLog(surface.log());
+    const ms = performance.now() - t0;
+    const mismatched: string[] = [];
+    let layers = 0;
+    for (const f of surface.frames())
+      for (const l of surface.layers()) {
+        layers++;
+        const live = surface.readPixels(l.id, 0, 0, surface.width, surface.height, f.id);
+        const re = board.pixels(f.id, l.id);
+        let bad = 0;
+        let box: number[] | null = null;
+        for (let i = 0; i < live.length; i += 4)
+          if (live[i] !== (re ? re[i] : 0) || live[i + 1] !== (re ? re[i + 1] : 0) || live[i + 2] !== (re ? re[i + 2] : 0) || live[i + 3] !== (re ? re[i + 3] : 0)) {
+            bad++;
+            const x = (i >> 2) % surface.width;
+            const y = Math.floor((i >> 2) / surface.width);
+            box = box ? [Math.min(box[0], x), Math.min(box[1], y), Math.max(box[2], x), Math.max(box[3], y)] : [x, y, x, y];
+          }
+        if (bad) mismatched.push(`${l.name} (page ${f.index + 1}): ${bad} px in [${box?.join(',')}]`);
+      }
+    return { layers, mismatched, ms };
   },
   stats: () => surface.stats(),
   resetStats: (): void => (surface as unknown as { resetStats(): void }).resetStats(),

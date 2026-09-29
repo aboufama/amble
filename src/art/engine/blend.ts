@@ -63,6 +63,8 @@ export function blendCoverage(
           out[j + 2] = src[j + 2];
         }
         out[j + 3] = ad * (1 - a) * 255;
+        // Fully erased pixels become all zero (smaller PNGs, canonical pixels).
+        if (out[j + 3] === 0) out[j] = out[j + 1] = out[j + 2] = 0;
       } else if (mode === 'atop') {
         if (ad <= 0) {
           if (copy) out[j] = out[j + 1] = out[j + 2] = out[j + 3] = 0;
@@ -142,11 +144,22 @@ export function copyIn(dst: Uint8ClampedArray, W: number, r: Rect, data: Uint8Cl
   }
 }
 
-/** True when every pixel of rect r is fully transparent. */
-export function isClear(src: Uint8ClampedArray, W: number, r: Rect): boolean {
+/**
+ * True when every byte of rect r is zero: such a tile can be stored as null and restored exactly (a
+ * transparent tile may still hold colour bytes, which replays reproduce).
+ */
+export function isZero(src: Uint8ClampedArray, W: number, r: Rect): boolean {
+  if (src.byteOffset % 4 === 0) {
+    const u32 = new Uint32Array(src.buffer, src.byteOffset, src.length >> 2);
+    for (let y = r.y0; y < r.y1; y++) {
+      const end = y * W + r.x1;
+      for (let i = y * W + r.x0; i < end; i++) if (u32[i] !== 0) return false;
+    }
+    return true;
+  }
   for (let y = r.y0; y < r.y1; y++) {
     const end = (y * W + r.x1) * 4;
-    for (let j = (y * W + r.x0) * 4 + 3; j < end; j += 4) if (src[j] !== 0) return false;
+    for (let j = (y * W + r.x0) * 4; j < end; j++) if (src[j] !== 0) return false;
   }
   return true;
 }

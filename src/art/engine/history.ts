@@ -2,12 +2,12 @@
  * Undo and redo for everything. Pixel changes store the touched 64x64 tiles as they were before the change
  * (copied from the CPU pixel store at commit: no GPU readback, no hitch at pen-up); the "after" side is
  * captured when the step is first undone (with linear undo that is exactly the state the change produced).
- * Transparent tiles are stored as null. When idle, older steps' tiles are deflated (in the worker), and the
+ * All-zero tiles are stored as null. When idle, older steps' tiles are deflated (in the worker), and the
  * stack is capped by bytes, not steps.
  */
 import { type Rect, isEmpty, tileAlign, unionInto, emptyRect } from './geom';
 import { TILE } from './raster';
-import { copyIn, copyOut, isClear } from './blend';
+import { copyIn, copyOut, isZero } from './blend';
 import type { Board } from './board';
 
 type Packed = { z: Uint8Array };
@@ -110,7 +110,7 @@ export class History {
     const W = this.board.W;
     const snaps: TileSnap[] = [];
     for (const t of tiles) {
-      const before = !data || isClear(data, W, t) ? null : copyOut(data, W, t);
+      const before = !data || isZero(data, W, t) ? null : copyOut(data, W, t);
       snaps.push({ x: t.x0, y: t.y0, w: t.x1 - t.x0, h: t.y1 - t.y0, before });
     }
     return { frame, layer, tiles: snaps };
@@ -194,7 +194,7 @@ export class History {
     const dirty = emptyRect();
     for (const t of p.tiles) {
       const r = { x0: t.x, y0: t.y, x1: t.x + t.w, y1: t.y + t.h };
-      if (which === 'before' && t.after === undefined) t.after = !data || isClear(data, W, r) ? null : copyOut(data, W, r);
+      if (which === 'before' && t.after === undefined) t.after = !data || isZero(data, W, r) ? null : copyOut(data, W, r);
       let src = which === 'before' ? t.before : t.after;
       if (src === undefined) continue;
       if (isPacked(src)) {

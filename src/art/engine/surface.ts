@@ -12,6 +12,7 @@ import { Emitter, Rolling } from './events';
 import { type ArtExport, type ExportOptions, type FrameExport, autoAnchor, exportFrames, flatten, resize, trimBox } from './export';
 import { defaultFillParams, type FillParams, type FillResult } from './fill';
 import { PressureCalibrator } from './filters';
+import { grainFor } from './grain';
 import type { Guide } from './guide';
 import { History, type Step } from './history';
 import { InputController, type DownInfo, type InputSink, type PointerKind, type Sample } from './input';
@@ -209,6 +210,15 @@ class Surface implements ArtSurface {
     this.scheduleLinesAnalysis();
     // Start the worker now so the first fill does not wait for it to load.
     void this.worker.call({ type: 'pack', data: new Uint8Array(1) }).catch(() => undefined);
+    // Build the paper grain while idle, so the first pencil or crayon stroke does not pay for it.
+    if (!board.pixelArt) {
+      const warm = (): void => {
+        grainFor('pencil');
+        grainFor('crayon');
+      };
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(warm, { timeout: 3000 });
+      else setTimeout(warm, 500);
+    }
   }
 
   private sigOf(): string {
@@ -602,7 +612,7 @@ class Surface implements ArtSurface {
     this.showStroke(st.session, fin);
     // The preview already shows exactly the committed pixels: skip re-uploading the stroke's box.
     this.suppressUpload = layer;
-    st.session.commit();
+    st.session.commit(this.previewBuf);
     this.suppressUpload = null;
     const { xyp, dts } = st.buf.take();
     const op: LogStroke = {

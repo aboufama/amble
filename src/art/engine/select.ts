@@ -115,6 +115,8 @@ export function lift(
       rgba[k * 4 + 2] = data[j + 2];
       rgba[k * 4 + 3] = a * m;
       data[j + 3] = a * (1 - m);
+      // Fully lifted pixels become all zero (smaller PNGs, canonical pixels).
+      if (data[j + 3] === 0) data[j] = data[j + 1] = data[j + 2] = 0;
       any = true;
     }
   if (!any) return null;
