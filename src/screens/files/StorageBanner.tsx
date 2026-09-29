@@ -6,7 +6,7 @@
  *   [Save all my worlds] [Tidy up]
  * Nothing shows while saving works.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { navigate } from '../../app/router';
 import { t } from '../../i18n';
 import { useStore } from '../../state/store';
@@ -16,14 +16,16 @@ import { SaveAllButton } from './SaveAllButton';
 import './files.css';
 
 export function WhyDialog({ open, onClose }: { open: boolean; onClose(): void }) {
+  const ok = useRef<HTMLButtonElement>(null);
   return (
     <Dialog
       open={open}
       size="sm"
       title={t('files.whyTitle')}
       onClose={onClose}
+      initialFocus={ok}
       actions={
-        <Button variant="lantern" onClick={onClose}>
+        <Button ref={ok} variant="lantern" onClick={onClose}>
           {t('common.ok')}
         </Button>
       }
@@ -40,7 +42,7 @@ export function StorageBanner() {
   if (storage === 'ok') return null;
   if (storage === 'full') {
     return (
-      <div className="files-banner" role="note" data-testid="storage-banner" data-storage="full">
+      <div className="paper on-paper files-banner" role="note" data-testid="storage-banner" data-storage="full">
         <Icon name="warning" size={22} />
         <p className="files-banner__text">{t('files.storageFull')}</p>
         <div className="files-banner__actions">
@@ -53,7 +55,7 @@ export function StorageBanner() {
     );
   }
   return (
-    <div className="files-banner" role="note" data-testid="storage-banner" data-storage="blocked">
+    <div className="paper on-paper files-banner" role="note" data-testid="storage-banner" data-storage="blocked">
       <Icon name="lock" size={22} />
       <p className="files-banner__text">{t('files.storageBlocked')}</p>
       <div className="files-banner__actions">
