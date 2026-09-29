@@ -115,7 +115,7 @@ export function WorldSign({ source, x, top, legs, index, focused, now, onFocus, 
   };
 
   return (
-    <li className="trail-stop trail-stop--sign" style={{ left: x, top: `calc(100% - 768px + ${top}px)`, ['--legs' as string]: `${legs}px` } as CSSProperties}>
+    <li className="trail-stop trail-stop--sign" style={{ left: x, top: `calc(100% - 768px + ${top}px)`, ['--legs' as string]: `${legs}px`, ['--i' as string]: index } as CSSProperties}>
       <a
         ref={(el) => {
           anchor.current = el;

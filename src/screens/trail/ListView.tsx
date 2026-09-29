@@ -52,11 +52,17 @@ function edited(at: number, now: number): string {
 function WorldCard({ meta, now }: { meta: WorldMeta; now: number }) {
   const { store } = useServices();
   const snap = useUrl(meta.snapshot, async () => (meta.snapshot ? store.blobs.url(meta.snapshot) : null));
+  const hero = useUrl(meta.snapshot ? null : meta.hero, async () => {
+    const rec = meta.hero ? await store.art.get(meta.hero) : null;
+    return rec?.export ? store.blobs.url(rec.export.sticker) : null;
+  });
   const cast = [...new Set([meta.hero, ...meta.walkers].filter((a): a is ArtId => Boolean(a)))].slice(0, 4);
   return (
     <li className="world-card">
       <Link to={{ name: 'world', id: meta.id }} className="world-card__link" data-testid="world-card">
-        <span className="world-card__thumb">{snap ? <img src={snap} alt="" /> : <PlaceholderGlyph rig="biped" role="hero" size={56} />}</span>
+        <span className="world-card__thumb">
+          {snap ? <img src={snap} alt="" /> : hero ? <img className="world-card__hero" src={hero} alt="" /> : <PlaceholderGlyph rig="biped" role="hero" size={56} />}
+        </span>
         <span className="world-card__name">{meta.title}</span>
         <span className="world-card__meta">{edited(meta.updatedAt, now)}</span>
         <span className="world-card__cast">

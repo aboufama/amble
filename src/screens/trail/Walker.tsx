@@ -30,19 +30,22 @@ export interface WalkerProps {
   focusable?: boolean;
   /** What a click opens (default: the drawing on the Desk). */
   onOpen?: () => void;
+  /** `y` is in the parent's own px (the lamppost's spot), not the trail's bottom-anchored design px. */
+  local?: boolean;
   className?: string;
 }
 
-export function Walker({ id, name, strip, still, x, y, height, travel, duration, delay, idle = false, focusable = false, onOpen, className }: WalkerProps) {
+export function Walker({ id, name, strip, still, x, y, height, travel, duration, delay, idle = false, focusable = false, onOpen, local = false, className }: WalkerProps) {
   const label = t('home.walkerLabel', { name });
   const open = onOpen ?? (() => navigate({ name: 'drawFree', artId: id }));
+  const topOf = (py: number) => (local ? `${py}px` : `calc(100% - 768px + ${py}px)`);
   if (strip) {
     const s = height / Math.max(1, strip.footY - 4);
     const w = strip.frameW * s;
     const h = strip.frameH * s;
     const style = {
       left: x - strip.footX * s,
-      top: `calc(100% - 768px + ${y - strip.footY * s}px)`,
+      top: topOf(y - strip.footY * s),
       width: w,
       height: h,
       ['--travel' as string]: `${travel}px`,
@@ -63,7 +66,7 @@ export function Walker({ id, name, strip, still, x, y, height, travel, duration,
         data-testid="walker"
       >
         <span className="walker__turn">
-          <span className="walker__sprite" style={{ backgroundImage: `url(${strip.url})` }} />
+          <span className="walker__sprite" style={{ backgroundImage: `url("${strip.url}")` }} />
         </span>
       </button>
     );
@@ -73,7 +76,7 @@ export function Walker({ id, name, strip, still, x, y, height, travel, duration,
     <button
       type="button"
       className={cx('walker', 'walker--still', className)}
-      style={{ left: x - height * 0.5, top: `calc(100% - 768px + ${y - height}px)`, width: height, height } as CSSProperties}
+      style={{ left: x - height * 0.5, top: topOf(y - height), width: height, height } as CSSProperties}
       aria-label={label}
       tabIndex={focusable ? 0 : -1}
       onClick={open}

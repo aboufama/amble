@@ -9,7 +9,6 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactElement } from 'react';
 import { Link } from '../../app/Link';
-import { BUILD } from '../../app/env';
 import { navigate } from '../../app/router';
 import type { Route, RouteOf } from '../../app/routes';
 import { useServices } from '../../app/services';
@@ -43,6 +42,7 @@ import { cx } from '../../ui/cx';
 import { playUiSound } from '../../ui/sounds';
 import { LegacyCard } from '../files/LegacyCard';
 import { StorageBanner } from '../files/StorageBanner';
+import { SpaceChip, UpdatedChip } from '../files/TrailChips';
 import { setLegacy } from '../../state/library';
 import { AssignmentNote } from './AssignmentNote';
 import { HomeHeader } from './HomeHeader';
@@ -73,35 +73,11 @@ function firstLoadThisSession(): boolean {
   }
 }
 
-/** The header's quiet notices: Amble was updated, space is low. */
-function useNotices(): { updated: boolean; spaceLow: boolean } {
-  const { store } = useServices();
-  const full = useStore((s) => s.library.storage === 'full');
-  const [updated, setUpdated] = useState(false);
-  const [spaceLow, setSpaceLow] = useState(false);
-  useEffect(() => {
-    let live = true;
-    void (async () => {
-      const last = await store.cache.get<string>('home:lastVersion').catch(() => null);
-      if (!live) return;
-      if (last && last !== BUILD.version) setUpdated(true);
-      if (last !== BUILD.version) await store.cache.put('home:lastVersion', BUILD.version).catch(() => undefined);
-      const est = await store.estimate().catch(() => null);
-      if (live && est && est.quota > 0 && (est.usage / est.quota > 0.9 || est.quota - est.usage < 50e6)) setSpaceLow(true);
-    })();
-    return () => {
-      live = false;
-    };
-  }, [store]);
-  return { updated, spaceLow: spaceLow || full };
-}
-
 export function Trail({ route }: { route: RouteOf<'trail'> }) {
   const { store } = useServices();
   const reduced = useReducedMotion();
   const paused = useStore((s) => s.prefs.trailPaused);
   const [firstLoad] = useState(firstLoadThisSession);
-  const notices = useNotices();
   const still = reduced || paused;
 
   useEffect(() => {
@@ -122,18 +98,8 @@ export function Trail({ route }: { route: RouteOf<'trail'> }) {
 
   const extra = (
     <>
-      {notices.updated && (
-        <Link to={{ name: 'page', page: 'whatsnew' }} className="chip chip--button trail__notice">
-          <Icon name="sparkle" size={16} />
-          <span>{t('home.updated')}</span>
-        </Link>
-      )}
-      {notices.spaceLow && (
-        <Link to={{ name: 'settings', section: 'storage' }} className="chip chip--button trail__notice trail__notice--warn">
-          <Icon name="warning" size={16} />
-          <span>{t('home.spaceLow')}</span>
-        </Link>
-      )}
+      <UpdatedChip />
+      <SpaceChip />
     </>
   );
 
@@ -350,6 +316,7 @@ function TrailScene({ still, lit }: SceneProps) {
         delay={0}
         idle
         focusable
+        local
         className="lamp__character"
       />
     ) : null;

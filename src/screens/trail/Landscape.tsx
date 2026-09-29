@@ -14,7 +14,7 @@ import './landscape.css';
 export function NightSky({ decor = true, className }: { decor?: boolean; className?: string }) {
   return (
     <div className={cx('night-sky', 'grain', className)} aria-hidden="true">
-      {decor && <div className="night-sky__decor" style={{ backgroundImage: `url(${skyUrl})` } as CSSProperties} />}
+      {decor && <div className="night-sky__decor" style={{ backgroundImage: `url(${JSON.stringify(skyUrl)})` } as CSSProperties} />}
     </div>
   );
 }

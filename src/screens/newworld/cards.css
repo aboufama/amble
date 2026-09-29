@@ -98,6 +98,7 @@
 
 .seed-card__title {
   display: block;
+  flex: none;
   margin: 8px 4px 0;
   overflow: hidden;
   font: var(--weight-display) 1.1875rem/1.3 var(--font-display);
@@ -107,6 +108,7 @@
 
 .seed-card__line {
   display: block;
+  flex: none;
   margin: 1px 4px 0;
   font: var(--type-meta);
   color: var(--ink-2);

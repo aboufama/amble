@@ -32,12 +32,14 @@ export interface IdeaBoxProps {
   autoFocus?: boolean;
   /** Called once the plan call has started (the sheet shows its waiting state). */
   onPlanning?(): void;
+  /** With the AI helper off, show nothing (the New world sheet: world types only). */
+  hideWhenOff?: boolean;
   className?: string;
 }
 
 const MAX = 300;
 
-export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlanning, className }: IdeaBoxProps) {
+export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlanning, hideWhenOff = false, className }: IdeaBoxProps) {
   const { ai, starters } = useServices();
   const view = useAiView();
   const session = usePlanSession();
@@ -126,6 +128,7 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
     }
   };
 
+  if (!view.on && hideWhenOff) return null;
   if (!view.on) {
     const blocked = view.status === 'blocked' || view.status === 'offline';
     return (

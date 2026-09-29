@@ -77,7 +77,7 @@ async function makeStrip(store: Store, src: StripSource, clip: StripClip, key: s
     const flat = src.flat instanceof Blob ? src.flat : src.flat ? await store.blobs.get(src.flat) : null;
     if (!flat) return null;
     const { rigWorker } = await import('../cores/rig');
-    const { meta, frames } = await rigWorker.strip({ image: flat }, src.rig, clip, { frames: STRIP_FRAMES, size: STRIP_SIZE, packed: true, lane: `strip:${src.artHash}:${clip}` });
+    const { meta, frames } = await rigWorker.strip({ image: flat }, src.rig, clip, { frames: STRIP_FRAMES, size: STRIP_SIZE, face: 1, packed: true, lane: `strip:${src.artHash}:${clip}` });
     const bmp = frames[0];
     if (!bmp) return null;
     const png = await bitmapToPng(bmp);
