@@ -10,9 +10,15 @@ import type { SelectionTransform } from './select';
 import type { SelectScope } from './selection-tool';
 import type { ViewState } from './view';
 
-export type ToolId = BrushId | 'fill' | 'eyedropper' | 'lasso' | 'select' | 'pan';
+/**
+ * Tools. lasso/select: lasso and box selection; shape: the Shapes tool (Line, Box, Circle, Curve);
+ * lassofill: draw around an area and it fills.
+ */
+export type ToolId = BrushId | 'fill' | 'eyedropper' | 'lasso' | 'select' | 'pan' | 'shape' | 'lassofill';
 
-export const TOOL_IDS: readonly ToolId[] = ['ink', 'pencil', 'marker', 'crayon', 'airbrush', 'eraser', 'pixel', 'fill', 'eyedropper', 'lasso', 'select', 'pan'];
+export const TOOL_IDS: readonly ToolId[] = ['ink', 'pencil', 'marker', 'crayon', 'airbrush', 'eraser', 'pixel', 'fill', 'eyedropper', 'lasso', 'select', 'pan', 'shape', 'lassofill'];
+
+export type ShapeKindTool = 'line' | 'rect' | 'ellipse' | 'curve';
 
 export interface BrushSettings {
   /** Diameter, board px. */
@@ -35,10 +41,15 @@ export interface ToolState {
   /** Mirror axes in board px (null = off). */
   mirror: { x: number | null; y: number | null };
   holdToPerfect: boolean;
-  fill: { gaps: GapsMode; tolerance: number };
+  /** all: a Fill tap changes every pixel of the tapped colour ("Fill all of this colour"). */
+  fill: { gaps: GapsMode; tolerance: number; all: boolean };
   pressure: { feel: PressureFeel; calibrate: boolean };
   /** What lasso and box selections lift: the drawing (lines, colors and paint together) or the active layer. */
   select: { scope: SelectScope };
+  /** The Shapes tool: which shape, and filled or outline. */
+  shape: { kind: ShapeKindTool; filled: boolean };
+  /** Tap to ink: click to start a stroke, move, click to end it (trackpads, motor accessibility). */
+  tapToInk: boolean;
 }
 
 export interface LayerInfo {
@@ -177,6 +188,20 @@ export interface ArtSurface {
   setMirror(m: { x?: boolean | number | null; y?: boolean | number | null } | null): void;
   setHoldToPerfect(on: boolean): void;
   setFill(o: Partial<ToolState['fill']>): void;
+  /** The Shapes tool's shape and fill (the shape being edited is finished first). */
+  setShape(o: Partial<ToolState['shape']>): void;
+  /** Tap to ink on or off. */
+  setTapToInk(on: boolean): void;
+  /**
+   * Draws a shape with the current colour and Ink size: an outline on the active layer, or a filled shape
+   * (no outline) on the fill layer under the lines. Returns false when nothing was drawn.
+   */
+  drawShape(o: { shape: 'line' | 'ellipse' | 'rect' | 'triangle' | 'polygon' | 'curve'; points: Array<[number, number]>; filled?: boolean }): boolean;
+  /**
+   * Copies layers onto others through a board transform `[a, b, c, d, e, f]` (x' = a x + c y + e), replacing
+   * them: "Copy it to the other side" (one undo step). Returns false when there was nothing to copy.
+   */
+  copyLayers(pairs: Array<[string, string]>, matrix: [number, number, number, number, number, number]): boolean;
   /** Selection scope: 'drawing' (default) lifts lines, colors and paint layers together; 'layer' just the active one. */
   setSelect(o: Partial<ToolState['select']>): void;
   setPressure(o: Partial<ToolState['pressure']>): void;
@@ -201,8 +226,11 @@ export interface ArtSurface {
   layers(): LayerInfo[];
   activeLayer(): string;
   setActiveLayer(id: string): void;
-  /** Adds a layer (default above the active one); returns its id, or null at the layer limit. */
-  addLayer(role: LayerRole, o?: { name?: string; index?: number; blend?: LayerBlendMode }): string | null;
+  /**
+   * Adds a layer (default above the active one) and makes it active; returns its id, or null at the layer
+   * limit. `id` names it (a part's lines layer is `<part id>-lines`) unless that id is taken.
+   */
+  addLayer(role: LayerRole, o?: { name?: string; index?: number; blend?: LayerBlendMode; id?: string }): string | null;
   removeLayer(id: string): void;
   moveLayer(id: string, index: number): void;
   duplicateLayer(id: string): string | null;

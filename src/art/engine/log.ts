@@ -138,7 +138,19 @@ export interface LogTrace {
   index: number;
 }
 
-export type LogOp = LogInit | LogStroke | LogFill | LogShape | LogTransform | LogLayer | LogFrame | LogTrace | { op: 'undo' } | { op: 'redo' };
+/**
+ * Layers copied onto other layers through a transform, replacing what was there ("Copy it to the other
+ * side": a body part's colours and lines mirrored onto the opposite part).
+ */
+export interface LogCopy {
+  op: 'copy';
+  frame: string;
+  /** [from, to] layer ids. */
+  pairs: [string, string][];
+  matrix: Affine6;
+}
+
+export type LogOp = LogInit | LogStroke | LogFill | LogShape | LogTransform | LogLayer | LogFrame | LogTrace | LogCopy | { op: 'undo' } | { op: 'redo' };
 
 // ---------------------------------------------------------------------------------------------- quantization
 

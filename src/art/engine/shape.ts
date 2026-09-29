@@ -47,6 +47,11 @@ function rdp(pts: Point[], eps: number): Point[] {
   return l.slice(0, -1).concat(r);
 }
 
+/** Fewer points along a path, none of them moved more than `eps` px (Ramer-Douglas-Peucker). */
+export function simplifyPath(pts: Point[], eps: number): Point[] {
+  return pts.length < 3 ? pts.slice() : rdp(pts, eps);
+}
+
 /** Points every ~`step` px along the polyline (the last point included). */
 export function densify(poly: Point[], step: number): Point[] {
   const out: Point[] = [];
