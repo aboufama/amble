@@ -1113,6 +1113,33 @@
   padding: 6px 0 16px;
 }
 
+/* When the panels are taller than the screen (Change mode's Dials | Twists card under an Ask card with a
+   scope chip, a world with many dials, a long answer), the notebook scrolls: the page never does (§2.2),
+   and nothing may end up cut off below it. It reaches into the gutters on both sides so the panels'
+   shadows and focus rings are not clipped; the gutter on the right holds the scrollbar. */
+aside.notebook {
+  margin-inline: calc(-1 * var(--gap)) calc(-1 * var(--edge));
+  padding-inline: var(--gap) 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+aside.notebook > * {
+  margin-inline-end: max(0px, calc(var(--edge) - 10px));
+}
+
+:root[data-layout='portrait'] aside.notebook {
+  margin-inline: 0;
+  padding-inline: 0;
+  overflow: visible;
+  scrollbar-gutter: auto;
+}
+
+:root[data-layout='portrait'] aside.notebook > * {
+  margin-inline-end: 0;
+}
+
 .notebook > .panel {
   flex: none;
 }
@@ -1121,7 +1148,8 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  min-height: 120px;
+  /* The heading and the newest step, whole (the notebook scrolls when there is no room for this). */
+  min-height: 150px;
 }
 
 .notebook__steps > * {
