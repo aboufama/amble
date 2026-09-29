@@ -8,7 +8,7 @@ import { expect, gotoRoute, openAmble, test, waitForApp } from '../helpers/app';
 
 interface Hook {
   store: { worlds: { get(id: string): Promise<{ code: Array<{ source: string; authors: Array<[string, number]>; locked: Array<[number, number]> }>; steps: Array<{ text: string; kind: string }> } | null> } };
-  services: { player: { load(init: unknown): Promise<unknown> } };
+  services: { player: { load(init: unknown): Promise<unknown>; pause(): void } };
 }
 
 /** Opens the starter world and waits for its game's first frame (the student sees it play first). */
@@ -96,6 +96,8 @@ test('a changed number runs, leaves a footstep and survives a reload', async ({ 
 
 test('a syntax error shows on its line and the world keeps its last version', async ({ page }) => {
   const id = await openCode(page);
+  // Paused, so a busy machine's frozen-game watchdog can't change the run bar in the middle of the test.
+  await page.evaluate(() => (window as unknown as { __amble: Hook }).__amble.services.player.pause());
   const before = await stored(page, id);
   const loadsBefore = await page.evaluate(() => (window as unknown as { __loads: string[][] }).__loads.length);
 
