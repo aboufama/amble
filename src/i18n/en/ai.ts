@@ -191,10 +191,13 @@ export const ai = {
   stepRefusedSupport: 'refused: support',
 
   // ---------------------------------------------------------------- the AI explainer (§2.16)
-  explainerTitle: 'Meet the AI helper.',
-  explainerCode: 'It writes the code that makes your world work. It never draws: every picture is yours.',
-  explainerWords: "Your words go to {district}'s AI service, not to Amble. Don't type your name or other private things.",
-  explainerMistakes: 'The AI can make mistakes. You can always go back a step. Your teacher can see how your world was built.',
+  explainerTitle: 'Before you ask.',
+  explainerCode: 'Amble turns your words into code for your world. It never draws: every picture is yours.',
+  explainerWords: "To do that, your words go over the internet to a service {district} set up. Don't type your name or other private things.",
+  explainerWordsClass: "To do that, your words go over the internet to the service your teacher's class link turned on. Don't type your name or other private things.",
+  explainerWordsHome: "To do that, your words go over the internet to the service a grown-up set up here. Don't type your name or other private things.",
+  explainerMistakes: 'Sometimes Amble gets it wrong. You can always go back a step. Your teacher can see how your world was built.',
+  explainerMistakesHome: 'Sometimes Amble gets it wrong. You can always go back a step.',
   explainerGotIt: 'Got it',
   explainerWhatsSent: 'What gets sent?',
   readToMe: 'Read to me',

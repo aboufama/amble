@@ -21,9 +21,11 @@ test('a change: explainer first, then working, tested, done, stored and logged',
 
   // The first Ask on this device opens the explainer; nothing is sent until Got it.
   await ask(page, 'let me stomp on the minions');
-  const explainer = page.getByRole('dialog', { name: 'Meet the AI helper.' });
+  const explainer = page.getByRole('dialog', { name: 'Before you ask.' });
   await expect(explainer).toBeVisible();
-  await expect(explainer).toContainText("Your words go to Test district's AI service, not to Amble.");
+  // It came with a class link: the words go to the service that link turned on (said in plain words).
+  await expect(explainer).toContainText("your words go over the internet to the service your teacher's class link turned on.");
+  await expect(explainer).not.toContainText('AI');
   expect(ai.requests).toHaveLength(0);
   await explainer.getByRole('button', { name: 'Got it' }).click();
 

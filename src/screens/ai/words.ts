@@ -1,6 +1,32 @@
 /** The AI cards' small word helpers (pure: no React, no store). */
+import type { AiConfig } from '../../cores/ai';
 import { t } from '../../i18n';
 import type { LocalSteer } from '../../model/types';
+
+/**
+ * Who set up the service a student's words go to, from the facts the privacy page uses (the configuration's
+ * source, and a key a grown-up typed): the school or district (a managed configuration or its own build), a
+ * teacher's class link, or a grown-up at home (Settings).
+ */
+export type WordsGoTo = 'school' | 'class' | 'home';
+
+export function wordsGoTo(ai: Pick<AiConfig, 'source' | 'auth'> | null): WordsGoTo {
+  if (!ai) return 'school';
+  // A key is only ever typed into Settings, by a grown-up (never from a school source).
+  if (ai.auth.type === 'bearer' || ai.source === 'manual' || ai.source === 'dev') return 'home';
+  return ai.source === 'class-link' ? 'class' : 'school';
+}
+
+/**
+ * The lines of the card before the first request (§2.16), in plain words: what happens, where the words go
+ * (named after the district when the configuration names one), and that a step can always be undone.
+ */
+export function explainerLines(ai: Pick<AiConfig, 'source' | 'auth' | 'district'> | null, linkDistrict: string | null): [string, string, string] {
+  const to = wordsGoTo(ai);
+  const district = ai?.district?.name || linkDistrict || t('ai.districtFallback');
+  const words = to === 'home' ? t('ai.explainerWordsHome') : to === 'class' ? t('ai.explainerWordsClass') : t('ai.explainerWords', { district });
+  return [t('ai.explainerCode'), words, to === 'home' ? t('ai.explainerMistakesHome') : t('ai.explainerMistakes')];
+}
 
 /** The steer toast's words (§5.10): "Turned Jump power up to 900. No AI needed." */
 export function steerText(steer: LocalSteer): string {

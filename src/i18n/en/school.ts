@@ -682,7 +682,7 @@ export const school = {
     '- The games students make are theirs, and their colours and words may not meet these rules.',
     '',
     '## How Amble is checked',
-    "- axe-core, with the WCAG 2.1 A and AA rules, on every screen but the Teacher desk's Present mode (games' own frames left out), every Settings section and every in-app page, the world with captions showing, and these dialogs and cards: World info, Sounds, Controls, Problems, Add someone, a card in Change, Hand in, the Join card, Meet the AI helper, a new world's plan, the support card, and What is it? in Bones.",
+    "- axe-core, with the WCAG 2.1 A and AA rules, on every screen but the Teacher desk's Present mode (games' own frames left out), every Settings section and every in-app page, the world with captions showing, and these dialogs and cards: World info, Sounds, Controls, Problems, Add someone, a card in Change, Hand in, the Join card, Before you ask (the card before a first request), a new world's plan, the support card, and What is it? in Bones.",
     "- Captions and the text copy: a test game's sound shows its words only with Captions on, stays above the problem card, and shows in the Teacher desk's gallery and Present mode; the log hears its score at most once every 2 seconds.",
     '- Keyboard-only journeys: the main path from the Trail to Hand in, with the focus ring checked at every stop, and F6 to the Cast.',
     '- Reduced motion: a still Trail, calmer games, and no more than two flashes a second.',
