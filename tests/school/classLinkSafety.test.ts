@@ -76,6 +76,19 @@ describe('reading a class link from outside', () => {
   });
 });
 
+describe('class names teachers really use', () => {
+  it('are read as names, not mistaken for keys', () => {
+    for (const cls of ['APBiology2025Section4', 'Period3ScienceRoom12B', 'MrsJohnsonScience2025', 'GreenMountainElem5A']) {
+      const link = sampleClassLink({ cls, district: 'GreenMountainSchoolDistrict' });
+      expect(readIntake(fragment(link), null, NOW), cls).toMatchObject({ ok: true });
+      expect(linkProblem(link, NOW), cls).toBeNull();
+    }
+    // A real key is still refused, wherever it is put.
+    expect(readIntake(fragment(sampleClassLink({ cls: 'sk-proj-abcdefghijklmnopqrstuvwxyz01' })), null, NOW)).toEqual({ ok: false, reason: 'unsafe' });
+    expect(readIntake(fragment(sampleClassLink({ district: 'AIzaSyA1234567890abcdefghijklmnopqrs' })), null, NOW)).toEqual({ ok: false, reason: 'unsafe' });
+  });
+});
+
 describe('a class code with a space in it', () => {
   it('reaches the AI service in its header, as the live test on the Teacher desk promised', async () => {
     const link = sampleClassLink({ ai: { baseUrl: 'https://ai.test/v1', model: 'm', auth: { type: 'class-code', header: 'X-Amble-Class', code: 'MAPLE 7Q2K' } } });

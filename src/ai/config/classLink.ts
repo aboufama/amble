@@ -60,10 +60,16 @@ function fromBase64Url(s: string): string {
   return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 }
 
-/** Any field named like a credential, or any value that looks like a provider key (or, outside `code`, any secret). */
+/**
+ * Names shown to students and never sent anywhere: only a provider key's format counts there, since
+ * teachers name classes like "APBiology2025Section4", which the random-looking-text test would refuse.
+ */
+const SHOWN_NAME = new Set(['code', 'name', 'district']);
+
+/** Any field named like a credential, or any value that looks like a provider key (or, outside names and `code`, any secret). */
 function carriesSecret(v: unknown, key = ''): boolean {
   if (SECRET_FIELD.test(key)) return true;
-  if (typeof v === 'string') return looksLikeProviderKey(v) || (key !== 'code' && looksLikeSecret(v));
+  if (typeof v === 'string') return looksLikeProviderKey(v) || (!SHOWN_NAME.has(key) && looksLikeSecret(v));
   if (Array.isArray(v)) return v.some((x) => carriesSecret(x));
   if (v && typeof v === 'object') return Object.entries(v).some(([k, x]) => carriesSecret(x, k));
   return false;
