@@ -5,7 +5,7 @@
  * extremities. The template fitters and the binder share this result.
  */
 import {
-  close, components, dilate, downsampleMax, edt, fillHoles, makeThin, neighbourCount, open, RING_DX, RING_DY,
+  close, components, downsampleMax, edt, fillHoles, makeThin, neighbourCount, open, RING_DX, RING_DY,
   stampLine, zhangSuen,
 } from './imgproc';
 import type { LayerPixels, Pixels, RigInput } from './types';
@@ -122,6 +122,16 @@ function edgePixels(m: Uint8Array, w: number, h: number): number[] {
   return out;
 }
 
+/** Typical ink stroke width in working px: twice the upper-quartile half-width (0 without ink). */
+function strokeWidth(ink: Uint8Array, w: number, h: number): number {
+  const idt = edt(ink, w, h);
+  const vals: number[] = [];
+  for (let i = 0; i < w * h; i++) if (ink[i]) vals.push(idt[i]);
+  if (vals.length <= 8) return 0;
+  vals.sort((a, b) => a - b);
+  return 2 * vals[Math.floor(vals.length * 0.75)];
+}
+
 export interface ShapeOptions {
   /** Longest side of the working grid (150 by default; 240 splits limbs drawn close together). */
   workSize?: number;
@@ -188,52 +198,7 @@ export function analyzeShape(input: RigInput, opts: ShapeOptions = {}): Omit<Ana
       for (const i of mine) loose[i] = 1;
     }
   }
-  // 2) fill holes: outline-only drawings (circle heads, hollow bodies) become solid
-  const solid = fillHoles(solid0, w, h);
-  // 3) almost-closed outlines (a circle head with a small gap): a hole that a closing would create is
-  //    filled only if it is fat (inscribed radius >= 3px) behind a small "door". Thin gaps (between
-  //    two legs, an arm along the body) stay open.
-  {
-    const rc = Math.max(1, Math.round(maxDim * 0.015));
-    const closed = close(solid, w, h, rc);
-    const filledC = fillHoles(closed, w, h);
-    const cand = new Uint8Array(w * h);
-    let any = false;
-    for (let i = 0; i < w * h; i++) if (filledC[i] && !closed[i]) {
-      cand[i] = 1;
-      any = true;
-    }
-    if (any) {
-      const hl = components(cand, w, h);
-      const hdt = edt(cand, w, h);
-      const door = new Uint8Array(w * h);
-      for (let i = 0; i < w * h; i++) door[i] = closed[i] && !solid[i] ? 1 : 0;
-      const members: number[][] = hl.sizes.map(() => []);
-      for (let i = 0; i < w * h; i++) if (hl.labels[i]) members[hl.labels[i]].push(i);
-      for (let k = 1; k < hl.sizes.length; k++) {
-        let fat = 0, doorN = 0;
-        for (const i of members[k]) {
-          fat = Math.max(fat, hdt[i]);
-          if (door[i - 1] || door[i + 1] || door[i - w] || door[i + w]) doorN++;
-        }
-        if (fat < 3 || hl.sizes[k] < 4 * Math.max(1, doorN)) continue;
-        let q = [...members[k]];
-        for (const i of q) solid[i] = 1;
-        for (let depth = 0; depth <= 2 * rc && q.length; depth++) {
-          const next: number[] = [];
-          for (const p of q) for (const nb of [p - 1, p + 1, p - w, p + w]) if (door[nb] && !solid[nb]) {
-            solid[nb] = 1;
-            next.push(nb);
-          }
-          q = next;
-        }
-      }
-    }
-  }
-  const holes = new Uint8Array(w * h);
-  for (let i = 0; i < w * h; i++) holes[i] = solid[i] && !raw[i] ? 1 : 0;
-  const dt = edt(solid, w, h);
-  // 4) colour and ink per working pixel
+  // 2) colour and ink per working pixel
   const lines = input.layers?.lines;
   const inkArt = new Uint8Array(W * H);
   const dark = new Uint8Array(W * H);
@@ -294,6 +259,84 @@ export function analyzeShape(input: RigInput, opts: ShapeOptions = {}): Omit<Ana
       }
     }
   }
+  const strokeW = strokeWidth(ink, w, h);
+  // 3) holes. The inside of an outline (a circle head drawn as a ring, a hollow body) is filled so it
+  //    becomes solid. A gap enclosed by thick coloured parts (a raised hand touching the hair, boots that
+  //    touch, hands on hips) stays open: filling it would glue those parts together.
+  const dt0 = edt(solid0, w, h);
+  const strokeHalf = Math.max(1, strokeW / 2);
+  const rimR = Math.ceil(strokeHalf + 2);
+  const rimIsThin = (hole: number[], inHole: (i: number) => boolean) => {
+    let n = 0, thick = 0;
+    for (const p of hole) for (const nb of [p - 1, p + 1, p - w, p + w]) {
+      if (!solid0[nb] || inHole(nb)) continue;
+      n++;
+      const bx = nb % w, by = (nb - bx) / w;
+      let m = 0;
+      for (let yy = Math.max(0, by - rimR); yy <= Math.min(h - 1, by + rimR); yy++) {
+        for (let xx = Math.max(0, bx - rimR); xx <= Math.min(w - 1, bx + rimR); xx++) m = Math.max(m, dt0[yy * w + xx]);
+      }
+      if (m > strokeHalf + 1.5) thick++;
+    }
+    return n === 0 || thick < 0.5 * n;
+  };
+  const solid = solid0.slice();
+  {
+    const enclosed = fillHoles(solid0, w, h);
+    const cand = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) if (enclosed[i] && !solid0[i]) cand[i] = 1;
+    const hl = components(cand, w, h);
+    const members: number[][] = hl.sizes.map(() => []);
+    for (let i = 0; i < w * h; i++) if (hl.labels[i]) members[hl.labels[i]].push(i);
+    for (let k = 1; k < hl.sizes.length; k++) {
+      if (members[k].length > 3 && !rimIsThin(members[k], (i) => hl.labels[i] === k)) continue;
+      for (const i of members[k]) solid[i] = 1;
+    }
+  }
+  // 4) almost-closed outlines (a circle head with a small gap): a hole that a closing would create is
+  //    filled only if it is fat (inscribed radius >= 3px) behind a small "door" and its rim is an outline.
+  //    Thin gaps (between two legs, an arm along the body) stay open.
+  {
+    const rc = Math.max(1, Math.round(maxDim * 0.015));
+    const closed = close(solid, w, h, rc);
+    const filledC = fillHoles(closed, w, h);
+    const cand = new Uint8Array(w * h);
+    let any = false;
+    for (let i = 0; i < w * h; i++) if (filledC[i] && !closed[i]) {
+      cand[i] = 1;
+      any = true;
+    }
+    if (any) {
+      const hl = components(cand, w, h);
+      const hdt = edt(cand, w, h);
+      const door = new Uint8Array(w * h);
+      for (let i = 0; i < w * h; i++) door[i] = closed[i] && !solid[i] ? 1 : 0;
+      const members: number[][] = hl.sizes.map(() => []);
+      for (let i = 0; i < w * h; i++) if (hl.labels[i]) members[hl.labels[i]].push(i);
+      for (let k = 1; k < hl.sizes.length; k++) {
+        let fat = 0, doorN = 0;
+        for (const i of members[k]) {
+          fat = Math.max(fat, hdt[i]);
+          if (door[i - 1] || door[i + 1] || door[i - w] || door[i + w]) doorN++;
+        }
+        if (fat < 3 || hl.sizes[k] < 4 * Math.max(1, doorN)) continue;
+        if (!rimIsThin(members[k], (i) => hl.labels[i] === k || door[i] === 1)) continue;
+        let q = [...members[k]];
+        for (const i of q) solid[i] = 1;
+        for (let depth = 0; depth <= 2 * rc && q.length; depth++) {
+          const next: number[] = [];
+          for (const p of q) for (const nb of [p - 1, p + 1, p - w, p + w]) if (door[nb] && !solid[nb]) {
+            solid[nb] = 1;
+            next.push(nb);
+          }
+          q = next;
+        }
+      }
+    }
+  }
+  const holes = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) holes[i] = solid[i] && !raw[i] ? 1 : 0;
+  const dt = edt(solid, w, h);
   const noInk = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i++) noInk[i] = solid[i] && !ink[i] ? 1 : 0;
   const dtInk = edt(noInk, w, h);
@@ -310,17 +353,6 @@ export function analyzeShape(input: RigInput, opts: ShapeOptions = {}): Omit<Ana
   }
   if (!area) {
     x0 = y0 = x1 = y1 = pad;
-  }
-  // typical stroke width: twice the median half-width of the ink
-  let strokeW = 0;
-  {
-    const idt = edt(ink, w, h);
-    const vals: number[] = [];
-    for (let i = 0; i < w * h; i++) if (ink[i]) vals.push(idt[i]);
-    if (vals.length > 8) {
-      vals.sort((a, b) => a - b);
-      strokeW = 2 * vals[Math.floor(vals.length * 0.75)];
-    }
   }
   return {
     artW: W, artH: H, scale, pad, w, h, raw, ink, inkArt, inkFromLayer: !!lines, rgb, dtInk, solid, holes, loose, dt,
@@ -375,14 +407,129 @@ function branches(skel: Uint8Array, w: number, h: number): Branch[] {
   return out;
 }
 
+/** The first skeleton loop (at least 8 px long), or null. */
+function findLoop(skel: Uint8Array, w: number, h: number): number[] | null {
+  const parent = new Int32Array(w * h).fill(-2);
+  const depth = new Int32Array(w * h);
+  for (let s0 = 0; s0 < w * h; s0++) {
+    if (!skel[s0] || parent[s0] !== -2) continue;
+    parent[s0] = -1;
+    const q = [s0];
+    for (let qi = 0; qi < q.length; qi++) {
+      const p = q[qi];
+      for (let k = 0; k < 8; k++) {
+        const n = p + RING_DY[k] * w + RING_DX[k];
+        if (n < 0 || n >= w * h || !skel[n]) continue;
+        if (parent[n] === -2) {
+          parent[n] = p;
+          depth[n] = depth[p] + 1;
+          q.push(n);
+        } else if (n !== parent[p] && p !== parent[n] && p < n) {
+          // a non-tree edge closes a loop: walk both ends up to their common ancestor
+          let a = p, b = n;
+          const left: number[] = [], right: number[] = [];
+          while (a !== b && a >= 0 && b >= 0) {
+            if (depth[a] >= depth[b]) {
+              left.push(a);
+              a = parent[a];
+            } else {
+              right.push(b);
+              b = parent[b];
+            }
+          }
+          if (a >= 0 && a === b && left.length + right.length >= 8) return [...left, a, ...right];
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Zhang-Suen erases 2x2 blocks, so 1-2 px strokes are thickened by a pixel first. Only thin strokes
+ * are thickened: dilating everything would glue parts separated by a narrow slit (legs drawn close).
+ */
+function skeletonOf(solid: Uint8Array, dt: Float32Array, w: number, h: number, noBridge?: Uint8Array): Uint8Array {
+  const localMax = new Float32Array(w * h);
+  const tmp = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let m = 0;
+    for (let k = Math.max(0, x - 2); k <= Math.min(w - 1, x + 2); k++) m = Math.max(m, dt[y * w + k]);
+    tmp[y * w + x] = m;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let m = 0;
+    for (let k = Math.max(0, y - 2); k <= Math.min(h - 1, y + 2); k++) m = Math.max(m, tmp[k * w + x]);
+    localMax[y * w + x] = m;
+  }
+  const thick = solid.slice();
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x;
+    if (!solid[i] || localMax[i] > 1.5) continue;
+    for (let k = 0; k < 8; k++) {
+      const n = i + RING_DY[k] * w + RING_DX[k];
+      if (!noBridge || !noBridge[n]) thick[n] = 1;
+    }
+  }
+  const skel = zhangSuen(thick, w, h);
+  for (let i = 0; i < w * h; i++) if (!solid[i]) skel[i] = 0;
+  makeThin(skel, w, h);
+  return skel;
+}
+
+/**
+ * A gap left open (boots that touch, a hand on the hair) makes the skeleton loop around it. Where the
+ * loop's thinnest point is a narrow neck (the touch), the shape itself is cut there, so each part gets
+ * its own skeleton; otherwise only the skeleton is cut. Either way the skeleton becomes a tree.
+ */
+function untangle(s: Omit<Analysis, 'skel' | 'ends' | 'pruned' | 'limbR'>): Uint8Array {
+  const { w, h } = s;
+  let skel = skeletonOf(s.solid, s.dt, w, h);
+  let carved = 0;
+  const noBridge = new Uint8Array(w * h);
+  for (let iter = 0; iter < 64; iter++) {
+    const loop = findLoop(skel, w, h);
+    if (!loop) break;
+    let cut = -1, best = Infinity;
+    for (const p of loop) if (neighbourCount(skel, w, p) === 2 && s.dt[p] < best) {
+      best = s.dt[p];
+      cut = p;
+    }
+    if (cut < 0) cut = loop[0];
+    const dts = loop.map((p) => s.dt[p]).sort((a, b) => a - b);
+    const neck = s.dt[cut] <= Math.max(1.6, 0.35 * dts[Math.floor(dts.length / 2)]);
+    if (!neck) {
+      skel[cut] = 0;
+      continue;
+    }
+    // cut the touch itself (just wider than it is thin), and never let the skeleton bridge it again
+    const r = s.dt[cut] + 0.7, R = r + 2, cx = cut % w, cy = Math.floor(cut / w);
+    for (let y = Math.floor(cy - R); y <= Math.ceil(cy + R); y++) for (let x = Math.floor(cx - R); x <= Math.ceil(cx + R); x++) {
+      if (x < 0 || y < 0 || x >= w || y >= h) continue;
+      const d2 = (x - cx) ** 2 + (y - cy) ** 2;
+      if (d2 > R * R) continue;
+      noBridge[y * w + x] = 1;
+      if (d2 > r * r) continue;
+      s.solid[y * w + x] = 0;
+      s.holes[y * w + x] = 0;
+    }
+    carved++;
+    s.dt = edt(s.solid, w, h);
+    skel = skeletonOf(s.solid, s.dt, w, h, noBridge);
+  }
+  if (carved) {
+    const noInk = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) noInk[i] = s.solid[i] && !s.ink[i] ? 1 : 0;
+    s.dtInk = edt(noInk, w, h);
+  }
+  return skel;
+}
+
 /** Full analysis: shape plus skeleton and extremities. */
 export function analyze(input: RigInput, opts: ShapeOptions = {}): Analysis {
   const s = analyzeShape(input, opts);
+  const skel = untangle(s);
   const { w, h, dt } = s;
-  // thicken by 1px first so 1-2px strokes survive Zhang-Suen (it erases 2x2 blocks)
-  const skel = zhangSuen(dilate(s.solid, w, h, 1), w, h);
-  for (let i = 0; i < w * h; i++) if (!s.solid[i]) skel[i] = 0;
-  makeThin(skel, w, h);
   // prune spurs: a branch that sticks out less than half the radius at its junction is a bump
   const minProt = Math.max(2, s.maxDim * 0.045);
   let pruned = 0;
