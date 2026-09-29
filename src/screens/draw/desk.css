@@ -944,7 +944,7 @@ body:has(.screen.desk) .toast-region {
   background: var(--paper);
   box-shadow:
     0 0 0 2px var(--ink),
-    0 2px 5px rgba(0, 0, 0, 0.4);
+    0 2px 5px color-mix(in srgb, var(--bg-deep) 45%, transparent);
   appearance: none;
 }
 
