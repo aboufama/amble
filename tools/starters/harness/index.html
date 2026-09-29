@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="frame-src 'self'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Starter worlds harness</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; background: #0b0c24; color: #f4ecdc; font: 13px/1.4 system-ui, sans-serif; }
+      main { display: grid; grid-template-columns: 960px 1fr; gap: 12px; padding: 12px; }
+      #stage { width: 960px; height: 540px; background: #0f0c1e; overflow: hidden; }
+      .bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+      button, select { background: #221b2e; color: #f4ecdc; border: 1px solid #4a4058; border-radius: 6px; padding: 5px 9px; font: inherit; cursor: pointer; }
+      pre { background: #15122a; padding: 8px; border-radius: 6px; max-height: 520px; overflow: auto; font-size: 11px; white-space: pre-wrap; margin: 0; }
+      #sheet { display: block; margin-top: 8px; max-width: 100%; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <div id="stage"></div>
+        <div class="bar">
+          <select id="starter"></select>
+          <label><input type="checkbox" id="withArt" checked /> with art</label>
+          <button id="play">Play</button>
+          <button id="robot">Robot test</button>
+        </div>
+        <canvas id="sheet" width="10" height="10"></canvas>
+      </section>
+      <section><pre id="log"></pre></section>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

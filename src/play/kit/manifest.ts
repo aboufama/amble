@@ -111,6 +111,7 @@ const ACTOR: Table = [
   ['attach', "attach(obj, 'head' | 'hat' | 'hand' | 'back' | 'feet')", 'Characters carry something (a hat, a wand).'],
   ['setArt', 'setArt(key)', 'Characters turn into another drawing.'],
   ['ghost', 'ghost(color?)', 'Characters leave an afterimage.'],
+  ['ragdoll', 'ragdoll({ break })', 'Characters fall apart into their drawn parts, pinned at the joints (Matter games).'],
   ['hp', 'hp: number', 'Health.'],
   ['maxHp', 'maxHp: number', 'Full health.'],
   ['alive', 'alive: boolean', 'False once defeated.'],

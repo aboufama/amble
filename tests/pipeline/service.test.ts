@@ -1,7 +1,7 @@
 /** The AI service end to end over the real transport, with a scripted endpoint and a fake robot. */
 import { describe, expect, it } from 'vitest';
 import { mergeLayers, transportFor, type AiConfig } from '../../src/cores/ai';
-import { createHistoryStub } from '../../src/history/api';
+import { createHistory } from '../../src/history/api';
 import type { AiMode, AiStatus, Level, ClassLinkV1 } from '../../src/model/types';
 import type { AppServicesLike } from '../../src/pipeline/env';
 import { SYSTEM_PROMPT } from '../../src/pipeline/prompts/system';
@@ -35,7 +35,7 @@ function harness(replies: Reply[], o: { config?: Partial<AiEnvConfig>; robot?: R
   const onlineListeners = new Set<() => void>();
   const statuses: AiStatus[] = [];
   const robot = o.robot ?? fakeRobot();
-  const services: AppServicesLike = { store, player: { robot: () => Promise.reject(new Error('unused')) }, starters: createStarterStub(), history: createHistoryStub() };
+  const services: AppServicesLike = { store, player: { robot: () => Promise.reject(new Error('unused')) }, starters: createStarterStub(), history: createHistory() };
   const env: AiEnv = {
     config: () => cfg,
     onConfig: (fn) => (configListeners.add(fn), () => configListeners.delete(fn)),

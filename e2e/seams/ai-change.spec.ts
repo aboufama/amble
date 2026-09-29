@@ -1,0 +1,90 @@
+/**
+ * Seam M5 + M2 (§8.6): Ask → change → robot test → new version card → footstep, in the world screen
+ * itself. The student asks in the world's Ask card while playing; the AI's change is applied, robot-tested in
+ * the spare frame (the game on screen keeps running), and waits as "New version ready" until the student
+ * says **Play it now**; then the new version plays and the footstep carries their words and "tested".
+ */
+import { expect, openAmble, test } from '../helpers/app';
+import { CLASS_CODE, mockAi } from '../helpers/mockAi';
+import { firstFrames, footsteps, gameFrame, openSeed, readGame, startGame } from '../journeys/journey';
+
+const WORDS = 'let me jump three times';
+const SUMMARY = 'Now your hero can jump three times in the air.';
+
+/** A change patch written against the world's own game.js: the hero's platformer gets a third jump. */
+function patchFor(source: string): string {
+  const line = source.split('\n').find((l) => l.includes('.platformer(') && l.includes('jumps: 2'));
+  if (!line) throw new Error('No platformer line with jumps: 2 in this starter.');
+  return [
+    '@@amble-patch 1',
+    `@@summary ${SUMMARY}`,
+    '@@play Press jump three times to fly higher.',
+    '@@next Make the jumps higher|Add a dash in the air',
+    '@@safety ok',
+    '@@file game.js edit',
+    '@@find',
+    line,
+    '@@replace',
+    line.replace('jumps: 2', 'jumps: 3'),
+    '@@done',
+    '@@end',
+    '',
+  ].join('\n');
+}
+
+test('a change asked in the world is robot-tested, waits as a new version, plays, and is a footstep', async ({ page }) => {
+  test.setTimeout(240_000);
+  const ai = await mockAi(page, { chunkDelayMs: 30 });
+  await openAmble(page, { ai: 'mock', clean: true, prefs: { seen: { aiExplainer: Date.now() } } });
+  const worldId = await openSeed(page, 'moon-king');
+  const game = (await page.evaluate(() => (window as unknown as { __amble: { getState(): { session: { world: { code: Array<{ path: string; source: string }> } | null } } } }).__amble.getState().session.world?.code.find((f) => f.path === 'game.js')?.source)) ?? '';
+  ai.queue({ text: patchFor(game) });
+
+  // Playing: the game is running when the student asks.
+  const frame = await gameFrame(page);
+  await startGame(page, frame);
+  const loadsBefore = await firstFrames(page);
+  const card = page.getByTestId('ask-card');
+  await card.getByTestId('ai-field').fill(WORDS);
+  await card.getByTestId('ai-send').click();
+  await expect(card.getByTestId('ai-progress')).toBeVisible();
+
+  // Keep playing while the AI works (a key now and then), so the new version has to wait for the student.
+  await page.locator('body').focus();
+  const version = page.getByTestId('new-version');
+  for (let i = 0; i < 90 && !(await version.isVisible()); i++) {
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(1000);
+  }
+  await expect(version).toContainText(`New version ready: ${SUMMARY}`);
+  const outcome = await page.evaluate(() => (window as unknown as { __amble: { getState(): { ai: { lastOutcome: { kind: string; tested?: boolean } | null } } } }).__amble.getState().ai.lastOutcome);
+  expect(outcome).toMatchObject({ kind: 'accepted', tested: true });
+  // The game on screen was not replaced while the change was tested.
+  expect(await firstFrames(page)).toBe(loadsBefore);
+  expect(await readGame(frame, (g) => g.state)).toBe('running');
+
+  // Play it now: the new version loads and plays.
+  await version.getByRole('button', { name: 'Play it now' }).click();
+  await expect(version).toHaveCount(0);
+  await expect.poll(() => firstFrames(page), { timeout: 60_000 }).toBeGreaterThan(loadsBefore);
+  const after = await page.evaluate((id) => (window as unknown as { __amble: { store: { worlds: { get(id: string): Promise<{ code: Array<{ path: string; source: string; authors: Array<[string, number]> }>; steps: Array<{ kind: string; by: string; text: string; request?: string; tested?: boolean }> } | null> } } } }).__amble.store.worlds.get(id), worldId);
+  const code = after?.code.find((f) => f.path === 'game.js');
+  expect(code?.source).toContain('jumps: 3');
+  expect(code?.authors.some(([who]) => who === 'ai')).toBe(true);
+  expect(after?.steps.at(-1)).toMatchObject({ kind: 'ask', by: 'ai', text: SUMMARY, request: WORDS, tested: true });
+
+  // The footstep: the AI's words, the student's, and ✓ tested.
+  const step = footsteps(page).first();
+  await expect(step).toContainText(SUMMARY);
+  await expect(step).toContainText(`You asked: "${WORDS}"`);
+  await expect(step).toContainText('tested');
+
+  // One change request, the class code only in its header, never the student's name or drawings.
+  const changes = ai.tasks('change');
+  expect(changes).toHaveLength(1);
+  expect(changes[0].headers['x-amble-class']).toBe(CLASS_CODE);
+  expect(changes[0].raw).not.toContain(CLASS_CODE);
+  expect(changes[0].body.store).toBe(false);
+  expect(changes[0].userText).toContain(WORDS);
+  expect(ai.errors).toEqual([]);
+});

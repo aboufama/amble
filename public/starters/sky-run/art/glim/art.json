@@ -1,0 +1,61 @@
+{
+ "v": 1,
+ "key": "glim",
+ "script": "glim",
+ "name": "Glim",
+ "kind": "item",
+ "rig": "none",
+ "facing": "viewer",
+ "role": "item",
+ "mode": "free",
+ "board": {
+  "w": 128,
+  "h": 128,
+  "pixelArt": false
+ },
+ "doc": "sha256:8e3a88d99d8376c2192169b1a1f0893417cab89cef7983da6b73044309daa652",
+ "cels": [
+  "sha256:216011377110446af943ceebadcfaea9ae41ac04d37deb22d757f7c5618b560e",
+  "sha256:5e2a2320aa108b76615d82dba77521919d33e7f69cdf7b28c6726ea245f37373"
+ ],
+ "parts": {},
+ "export": {
+  "hash": "54dfe1e96741edf1ca43ff9828ae210414acc063f8a9135bb62ebdc7f8ad5fe4",
+  "flat": "sha256:54dfe1e96741edf1ca43ff9828ae210414acc063f8a9135bb62ebdc7f8ad5fe4",
+  "w": 107,
+  "h": 112,
+  "anchor": [
+   53.5,
+   56
+  ],
+  "inkMask": "sha256:5e2a2320aa108b76615d82dba77521919d33e7f69cdf7b28c6726ea245f37373",
+  "parts": {},
+  "sticker": "sha256:0d5938959ef767d7d77dee3badcc3d8851efe0f408cdd638b733a5c41cc526b0",
+  "thumb": "sha256:54dfe1e96741edf1ca43ff9828ae210414acc063f8a9135bb62ebdc7f8ad5fe4",
+  "frames": null
+ },
+ "rigData": null,
+ "rigInfo": null,
+ "palette": [
+  "#2b1f33",
+  "#7de8d2",
+  "#2fa896",
+  "#b3f5e6",
+  "#43c7b0",
+  "#5edbc3",
+  "#8ff0da",
+  "#fbf7ee",
+  "#e9fffa",
+  "#2c2336",
+  "#2d2b3c",
+  "#2d3442",
+  "#333443"
+ ],
+ "files": {
+  "sha256:54dfe1e96741edf1ca43ff9828ae210414acc063f8a9135bb62ebdc7f8ad5fe4": "thumb.png",
+  "sha256:5e2a2320aa108b76615d82dba77521919d33e7f69cdf7b28c6726ea245f37373": "cels/lines.png",
+  "sha256:0d5938959ef767d7d77dee3badcc3d8851efe0f408cdd638b733a5c41cc526b0": "sticker.png",
+  "sha256:8e3a88d99d8376c2192169b1a1f0893417cab89cef7983da6b73044309daa652": "doc.json",
+  "sha256:216011377110446af943ceebadcfaea9ae41ac04d37deb22d757f7c5618b560e": "cels/colors.png"
+ }
+}

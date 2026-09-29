@@ -1,0 +1,66 @@
+{
+ "v": 1,
+ "key": "sky",
+ "script": "dusk-sky",
+ "name": "Dusk sky",
+ "kind": "background",
+ "rig": "none",
+ "facing": "viewer",
+ "role": "background",
+ "mode": "free",
+ "board": {
+  "w": 960,
+  "h": 540,
+  "pixelArt": false
+ },
+ "doc": "sha256:40a51a1f7c10dbbddf78719d548c1ee77edcfe21bed3aef1c8ab45c8a71d2f8a",
+ "cels": [
+  "sha256:881a22733a0dd25cd9fa3f450bdeadbbcf511f1d35217544b2c266b6f5203c13",
+  "sha256:46fdc18f20335bc21d61cf09d498284a4f800e3724b29a9c3f3a4cc4104901a0"
+ ],
+ "parts": {},
+ "export": {
+  "hash": "9adcebb4dddeaf06e88f2fe470ab18f3007e7b990d578f15e4c95fac8ab2fb8f",
+  "flat": "sha256:9adcebb4dddeaf06e88f2fe470ab18f3007e7b990d578f15e4c95fac8ab2fb8f",
+  "w": 960,
+  "h": 540,
+  "anchor": [
+   480,
+   270
+  ],
+  "inkMask": "sha256:1bc89caacf8e085ccd55c614569ac801a8268b77c21022e51e87c4355d373652",
+  "parts": {},
+  "sticker": "sha256:e2d5bb8a1d8a08d79030822686ef90fb1f5ed6739509e59a0f751719347624df",
+  "thumb": "sha256:27d2c3094b841b21f2d0dd7129565d2987ccc2f650f927a31801a4772a32d52e",
+  "frames": null
+ },
+ "rigData": null,
+ "rigInfo": null,
+ "palette": [
+  "#ffe0ea",
+  "#3b2a6b",
+  "#673a8e",
+  "#e8718f",
+  "#a8519b",
+  "#f2a6c6",
+  "#ff9a6e",
+  "#ffc07a",
+  "#ffb3c8",
+  "#9b4f86",
+  "#ffd23f",
+  "#cc5f95",
+  "#f58a86",
+  "#553081",
+  "#ffb277",
+  "#8a4597"
+ ],
+ "files": {
+  "sha256:9adcebb4dddeaf06e88f2fe470ab18f3007e7b990d578f15e4c95fac8ab2fb8f": "flat.png",
+  "sha256:1bc89caacf8e085ccd55c614569ac801a8268b77c21022e51e87c4355d373652": "ink.png",
+  "sha256:e2d5bb8a1d8a08d79030822686ef90fb1f5ed6739509e59a0f751719347624df": "sticker.png",
+  "sha256:27d2c3094b841b21f2d0dd7129565d2987ccc2f650f927a31801a4772a32d52e": "thumb.png",
+  "sha256:40a51a1f7c10dbbddf78719d548c1ee77edcfe21bed3aef1c8ab45c8a71d2f8a": "doc.json",
+  "sha256:881a22733a0dd25cd9fa3f450bdeadbbcf511f1d35217544b2c266b6f5203c13": "cels/colors.png",
+  "sha256:46fdc18f20335bc21d61cf09d498284a4f800e3724b29a9c3f3a4cc4104901a0": "cels/lines.png"
+ }
+}

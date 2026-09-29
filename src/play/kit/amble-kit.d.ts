@@ -196,6 +196,15 @@ declare namespace Amble {
     setDrag(x: number, y?: number): this;
     setGravityY(y: number): this;
     setImmovable(v?: boolean): this;
+    /** Falls apart into its drawn parts, pinned at the joints (Matter games; elsewhere the parts fly off). It leaves the game; the parts stay. `break: true` lets go of the pins. */
+    ragdoll(o?: { break?: boolean }): Ragdoll | null;
+    // In a Matter game (`physics: 'matter'`) spawned things are Matter images, so these work on them too.
+    setStatic?(v: boolean): this;
+    setSensor?(v: boolean): this;
+    setFixedRotation?(): this;
+    setAngularVelocity?(v: number): this;
+    setFriction?(v: number, air?: number, fstatic?: number): this;
+    setAwake?(): this;
     on(event: 'hurt', fn: (n: number, d: DamageInfo) => void, context?: unknown): this;
     on(event: 'die', fn: (d: DamageInfo) => void, context?: unknown): this;
     on(event: 'jump', fn: (inAir: boolean) => void, context?: unknown): this;
@@ -238,6 +247,8 @@ declare namespace Amble {
     setTintFill(c?: Color): this;
     clearTint(): this;
     setBodySize(w: number, h: number): this;
+    /** Falls apart into its drawn parts, pinned at the joints (Matter games; elsewhere the parts fly off). */
+    ragdoll(o?: { break?: boolean }): Ragdoll | null;
   }
 
   interface SpawnOptions {
@@ -398,7 +409,15 @@ declare namespace Amble {
   interface Wave { count?: number; every?: number; title?: string; spawn(i: number, wave: number): unknown }
   interface ParallaxLayer { draw?: 'stars' | 'mountains' | 'hills' | 'clouds' | 'city'; key?: string; color?: Color; factor?: number; y?: number; height?: number; speed?: number; depth?: number; seed?: number }
   type LegendEntry = string | ({ key: string; solid?: boolean; oneWay?: boolean; height?: number; depth?: number } & SpawnOptions) | ((x: number, y: number) => void);
-  interface Ragdoll { torso: Phaser.Physics.Matter.Image; head: Phaser.Physics.Matter.Image; parts: Phaser.Physics.Matter.Image[] }
+  interface Ragdoll {
+    torso: Phaser.Physics.Matter.Image;
+    head: Phaser.Physics.Matter.Image;
+    parts: Phaser.Physics.Matter.Image[];
+    /** The pins between the parts. */
+    joints: MatterJS.ConstraintType[];
+    /** Lets go of every pin: the parts fly apart at the joints. */
+    break(): void;
+  }
   type TwistId = 'moonGravity' | 'gravityFlips' | 'giantHero' | 'tinyHero' | 'slowmoHits' | 'slowTime' | 'bouncyWorld' | 'starRain' | 'enemyParty' | 'speedUp' | 'surpriseBoss' | 'earthquake' | 'doubleJump';
   /** Read-only: the student switches twists. */
   interface Twists {

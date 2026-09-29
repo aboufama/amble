@@ -1,0 +1,193 @@
+{
+ "format": "amble-rig",
+ "v": 1,
+ "kind": "biped",
+ "facing": 1,
+ "anchor": [
+  55,
+  249
+ ],
+ "bones": [
+  {
+   "name": "hips",
+   "role": "hips",
+   "parent": -1,
+   "x": 52.27,
+   "y": 180.12,
+   "x2": 52.27,
+   "y2": 190.15
+  },
+  {
+   "name": "spine",
+   "role": "spine",
+   "parent": -1,
+   "x": 52.27,
+   "y": 180.12,
+   "x2": 53.81,
+   "y2": 106.63
+  },
+  {
+   "name": "head",
+   "role": "head",
+   "parent": 1,
+   "x": 53.81,
+   "y": 106.63,
+   "x2": 68.76,
+   "y2": 28.9
+  },
+  {
+   "name": "armL1",
+   "role": "armL1",
+   "parent": 1,
+   "x": 24.11,
+   "y": 135.53,
+   "x2": 18.99,
+   "y2": 167.18
+  },
+  {
+   "name": "armL2",
+   "role": "armL2",
+   "parent": 3,
+   "x": 18.99,
+   "y": 167.18,
+   "x2": 11.53,
+   "y2": 198.88
+  },
+  {
+   "name": "legL1",
+   "role": "legL1",
+   "parent": 0,
+   "x": 36.05,
+   "y": 190.15,
+   "x2": 34.35,
+   "y2": 214.75
+  },
+  {
+   "name": "legL2",
+   "role": "legL2",
+   "parent": 5,
+   "x": 34.35,
+   "y": 214.75,
+   "x2": 60.58,
+   "y2": 240.6
+  },
+  {
+   "name": "armR1",
+   "role": "armR1",
+   "parent": 1,
+   "x": 78.72,
+   "y": 132.12,
+   "x2": 90.67,
+   "y2": 164.77
+  },
+  {
+   "name": "armR2",
+   "role": "armR2",
+   "parent": 7,
+   "x": 90.67,
+   "y": 164.77,
+   "x2": 110.39,
+   "y2": 193.9
+  },
+  {
+   "name": "legR1",
+   "role": "legR1",
+   "parent": 0,
+   "x": 68.48,
+   "y": 190.15,
+   "x2": 71.89,
+   "y2": 213.54
+  },
+  {
+   "name": "legR2",
+   "role": "legR2",
+   "parent": 9,
+   "x": 71.89,
+   "y": 213.54,
+   "x2": 98.99,
+   "y2": 240.46
+  },
+  {
+   "name": "extra1",
+   "role": "extra",
+   "parent": 2,
+   "x": 48,
+   "y": 34.84,
+   "x2": 37.92,
+   "y2": -0.02,
+   "dynamic": {
+    "stiffness": 0.18,
+    "damping": 0.86,
+    "gravity": 300
+   }
+  }
+ ],
+ "parts": [
+  {
+   "name": "armL",
+   "bones": [
+    "armL1",
+    "armL2"
+   ],
+   "order": 0,
+   "layer": "part:armL"
+  },
+  {
+   "name": "legL",
+   "bones": [
+    "legL1",
+    "legL2"
+   ],
+   "order": 2,
+   "layer": "part:legL"
+  },
+  {
+   "name": "legR",
+   "bones": [
+    "legR1",
+    "legR2"
+   ],
+   "order": 4,
+   "layer": "part:legR"
+  },
+  {
+   "name": "torso",
+   "bones": [
+    "hips",
+    "spine"
+   ],
+   "order": 6,
+   "layer": "part:torso"
+  },
+  {
+   "name": "extra1",
+   "bones": [
+    "extra1"
+   ],
+   "order": 8,
+   "layer": "part:extra1"
+  },
+  {
+   "name": "head",
+   "bones": [
+    "head"
+   ],
+   "order": 10,
+   "layer": "part:head"
+  },
+  {
+   "name": "armR",
+   "bones": [
+    "armR1",
+    "armR2"
+   ],
+   "order": 12,
+   "layer": "part:armR"
+  }
+ ],
+ "artHash": "118x249:6c7cd3df7798e4e2",
+ "made": "hand",
+ "skin": {
+  "cell": 14
+ }
+}

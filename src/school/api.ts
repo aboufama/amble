@@ -99,5 +99,3 @@ export function createSchool(store: Store): SchoolApi {
   };
 }
 
-/** services.ts still calls the FOUNDATION name; INTEGRATION renames the call. */
-export const createSchoolStub = createSchool;

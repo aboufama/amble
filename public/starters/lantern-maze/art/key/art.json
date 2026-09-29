@@ -1,0 +1,73 @@
+{
+ "v": 1,
+ "key": "key",
+ "script": "key",
+ "name": "Key",
+ "kind": "item",
+ "rig": "none",
+ "facing": "viewer",
+ "role": "item",
+ "mode": "free",
+ "board": {
+  "w": 128,
+  "h": 128,
+  "pixelArt": false
+ },
+ "doc": "sha256:5b57f7a5df07e89621c1dba37375ac8c8a715cfd32298edb6b14168cd930e288",
+ "cels": [
+  "sha256:fff320891c1fd83b5af98278c94e005b55a94e48905f599148dbd939af2055a1",
+  "sha256:d74f5c9b0d07d7d17dcdac07edeb91a3434897f16f8fbfc5ef0194a760c1a3fc"
+ ],
+ "parts": {},
+ "export": {
+  "hash": "db66e9ee85b0a1d07d94b067aaf41b4cd39f4ae96d06dc2aee99ec2b535f101c",
+  "flat": "sha256:db66e9ee85b0a1d07d94b067aaf41b4cd39f4ae96d06dc2aee99ec2b535f101c",
+  "w": 105,
+  "h": 114,
+  "anchor": [
+   52.5,
+   57
+  ],
+  "inkMask": "sha256:55959e7818d29e17af9fbbc0cce3c0e095c21d0101126a2a0df1d693617b0ad4",
+  "parts": {},
+  "sticker": "sha256:9db956959f8f2ff799a118e5d2135f7477f99cc868178bcf13bf9be2679bd6db",
+  "thumb": "sha256:db66e9ee85b0a1d07d94b067aaf41b4cd39f4ae96d06dc2aee99ec2b535f101c",
+  "frames": null
+ },
+ "rigData": null,
+ "rigInfo": null,
+ "palette": [
+  "#2b1f33",
+  "#f7b928",
+  "#e8453c",
+  "#f4b627",
+  "#fff2b8",
+  "#d38f14",
+  "#d69216",
+  "#332333",
+  "#d13e36",
+  "#3c2b31",
+  "#2e2133",
+  "#e5a51e",
+  "#fbf7ee",
+  "#a47a2c",
+  "#ecac22",
+  "#c53b33",
+  "#7c5c2f",
+  "#3b2333",
+  "#dca429",
+  "#c4932b",
+  "#f6b827",
+  "#654b30",
+  "#72552f",
+  "#5c4330"
+ ],
+ "files": {
+  "sha256:db66e9ee85b0a1d07d94b067aaf41b4cd39f4ae96d06dc2aee99ec2b535f101c": "thumb.png",
+  "sha256:55959e7818d29e17af9fbbc0cce3c0e095c21d0101126a2a0df1d693617b0ad4": "ink.png",
+  "sha256:9db956959f8f2ff799a118e5d2135f7477f99cc868178bcf13bf9be2679bd6db": "sticker.png",
+  "sha256:5b57f7a5df07e89621c1dba37375ac8c8a715cfd32298edb6b14168cd930e288": "doc.json",
+  "sha256:fff320891c1fd83b5af98278c94e005b55a94e48905f599148dbd939af2055a1": "cels/colors.png",
+  "sha256:d74f5c9b0d07d7d17dcdac07edeb91a3434897f16f8fbfc5ef0194a760c1a3fc": "cels/lines.png"
+ }
+}

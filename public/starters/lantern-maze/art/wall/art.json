@@ -1,0 +1,73 @@
+{
+ "v": 1,
+ "key": "wall",
+ "script": "hedge",
+ "name": "Hedge",
+ "kind": "terrain",
+ "rig": "none",
+ "facing": "viewer",
+ "role": "terrain",
+ "mode": "free",
+ "board": {
+  "w": 128,
+  "h": 128,
+  "pixelArt": false
+ },
+ "doc": "sha256:4cadea402c08d562a002b98d891312b9037a9cea6c8048cadf7cde505500e217",
+ "cels": [
+  "sha256:11ad0a5f8b546e13bec3b74f525cc2c9e71df7d5d10c1a19d5bc201a475ee9d4",
+  "sha256:4c97063e7e96104be0b92208cc997b45d1b9b7b95e7bb1fdbdb01344ca7f4c03"
+ ],
+ "parts": {},
+ "export": {
+  "hash": "268a9cffc46b562af8dff5ee0d3c77a170aac07916ebe4cbc82b5bb58a6c555d",
+  "flat": "sha256:268a9cffc46b562af8dff5ee0d3c77a170aac07916ebe4cbc82b5bb58a6c555d",
+  "w": 128,
+  "h": 128,
+  "anchor": [
+   64,
+   0
+  ],
+  "inkMask": "sha256:5aa29a74ed856c79d1ca81042deeb132cb251131642c2b104bc27901efcd0d39",
+  "parts": {},
+  "sticker": "sha256:07a33d6bb80fdcd66ec037b28a9c525846c33368862bb30b6b336b2bd4c78562",
+  "thumb": "sha256:268a9cffc46b562af8dff5ee0d3c77a170aac07916ebe4cbc82b5bb58a6c555d",
+  "frames": null
+ },
+ "rigData": null,
+ "rigInfo": null,
+ "palette": [
+  "#2c6a3c",
+  "#56b565",
+  "#4aa35a",
+  "#173f24",
+  "#3f9450",
+  "#255b34",
+  "#1d4b2b",
+  "#2a6539",
+  "#21522e",
+  "#194326",
+  "#449352",
+  "#225631",
+  "#3b8449",
+  "#1b4628",
+  "#296237",
+  "#3d8b4c",
+  "#337541",
+  "#357b44",
+  "#3a8147",
+  "#31733f",
+  "#469b55",
+  "#408d4e",
+  "#276036",
+  "#3e924f"
+ ],
+ "files": {
+  "sha256:268a9cffc46b562af8dff5ee0d3c77a170aac07916ebe4cbc82b5bb58a6c555d": "thumb.png",
+  "sha256:5aa29a74ed856c79d1ca81042deeb132cb251131642c2b104bc27901efcd0d39": "ink.png",
+  "sha256:07a33d6bb80fdcd66ec037b28a9c525846c33368862bb30b6b336b2bd4c78562": "sticker.png",
+  "sha256:4cadea402c08d562a002b98d891312b9037a9cea6c8048cadf7cde505500e217": "doc.json",
+  "sha256:11ad0a5f8b546e13bec3b74f525cc2c9e71df7d5d10c1a19d5bc201a475ee9d4": "cels/colors.png",
+  "sha256:4c97063e7e96104be0b92208cc997b45d1b9b7b95e7bb1fdbdb01344ca7f4c03": "cels/lines.png"
+ }
+}

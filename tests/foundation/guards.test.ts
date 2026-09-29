@@ -133,10 +133,9 @@ describe('source guards', () => {
     expect(bad).toEqual([]);
   });
 
-  it('keeps stub markers greppable', () => {
-    // Modules replace the FOUNDATION stubs one by one, so the count falls to zero; what must hold is
-    // that any code still throwing NotBuiltYet says so with the marker INTEGRATION greps for.
-    const throwing = FILES.filter((f) => /new NotBuiltYet\(/.test(f.text) && !f.path.endsWith('model/notBuilt.ts'));
-    for (const f of throwing) expect(f.text, f.path).toContain('FOUNDATION-STUB');
+  it('has no stubs left', () => {
+    // Every module has landed: nothing may throw or catch "not built yet" any more.
+    const stubbed = FILES.filter((f) => /\bNotBuiltYet\b/.test(f.text)).map((f) => f.path);
+    expect(stubbed).toEqual([]);
   });
 });

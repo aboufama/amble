@@ -7,7 +7,6 @@
 import {
   DEFAULT_PLAYER_PREFS,
   EMPTY_MANIFEST,
-  PLAYER_CORE,
   Player,
   type DrawnArt,
   type FromPlayer,
@@ -272,7 +271,6 @@ export class PlayerHostImpl implements PlayerHost {
     this.prefs(init.prefs);
     this.userPaused = false;
     this.autoPaused = false;
-    if (PLAYER_CORE === 'stub') return EMPTY_MANIFEST;
     let offManifest: () => void = () => undefined;
     const manifest = new Promise<GameManifest>((resolve) => {
       offManifest = player.on('manifest', resolve);
@@ -363,7 +361,7 @@ export class PlayerHostImpl implements PlayerHost {
   }
 
   snapshot(maxW: number): Promise<Blob | null> {
-    if (!this.player || PLAYER_CORE === 'stub') return Promise.resolve(null);
+    if (!this.player) return Promise.resolve(null);
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         off();

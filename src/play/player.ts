@@ -526,6 +526,7 @@ export class Player {
     const frame = this.current;
     if (!frame?.ready || document.visibilityState === 'hidden') return;
     if (this.state !== 'running' && this.state !== 'title' && this.state !== 'loading') return;
+    // The watch counts from the load (a pre-warmed spare may have been quiet for a long time before it).
     if (!this.watch.frozen(performance.now(), frame.lastMessageAt, this.state === 'loading')) return;
     const error: PlayerError = { phase: 'frozen', message: 'The game froze (a loop that never ends?), so Amble stopped it.', count: 1, fatal: true };
     this.errors.push(error);

@@ -1,8 +1,8 @@
 /**
- * FOUNDATION-STUB: the fixture game the stub catalog opens for every starter until M8's starter worlds
- * land: the player core's demo boss game (src/runtime/fixtures/boss.js), copied as text because app code
- * never imports src/runtime. Art keys: hero, boss, minion, ground, ledge, shot, orb, bomb; dials: jump,
- * orbSpeed, bossHealth.
+ * A fixed one-file game for tests (the catalog never opens it): the player core's demo boss game
+ * (src/runtime/fixtures/boss.js), copied as text because app code never imports src/runtime. Other
+ * modules' tests use it as a stable known game. Art keys: hero, boss, minion, ground, ledge, shot, orb,
+ * bomb; dials: jump, orbSpeed, bossHealth.
  */
 export const FIXTURE_GAME = `// MOON KING: run, double-jump, dash and blast a giant boss through three phases of bullet patterns.
 class Game extends Amble.Scene {
