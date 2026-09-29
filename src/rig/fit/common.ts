@@ -47,6 +47,38 @@ export const colourDist = (a: Analysis, i: number, j: number): number => {
   return Math.hypot(c[i * 3] - c[j * 3], c[i * 3 + 1] - c[j * 3 + 1], c[i * 3 + 2] - c[j * 3 + 2]);
 };
 
+const labelCache = new WeakMap<Analysis, { labels: Int32Array; sizes: number[] }>();
+
+/**
+ * Every drawn colour region (bounded by ink, holes and colour changes) labelled once per analysis:
+ * the pieces a child coloured in. Label 0 = ink, holes and background.
+ */
+export function colourRegions(a: Analysis): { labels: Int32Array; sizes: number[] } {
+  const hit = labelCache.get(a);
+  if (hit) return hit;
+  const { w, h, solid, ink, holes } = a;
+  const labels = new Int32Array(w * h);
+  const sizes = [0];
+  for (let i = 0; i < w * h; i++) {
+    if (labels[i] || !solid[i] || ink[i] || holes[i]) continue;
+    const id = sizes.length;
+    const q = [i];
+    labels[i] = id;
+    for (let qi = 0; qi < q.length; qi++) {
+      const p = q[qi];
+      for (const n of [p - 1, p + 1, p - w, p + w]) {
+        if (labels[n] || !solid[n] || ink[n] || holes[n] || colourDist(a, p, n) > 40) continue;
+        labels[n] = id;
+        q.push(n);
+      }
+    }
+    sizes.push(q.length);
+  }
+  const out = { labels, sizes };
+  labelCache.set(a, out);
+  return out;
+}
+
 const regionCache = new WeakMap<Analysis, Map<number, Uint8Array | null>>();
 
 /** The colour region (4-connected, not crossing ink, steps of similar colour) containing pixel s0. */

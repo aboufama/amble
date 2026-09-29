@@ -383,7 +383,7 @@ export function drawBird(seed = 23): SampleDrawing {
     ...k.result(),
     truth: [
       J('head', 'end', 284, 98, 22),
-      J('wingR2', 'end', 132, 26, 30),
+      J('wingR2', 'end', 125, 26, 32),
       J('tail1', 'start', 96, 126, 26),
     ],
     anchor: { at: [153, 216], tol: 16 },

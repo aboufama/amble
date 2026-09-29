@@ -6,10 +6,11 @@
  *   is the far end on the other side; wings are the big branches leaving the body upward.
  * The art request's facing (viewer = front, left/right = side) settles the view when given.
  */
+import { nearestOn } from '../imgproc';
 import type { Analysis, End } from '../analyze';
 import type { BoneRole, Facing } from '../types';
-import { castToEdge, exitIndex, headJoint, limbGeometry, newFit, pushLimb, type Fit } from './common';
-import { addExtras } from './extras';
+import { castToEdge, colourRegions, exitIndex, headJoint, limbGeometry, newFit, pushLimb, type Fit } from './common';
+import { addExtras, branchPath } from './extras';
 import { arcPoint, lca, pathDown, pathToRoot, px, skelTree, type P2 } from './graph';
 import type { Guide } from './guide';
 import { snapMid } from './snap';
@@ -109,9 +110,22 @@ export function fitFlyer(a: Analysis, guide: Guide | null, facingHint?: Facing):
       .sort((p, q) => dist[q.p] - dist[attachOf(q)] - (dist[p.p] - dist[attachOf(p)]));
     let maxDt = 0;
     for (let i = 0; i < a.w * a.h; i++) if (a.dt[i] > maxDt) maxDt = a.dt[i];
+    const regions = colourRegions(a);
     for (const e of cands) {
       if (wings.length >= 2) break;
-      if (wings.some((o) => attachOf(o) === attachOf(e) && a.dt[lca(parent, o.p, e.p)] < 0.5 * maxDt)) {
+      // two tips in one coloured piece (a V-shaped wing), or split inside a thin part: one wing
+      const regionOf = (x: End) => {
+        for (const p of branchPath(a, x).reverse()) {
+          const q = nearestOn(a.solid, a.w, a.h, p % a.w, Math.floor(p / a.w), 4, (i) => regions.sizes[regions.labels[i]] >= Math.max(12, 0.01 * a.area));
+          if (q >= 0) return regions.labels[q];
+        }
+        return 0;
+      };
+      const sameRegion = (o: End) => {
+        const lo = regionOf(o), le = regionOf(e);
+        return lo > 0 && lo === le && regions.sizes[lo] < 0.4 * a.area;
+      };
+      if (wings.some((o) => sameRegion(o) || a.dt[lca(parent, o.p, e.p)] < 0.5 * maxDt)) {
         taken.add(e);
         fit.used.add(e);
         continue;
