@@ -60,3 +60,25 @@ describe('file names the AI helper writes', () => {
     expect(opened.world?.code.map((f) => f.path)).toEqual(code.map((f) => f.path));
   });
 });
+
+describe('art keys the game declares', () => {
+  const withArt = (key: string) =>
+    `class Game extends Amble.Scene {\n  static art = { ${key}: { kind: 'character', rig: 'biped', role: 'hero', name: 'Pip', w: 40, h: 64 } };\n  create() {}\n}\n`;
+
+  it('never borrow a name every object already has', () => {
+    for (const key of ['constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty']) {
+      const v = validateGame([{ path: 'game.js', content: withArt(key) }], { manifest: PROBE_MANIFEST });
+      expect(v.errors.some((i) => i.rule === 'art-manifest' && i.message.includes(key)), key).toBe(true);
+    }
+    const ok = validateGame([{ path: 'game.js', content: withArt('hero') }], { manifest: PROBE_MANIFEST });
+    expect(ok.errors.filter((i) => i.rule === 'art-manifest')).toEqual([]);
+  });
+
+  it('a drawn member keyed like that could not be opened again from the world file', async () => {
+    const store = new MemoryStore();
+    const seed = await seedWorld(store);
+    const world = { ...seed.world, cast: { ...seed.world.cast, constructor: { key: 'constructor', art: null, madeBy: null, extra: null, laterUntil: 0 } } };
+    await store.commit({ worlds: [world] });
+    await expect(readAmble(await packAmble(await collectWorld(store, world, 'world')))).rejects.toMatchObject({ kind: 'damaged' });
+  });
+});
