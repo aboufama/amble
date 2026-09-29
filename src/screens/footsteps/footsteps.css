@@ -1,0 +1,653 @@
+/*
+ * Footsteps (§2.9, spec-mocks/04-world-play.png): a dotted trail of steps, newest first, in the notebook's
+ * lower panel; and See the change, a sheet over the notebook. Tokens only.
+ */
+
+.panel.footsteps {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  padding: 16px 18px 10px;
+  position: relative;
+}
+
+.footsteps .panel__head {
+  align-items: baseline;
+  margin-bottom: var(--s2);
+}
+
+.footsteps__hint {
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.footsteps__scroller {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin: 0 -10px 0 0;
+  padding: 2px 10px 12px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* The fade under the list while steps are hidden below it. */
+.panel.footsteps:has(.footsteps__scroller--more)::after {
+  content: '';
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  height: 64px;
+  border-radius: 0 0 var(--r-card) var(--r-card);
+  background: linear-gradient(180deg, transparent, var(--surface-bottom) 78%);
+  pointer-events: none;
+}
+
+.footsteps__trail {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The dotted trail behind the footprints. */
+.footsteps__trail::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 16px;
+  bottom: 16px;
+  border-left: 2px dotted color-mix(in srgb, var(--text) 28%, transparent);
+}
+
+.step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 8px 8px 8px 0;
+  border-radius: 12px;
+  outline: none;
+}
+
+.step:hover,
+.step:focus-within {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control) 70%, transparent);
+}
+
+.step:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.step__prints {
+  display: block;
+}
+
+.step__fp {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--text);
+  background: var(--surface-bottom);
+  box-shadow: inset 0 0 0 1.5px var(--line-control);
+}
+
+.step--ai .step__fp {
+  color: var(--ai);
+}
+
+.step--teacher .step__fp {
+  color: var(--change);
+}
+
+.step--now .step__fp {
+  color: var(--on-accent);
+  background: var(--accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+:root[data-theme='day'] .step--now .step__fp {
+  box-shadow: inset 0 0 0 1.5px var(--accent-border);
+}
+
+.step--fix .step__fp {
+  width: 20px;
+  height: 20px;
+  margin: 6px;
+  background: var(--surface-raised);
+}
+
+.step--now.step--fix .step__fp {
+  background: var(--accent);
+}
+
+.step__body {
+  min-width: 0;
+}
+
+.step__text {
+  font: 400 0.90625rem/1.4 var(--font-ui);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.step__lead {
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.step__lead--ai {
+  color: var(--ai);
+}
+
+.step--fix .step__text {
+  margin-top: 5px;
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.step--folded .step__text {
+  color: var(--text-2);
+}
+
+.step__sub {
+  margin-top: 2px;
+  font: 400 0.8125rem/1.35 var(--font-ui);
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.step__link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  color: var(--ai);
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.step__link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.step__extras {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: 4px;
+}
+
+.step__thumb {
+  display: block;
+  height: 34px;
+  width: auto;
+  max-width: 80px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--bg-deep) 60%, transparent));
+}
+
+.step__tested {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 8px 0 6px;
+  border-radius: var(--r-chip);
+  font: 700 0.75rem/1 var(--font-ui);
+  color: var(--alive);
+  background: color-mix(in srgb, var(--alive) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alive) 45%, transparent);
+}
+
+.step__time {
+  padding-top: 2px;
+  font: 400 0.8125rem/1.3 var(--font-ui);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* ↺ Go back to this step (and See the change): shown on hover and focus. */
+.step__actions {
+  display: none;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.step:hover .step__actions,
+.step:focus-within .step__actions {
+  display: flex;
+}
+
+/* A 44 px hit area around a 32 px pill. */
+.step__goback {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  font: var(--type-chip);
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--bg-deep) 45%, transparent);
+  cursor: pointer;
+  --focus-ring: var(--accent);
+}
+
+.step__goback::before {
+  content: '';
+  position: absolute;
+  inset: -6px -4px;
+}
+
+:root[data-theme='day'] .step__goback {
+  box-shadow: inset 0 0 0 1.5px var(--paper-line);
+}
+
+.step__goback:hover:not(:disabled) {
+  background: var(--paper-2);
+}
+
+.step__goback:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.step__folded {
+  display: none;
+  margin-top: 4px;
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.step:hover .step__folded,
+.step:focus-within .step__folded {
+  display: block;
+}
+
+/* The footstep print (§3.6): scale 1.3 → 1 and fade in, 240 ms. */
+.step--fresh .step__fp {
+  animation: footstep-print 240ms var(--ease-pop);
+}
+
+@keyframes footstep-print {
+  from {
+    scale: 1.3;
+    opacity: 0;
+  }
+}
+
+:root[data-motion='reduced'] .step--fresh .step__fp {
+  animation: footstep-fade 120ms linear;
+}
+
+@keyframes footstep-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.footsteps__empty {
+  margin: 4px 0 0 42px;
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.footsteps__earlier,
+.footsteps__more {
+  border: 0;
+  font: 700 0.84375rem/1 var(--font-ui);
+  color: var(--text);
+  background: none;
+  cursor: pointer;
+}
+
+.footsteps__earlier {
+  display: block;
+  min-height: var(--target);
+  margin: 4px auto 0;
+  padding: 0 14px;
+  border-radius: var(--r-chip);
+}
+
+.footsteps__earlier:hover {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.footsteps__more {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 4px;
+  min-height: var(--target);
+  padding: 0 16px;
+  border-radius: var(--r-chip);
+  translate: -50% 0;
+}
+
+.footsteps__more:hover {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.footsteps__loading {
+  display: grid;
+  gap: 14px;
+  padding-top: 8px;
+}
+
+.footsteps__ghost {
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--text) 6%, transparent), color-mix(in srgb, var(--text) 3%, transparent));
+}
+
+/* Compact: the small layout's drawer and other tight places. */
+.footsteps--compact.panel.footsteps {
+  padding: 12px 14px 8px;
+}
+
+.step--compact {
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 5px 6px 5px 0;
+}
+
+.step--compact .step__fp {
+  width: 26px;
+  height: 26px;
+}
+
+.step--compact.step--fix .step__fp {
+  width: 16px;
+  height: 16px;
+  margin: 5px;
+}
+
+.footsteps--compact .footsteps__trail::before {
+  left: 12px;
+}
+
+/* ---------------------------------------------------------------- See the change */
+
+.dialog.diff-sheet {
+  position: fixed;
+  inset: calc(var(--topbar) + 6px) 20px 20px auto;
+  width: min(428px, calc(100vw - 32px));
+  height: auto;
+  max-height: none;
+  margin: 0;
+  border-radius: var(--r-card);
+}
+
+.dialog.diff-sheet::backdrop {
+  background: color-mix(in srgb, var(--scrim) 55%, transparent);
+}
+
+:root[data-layout='touch'] .dialog.diff-sheet {
+  inset: calc(var(--topbar) + 6px) 16px 16px auto;
+  width: min(440px, calc(100vw - 32px));
+}
+
+:root:is([data-layout='small'], [data-layout='portrait']) .dialog.diff-sheet {
+  inset: 0 0 0 auto;
+  width: min(440px, 100vw);
+  border-radius: var(--r-card) 0 0 var(--r-card);
+}
+
+.diff-sheet .dialog__body {
+  padding: 18px 18px 16px;
+}
+
+.diff-sheet .dialog__title {
+  font: var(--type-heading);
+}
+
+.diff-sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.diff-sheet__who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--type-caps);
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.diff-sheet__who--ai {
+  color: var(--ai);
+}
+
+.diff-sheet__summary {
+  font: 700 1rem/1.45 var(--font-ui);
+}
+
+.diff-sheet__request {
+  font: var(--type-body);
+  color: var(--text-2);
+}
+
+.diff-sheet__note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font: var(--type-meta);
+  background: color-mix(in srgb, var(--ai) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ai) 45%, transparent);
+}
+
+.diff-sheet__note .icon {
+  flex: none;
+  color: var(--ai);
+}
+
+.diff-sheet__empty {
+  font: var(--type-body);
+  color: var(--text-2);
+}
+
+.diff-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
+.diff-section__title {
+  font: var(--type-caps);
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.diff-art__name {
+  font: var(--type-label);
+}
+
+.diff-art__pair {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  margin-top: 6px;
+}
+
+.diff-art__side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+
+.diff-art__caption {
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.diff-art__arrow {
+  scale: -1 1;
+  color: var(--text-2);
+}
+
+.diff-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--type-body);
+}
+
+.diff-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diff-list .icon {
+  flex: none;
+  color: var(--change);
+}
+
+.diff-file {
+  border-radius: 12px;
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.diff-file + .diff-file {
+  margin-top: var(--s2);
+}
+
+.diff-file__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  font: var(--type-chip);
+}
+
+.diff-file__name {
+  font-family: var(--font-code);
+  font-weight: 500;
+}
+
+.diff-file__counts {
+  font: var(--type-code-diff);
+}
+
+.diff-file__added {
+  color: var(--alive);
+}
+
+.diff-file__removed {
+  color: var(--warn);
+}
+
+.diff-hunk + .diff-hunk {
+  border-top: 1px dashed var(--line);
+}
+
+.diff-hunk__head {
+  padding: 6px 12px 2px;
+  font: var(--type-caps);
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.diff-hunk__lines {
+  padding: 2px 0 8px;
+}
+
+.diff-line {
+  display: grid;
+  grid-template-columns: 34px 14px minmax(0, 1fr);
+  font: var(--type-code-diff);
+  font-variant-ligatures: none;
+  color: var(--text-2);
+}
+
+.diff-line__no {
+  padding-right: 6px;
+  text-align: right;
+  color: color-mix(in srgb, var(--text-2) 70%, transparent);
+  user-select: none;
+}
+
+.diff-line__sign {
+  text-align: center;
+  user-select: none;
+}
+
+.diff-line__text {
+  padding-right: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.diff-line--add {
+  color: var(--alive);
+  background: color-mix(in srgb, var(--alive) 11%, transparent);
+}
+
+.diff-line--del {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+
+.diff-line--del .diff-line__text {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+/* The words that changed inside a changed line. */
+.diff-line__mark {
+  border-radius: 3px;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 24%, transparent);
+  text-decoration: inherit;
+}
+
+.diff-line--add .diff-line__mark {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--alive) 45%, transparent);
+}
+
+/* Go back to before this sits at the foot of the sheet, and stays in reach under a long diff. */
+.diff-sheet .dialog__actions {
+  position: sticky;
+  bottom: -16px;
+  margin: auto -18px -16px;
+  padding: 12px 18px 16px;
+  background: var(--surface-bottom);
+  box-shadow: 0 -1px 0 var(--line);
+}
