@@ -76,4 +76,22 @@ test.describe('art engine stroke log', () => {
     expect(await harness<number>(page, 'coverage', lines, 100, 230, 320, 40)).toBe(0);
     expect((await harness<{ mismatched: string[] }>(page, 'replayCheck')).mismatched).toEqual([]);
   });
+
+  test('a layer slider moved twice, far apart, then undone once, replays to the same layer', async ({ page }) => {
+    await open(page, 'w=256&h=256');
+    const lines = await harness<string>(page, 'layerId', 'lines');
+    await surface(page, 'setLayer', lines, { opacity: 0.5 });
+    await sleep(1700);
+    await surface(page, 'setLayer', lines, { opacity: 0.3 });
+    await surface(page, 'undo');
+    const result = await page.evaluate(async (id) => {
+      const w = window as unknown as HarnessWindow;
+      const s = w.__art.surface as unknown as { layers(): Array<{ id: string; opacity: number }>; log(): unknown[] };
+      const art = (await import(/* @vite-ignore */ `${location.origin}/src/art/engine/index.ts`)) as { replayLog(log: unknown[]): Promise<{ layers: Array<{ id: string; opacity: number }> }> };
+      const board = await art.replayLog(s.log());
+      return { live: s.layers().find((l) => l.id === id)!.opacity, replayed: board.layers.find((l) => l.id === id)!.opacity };
+    }, lines);
+    expect(result.live).toBe(0.5);
+    expect(result.replayed).toBe(0.5);
+  });
 });

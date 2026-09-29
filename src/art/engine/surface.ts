@@ -1392,11 +1392,15 @@ class Surface implements ArtSurface {
     const step = setLayer(this.board, id, clean);
     if (!step) return;
     const merge = Object.keys(clean).length === 1 && clean.opacity !== undefined ? `opacity:${id}` : undefined;
-    this.hist.push({ label: 'Layer change', steps: [{ struct: step }], merge });
+    // A slider drag is one step, in the history and in the log alike: the log's last op can take the new
+    // value only when it is this layer's opacity, and it does exactly when the history joins the two steps
+    // (which it does only within 1.5 s), or the log's undo marks would take back the wrong thing.
+    const last = this.recording ? this.ops[this.ops.length - 1] : undefined;
+    const logTop = merge && last?.op === 'layer' && last.action === 'set' && last.id === id && last.patch && Object.keys(last.patch).length === 1 && last.patch.opacity !== undefined ? last : null;
+    const prev = this.hist.undoStack[this.hist.undoStack.length - 1];
+    const entry = this.hist.push({ label: 'Layer change', steps: [{ struct: step }], merge }, { merge: !this.recording || logTop !== null });
     if (this.recording) {
-      const top = this.ops[this.ops.length - 1];
-      // Coalesce slider drags in the log like the history does.
-      if (merge && top?.op === 'layer' && top.action === 'set' && top.id === id && top.patch && Object.keys(top.patch).length === 1 && top.patch.opacity !== undefined && this.hist.undoStack[this.hist.undoStack.length - 1]?.merge === merge) top.patch = { opacity: clean.opacity };
+      if (logTop && entry === prev) logTop.patch = { opacity: clean.opacity };
       else this.ops.push({ op: 'layer', action: 'set', id, patch: clean });
     }
     this.markDirty();

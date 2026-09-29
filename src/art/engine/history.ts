@@ -117,12 +117,16 @@ export class History {
     return { frame, layer, tiles: snaps };
   }
 
-  /** Pushes a finished step (clears redo, evicts the oldest steps beyond the byte budget). */
-  push(e: Omit<HistoryEntry, 'at' | 'bytes'>): HistoryEntry {
+  /**
+   * Pushes a finished step (clears redo, evicts the oldest steps beyond the byte budget). A step with a
+   * `merge` key joins the top step when they match (a slider drag); `o.merge: false` keeps this one separate
+   * but still lets the next one join it. Resolves to the entry the step is in (the top one when merged).
+   */
+  push(e: Omit<HistoryEntry, 'at' | 'bytes'>, o: { merge?: boolean } = {}): HistoryEntry {
     const now = Date.now();
     const top = this.undoStack[this.undoStack.length - 1];
     this.dropRedo();
-    if (e.merge && top && top.merge === e.merge && now - top.at < 1500 && !hasPixels(e) && !hasPixels(top) && e.steps.length === 1 && top.steps.length === 1) {
+    if (o.merge !== false && e.merge && top && top.merge === e.merge && now - top.at < 1500 && !hasPixels(e) && !hasPixels(top) && e.steps.length === 1 && top.steps.length === 1) {
       // Coalesce (e.g. an opacity slider): keep the first undo, take the latest redo.
       const a = top.steps[0];
       const b = e.steps[0];
