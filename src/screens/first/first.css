@@ -77,6 +77,13 @@
   --card-h: min(146px, calc((100vh - var(--header) - 14px - 210px) / 2));
 }
 
+/* The touch layout's paper sits 18 px under the header: the lemon tape moves down so its end stays clear of
+ * the wordmark. */
+:root[data-layout='touch'] .first__tape--lemon {
+  left: -36px;
+  top: 6px;
+}
+
 :root[data-layout='small'] .first__tape {
   width: 84px;
   height: 22px;
