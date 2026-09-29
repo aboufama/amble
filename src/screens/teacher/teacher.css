@@ -1317,6 +1317,20 @@
   opacity: 0.55;
 }
 
+/* While a game loads, the game's layer is already over the view: the poster and "Starting…" stay above it. */
+.gdetail__view--loading::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: var(--bg-deep);
+}
+
+.gdetail__poster,
+.gdetail__over {
+  z-index: var(--z-overlay);
+}
+
 .gdetail__over {
   position: relative;
   display: inline-flex;
