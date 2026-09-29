@@ -198,11 +198,13 @@ test('a read-only copy (turned in) opens as a copy and offers Save my own copy',
   await dialog.getByRole('button', { name: 'Save my own copy' }).click();
   await expect(dialog).toBeHidden();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __m6saves: string[] }).__m6saves)).toEqual(['Moon King.amble', 'Moon King.amble']);
-  const kept = await page.evaluate(async (wid) => {
-    const store = (window as unknown as { __amble: { store: { handles: { get(id: string): Promise<{ name: string } | null> } } } }).__amble.store;
-    return (await store.handles.get(wid))?.name ?? null;
-  }, worldIdOf(page));
-  expect(kept).toBe('Moon King.amble');
+  // The handle is kept after the file is written, in its own transaction: wait for it rather than race it.
+  const kept = (wid: string) =>
+    page.evaluate(async (id) => {
+      const store = (window as unknown as { __amble: { store: { handles: { get(id: string): Promise<{ name: string } | null> } } } }).__amble.store;
+      return (await store.handles.get(id))?.name ?? null;
+    }, wid);
+  await expect.poll(() => kept(worldIdOf(page))).toBe('Moon King.amble');
 });
 
 test('dropping a file on the Trail opens it', async ({ page }) => {
