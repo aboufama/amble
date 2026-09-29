@@ -11,6 +11,8 @@ import { configureGame, gameTexturesReady, restartLevel, scheduleManifest } from
 import { DialRegistry } from '../kit/dials';
 import type { KitEnv, VirtualInput } from '../kit/env';
 import { installKit } from '../kit/index';
+import { registerRiggedFactory } from '../kit/rigged';
+import { createRiggedMesh } from '../../rig/phaser';
 import { currentScene } from '../kit/scene';
 import { quality } from '../kit/state';
 import { worldObjects } from '../kit/objects';
@@ -132,6 +134,8 @@ const env: KitEnv = {
   drawCalls: drawCallsLastFrame,
 };
 installKit(env);
+// Drawn characters with bones play through the rig's Phaser mesh (cut-out parts and skinning).
+registerRiggedFactory(createRiggedMesh);
 
 const ghosts = new GhostTaps(post, currentGame, () => env.prefs.ghostTaps && !env.standalone);
 

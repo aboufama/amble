@@ -188,15 +188,21 @@ test.describe('the player', () => {
     await page.waitForTimeout(1000);
     await page.evaluate(() => (window as unknown as Win).harness.player.pause());
     await expect.poll(() => frame.evaluate(() => ((window as unknown as GameWin).__ambleGame.game as { loop: { running: boolean } }).loop.running)).toBe(false);
+    // A point on the boss that no other thing covers (its orbs fly out of its middle from the start).
     const where = await frame.evaluate(() => {
-      const g = (window as unknown as GameWin).__ambleGame;
-      const boss = g.find('boss') as { getBounds(): { centerX: number; centerY: number } };
-      const game = g.game as { canvas: HTMLCanvasElement; scale: { width: number; height: number } };
-      const scene = g.scene as { cameras: { main: { worldView: { x: number; y: number }; zoom: number } } };
-      const b = boss.getBounds();
-      const r = game.canvas.getBoundingClientRect();
-      const cam = scene.cameras.main;
-      return { x: r.left + ((b.centerX - cam.worldView.x) * cam.zoom * r.width) / game.scale.width, y: r.top + ((b.centerY - cam.worldView.y) * cam.zoom * r.height) / game.scale.height };
+      type Box = { key: string | null; x: number; y: number; w: number; h: number };
+      const objects = ((window as unknown as GameWin).__ambleGame as unknown as { objects(): Box[] }).objects();
+      const boss = objects.find((o) => o.key === 'boss');
+      if (!boss) throw new Error('no boss on screen');
+      const others = objects.filter((o) => o !== boss);
+      for (const fy of [0.5, 0.4, 0.6, 0.3, 0.7]) {
+        for (const fx of [0.5, 0.4, 0.6, 0.3, 0.7]) {
+          const x = boss.x + boss.w * fx;
+          const y = boss.y + boss.h * fy;
+          if (!others.some((o) => x >= o.x - 4 && x <= o.x + o.w + 4 && y >= o.y - 4 && y <= o.y + o.h + 4)) return { x, y };
+        }
+      }
+      return { x: boss.x + boss.w / 2, y: boss.y + boss.h / 2 };
     });
     const box = await page.locator('#stage iframe:visible').first().boundingBox();
     if (!box) throw new Error('no iframe box');

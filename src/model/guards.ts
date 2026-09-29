@@ -137,6 +137,8 @@ export const isDialSpec = obj<DialSpec>({
   step: num(0),
   live: isBool,
   words: str(200),
+  for: opt(str(64)),
+  unit: opt(str(16)),
 });
 
 export const isArtNeed = obj<ArtNeed>({
@@ -155,6 +157,7 @@ export const isArtNeed = obj<ArtNeed>({
   facing: isFacing,
   priority: isFiniteNumber,
   required: isBool,
+  spare: isBool,
   declared: isBool,
   used: isBool,
   drawn: isBool,
@@ -175,6 +178,8 @@ export const isGameManifest = obj<GameManifest>({
       step: num(0),
       live: isBool,
       words: str(200),
+      for: opt(str(64)),
+      unit: opt(str(16)),
       key: str(64, 1),
       current: isFiniteNumber,
       source: oneOf(['static', 'tune']),
@@ -192,6 +197,8 @@ export const isPlayerError = obj<PlayerError>({
   column: opt(int(0)),
   count: int(1),
   stack: opt(isString),
+  fatal: isBool,
+  twist: opt(str(64)),
 });
 
 const isPoint: Guard<[number, number]> = tuple(isFiniteNumber, isFiniteNumber);
