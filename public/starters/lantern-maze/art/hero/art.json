@@ -1,0 +1,433 @@
+{
+ "v": 1,
+ "key": "hero",
+ "script": "biscuit",
+ "name": "Biscuit",
+ "kind": "character",
+ "rig": "quadruped",
+ "facing": "right",
+ "role": "hero",
+ "mode": "bones",
+ "board": {
+  "w": 256,
+  "h": 256,
+  "pixelArt": false
+ },
+ "doc": "sha256:e32a509bb311639d097e4090763e6a9ae1202a20f0ac70fadfcee107ce7ebb33",
+ "cels": [
+  "sha256:4973e9957f2356eb7a1bc74ad5012e269858688a5a9b804c22c848c80bd33767",
+  "sha256:7238518ffe35a5f8c993c47abf210fdb4d6803ce83d8770b1517793063fa2398",
+  "sha256:2445c91eec3c4046d7690808e080d8e2745bd2b27a6a51829bbd0d92bdbc91bb",
+  "sha256:6ac776336b029feb95e09de03bbd791aff7330f0a039dc0b1959e86656dfe21a",
+  "sha256:8009ddff4db4efe7efc04b67c6b834772dbd7453d5de092c23244883a83cb143",
+  "sha256:5b57ebf42ff8d0332209293f1ba2087db1e43b6a43c51a34ec559c5cd13fda9a",
+  "sha256:ab62133c637db9b095edc1c37d04cd62ebb758ee4aaea0589d817355d3b12287",
+  "sha256:ab60c7fd21b1180ee8396e93049b6a3017361effb267fcd1106aa9314546b39f",
+  "sha256:643572721a3f22d50856a44454f4866d2d1b9f5ee8bdb7f3a424fdd5935e7c89",
+  "sha256:f9a423284b6d654200aedbbdc4e5d4d4a4d0690da967e945a3a7ea5b1e8cbd2b",
+  "sha256:68bc410b17201d61dc2acf16408b0c748cfb10063ea25ec9f54e09bc627860ea",
+  "sha256:80c96f486136f0d3620bc68522bb0363afdbd678a453d819ae86374b54b19ce4",
+  "sha256:e6767b6ff1bd1c255f35c57436d1bd70b0e9b44b6f12b831035b55743db9151b",
+  "sha256:4ed4c5584f19d6869cf37f5587505ffd342923971a065ec2ad5e115f16e10c0d",
+  "sha256:30ca0c78ba777a591a595f6e05f43a448dc99f61304756b8724e7232e4fd233b",
+  "sha256:492c1a1851174561cff3c58c990d75d4aca7169ce69d0ad20df6fd610b3d4dfa"
+ ],
+ "parts": {
+  "legFL": {
+   "lines": "legFL-lines",
+   "colors": "legFL"
+  },
+  "legBL": {
+   "lines": "legBL-lines",
+   "colors": "legBL"
+  },
+  "tail": {
+   "lines": "tail-lines",
+   "colors": "tail"
+  },
+  "body": {
+   "lines": "body-lines",
+   "colors": "body"
+  },
+  "legFR": {
+   "lines": "legFR-lines",
+   "colors": "legFR"
+  },
+  "legBR": {
+   "lines": "legBR-lines",
+   "colors": "legBR"
+  },
+  "head": {
+   "lines": "head-lines",
+   "colors": "head"
+  },
+  "extra1": {
+   "lines": "ear-lines",
+   "colors": "ear"
+  }
+ },
+ "export": {
+  "hash": "99df25dc3fd0744a0bca96891332426051c5286babc938c3239d7a5ab57daf03",
+  "flat": "sha256:99df25dc3fd0744a0bca96891332426051c5286babc938c3239d7a5ab57daf03",
+  "w": 231,
+  "h": 190,
+  "anchor": [
+   110,
+   189
+  ],
+  "inkMask": "sha256:d62bd44ef96b204298da266eaea439679a314737bad7daa4480506d004a387cc",
+  "parts": {
+   "part:legFL": {
+    "blob": "sha256:5f5a757bd3dbbc1c286a82ffebb1b59d1d62fdddb2dedf60413bca1c38360a48",
+    "x": 0,
+    "y": 0,
+    "w": 231,
+    "h": 190
+   },
+   "part:legBL": {
+    "blob": "sha256:01dcd59211a52a3b94aed3276fced28e2717706ecfa34d9ba8c81ff569b8773e",
+    "x": 0,
+    "y": 0,
+    "w": 231,
+    "h": 190
+   },
+   "part:tail": {
+    "blob": "sha256:f02f7488dd4c29b59c59c4ba4889445cda1423547c3787213cd2811fd84379c4",
+    "x": 0,
+    "y": 0,
+    "w": 231,
+    "h": 190
+   },
+   "part:body": {
+    "blob": "sha256:5052d7e7123f2e2d345a3c8a8b14903f20991db7cd7c75e85c5f7e9211745cf1",
+    "x": 0,
+    "y": 0,
+    "w": 231,
+    "h": 190
+   },
+   "part:legFR": {
+    "blob": "sha256:bc6a6d3ce7d6a39a13fd70019cb3a45c187315738516dd87ec81167dbeab5be3",
+    "x": 0,
+    "y": 0,
+    "w": 231,
+    "h": 190
+   },
+   "part:legBR": {
+    "blob": "sha256:9cac689c2ce914ecbcedd167043f5f70ccd77b33d4a992be7d241d36594cd269",
+    "x": 0,
+    "y": 0,
+    "w": 231,
+    "h": 190
+   },
+   "part:head": {
+    "blob": "sha256:7e976978ae5c2504a9d8b184cf3341e4bea2bbdb9cd2a16eaf34bd0ee92521be",
+    "x": 0,
+    "y": 0,
+    "w": 231,
+    "h": 190
+   },
+   "part:extra1": {
+    "blob": "sha256:5c764b59caca93507dd026631610aa98ccc2788bc67aff48448028d73daf0574",
+    "x": 0,
+    "y": 0,
+    "w": 231,
+    "h": 190
+   }
+  },
+  "sticker": "sha256:f1757e7df39e3af6f6983b891acb232f4668f8c4191f4aeca8f486418e7282fa",
+  "thumb": "sha256:b7ccb1bc612d8b9bfa50b434cdd4009a49216cb29e0bc9562ffa9e201e1f8bd2",
+  "frames": null
+ },
+ "rigData": {
+  "format": "amble-rig",
+  "v": 1,
+  "kind": "quadruped",
+  "facing": 1,
+  "anchor": [
+   111.5,
+   190
+  ],
+  "bones": [
+   {
+    "name": "spine",
+    "role": "spine",
+    "parent": -1,
+    "x": 73.57,
+    "y": 105.27,
+    "x2": 143.55,
+    "y2": 108.25
+   },
+   {
+    "name": "neck",
+    "role": "neck",
+    "parent": 0,
+    "x": 143.55,
+    "y": 108.25,
+    "x2": 155.63,
+    "y2": 78.16
+   },
+   {
+    "name": "head",
+    "role": "head",
+    "parent": 1,
+    "x": 155.63,
+    "y": 78.16,
+    "x2": 229.01,
+    "y2": 31.39
+   },
+   {
+    "name": "legFL1",
+    "role": "legFL1",
+    "parent": 0,
+    "x": 136.72,
+    "y": 116.79,
+    "x2": 143.55,
+    "y2": 152.7
+   },
+   {
+    "name": "legFL2",
+    "role": "legFL2",
+    "parent": 3,
+    "x": 143.55,
+    "y": 152.7,
+    "x2": 151.1,
+    "y2": 188.93
+   },
+   {
+    "name": "legFR1",
+    "role": "legFR1",
+    "parent": 0,
+    "x": 150.37,
+    "y": 116.79,
+    "x2": 157.2,
+    "y2": 152.7
+   },
+   {
+    "name": "legFR2",
+    "role": "legFR2",
+    "parent": 5,
+    "x": 157.2,
+    "y": 152.7,
+    "x2": 164.75,
+    "y2": 188.93
+   },
+   {
+    "name": "legBL1",
+    "role": "legBL1",
+    "parent": 0,
+    "x": 80.4,
+    "y": 113.37,
+    "x2": 76.99,
+    "y2": 150.29
+   },
+   {
+    "name": "legBL2",
+    "role": "legBL2",
+    "parent": 7,
+    "x": 76.99,
+    "y": 150.29,
+    "x2": 80.8,
+    "y2": 189.15
+   },
+   {
+    "name": "legBR1",
+    "role": "legBR1",
+    "parent": 0,
+    "x": 66.75,
+    "y": 115.08,
+    "x2": 61.63,
+    "y2": 153.05
+   },
+   {
+    "name": "legBR2",
+    "role": "legBR2",
+    "parent": 9,
+    "x": 61.63,
+    "y": 153.05,
+    "x2": 77.3,
+    "y2": 187.07
+   },
+   {
+    "name": "tail1",
+    "role": "tail1",
+    "parent": 0,
+    "x": 49.68,
+    "y": 94.6,
+    "x2": 15.55,
+    "y2": 53.13,
+    "dynamic": {
+     "stiffness": 0.18,
+     "damping": 0.86,
+     "gravity": 300
+    }
+   },
+   {
+    "name": "tail2",
+    "role": "tail2",
+    "parent": 11,
+    "x": 15.55,
+    "y": 53.13,
+    "x2": 39.82,
+    "y2": 4.96,
+    "dynamic": {
+     "stiffness": 0.18,
+     "damping": 0.86,
+     "gravity": 300
+    }
+   },
+   {
+    "name": "extra1",
+    "role": "extra",
+    "parent": 2,
+    "x": 155.49,
+    "y": 46.81,
+    "x2": 174.51,
+    "y2": 7.07,
+    "dynamic": {
+     "stiffness": 0.18,
+     "damping": 0.86,
+     "gravity": 300
+    }
+   }
+  ],
+  "parts": [
+   {
+    "name": "legFL",
+    "bones": [
+     "legFL1",
+     "legFL2"
+    ],
+    "order": 0,
+    "layer": "part:legFL"
+   },
+   {
+    "name": "legBL",
+    "bones": [
+     "legBL1",
+     "legBL2"
+    ],
+    "order": 2,
+    "layer": "part:legBL"
+   },
+   {
+    "name": "tail",
+    "bones": [
+     "tail1",
+     "tail2"
+    ],
+    "order": 4,
+    "layer": "part:tail"
+   },
+   {
+    "name": "body",
+    "bones": [
+     "spine",
+     "neck"
+    ],
+    "order": 6,
+    "layer": "part:body"
+   },
+   {
+    "name": "legFR",
+    "bones": [
+     "legFR1",
+     "legFR2"
+    ],
+    "order": 8,
+    "layer": "part:legFR"
+   },
+   {
+    "name": "legBR",
+    "bones": [
+     "legBR1",
+     "legBR2"
+    ],
+    "order": 10,
+    "layer": "part:legBR"
+   },
+   {
+    "name": "head",
+    "bones": [
+     "head"
+    ],
+    "order": 12,
+    "layer": "part:head"
+   },
+   {
+    "name": "extra1",
+    "bones": [
+     "extra1"
+    ],
+    "order": 14,
+    "layer": "part:extra1"
+   }
+  ],
+  "artHash": "231x190:8a6b4aa0a643063d",
+  "made": "hand",
+  "skin": {
+   "cell": 13
+  }
+ },
+ "rigInfo": {
+  "made": "hand",
+  "confidence": 1,
+  "notes": []
+ },
+ "palette": [
+  "#e3a869",
+  "#2b1f33",
+  "#fff0d4",
+  "#c7874c",
+  "#e8453c",
+  "#8a5634",
+  "#c98a4e",
+  "#e0d3bb",
+  "#e1a667",
+  "#a47c62",
+  "#ff7d93",
+  "#8c5837",
+  "#332435",
+  "#e2a768",
+  "#dca265",
+  "#2e2134",
+  "#3b2a36",
+  "#533c3d",
+  "#936344",
+  "#9c7254",
+  "#4a353b",
+  "#44323b",
+  "#7c5b4b",
+  "#3c2d3a"
+ ],
+ "files": {
+  "sha256:99df25dc3fd0744a0bca96891332426051c5286babc938c3239d7a5ab57daf03": "flat.png",
+  "sha256:d62bd44ef96b204298da266eaea439679a314737bad7daa4480506d004a387cc": "ink.png",
+  "sha256:5f5a757bd3dbbc1c286a82ffebb1b59d1d62fdddb2dedf60413bca1c38360a48": "parts/legFL.png",
+  "sha256:01dcd59211a52a3b94aed3276fced28e2717706ecfa34d9ba8c81ff569b8773e": "parts/legBL.png",
+  "sha256:f02f7488dd4c29b59c59c4ba4889445cda1423547c3787213cd2811fd84379c4": "parts/tail.png",
+  "sha256:5052d7e7123f2e2d345a3c8a8b14903f20991db7cd7c75e85c5f7e9211745cf1": "parts/body.png",
+  "sha256:bc6a6d3ce7d6a39a13fd70019cb3a45c187315738516dd87ec81167dbeab5be3": "parts/legFR.png",
+  "sha256:9cac689c2ce914ecbcedd167043f5f70ccd77b33d4a992be7d241d36594cd269": "parts/legBR.png",
+  "sha256:7e976978ae5c2504a9d8b184cf3341e4bea2bbdb9cd2a16eaf34bd0ee92521be": "parts/head.png",
+  "sha256:5c764b59caca93507dd026631610aa98ccc2788bc67aff48448028d73daf0574": "parts/extra1.png",
+  "sha256:f1757e7df39e3af6f6983b891acb232f4668f8c4191f4aeca8f486418e7282fa": "sticker.png",
+  "sha256:b7ccb1bc612d8b9bfa50b434cdd4009a49216cb29e0bc9562ffa9e201e1f8bd2": "thumb.png",
+  "sha256:e32a509bb311639d097e4090763e6a9ae1202a20f0ac70fadfcee107ce7ebb33": "doc.json",
+  "sha256:4973e9957f2356eb7a1bc74ad5012e269858688a5a9b804c22c848c80bd33767": "cels/legFL.png",
+  "sha256:7238518ffe35a5f8c993c47abf210fdb4d6803ce83d8770b1517793063fa2398": "cels/legFL-lines.png",
+  "sha256:2445c91eec3c4046d7690808e080d8e2745bd2b27a6a51829bbd0d92bdbc91bb": "cels/legBL.png",
+  "sha256:6ac776336b029feb95e09de03bbd791aff7330f0a039dc0b1959e86656dfe21a": "cels/legBL-lines.png",
+  "sha256:8009ddff4db4efe7efc04b67c6b834772dbd7453d5de092c23244883a83cb143": "cels/tail.png",
+  "sha256:5b57ebf42ff8d0332209293f1ba2087db1e43b6a43c51a34ec559c5cd13fda9a": "cels/tail-lines.png",
+  "sha256:ab62133c637db9b095edc1c37d04cd62ebb758ee4aaea0589d817355d3b12287": "cels/body.png",
+  "sha256:ab60c7fd21b1180ee8396e93049b6a3017361effb267fcd1106aa9314546b39f": "cels/body-lines.png",
+  "sha256:643572721a3f22d50856a44454f4866d2d1b9f5ee8bdb7f3a424fdd5935e7c89": "cels/legFR.png",
+  "sha256:f9a423284b6d654200aedbbdc4e5d4d4a4d0690da967e945a3a7ea5b1e8cbd2b": "cels/legFR-lines.png",
+  "sha256:68bc410b17201d61dc2acf16408b0c748cfb10063ea25ec9f54e09bc627860ea": "cels/legBR.png",
+  "sha256:80c96f486136f0d3620bc68522bb0363afdbd678a453d819ae86374b54b19ce4": "cels/legBR-lines.png",
+  "sha256:e6767b6ff1bd1c255f35c57436d1bd70b0e9b44b6f12b831035b55743db9151b": "cels/head.png",
+  "sha256:4ed4c5584f19d6869cf37f5587505ffd342923971a065ec2ad5e115f16e10c0d": "cels/head-lines.png",
+  "sha256:30ca0c78ba777a591a595f6e05f43a448dc99f61304756b8724e7232e4fd233b": "cels/ear.png",
+  "sha256:492c1a1851174561cff3c58c990d75d4aca7169ce69d0ad20df6fd610b3d4dfa": "cels/ear-lines.png"
+ }
+}

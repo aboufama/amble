@@ -1,0 +1,73 @@
+{
+ "v": 1,
+ "key": "gear",
+ "script": "gear",
+ "name": "Gear",
+ "kind": "item",
+ "rig": "none",
+ "facing": "viewer",
+ "role": "item",
+ "mode": "free",
+ "board": {
+  "w": 128,
+  "h": 128,
+  "pixelArt": false
+ },
+ "doc": "sha256:1342ab29cc4a0e27dccc945551be35de07efd287f9f63c9f1b61826bc2a41c18",
+ "cels": [
+  "sha256:82c381a4ec7a9b930f9b5fce4da2c44a425f2fdc5100a3c025489bd39fcee1c0",
+  "sha256:43a47ee2ac331836bda060b1bec79100f6b6cc76007dc33d6f68384cba34de53"
+ ],
+ "parts": {},
+ "export": {
+  "hash": "b00b572c191950d9509426085fec6e82fe36da712a84c95505a467625fff0e13",
+  "flat": "sha256:b00b572c191950d9509426085fec6e82fe36da712a84c95505a467625fff0e13",
+  "w": 114,
+  "h": 115,
+  "anchor": [
+   57,
+   57.5
+  ],
+  "inkMask": "sha256:7725473590cb8beaf2c5ed6b722cedb1b4412800035bf999a04729a777be822a",
+  "parts": {},
+  "sticker": "sha256:d69228b20be444b0aa92f52203e5cf16e259937dac4d989783c583b42537785e",
+  "thumb": "sha256:b00b572c191950d9509426085fec6e82fe36da712a84c95505a467625fff0e13",
+  "frames": null
+ },
+ "rigData": null,
+ "rigInfo": null,
+ "palette": [
+  "#ffb547",
+  "#2b1f33",
+  "#e6a340",
+  "#e3882e",
+  "#ffe3a6",
+  "#f4a43d",
+  "#f9ac42",
+  "#332434",
+  "#a3743e",
+  "#3d2b34",
+  "#543b36",
+  "#4b3435",
+  "#e2872e",
+  "#2d2133",
+  "#ad7b3e",
+  "#ea9435",
+  "#e58c31",
+  "#6c4d39",
+  "#c48b41",
+  "#8c643b",
+  "#825d3a",
+  "#db9c44",
+  "#745239",
+  "#453135"
+ ],
+ "files": {
+  "sha256:b00b572c191950d9509426085fec6e82fe36da712a84c95505a467625fff0e13": "thumb.png",
+  "sha256:7725473590cb8beaf2c5ed6b722cedb1b4412800035bf999a04729a777be822a": "ink.png",
+  "sha256:d69228b20be444b0aa92f52203e5cf16e259937dac4d989783c583b42537785e": "sticker.png",
+  "sha256:1342ab29cc4a0e27dccc945551be35de07efd287f9f63c9f1b61826bc2a41c18": "doc.json",
+  "sha256:82c381a4ec7a9b930f9b5fce4da2c44a425f2fdc5100a3c025489bd39fcee1c0": "cels/colors.png",
+  "sha256:43a47ee2ac331836bda060b1bec79100f6b6cc76007dc33d6f68384cba34de53": "cels/lines.png"
+ }
+}

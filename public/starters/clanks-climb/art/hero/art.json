@@ -1,0 +1,380 @@
+{
+ "v": 1,
+ "key": "hero",
+ "script": "clank",
+ "name": "Clank",
+ "kind": "character",
+ "rig": "biped",
+ "facing": "right",
+ "role": "hero",
+ "mode": "bones",
+ "board": {
+  "w": 256,
+  "h": 256,
+  "pixelArt": false
+ },
+ "doc": "sha256:c67c9b34207c27d45e8a5e31d26124f26391b098e19b0d0f4138d03f9d9b2c37",
+ "cels": [
+  "sha256:8835ee0853238126e6c8e9b24225b7f94645d6da4dce8411b9c12998682f4d9b",
+  "sha256:01a032c32653f8bbff27f7226757ba224e4941cae6d3cb803168e67e3e7f7385",
+  "sha256:4fbbbff74a4cc2c78a52c843af5a4c39db6bde80470db5972699db8b3a23f0b3",
+  "sha256:1423d3defcfe9f178db937d9086ec0ea4bb49546c0f3efea7d44d59324f62378",
+  "sha256:65cc73a77c1bf2a5848f3c8fd02530251990d21e32bd8670cd20ace4be840924",
+  "sha256:fdaaff76411278e5b87c6630e403d2fdc787d0a6e3c275a8c77146f0098b241e",
+  "sha256:b9b680d8874f64ea3e08371395b8b7eb4940ebb36dc5a1b1dbc9bf005f6f3056",
+  "sha256:2a319dbc35e5b7fcb834dc5397115ed83fc38e2c29fe58cc344111624c762edc",
+  "sha256:e5af60e9eb0c1538f967ee22f4059b949e4b906ddae7b73e3157dbd9904ce662",
+  "sha256:dc67438cae3dda9f27b24a8c450a8bafbbb78c973910943f727ae55f23d220b4",
+  "sha256:bc17562458fbdcb90fe03583acfcbe83ef5a1e06227d14013307333c620c5273",
+  "sha256:5939fd7fcccad6dfad84acbcb6e017365f3a580f97ee204f9f1b760536691277",
+  "sha256:f8266241c9a2dc551720062d47f377ada8ae68dea6f02538141e3b0fcf904504",
+  "sha256:8db0488fd50b2d6851eb5401d50bad7cd390c48040c38d5fed397f4cfe372818"
+ ],
+ "parts": {
+  "armL": {
+   "lines": "armL-lines",
+   "colors": "armL"
+  },
+  "legL": {
+   "lines": "legL-lines",
+   "colors": "legL"
+  },
+  "legR": {
+   "lines": "legR-lines",
+   "colors": "legR"
+  },
+  "torso": {
+   "lines": "torso-lines",
+   "colors": "torso"
+  },
+  "extra1": {
+   "lines": "antenna-lines",
+   "colors": "antenna"
+  },
+  "head": {
+   "lines": "head-lines",
+   "colors": "head"
+  },
+  "armR": {
+   "lines": "armR-lines",
+   "colors": "armR"
+  }
+ },
+ "export": {
+  "hash": "5e6f1b5b9195a934085dc267708b0b65117751c14d74fe5abf40356cb92b56b8",
+  "flat": "sha256:5e6f1b5b9195a934085dc267708b0b65117751c14d74fe5abf40356cb92b56b8",
+  "w": 118,
+  "h": 249,
+  "anchor": [
+   54,
+   247
+  ],
+  "inkMask": "sha256:08be6e49c25d3ba48fec8d754981be23e2478fd198affff64c61941848fbc11f",
+  "parts": {
+   "part:armL": {
+    "blob": "sha256:48571e5c9caebc2fb1c6f50e345ee2a5148246f242fc1060b27d0b6ea51ad540",
+    "x": 0,
+    "y": 0,
+    "w": 118,
+    "h": 249
+   },
+   "part:legL": {
+    "blob": "sha256:b8446cc0a1b273a086338b5807de78569bdc4f1542b7660a6f6c9f73fe570b1d",
+    "x": 0,
+    "y": 0,
+    "w": 118,
+    "h": 249
+   },
+   "part:legR": {
+    "blob": "sha256:a46c7dba0edc95efa7eddb573ba91e1fbd452243a6c34f400bebf6d032fd5c02",
+    "x": 0,
+    "y": 0,
+    "w": 118,
+    "h": 249
+   },
+   "part:torso": {
+    "blob": "sha256:b767787bacd4b1745aeef47548285f8a8dd875a400a80cb1d29f8394ef7d602c",
+    "x": 0,
+    "y": 0,
+    "w": 118,
+    "h": 249
+   },
+   "part:extra1": {
+    "blob": "sha256:20c809621f5143c509430609765bc89769aebc10a70b8c372a2166bf52714fe5",
+    "x": 0,
+    "y": 0,
+    "w": 118,
+    "h": 249
+   },
+   "part:head": {
+    "blob": "sha256:5815d534da9f3dde8e4f3cc37bfeba8ade11b6c817ce936e9454125a95139b70",
+    "x": 0,
+    "y": 0,
+    "w": 118,
+    "h": 249
+   },
+   "part:armR": {
+    "blob": "sha256:2bf9c9c8d79f18e9388aa9516f4260224357434da845bdbfc35ae75dc5df2d4a",
+    "x": 0,
+    "y": 0,
+    "w": 118,
+    "h": 249
+   }
+  },
+  "sticker": "sha256:1b90ab639cacfc95c1c1e2a3bb039f590bb6c5dc2aa1c0ee947108493c9aeb4d",
+  "thumb": "sha256:4cea1b2e6a644b2e6523ab478ed7aacede5e80a59d0181b7b1e83ad0d1ce4b69",
+  "frames": null
+ },
+ "rigData": {
+  "format": "amble-rig",
+  "v": 1,
+  "kind": "biped",
+  "facing": 1,
+  "anchor": [
+   55,
+   249
+  ],
+  "bones": [
+   {
+    "name": "hips",
+    "role": "hips",
+    "parent": -1,
+    "x": 52.27,
+    "y": 180.12,
+    "x2": 52.27,
+    "y2": 190.15
+   },
+   {
+    "name": "spine",
+    "role": "spine",
+    "parent": -1,
+    "x": 52.27,
+    "y": 180.12,
+    "x2": 53.81,
+    "y2": 106.63
+   },
+   {
+    "name": "head",
+    "role": "head",
+    "parent": 1,
+    "x": 53.81,
+    "y": 106.63,
+    "x2": 68.76,
+    "y2": 28.9
+   },
+   {
+    "name": "armL1",
+    "role": "armL1",
+    "parent": 1,
+    "x": 24.11,
+    "y": 135.53,
+    "x2": 18.99,
+    "y2": 167.18
+   },
+   {
+    "name": "armL2",
+    "role": "armL2",
+    "parent": 3,
+    "x": 18.99,
+    "y": 167.18,
+    "x2": 11.53,
+    "y2": 198.88
+   },
+   {
+    "name": "legL1",
+    "role": "legL1",
+    "parent": 0,
+    "x": 36.05,
+    "y": 190.15,
+    "x2": 34.35,
+    "y2": 214.75
+   },
+   {
+    "name": "legL2",
+    "role": "legL2",
+    "parent": 5,
+    "x": 34.35,
+    "y": 214.75,
+    "x2": 60.58,
+    "y2": 240.6
+   },
+   {
+    "name": "armR1",
+    "role": "armR1",
+    "parent": 1,
+    "x": 78.72,
+    "y": 132.12,
+    "x2": 90.67,
+    "y2": 164.77
+   },
+   {
+    "name": "armR2",
+    "role": "armR2",
+    "parent": 7,
+    "x": 90.67,
+    "y": 164.77,
+    "x2": 110.39,
+    "y2": 193.9
+   },
+   {
+    "name": "legR1",
+    "role": "legR1",
+    "parent": 0,
+    "x": 68.48,
+    "y": 190.15,
+    "x2": 71.89,
+    "y2": 213.54
+   },
+   {
+    "name": "legR2",
+    "role": "legR2",
+    "parent": 9,
+    "x": 71.89,
+    "y": 213.54,
+    "x2": 98.99,
+    "y2": 240.46
+   },
+   {
+    "name": "extra1",
+    "role": "extra",
+    "parent": 2,
+    "x": 48,
+    "y": 34.84,
+    "x2": 37.92,
+    "y2": -0.02,
+    "dynamic": {
+     "stiffness": 0.18,
+     "damping": 0.86,
+     "gravity": 300
+    }
+   }
+  ],
+  "parts": [
+   {
+    "name": "armL",
+    "bones": [
+     "armL1",
+     "armL2"
+    ],
+    "order": 0,
+    "layer": "part:armL"
+   },
+   {
+    "name": "legL",
+    "bones": [
+     "legL1",
+     "legL2"
+    ],
+    "order": 2,
+    "layer": "part:legL"
+   },
+   {
+    "name": "legR",
+    "bones": [
+     "legR1",
+     "legR2"
+    ],
+    "order": 4,
+    "layer": "part:legR"
+   },
+   {
+    "name": "torso",
+    "bones": [
+     "hips",
+     "spine"
+    ],
+    "order": 6,
+    "layer": "part:torso"
+   },
+   {
+    "name": "extra1",
+    "bones": [
+     "extra1"
+    ],
+    "order": 8,
+    "layer": "part:extra1"
+   },
+   {
+    "name": "head",
+    "bones": [
+     "head"
+    ],
+    "order": 10,
+    "layer": "part:head"
+   },
+   {
+    "name": "armR",
+    "bones": [
+     "armR1",
+     "armR2"
+    ],
+    "order": 12,
+    "layer": "part:armR"
+   }
+  ],
+  "artHash": "118x249:6c7cd3df7798e4e2",
+  "made": "hand",
+  "skin": {
+   "cell": 14
+  }
+ },
+ "rigInfo": {
+  "made": "hand",
+  "confidence": 1,
+  "notes": []
+ },
+ "palette": [
+  "#2b1f33",
+  "#35b9a9",
+  "#27305a",
+  "#aeb4c6",
+  "#7d849a",
+  "#fff1d6",
+  "#ff8a3d",
+  "#34b5a5",
+  "#2a9387",
+  "#8c4c22",
+  "#2c2135",
+  "#8ff3ff",
+  "#e67c37",
+  "#2a9589",
+  "#f6c9a0",
+  "#d97534",
+  "#32ab9d",
+  "#2c2b3c",
+  "#d27132",
+  "#2ea294",
+  "#ffd23f",
+  "#2b2539",
+  "#2d4b54",
+  "#2d535b"
+ ],
+ "files": {
+  "sha256:5e6f1b5b9195a934085dc267708b0b65117751c14d74fe5abf40356cb92b56b8": "flat.png",
+  "sha256:08be6e49c25d3ba48fec8d754981be23e2478fd198affff64c61941848fbc11f": "ink.png",
+  "sha256:48571e5c9caebc2fb1c6f50e345ee2a5148246f242fc1060b27d0b6ea51ad540": "parts/armL.png",
+  "sha256:b8446cc0a1b273a086338b5807de78569bdc4f1542b7660a6f6c9f73fe570b1d": "parts/legL.png",
+  "sha256:a46c7dba0edc95efa7eddb573ba91e1fbd452243a6c34f400bebf6d032fd5c02": "parts/legR.png",
+  "sha256:b767787bacd4b1745aeef47548285f8a8dd875a400a80cb1d29f8394ef7d602c": "parts/torso.png",
+  "sha256:20c809621f5143c509430609765bc89769aebc10a70b8c372a2166bf52714fe5": "parts/extra1.png",
+  "sha256:5815d534da9f3dde8e4f3cc37bfeba8ade11b6c817ce936e9454125a95139b70": "parts/head.png",
+  "sha256:2bf9c9c8d79f18e9388aa9516f4260224357434da845bdbfc35ae75dc5df2d4a": "parts/armR.png",
+  "sha256:1b90ab639cacfc95c1c1e2a3bb039f590bb6c5dc2aa1c0ee947108493c9aeb4d": "sticker.png",
+  "sha256:4cea1b2e6a644b2e6523ab478ed7aacede5e80a59d0181b7b1e83ad0d1ce4b69": "thumb.png",
+  "sha256:c67c9b34207c27d45e8a5e31d26124f26391b098e19b0d0f4138d03f9d9b2c37": "doc.json",
+  "sha256:8835ee0853238126e6c8e9b24225b7f94645d6da4dce8411b9c12998682f4d9b": "cels/armL.png",
+  "sha256:01a032c32653f8bbff27f7226757ba224e4941cae6d3cb803168e67e3e7f7385": "cels/armL-lines.png",
+  "sha256:4fbbbff74a4cc2c78a52c843af5a4c39db6bde80470db5972699db8b3a23f0b3": "cels/legL.png",
+  "sha256:1423d3defcfe9f178db937d9086ec0ea4bb49546c0f3efea7d44d59324f62378": "cels/legL-lines.png",
+  "sha256:65cc73a77c1bf2a5848f3c8fd02530251990d21e32bd8670cd20ace4be840924": "cels/legR.png",
+  "sha256:fdaaff76411278e5b87c6630e403d2fdc787d0a6e3c275a8c77146f0098b241e": "cels/legR-lines.png",
+  "sha256:b9b680d8874f64ea3e08371395b8b7eb4940ebb36dc5a1b1dbc9bf005f6f3056": "cels/torso.png",
+  "sha256:2a319dbc35e5b7fcb834dc5397115ed83fc38e2c29fe58cc344111624c762edc": "cels/torso-lines.png",
+  "sha256:e5af60e9eb0c1538f967ee22f4059b949e4b906ddae7b73e3157dbd9904ce662": "cels/antenna.png",
+  "sha256:dc67438cae3dda9f27b24a8c450a8bafbbb78c973910943f727ae55f23d220b4": "cels/antenna-lines.png",
+  "sha256:bc17562458fbdcb90fe03583acfcbe83ef5a1e06227d14013307333c620c5273": "cels/head.png",
+  "sha256:5939fd7fcccad6dfad84acbcb6e017365f3a580f97ee204f9f1b760536691277": "cels/head-lines.png",
+  "sha256:f8266241c9a2dc551720062d47f377ada8ae68dea6f02538141e3b0fcf904504": "cels/armR.png",
+  "sha256:8db0488fd50b2d6851eb5401d50bad7cd390c48040c38d5fed397f4cfe372818": "cels/armR-lines.png"
+ }
+}

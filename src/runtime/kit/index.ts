@@ -3,11 +3,13 @@
  * Amble.Scene`. The shell installs it once per game realm, before any game file runs.
  */
 import { loopGuard } from '../shell/loopGuard';
+import { installArtEverywhere } from './artEverywhere';
 import { bootKitGame, installBootHooks, startGame } from './boot';
 import { Character } from './character';
 import { numOf } from './dials';
 import { env, setEnv, type KitEnv } from './env';
 import { patchLoader } from './loader';
+import { installRagdolls } from './ragdoll';
 import { registerRiggedFactory } from './rigged';
 import { AmbleScene } from './scene';
 import { SOUND_NAMES } from './sounds';
@@ -35,6 +37,8 @@ export function installKit(e: KitEnv): void {
   setEnv(e);
   installBootHooks();
   patchLoader();
+  installRagdolls();
+  installArtEverywhere();
   const Amble = Object.freeze({
     Scene: AmbleScene,
     Character,

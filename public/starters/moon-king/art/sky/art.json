@@ -1,0 +1,62 @@
+{
+ "v": 1,
+ "key": "sky",
+ "script": "moon-sky",
+ "name": "Moon sky",
+ "kind": "background",
+ "rig": "none",
+ "facing": "viewer",
+ "role": "background",
+ "mode": "free",
+ "board": {
+  "w": 960,
+  "h": 540,
+  "pixelArt": false
+ },
+ "doc": "sha256:36ca338082e32929162db41653e76881f4ff231440e0c97925a9d54a528e0476",
+ "cels": [
+  "sha256:4ba5b37aae238464b0cbf8ace0e638057404ad0f923cbf6824c41016b03e6658",
+  "sha256:105b6738021d6dc91596bbe01b74a71bb402108d14036e7ed993710f1f893ebe"
+ ],
+ "parts": {},
+ "export": {
+  "hash": "404134ce8fd85a51cc6e999adcce53b62d8f480c90863a49183de745083ec57c",
+  "flat": "sha256:404134ce8fd85a51cc6e999adcce53b62d8f480c90863a49183de745083ec57c",
+  "w": 960,
+  "h": 540,
+  "anchor": [
+   480,
+   270
+  ],
+  "inkMask": "sha256:4bd59a96d3750c189fb10793ea396c8d189f89cf63c8de49eef7f8835363f37f",
+  "parts": {},
+  "sticker": "sha256:2b6e01c352ef5174896f02f4a9f3c2d02903c98762f4ae52aa300e2b95ecabca",
+  "thumb": "sha256:d1f606f413cf374a3e87808c0ab1df626994a7ea683869ba5e0a5366f05a1926",
+  "frames": null
+ },
+ "rigData": null,
+ "rigInfo": null,
+ "palette": [
+  "#15123a",
+  "#1f1850",
+  "#2b2166",
+  "#a69ccd",
+  "#7b72a8",
+  "#5b5287",
+  "#4c4478",
+  "#382c78",
+  "#8f85bb",
+  "#ff9a5c",
+  "#4f9fe8",
+  "#5cbf4f"
+ ],
+ "files": {
+  "sha256:404134ce8fd85a51cc6e999adcce53b62d8f480c90863a49183de745083ec57c": "flat.png",
+  "sha256:4bd59a96d3750c189fb10793ea396c8d189f89cf63c8de49eef7f8835363f37f": "ink.png",
+  "sha256:2b6e01c352ef5174896f02f4a9f3c2d02903c98762f4ae52aa300e2b95ecabca": "sticker.png",
+  "sha256:d1f606f413cf374a3e87808c0ab1df626994a7ea683869ba5e0a5366f05a1926": "thumb.png",
+  "sha256:36ca338082e32929162db41653e76881f4ff231440e0c97925a9d54a528e0476": "doc.json",
+  "sha256:4ba5b37aae238464b0cbf8ace0e638057404ad0f923cbf6824c41016b03e6658": "cels/colors.png",
+  "sha256:105b6738021d6dc91596bbe01b74a71bb402108d14036e7ed993710f1f893ebe": "cels/lines.png"
+ }
+}
