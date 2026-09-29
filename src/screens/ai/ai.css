@@ -1,359 +1,219 @@
 /*
- * The AI helper's cards (§2.8, §2.16; M5): the inside of the Ask card, the progress list, the safety
- * cards, the steer toast, the build pill and What Amble sends. Tokens only.
+ * The wish box and its cards (§2.8, §2.16, MAGIC-BRIEF.md, LOOK-BRIEF.md): the inside of the World's
+ * "Change your world", the working bar, the notes a wish leaves, the wish toast over the world, the build
+ * pill, "How wishes work", the crisis card and What Amble sends. Scratch's shapes: flat white, 8 px
+ * corners, 1 px lines, no tilt, tape, texture, glow or gradient, and no AI colour. Tokens only; the shared
+ * components (buttons, chips, fields, dialogs) keep their own look.
  */
 
-/* ---------- the Ask card's inside ---------- */
-.ai-ask {
+/* ---------- the wish box ---------- */
+.wish {
   display: grid;
   gap: var(--s3);
   min-width: 0;
 }
 
-.ai-ask__scope {
+.wish__scope {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
   justify-self: start;
 }
 
-.ai-ask__scope .chip {
-  color: var(--text);
-  box-shadow: inset 0 0 0 1.5px var(--change);
-}
-
-.ai-ask__field .field__input {
+.wish__field .field__input {
   min-height: 96px;
   max-height: 168px;
   resize: none;
-  font: var(--type-body);
-  font-size: 1.0625rem;
 }
 
-.ai-ask__field .field__input:focus-visible {
-  outline: 0;
-  box-shadow:
-    inset 0 0 0 2px var(--accent),
-    var(--glow-lantern);
-}
-
-.ai-ask__field .field__input[readonly] {
-  color: var(--text-2);
-  box-shadow: inset 0 0 0 1.5px var(--line);
-}
-
-.ai-ask__row {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s3);
-}
-
-.ai-ask__chips {
+.wish__ideas {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s2);
-  flex: 1;
   min-width: 0;
 }
 
-.ai-ask__send {
-  flex: none;
+.wish__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+}
+
+.wish__go {
   margin-left: auto;
 }
 
-.ai-ask__info {
-  margin: 0;
-  font: var(--type-meta);
-  font-size: 0.8125rem;
-  color: var(--text-2);
-}
-
-.ai-ask__info .icon {
-  display: inline-block;
-  margin-right: 6px;
-  vertical-align: -3px;
-}
-
-.ai-link {
-  color: var(--ai);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  font: inherit;
-  padding: 0;
+/* a quiet text button: "How wishes work", "Try again" on a resting line */
+.wish-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 4px;
   border: 0;
+  border-radius: var(--r-sm);
+  font: var(--type-meta);
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
   background: none;
   cursor: pointer;
 }
 
-.paper .ai-link {
-  color: var(--pencil-ink);
+.wish-link:hover {
+  color: var(--brand-hover);
+  text-decoration-thickness: 2px;
 }
 
-.ai-ask__note {
+.wish__how {
+  margin-left: -4px;
+}
+
+.wish__how .icon {
+  flex: none;
+}
+
+/* when wishes rest: one quiet line where the box was */
+.wish-rest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--s2);
+  margin: 0;
+  font: var(--type-body);
+  color: var(--text-2);
+}
+
+.wish-quiet {
   margin: 0;
   font: var(--type-meta);
   color: var(--text-2);
 }
 
-/* a status line: off, offline, blocked, quota, expired, busy */
-.ai-status {
+/* ---------- working on a wish: words, Stop, a thin bar that never counts ---------- */
+.wish-working {
+  display: grid;
+  gap: var(--s2);
+}
+
+.wish-working__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.wish-working__text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: var(--type-label);
+  color: var(--text);
+}
+
+.wish-bar {
+  position: relative;
+  display: block;
+  height: 3px;
+  border-radius: var(--r-sm);
+  background: var(--bg-deep);
+  overflow: hidden;
+}
+
+.wish-bar__run {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 36%;
+  border-radius: inherit;
+  background: var(--brand-bright);
+  animation: wish-run 1.6s var(--ease-soft) infinite;
+}
+
+@keyframes wish-run {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 280% 0;
+  }
+}
+
+/* Reduced motion: nothing slides; the bar breathes. */
+:root[data-motion='reduced'] .wish-bar__run {
+  width: 100%;
+  translate: none;
+  animation: wish-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes wish-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* ---------- notes a wish leaves in the box: gentler, a member to draw, lines you wrote, didn't work, refused, private info ---------- */
+.wish-note {
   display: grid;
   gap: var(--s2);
   padding: 12px 14px;
-  border-radius: 14px;
-  background: var(--well);
-  box-shadow: inset 0 0 0 1px var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
+  background: none; /* the panel's own white (or black in High contrast) */
 }
 
-.ai-status__text {
+.wish-note--warn {
+  border-color: var(--warn);
+}
+
+.wish-note__title {
+  margin: 0;
+  font: var(--type-label);
+}
+
+.wish-note__text {
   margin: 0;
   font: var(--type-body);
 }
 
-.ai-status__sub {
-  margin: 0;
-  font: var(--type-meta);
-  color: var(--text-2);
-}
-
-.ai-status--warn {
-  box-shadow: inset 0 0 0 1.5px var(--warn);
-}
-
-.ai-status__actions {
+.wish-note__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s2);
 }
 
-/* notes on paper inside the card: toned down, added members, hand edits, explain answers */
-.ai-paper {
-  display: grid;
-  gap: var(--s2);
-  padding: 12px 14px;
-}
-
-.ai-paper__text {
-  margin: 0;
-  font: var(--type-body);
-}
-
-.ai-paper__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-}
-
-.ai-failed {
-  display: grid;
-  gap: var(--s2);
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: var(--well);
-  box-shadow: inset 0 0 0 1.5px var(--warn);
-}
-
-.ai-failed__text {
-  margin: 0;
-  font: var(--type-body);
-}
-
-.ai-failed__details {
+.wish-note__details {
   display: grid;
   gap: 4px;
   margin: 0;
   padding: 10px 12px;
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
   list-style: none;
   font: var(--type-code-diff);
   color: var(--text-2);
-  background: var(--bg-deep);
+  background: var(--well);
   overflow-wrap: anywhere;
 }
 
-/* ---------- the progress list ---------- */
-.ai-progress {
-  display: grid;
-  gap: var(--s3);
-}
-
-.ai-progress__wait {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 12px;
-  font: var(--type-label);
-  background: color-mix(in srgb, var(--ai) 14%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ai) 55%, transparent);
-}
-
-.ai-steps {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ai-step {
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  align-items: center;
-  gap: var(--s2);
-  min-height: 28px;
-  font: var(--type-label);
-  color: var(--text-2);
-}
-
-.ai-step__mark {
-  display: inline-grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  color: var(--text-2);
-}
-
-.ai-step--done {
-  color: var(--text);
-}
-
-.ai-step--done .ai-step__mark {
-  color: var(--on-alive);
-  background: var(--alive);
-}
-
-.ai-step--active {
-  color: var(--text);
-}
-
-.ai-step--active .ai-step__mark {
-  color: var(--ai);
-  box-shadow: inset 0 0 0 2px var(--ai);
-  animation: ai-pulse 1.2s var(--ease-soft) infinite;
-}
-
-@keyframes ai-pulse {
-  50% {
-    box-shadow:
-      inset 0 0 0 2px var(--ai),
-      0 0 0 4px color-mix(in srgb, var(--ai) 25%, transparent);
-  }
-}
-
-:root[data-motion='reduced'] .ai-step--active .ai-step__mark {
-  animation: none;
-}
-
-.ai-step--pending .ai-step__mark::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--line-control);
-}
-
-.ai-step__file {
-  font: var(--type-code);
-  color: var(--ai);
-}
-
-.ai-step__lines {
-  margin-left: var(--s2);
-  font: var(--type-meta);
-  color: var(--alive);
-}
-
-.ai-step__label {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 6px;
-}
-
-.ai-progress__foot {
+.wish-refusal__try {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--s3);
+  gap: var(--s2);
 }
 
-.ai-progress__keep {
-  flex: 1;
-  margin: 0;
-  font: var(--type-meta);
+.wish-refusal__label {
+  font: var(--type-label);
   color: var(--text-2);
 }
 
-/* the hero walks along a thin line as the job goes */
-.ai-walk {
-  position: relative;
-  height: 44px;
-  margin-top: 2px;
-}
-
-.ai-walk__line {
-  position: absolute;
-  inset: auto 0 6px 0;
-  height: 3px;
-  border-radius: var(--r-chip);
-  background: repeating-linear-gradient(90deg, var(--line-control) 0 6px, transparent 6px 12px);
-}
-
-.ai-walk__done {
-  position: absolute;
-  inset: auto auto 6px 0;
-  height: 3px;
-  border-radius: var(--r-chip);
-  background: var(--alive);
-  transition: width var(--t-move) var(--ease-soft);
-}
-
-.ai-walk__hero {
-  position: absolute;
-  bottom: 8px;
-  width: 36px;
-  height: 36px;
-  translate: -50% 0;
-  transition: left var(--t-move) var(--ease-soft);
-}
-
-.ai-walk__hero .sticker {
-  box-shadow: none;
-}
-
-.ai-walk__hero--walking > * {
-  display: block;
-  animation: ai-walk-bob 520ms var(--ease-soft) infinite alternate;
-  transform-origin: 50% 100%;
-}
-
-@keyframes ai-walk-bob {
-  from {
-    translate: 0 0;
-    rotate: -4deg;
-  }
-  to {
-    translate: 0 -4px;
-    rotate: 4deg;
-  }
-}
-
-:root[data-motion='reduced'] .ai-walk__hero--walking > * {
-  animation: none;
-}
-
-:root[data-motion='reduced'] :is(.ai-walk__hero, .ai-walk__done) {
-  transition: none;
-}
-
-/* ---------- personal info, refusals ---------- */
-.ai-pii {
-  display: grid;
-  gap: var(--s2);
-  margin-top: var(--s2);
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--warn) 12%, var(--well));
-  box-shadow: inset 0 0 0 1.5px var(--warn);
-}
-
-.ai-pii__text {
+.wish-pii__text {
   display: flex;
   gap: var(--s2);
   align-items: flex-start;
@@ -363,47 +223,142 @@
   color: var(--text);
 }
 
-.ai-pii__text .icon {
+.wish-pii__text .icon {
   flex: none;
   margin-top: 1px;
   color: var(--warn);
 }
 
-.ai-pii__actions {
+/* ---------- the wish toast over the world: "Done! …", or a dial the device turned ---------- */
+.wish-toast-host {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: var(--z-overlay);
+  width: max-content;
+  max-width: min(600px, calc(100vw - 32px));
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.wish-toast-host > * {
+  pointer-events: auto;
+}
+
+.wish-toast {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s2);
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: var(--lift);
+  animation: wish-toast-in var(--t-move) var(--ease-amble) both;
 }
 
-.ai-refusal {
-  display: grid;
-  gap: var(--s2);
+.wish-toast__mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-round);
+  color: var(--on-alive);
+  background: var(--alive);
 }
 
-.ai-refusal__title {
+/* the flourish: the tick pops in just after the toast rises */
+.wish-toast--done .wish-toast__mark {
+  animation: wish-pop 480ms var(--ease-pop) 140ms both;
+}
+
+.wish-toast__mark--steer {
+  color: var(--accent-text);
+  background: var(--bg-lift);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.wish-toast__text {
+  flex: 1 1 220px;
+  min-width: 0;
   margin: 0;
   font: var(--type-label);
 }
 
-.ai-refusal__note {
-  margin: 0;
-  font: var(--type-meta);
-  font-size: 0.90625rem;
-}
-
-.ai-refusal__chips {
+.wish-toast__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s2);
+  margin-left: auto;
 }
 
-.ai-refusal .chip--button {
-  color: var(--ink);
-  background: var(--paper-2);
-  box-shadow: inset 0 0 0 1.5px var(--paper-line);
+@keyframes wish-toast-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+    scale: 0.96;
+  }
 }
 
-/* ---------- dialogs: the explainer and the crisis card ---------- */
+@keyframes wish-pop {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+}
+
+:root[data-motion='reduced'] :is(.wish-toast, .wish-toast--done .wish-toast__mark) {
+  animation: wish-fade var(--t-ui) linear both;
+}
+
+@keyframes wish-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- the build pill (the Desk's top bar while a world builds): the bar's own colour ---------- */
+.wish-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-md);
+  font: var(--type-label);
+  color: inherit;
+  white-space: nowrap;
+}
+
+.wish-pill__bar {
+  width: 56px;
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.wish-pill__bar .wish-bar__run {
+  background: currentColor;
+}
+
+.wish-pill--ready .icon {
+  flex: none;
+}
+
+/* ---------- How wishes work ---------- */
+.wish-how-sheet__lines {
+  display: grid;
+  gap: var(--s3);
+}
+
+.wish-how-sheet__lines p {
+  margin: 0;
+  font: var(--type-body);
+}
+
+/* ---------- the crisis card (its words never change) ---------- */
 .ai-card__lines {
   display: grid;
   gap: var(--s3);
@@ -415,15 +370,11 @@
   font: var(--type-body);
 }
 
-.ai-card__lead {
-  font-weight: 600;
-}
-
 .ai-crisis__help {
   padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--paper-2);
-  box-shadow: inset 0 0 0 1px var(--paper-line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--well);
 }
 
 .ai-crisis__number {
@@ -431,100 +382,7 @@
   white-space: nowrap;
 }
 
-/* ---------- the steer toast ---------- */
-.ai-steer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s2) var(--s3);
-  max-width: min(560px, calc(100% - 32px));
-  padding: 8px 8px 8px 14px;
-  border-radius: 16px;
-  color: var(--text);
-  background: var(--surface-raised);
-  box-shadow:
-    inset 0 0 0 1.5px var(--alive),
-    var(--lift);
-  animation: ai-steer-in var(--t-ui) var(--ease-amble);
-}
-
-.ai-steer__icon {
-  color: var(--alive);
-  flex: none;
-}
-
-.ai-steer__text {
-  flex: 1 1 200px;
-  margin: 0;
-  font: var(--type-label);
-}
-
-.ai-steer__actions {
-  display: flex;
-  gap: var(--s2);
-}
-
-.ai-steer-host {
-  position: absolute;
-  left: var(--s4);
-  bottom: var(--s4);
-  z-index: var(--z-overlay);
-  pointer-events: none;
-}
-
-.ai-steer-host > * {
-  pointer-events: auto;
-}
-
-@keyframes ai-steer-in {
-  from {
-    opacity: 0;
-    translate: 0 10px;
-  }
-}
-
-:root[data-motion='reduced'] .ai-steer {
-  animation-name: ai-fade;
-}
-
-@keyframes ai-fade {
-  from {
-    opacity: 0;
-  }
-}
-
-/* ---------- the build pill (the Desk's top bar while a world builds) ---------- */
-.ai-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: var(--control);
-  padding: 0 14px;
-  border-radius: 14px;
-  font: var(--type-label);
-  color: var(--text);
-  background: var(--well);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ai) 60%, transparent);
-}
-
-.ai-pill__meter {
-  width: 72px;
-}
-
-.ai-pill__pct {
-  min-width: 3ch;
-  font-variant-numeric: tabular-nums;
-}
-
-.ai-pill--ready {
-  box-shadow: inset 0 0 0 1.5px var(--alive);
-}
-
-.ai-pill--ready .icon {
-  color: var(--alive);
-}
-
-/* ---------- What Amble sends (#/sent) ---------- */
+/* ---------- What Amble sends (#/sent, for grown-ups) ---------- */
 .ai-sent {
   display: grid;
   gap: var(--s4);
@@ -562,9 +420,9 @@
   display: grid;
   gap: var(--s2);
   padding: 14px 16px;
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface-raised);
 }
 
 .ai-sent__line {
@@ -597,13 +455,14 @@
   max-height: 420px;
   margin: 0;
   padding: 12px;
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
   overflow: auto;
   font: var(--type-code-diff);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: var(--text);
-  background: var(--bg-deep);
+  background: var(--well);
 }
 
 @media print {
