@@ -58,6 +58,9 @@ const COVERED = `class Game extends Amble.Scene {
 /** The same, in a game whose taps are gameplay. */
 const TAPPY = CRATE.replace('this.ticks = 0;', "this.ticks = 0;\n    this.taps = 0;\n    this.input.on('pointerdown', () => this.taps++);");
 
+/** The same, in a game that reads its taps from the kit's controls (`this.controls.pointer`). */
+const TAPPY_KIT = CRATE.replace('this.ticks = 0;', 'this.ticks = 0;\n    this.taps = 0;').replace('this.ticks++;', 'this.ticks++;\n    if (this.controls.pointer.justDown) this.taps++;');
+
 async function start(page: Page, source: string, prefs: Record<string, unknown> = {}): Promise<Frame> {
   await page.goto('/dev/player/index.html');
   await page.waitForFunction(() => !!(window as unknown as Win).harness);
@@ -105,6 +108,15 @@ test.describe('a tap on a stand-in while the game runs', () => {
 
   test('is left to a game that reads the pointer', async ({ page }) => {
     const frame = await start(page, TAPPY);
+    // Long after the mode message.
+    await page.waitForTimeout(3000);
+    await tapCrate(page);
+    await expect.poll(() => frame.evaluate(() => (window as unknown as { __ambleGame: { scene: { taps: number } } }).__ambleGame.scene.taps), { timeout: 15_000 }).toBe(1);
+    expect(await clicks(page)).toEqual([]);
+  });
+
+  test("is left to a game that reads the kit's pointer", async ({ page }) => {
+    const frame = await start(page, TAPPY_KIT);
     // Long after the mode message.
     await page.waitForTimeout(3000);
     await tapCrate(page);

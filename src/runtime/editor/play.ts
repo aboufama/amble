@@ -30,7 +30,7 @@ function gameListeners(input: Phaser.Input.InputPlugin, event: string): number {
 /** True when the game reads the pointer, so a tap is part of playing. */
 export function usesPointer(scene: AmbleScene): boolean {
   const k = scene.__kit;
-  if (k?.physicsType === 'matter') return true;
+  if (k?.physicsType === 'matter' || k?.controls?.pointerRead) return true;
   const input = scene.input;
   if (input && gameListeners(input, 'pointerdown') + gameListeners(input, 'pointerup') + gameListeners(input, 'gameobjectdown') > 0) return true;
   return scene.children.list.some((o) => isActor(o) && (o as Shooter).shooterState?.opts.aim === 'pointer');
