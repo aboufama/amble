@@ -17,7 +17,8 @@ import type { PlayerHost } from '../../src/app/player/host';
 import { createStarterCatalog } from '../../src/starters/api';
 import { getState, resetState } from '../../src/state/store';
 import { MemoryStore } from '../../src/store/memory';
-import { samplePlan, sampleWorld } from '../foundation/samples';
+import { readStatics } from '../../src/pipeline/manifest';
+import { sampleArt, samplePlan, sampleWorld } from '../foundation/samples';
 
 function services(over: Partial<Services> = {}): Services {
   const s: Services = {
@@ -98,6 +99,21 @@ describe('seeds, renames and copies', () => {
     expect(world.origin).toMatchObject({ kind: 'starter', starter: 'moon-king', withArt: false });
     expect(world.cast.hero.art).toBe('a_hero000001');
     expect(await store.worlds.get(world.id)).not.toBeNull();
+  });
+
+  it('calls the hero by the name the student gave it, not the starter’s', async () => {
+    const { store, starters } = services();
+    await store.commit({ art: [sampleArt({ id: 'a_hero000001', name: 'Blorpy' })] });
+    const world = await openSeed('moon-king', 'a_hero000001');
+    const heroKey = starters.info('moon-king').heroKey;
+    expect(readStatics(world.code).art[heroKey].name).toBe('Blorpy');
+    expect((await store.worlds.get(world.id))?.code).toEqual(world.code);
+    // The rest of the starter is untouched, line for line.
+    const plain = (await starters.open('moon-king', { withArt: false })).world.code;
+    expect(world.code.map((f) => f.source.split('\n').length)).toEqual(plain.map((f) => f.source.split('\n').length));
+    expect(readStatics(world.code).art.moonKing).toEqual(readStatics(plain).art.moonKing);
+    // With no hero, the starter keeps its own names.
+    expect(readStatics((await openSeed('moon-king', null)).code).art[heroKey].name).toBe(readStatics(plain).art[heroKey].name);
   });
 
   it('renames (40 characters at most) and makes copies with their own Footsteps', async () => {

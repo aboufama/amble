@@ -30,11 +30,18 @@ async function commitWorld(world: World, extra: { art?: ArtRecord[]; blobs?: Blo
   return world;
 }
 
-/** A world type with the student's hero drawn and everything else as just bones ("Give Blorp a world"). */
+/**
+ * A world type with the student's hero drawn and everything else as just bones ("Give Blorp a world"). The
+ * hero keeps the name the student gave it, everywhere the world names it (the Cast, the Desk, Footsteps).
+ */
 export async function openSeed(seed: StarterId, hero: ArtId | null): Promise<World> {
-  const { starters } = getServices();
+  const { starters, store } = getServices();
   const { world, art, blobs } = await starters.open(seed, hero ? { withArt: false, hero } : { withArt: false });
-  return commitWorld(world, { art, blobs });
+  const name = hero ? ((await store.art.get(hero))?.name ?? '').trim() : '';
+  if (!name) return commitWorld(world, { art, blobs });
+  // The code tools load only here, never with the first screen.
+  const { renameMembers } = await import('../pipeline/ladder');
+  return commitWorld({ ...world, code: renameMembers(world.code, { [starters.info(seed).heroKey]: name }) }, { art, blobs });
 }
 
 /** The hero's cast key in a plan: the first member (the plan puts the hero first). */

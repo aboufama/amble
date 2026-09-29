@@ -56,6 +56,8 @@ test('the doodle brought to life on the First page plays the hero of the seed', 
   }, worldId);
   expect(opened.origin).toMatchObject({ kind: 'starter', withArt: false });
   expect(opened.slot).toMatchObject({ art: doodle.id, madeBy: 'student' });
+  // The world calls the hero by the creature's own name, not the starter's.
+  await expect(page.getByTestId(`cast-card-${opened.hero}`)).toContainText(doodle.name);
 
   // The game got the doodle itself as its hero (same picture, with its bones), and nothing else is drawn.
   const loads = await page.evaluate(() => (window as unknown as { __loaded: Loaded[][] }).__loaded);
