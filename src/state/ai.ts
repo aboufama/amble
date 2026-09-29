@@ -362,9 +362,12 @@ export function startFix(world: World, problems: PlayerError[]): Promise<AiOutco
   return run(world, 'fix', t('ai.stepFixedPlain'), (c) => getServices().ai.fix(world, problems, jobOptions(world, c)));
 }
 
-/** Draw while it builds (§2.5): the build runs in the background; the stored world gets its result. */
+/**
+ * Draw while it builds (§2.5): the build runs in the background; the stored world gets its result. Its
+ * footstep quotes what the student asked for (their idea), not the plan's pitch, which the AI wrote.
+ */
 export function startBuild(world: World, plan: PlanReply): Promise<AiOutcome> {
-  return run(world, 'build', plan.pitch || plan.title, (c) => getServices().ai.build(world, plan, jobOptions(world, c)));
+  return run(world, 'build', world.pitch || plan.pitch || plan.title, (c) => getServices().ai.build(world, plan, jobOptions(world, c)));
 }
 
 /**
