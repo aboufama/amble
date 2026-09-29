@@ -78,7 +78,7 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
   const job = useStore((s) => (s.ai.job?.worldId === world.id ? s.ai.job : null));
   const outcomeFor = useStore((s) => (s.ai.outcomeFor?.worldId === world.id ? s.ai.outcomeFor : null));
   const outcome = useStore((s) => (s.ai.outcomeFor?.worldId === world.id ? s.ai.lastOutcome : null));
-  const explainerOpen = useStore((s) => s.ai.explainer !== null && (s.ai.explainer.worldId === world.id || s.ai.explainer.worldId === ''));
+  const explainerOpen = useStore((s) => s.ai.explainer?.worldId === world.id);
   const explaining = useStore((s) => s.ai.explaining === world.id);
   const explained = useStore((s) => (s.ai.explain?.worldId === world.id ? s.ai.explain : null));
   const school = useStore((s) => s.config.school);

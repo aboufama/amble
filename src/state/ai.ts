@@ -394,13 +394,6 @@ export function closeExplainer(): void {
   });
 }
 
-/** Opens the explainer on its own (M1's idea box shows it before the first idea). */
-export function openExplainer(worldId: WorldId | null = null): void {
-  setState((s) => {
-    s.ai.explainer = { worldId: worldId ?? '', words: '', scope: null };
-  });
-}
-
 // ------------------------------------------------------------------ explain-only classes
 
 let explainController: AbortController | null = null;
