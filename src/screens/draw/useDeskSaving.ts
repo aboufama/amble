@@ -3,12 +3,14 @@
  * cels not saved yet), and a commit of the drawing at checkpoints: 20 s after the last change, when the page
  * is hidden (a closed lid), and when the Desk closes. A new drawing with no ink is never saved. A failed
  * save says so once and offers Save to Drive; drawing goes on (drafts and the stroke log still work).
+ * Drawing a damaged drawing again (its saved file can't be read), the checkpoints write drafts only: the
+ * record, and the drawing the game plays, stay as they are until Bring to life replaces them.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { savesSettled, trackSave as track } from '../../draw/artId';
 import type { FilesApi } from '../../files/api';
 import type { DeskController } from '../../draw/deskController';
-import { saveDrawing, writeDraft } from '../../draw/drafts';
+import { checkpointDrawing, writeDraft } from '../../draw/drafts';
 import type { DeskSetup } from '../../draw/load';
 import { t } from '../../i18n';
 import type { ArtRecord, BlobRef } from '../../model/types';
@@ -30,6 +32,8 @@ export interface DeskSaving {
   record(): ArtRecord | null;
   /** Bring to life committed the drawing itself. */
   broughtToLife(record: ArtRecord): void;
+  /** The saved drawing can't be read: the new one is kept as a draft until Bring to life. */
+  damaged(): boolean;
   /** Commits now (Ctrl+S). */
   saveNow(): Promise<void>;
 }
@@ -40,6 +44,7 @@ export type NameOf = () => string;
 export function useDeskSaving(ctrl: DeskController | null, setup: DeskSetup, store: Store, files: FilesApi, nameOf: NameOf): DeskSaving {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const record = useRef<ArtRecord | null>(setup.record);
+  const damaged = useRef(setup.damaged);
   const saved = useRef<Set<BlobRef>>(new Set(setup.saved));
   const changed = useRef(false);
   const draftTimer = useRef(0);
@@ -78,7 +83,7 @@ export function useDeskSaving(ctrl: DeskController | null, setup: DeskSetup, sto
       try {
         const doc = await c.surface.doc();
         doc.name = nameOf();
-        const rec = await saveDrawing(store, {
+        const rec = await checkpointDrawing(store, {
           doc,
           artId: setup.artId,
           previous: record.current,
@@ -90,9 +95,15 @@ export function useDeskSaving(ctrl: DeskController | null, setup: DeskSetup, sto
           mode: s.mode,
           parts: s.parts,
           shelf: setup.world === null,
+          damaged: damaged.current,
+          worldId: setup.world?.id ?? null,
+          castKey: setup.request.key,
+          tool: s.tool,
         });
-        record.current = rec;
-        saved.current = new Set(rec.cels);
+        if (rec) {
+          record.current = rec;
+          saved.current = new Set(rec.cels);
+        }
         // A stroke made while this saved is not in it: the drawing stays unsaved, so the next checkpoint
         // (or the one as the Desk closes) takes it. Marking it saved here would make leaving skip it.
         if (!changed.current) {
@@ -171,6 +182,7 @@ export function useDeskSaving(ctrl: DeskController | null, setup: DeskSetup, sto
     record: () => record.current,
     broughtToLife: (rec) => {
       record.current = rec;
+      damaged.current = false;
       saved.current = new Set(rec.cels);
       changed.current = false;
       clearTimeout(draftTimer.current);
@@ -178,6 +190,7 @@ export function useDeskSaving(ctrl: DeskController | null, setup: DeskSetup, sto
       setStatus('saved');
     },
     saveNow: () => (ctrl ? checkpoint(ctrl) : Promise.resolve()),
+    damaged: () => damaged.current,
   };
 }
 
@@ -194,7 +207,7 @@ export function saveOnClose(ctrl: DeskController, saving: DeskSaving, setup: Des
     doc
       .then((d) => {
         d.name = name;
-        return saveDrawing(store, {
+        return checkpointDrawing(store, {
           doc: d,
           artId: setup.artId,
           previous: saving.record(),
@@ -206,6 +219,10 @@ export function saveOnClose(ctrl: DeskController, saving: DeskSaving, setup: Des
           mode: s.mode,
           parts: s.parts,
           shelf: setup.world === null,
+          damaged: saving.damaged(),
+          worldId: setup.world?.id ?? null,
+          castKey: setup.request.key,
+          tool: s.tool,
         });
       })
       .catch((err: unknown) => console.warn('The drawing could not be saved on the way out:', err)),

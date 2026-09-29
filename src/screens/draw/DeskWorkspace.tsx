@@ -405,6 +405,12 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
             {t('draw.sheetHelp')}
           </p>
           <RequestNote request={ctrl?.request ?? request} readAloudOn={prefs.readAloud} onToast={setToast} />
+          {setup.damaged && (
+            <p className="desk-damaged" role="status" data-testid="desk-damaged">
+              <Icon name="warning" size={18} />
+              <span>{t(setup.world ? 'draw.damaged' : 'draw.damagedFree')}</span>
+            </p>
+          )}
           {ctrl && s?.guides && <PivotPin ctrl={ctrl} pin={s.pin} name={name} stage={stage} />}
           <DeskToast text={toast} onDone={clearToast} />
           {ctrl && perfHud && <PerfHud ctrl={ctrl} />}
