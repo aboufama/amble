@@ -23,6 +23,12 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
 /** Standard gamepad mapping: A jump, X fire, B dash, Y action, Start pause. */
 const PAD: Partial<Record<Action, number[]>> = { jump: [0], fire: [2, 7], dash: [1, 5], action: [3], pause: [9] };
 
+/**
+ * The kit's own pointer listeners (the tap that starts a title card or restarts after a loss). Every kit
+ * scene has one, so they never make a game "read the pointer": a tap on a just-bones member still lifts it.
+ */
+export const KIT_POINTER_LISTENERS = new WeakSet<(...args: never[]) => unknown>();
+
 export class Controls {
   bind: Record<Action, string[]> = JSON.parse(JSON.stringify(DEFAULT_BINDINGS)) as Record<Action, string[]>;
   /** The touch overlay and the robot bot write here (shared with the runtime). */
@@ -60,6 +66,7 @@ export class Controls {
     const onPointer = () => {
       this.pointerLatch = true;
     };
+    KIT_POINTER_LISTENERS.add(onPointer);
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, onPointer);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => scene.input.off(Phaser.Input.Events.POINTER_DOWN, onPointer));
   }
