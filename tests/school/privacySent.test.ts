@@ -296,6 +296,15 @@ describe('the pages', () => {
     expect(page).toContain('Amble has not been tested with a screen reader (ChromeVox, NVDA or VoiceOver) yet.');
   });
 
+  it("say the class code goes out in a header, the developers' What Amble sends too", () => {
+    // Every request carries one credential in a header (the class code, or a key a grown-up typed).
+    expect(Object.keys(HEADER_FIELDS).sort()).toEqual(['bearer', 'class-code']);
+    expect(t('school.privSentHeader')).toMatch(/header.*class code/);
+    expect(t('ai.sentNever')).not.toMatch(/class code|key/i);
+    expect(t('ai.sentHeaders')).toMatch(/class code.*header/);
+    expect(readFileSync('src/screens/ai/WhatsSent.tsx', 'utf8')).toContain("t('ai.sentHeaders')");
+  });
+
   it("keep the developers' ChatGPT sign-in off the IT page", () => {
     expect(words(ItPage)).not.toMatch(/Sign in with ChatGPT|Codex/i);
   });

@@ -1,7 +1,9 @@
 /** The AI cards' word helpers and the hand-edit check behind "Amble also changed lines you wrote in …". */
 import { describe, expect, it } from 'vitest';
 import { handEditFile } from '../../src/pipeline/service';
-import { addedMemberText, gentlerText, nameInSentence, steerText, withoutSpans } from '../../src/screens/ai/words';
+import { mergeLayers } from '../../src/cores/ai';
+import { layerFromClassLink, layerFromEnv, layerFromManaged } from '../../src/ai';
+import { addedMemberText, explainerLines, gentlerText, nameInSentence, steerText, withoutSpans, wordsGoTo } from '../../src/screens/ai/words';
 
 describe('the steer toast', () => {
   it('says which way a dial went, and what a twist did', () => {
@@ -60,5 +62,30 @@ describe('lines the student wrote', () => {
   it('is null when those lines survive, even when they moved', () => {
     expect(handEditFile([before], [{ ...before, source: 'x\ny\na\nb\nmine1\nmine2\nc\n' }])).toBeNull();
     expect(handEditFile([code('a\n', [['starter', 2]])], [code('b\n', [['ai', 2]])])).toBeNull();
+  });
+});
+
+describe('the card before a first request', () => {
+  const BASE = 'https://amble-ai.sau99.org/v1';
+  const managed = mergeLayers([layerFromManaged({ ai: { baseUrl: BASE }, district: { name: 'SAU 99' } })]);
+  const built = mergeLayers([layerFromEnv({ VITE_AMBLE_AI_BASE_URL: BASE, VITE_AMBLE_AI_AUTH: 'none' })]);
+  const linked = mergeLayers([layerFromClassLink({ v: 1, baseUrl: BASE, code: 'OAK-1', name: 'Room 9', district: 'SAU 99' })]);
+  const home = mergeLayers([{ source: 'manual', baseUrl: 'https://api.openai.com/v1', auth: { type: 'bearer', key: 'sk-test' } }]);
+
+  it('says where the words go from the same facts as the privacy page', () => {
+    expect([managed, built, linked, home].map(wordsGoTo)).toEqual(['school', 'school', 'class', 'home']);
+    expect(wordsGoTo(null)).toBe('school');
+    expect(explainerLines(managed, null)[1]).toBe("To do that, your words go over the internet to a service SAU 99 set up. Don't type your name or other private things.");
+    expect(explainerLines(built, null)[1]).toContain('a service your school set up');
+    expect(explainerLines(linked, 'SAU 99')[1]).toContain("the service your teacher's class link turned on");
+    // At home a grown-up set it up, and no teacher sees the world unless it is handed in.
+    const atHome = explainerLines(home, null);
+    expect(atHome[1]).toContain('the service a grown-up set up here');
+    expect(atHome.join(' ')).not.toMatch(/school|teacher/i);
+    expect(explainerLines(linked, null)[2]).toContain('Your teacher can see how your world was built.');
+  });
+
+  it("says what happens in plain words, without naming the AI", () => {
+    for (const ai of [managed, built, linked, home, null]) for (const line of explainerLines(ai, 'SAU 99')) expect(line).not.toMatch(/\bAI\b/);
   });
 });

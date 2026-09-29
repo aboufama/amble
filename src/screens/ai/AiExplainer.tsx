@@ -1,12 +1,14 @@
 /**
- * "Meet the AI helper." (§2.16; M5): a paper card before the first Ask or idea on a device, with Read to
- * me. **Got it** closes it (`onClose`); **What gets sent?** opens What Amble sends.
+ * "Before you ask." (§2.16; M5): a paper card before the first Ask or idea on a device, with Read to me. It
+ * says in plain words what happens and where the words go: to a service the school or district set up, the
+ * one a teacher's class link turned on, or the one a grown-up set up at home (the facts the privacy page
+ * uses). **Got it** closes it (`onClose`); **What gets sent?** opens What Amble sends.
  */
 import { useStore } from '../../state/store';
 import { t } from '../../i18n';
 import { readAloud } from '../../ui/a11y';
 import { Button, Dialog } from '../../ui/components';
-import { useAmbleAi } from './hooks';
+import { explainerLines } from './words';
 import './ai.css';
 
 export interface AiExplainerProps {
@@ -16,10 +18,9 @@ export interface AiExplainerProps {
 }
 
 export function AiExplainer({ open, onClose, onWhatsSent }: AiExplainerProps) {
-  const ai = useAmbleAi();
-  const linkDistrict = useStore((s) => s.config.classLink?.district ?? s.config.ai?.district?.name ?? null);
-  const district = ai?.district() ?? linkDistrict ?? t('ai.districtFallback');
-  const lines = [t('ai.explainerCode'), t('ai.explainerWords', { district }), t('ai.explainerMistakes')];
+  const ai = useStore((s) => s.config.ai);
+  const linkDistrict = useStore((s) => s.config.classLink?.district ?? null);
+  const lines = explainerLines(ai, linkDistrict);
   const canRead = typeof speechSynthesis !== 'undefined';
   return (
     <Dialog

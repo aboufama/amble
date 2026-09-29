@@ -1,9 +1,11 @@
 /**
  * An exported game page ("Share as a web page"): the runtime and the game travel inside the page. The page
  * holds a JSON block (`#amble-standalone`) with the game; a ▶ Play card starts it inside the click, so
- * sound is allowed from the first frame.
+ * sound is allowed from the first frame. When whoever shared it had Captions on, the page shows the words
+ * for game sounds in a strip at the bottom, as the editor does.
  */
-import { DEFAULT_PREFS, STANDALONE_DATA_ID, parsePrefs, type DrawnArt, type InitMessage, type SoundAsset, type StandaloneGame } from '../../play/protocol';
+import { CaptionQueue } from '../../play/captions';
+import { DEFAULT_PREFS, STANDALONE_DATA_ID, parsePrefs, type DrawnArt, type GameEvent, type InitMessage, type SoundAsset, type StandaloneGame } from '../../play/protocol';
 
 function bytesOf(b64: string): ArrayBuffer {
   const bin = atob(b64);
@@ -17,7 +19,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 }
 
 /** Reads the embedded game, or null when this is not an exported page. */
-export function readStandalone(): { title: string; init: InitMessage } | null {
+export function readStandalone(): { title: string; init: InitMessage; captions: boolean } | null {
   const el = document.getElementById(STANDALONE_DATA_ID);
   if (!el?.textContent) return null;
   let data: unknown;
@@ -44,10 +46,10 @@ export function readStandalone(): { title: string; init: InitMessage } | null {
     dials: isRecord(d.dials) ? (d.dials as Record<string, number>) : {},
     twists: Array.isArray(d.twists) ? d.twists : [],
     storage: {},
-    prefs: parsePrefs({}, { ...DEFAULT_PREFS, ghostTaps: false }),
+    prefs: parsePrefs({ captions: d.captions === true }, { ...DEFAULT_PREFS, ghostTaps: false }),
     autostart: false,
   };
-  return { title: typeof d.title === 'string' ? d.title : 'Amble game', init };
+  return { title: typeof d.title === 'string' ? d.title : 'Amble game', init, captions: d.captions === true };
 }
 
 const CSS = `
@@ -78,4 +80,47 @@ export function showPlayCard(title: string, onPlay: () => void): void {
   wrap.append(button);
   document.body.append(wrap);
   button.focus();
+}
+
+const CAPTION_CSS = `
+.amble-captions{position:absolute;left:50%;bottom:12px;z-index:30;max-width:calc(100% - 32px);padding:4px 12px;border-radius:12px;
+  background:rgba(0,0,0,.82);color:#fff;font:600 16px/1.35 system-ui,sans-serif;text-align:center;transform:translateX(-50%);pointer-events:none}
+.amble-captions[hidden]{display:none}
+.amble-captions p{margin:0;overflow-wrap:anywhere}
+`;
+
+/**
+ * The page's caption strip (the editor's, without its themes): each caption shows for about 2.5 s, two at
+ * most. Returns what to hand the runtime for the game's events.
+ */
+export function showCaptions(): (event: GameEvent) => void {
+  const style = document.createElement('style');
+  style.textContent = CAPTION_CSS;
+  document.head.append(style);
+  const strip = document.createElement('div');
+  strip.className = 'amble-captions';
+  strip.hidden = true;
+  document.body.append(strip);
+  const queue = new CaptionQueue();
+  let timer = 0;
+  const render = () => {
+    window.clearTimeout(timer);
+    const now = performance.now();
+    const lines = queue.lines(now);
+    strip.replaceChildren(
+      ...lines.map((l) => {
+        const p = document.createElement('p');
+        p.textContent = l.text;
+        return p;
+      }),
+    );
+    strip.hidden = lines.length === 0;
+    const next = queue.nextChange();
+    if (next !== null) timer = window.setTimeout(render, Math.max(16, next - now));
+  };
+  return (event) => {
+    if (event.kind !== 'caption') return;
+    queue.push(event.text, performance.now());
+    render();
+  };
 }

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import { useCommand } from '../../app/keys';
 import { ScreenFrame } from '../../app/frame/ScreenFrame';
 import { TopBar } from '../../app/frame/TopBar';
+import { GameAccess } from '../../app/player/GameAccess';
 import { usePlayerSlot } from '../../app/player/slots';
 import { navigate } from '../../app/router';
 import type { RouteOf } from '../../app/routes';
@@ -75,6 +76,7 @@ function WorldSlot({ title }: { title: string }) {
         <Lamppost height={44} />
         <span className="code-world__title">{title}</span>
       </div>
+      <GameAccess />
     </div>
   );
 }

@@ -2,9 +2,10 @@
  * The world view (§2.6): where the running game shows (the PlayerLayer's iframe is placed over the slot),
  * with the editor's overlays above it, never inside the frame: the Loading picture, "The world stopped.",
  * the AI progress pill, the request tag and coach mark, the problem card, the new-version card, the steer
- * toast, Change mode's layer, and the Exit button in full screen.
+ * toast, Change mode's layer, the game's captions and text mirror, and the Exit button in full screen.
  */
 import { forwardRef, useEffect, useState, type ReactNode, type RefObject } from 'react';
+import { GameAccess } from '../../app/player/GameAccess';
 import { t } from '../../i18n';
 import type { CastMember, World } from '../../model/types';
 import { useStore } from '../../state/store';
@@ -83,6 +84,9 @@ function AiPill({ world }: { world: World }) {
   );
 }
 
+/** The cards at the bottom of the world view, which captions stay above. */
+const BOTTOM_CARDS = '.request-tag, .problem-card, .new-version, .ai-steer';
+
 export interface WorldViewProps {
   world: World;
   slotRef: RefObject<HTMLDivElement | null>;
@@ -133,6 +137,7 @@ export const WorldView = forwardRef<HTMLDivElement, WorldViewProps>(function Wor
       {/* Above Change mode's veil, so a broken or stopped world can be fixed from either mode. */}
       <ProblemCard world={world} onRestart={onRestart} />
       <Stopped onRestart={onReload} />
+      <GameAccess avoid={BOTTOM_CARDS} />
       {fullscreen && (
         <Button
           variant="ghost"

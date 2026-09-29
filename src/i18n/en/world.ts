@@ -209,6 +209,19 @@ export const world = {
   // ---- full screen
   fullscreenFailed: "This browser won't go full screen here.",
 
+  // ---- the game's text mirror (a screen reader hears it; src/app/player/mirror.ts)
+  mirrorLabel: 'What happens in the game',
+  mirrorScore: 'Score: {n}.',
+  mirrorHearts: 'Hearts: {n} of {max}.',
+  mirrorHeartsNoMax: 'Hearts: {n}.',
+  mirrorLevel: 'Level {n}.',
+  mirrorWin: '{text} Score: {score}. Press R to play again.',
+  mirrorYouWin: 'You win!',
+  mirrorLose: '{text} Score: {score}. Press R to try again.',
+  mirrorGameOver: 'Game over.',
+  mirrorTitle: '{title} Press Space to start.',
+  mirrorTitleSub: '{title} {sub} Press Space to start.',
+
   // ---- Sounds sheet
   soundsTitle: 'Sounds',
   soundsIntro: 'Change how your world sounds. Changes play when you close this.',

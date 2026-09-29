@@ -43,6 +43,8 @@ export interface KitEnv {
   drawn: DrawnStore;
   /** The student's recordings, by name. */
   sounds: Map<string, AudioBuffer>;
+  /** The captions the student wrote for their sounds (Sounds sheet), by name. */
+  soundCaptions: Map<string, string>;
   flash: FlashLimiter;
   audio: AudioHub;
   storage: MemoryStorage;

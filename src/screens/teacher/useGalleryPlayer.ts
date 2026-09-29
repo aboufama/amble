@@ -39,7 +39,10 @@ export function useGalleryPlayer(item: GalleryItem | null, slot: RefObject<HTMLE
   const [muted, setMuted] = useState(true);
   const [run, setRun] = useState(0);
   const current = useRef<string | null>(null);
-  usePlayerSlot('gallery', slot, state === 'playing');
+  // The game has the slot from the start of its load: a game frame that is hidden or has no size never
+  // draws its first frame (the browser holds such frames back), so it would sit on "Starting…" for ever.
+  // The poster and "Starting…" stay over it until then (teacher.css).
+  usePlayerSlot('gallery', slot, state === 'loading' || state === 'playing');
 
   const id = item?.id ?? null;
   const ready = item?.status === 'ready';

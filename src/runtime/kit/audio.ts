@@ -56,25 +56,45 @@ const lastPlayed = new Map<string, number>();
 const lastCaption = new Map<string, number>();
 let voices = 0;
 
+/** Captions are wanted: the player turned them on (never in a robot test, which nobody watches). */
+function captionsWanted(): boolean {
+  const e = env();
+  return e.prefs.captions && e.mode !== 'robot';
+}
+
+/** The words for one of the student's own sounds: what they wrote in the Sounds sheet, else its name. */
+function ownCaption(name: string): string {
+  return env().soundCaptions.get(name) ?? `[${name}]`;
+}
+
+/**
+ * Posts a sound's caption, at most once every 1.2 s per sound. It goes out even when the game is muted or
+ * its sound is still locked: captions are for players who can't hear it.
+ */
+function caption(key: string, words: string, now: number): void {
+  if (!words || !captionsWanted() || now - (lastCaption.get(key) ?? -1e9) <= 1200) return;
+  lastCaption.set(key, now);
+  env().post({ type: 'event', event: { kind: 'caption', text: words } });
+}
+
 /** Plays a sound effect (rate-limited per name, at most 12 at once, with a little random pitch). */
 export function playSfx(game: Phaser.Game, name: string | SynthSegment[], o: SfxOptions = {}): void {
   const e = env();
   const ctx = e.audio.ctx;
   const out = output(game);
-  if (!ctx || !out || e.prefs.muted) return;
+  const audible = !!ctx && !!out && !e.prefs.muted;
+  if (!audible && !captionsWanted()) return;
   const recorded = typeof name === 'string' ? e.sounds.get(name) : undefined;
   const recipe = recorded
-    ? { key: `rec:${String(name)}`, segments: [], caption: `[${String(name)}]` }
+    ? { key: `rec:${String(name)}`, segments: [], caption: ownCaption(String(name)) }
     : Array.isArray(name)
       ? { key: `custom:${hash(JSON.stringify(name))}`, segments: parseRecipe(name) ?? SOUNDS.pop, caption: '' }
       : recipeFor(String(name));
   const now = e.now();
+  caption(recipe.key, typeof name === 'string' && e.soundCaptions.has(name) ? ownCaption(name) : recipe.caption, now);
+  if (!audible || !ctx || !out) return;
   if (now - (lastPlayed.get(recipe.key) ?? -1e9) < (o.gap ?? 45) || voices >= 12) return;
   lastPlayed.set(recipe.key, now);
-  if (e.prefs.captions && recipe.caption && now - (lastCaption.get(recipe.key) ?? -1e9) > 1200) {
-    lastCaption.set(recipe.key, now);
-    e.post({ type: 'event', event: { kind: 'caption', text: recipe.caption } });
-  }
   if (ctx.state !== 'running') return;
   const buffer = recorded ?? e.audio.synth(recipe.key, recipe.segments);
   if (!buffer) return;
@@ -99,6 +119,16 @@ export function playSfx(game: Phaser.Game, name: string | SynthSegment[], o: Sfx
 export function patchSoundManager(game: Phaser.Game): void {
   const sm = game.sound;
   sm.pauseOnBlur = false;
+  // `this.sound.play('coin')` shows its caption too (a sound kept in Phaser's cache has none of its own).
+  const realPlay = sm.play.bind(sm);
+  sm.play = ((key: string, extra?: Phaser.Types.Sound.SoundConfig | Phaser.Types.Sound.SoundMarker) => {
+    if (typeof key === 'string' && captionsWanted()) {
+      const own = env().soundCaptions.has(key) || env().sounds.has(key);
+      const words = own ? ownCaption(key) : recipeFor(key).caption;
+      caption(`play:${key}`, words, env().now());
+    }
+    return realPlay(key, extra);
+  }) as typeof sm.play;
   const cache = game.cache.audio;
   const realAdd = sm.add.bind(sm);
   sm.add = ((key: string, config?: Phaser.Types.Sound.SoundConfig) => {

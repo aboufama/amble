@@ -13,6 +13,7 @@ import {
   type Action,
   type DrawnArt,
   type FromPlayer,
+  type GameEvent,
   type GameState,
   type InitMessage,
   type PlayerPrefs,
@@ -74,11 +75,20 @@ let swaps = 0;
 let frameMs = 0;
 const queued: ToPlayer[] = [];
 const recorder: RobotRecorder = { events: [], warnings: [], artMissing: [] };
+/** An exported page has no editor: its own script shows the game's events (captions), if it asked to. */
+let pageEvents: ((event: GameEvent) => void) | null = null;
 
 function post(msg: FromPlayer): void {
   if (msg.type === 'state') {
     if (msg.state === state) return;
     state = msg.state;
+  }
+  if (pageEvents && msg.type === 'event') {
+    try {
+      pageEvents(msg.event);
+    } catch {
+      // The page's own display: never the game's problem.
+    }
   }
   if (mode === 'robot') {
     if (msg.type === 'event' && recorder.events.length < 200) recorder.events.push(msg.event);
@@ -139,6 +149,7 @@ const env: KitEnv = {
   },
   drawn: new DrawnStore(),
   sounds: new Map(),
+  soundCaptions: new Map(),
   flash,
   audio,
   storage: createStorage({}, null),
@@ -312,6 +323,7 @@ async function init(msg: InitMessage): Promise<void> {
   env.dials = new DialRegistry(msg.dials);
   env.twistsOn = new Set(msg.twists.filter(isTwistId));
   const warn = (message: string) => post({ type: 'warn', message });
+  for (const s of msg.sounds) if (s.caption?.trim()) env.soundCaptions.set(s.key, s.caption.trim().slice(0, 60));
   await Promise.all([loadFonts(msg.fonts, warn), loadArt(msg.art, env.drawn, warn), loadSounds(msg.sounds, audio, env.sounds, warn)]);
   errors.globalPhase = 'load';
   await runFiles(msg.files, errors.scripts);
@@ -533,8 +545,10 @@ installTestHook({
 // ---------------------------------------------------------------- go
 
 if (embedded) {
-  // Called by the standalone script's ▶ Play card, inside the click (so sound can start).
-  const start = (init: InitMessage) => {
+  // Called by the standalone script's ▶ Play card, inside the click (so sound can start), with what the
+  // page shows of the game's events.
+  const start = (init: InitMessage, onEvent?: (event: GameEvent) => void) => {
+    if (typeof onEvent === 'function') pageEvents = onEvent;
     audio.unlock();
     link.inject(init);
   };

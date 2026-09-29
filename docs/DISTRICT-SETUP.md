@@ -405,11 +405,11 @@ Amble aims to meet WCAG 2.1 AA, and WCAG 2.2 AA where it can. Its accessibility 
 - Controls have names for screen readers, saves and AI progress are announced, and the focus ring stays visible.
 - There are Night, Day and High contrast themes (High contrast also follows forced colors), text up to 130%, extra spacing and easy-read letters. Menus, dialogs, settings and the in-app pages reflow at 400% zoom.
 - Reduce motion follows the Chromebook or a setting in Amble. Single-key shortcuts can be turned off. Read to me uses on-device voices only.
-- In games: the flash limiter, captions for sounds, a text copy of the score, lives and messages for screen readers, game speed at 100%, 75% or 50%, touch buttons, and Esc always leaves a game.
+- In games: the flash limiter, captions for sounds (Settings → Sound → Captions; they show even when game sound is muted, including in the Teacher desk's gallery and on a shared web page made with Captions on), a text copy of the score, hearts, levels, messages and a win or loss for screen readers, game speed at 100%, 75% or 50%, touch buttons, and Esc always leaves a game.
 - Checked on every deploy (the CI gate runs `e2e/journeys/a11y.spec.ts`): axe-core finds no WCAG 2.1 A or AA problem on any screen or dialog, and the core flow (the Trail, a starter world, Change mode, a dial, Bones, a joint, Look inside, Run it, Hand in) works from the keyboard alone with visible focus.
 - Known limits, from the statement: freehand drawing needs a mouse, pen or touch; drawings have names but no descriptions yet; the games students make may have gaps of their own.
 
-Not done yet: there is no Accessibility Conformance Report (VPAT) yet, and this repository holds no record of a screen reader (ChromeVox) review or of testing on district Chromebooks, although the in-app statement lists ChromeVox passes among its checks.
+Not done yet: there is no Accessibility Conformance Report (VPAT) yet, and Amble has not been reviewed with a screen reader (ChromeVox) or tested on district Chromebooks. The in-app statement says so too.
 
 ## 8. The in-app pages
 

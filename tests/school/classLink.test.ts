@@ -9,7 +9,21 @@ import { classLinkFromCore, classLinkToCore, encodeClassLink, loadClassLink, mer
 import { isClassLinkV1 } from '../../src/model/guards';
 import type { ClassLinkV1 } from '../../src/model/types';
 import { createSchool } from '../../src/school/api';
-import { classCodeHeaderFor, classLinkHref, encodeClassLinkV1, MAX_PAYLOAD, payloadFits, readIntake, semesterEnd, shortHref, toBase64Url, UnsafeLinkError } from '../../src/school/classLink';
+import {
+  classCodeHeaderFor,
+  classLinkHref,
+  encodeClassLinkV1,
+  loadClassCopy,
+  MAX_PAYLOAD,
+  payloadFits,
+  readIntake,
+  restoredClassLink,
+  saveClassCopy,
+  semesterEnd,
+  shortHref,
+  toBase64Url,
+  UnsafeLinkError,
+} from '../../src/school/classLink';
 import { testEndpoint } from '../../src/school/testConnection';
 import { makeQr, qrPath, qrScannable } from '../../src/school/qr';
 import { getState, resetState } from '../../src/state/store';
@@ -171,6 +185,25 @@ describe("the AI core's flat format and the app's", () => {
     expect(classLinkFromCore(classLinkToCore({ ...app, ai: { ...app.ai!, auth: { type: 'none' } } })!)).toEqual({ ...app, ai: { ...app.ai!, auth: { type: 'none' } } });
   });
 
+  it('keeps a header that comes with no class code, both ways', () => {
+    // A district's own flat link can name its header without a code: joining keeps it, field for field.
+    const headerOnly: ClassLink = { v: 1, baseUrl: BASE, model: 'amble-default', header: 'X-District-Class', name: 'Room 9' };
+    expect(validateClassLink(headerOnly)).toEqual({ ok: true, link: headerOnly });
+    const joined = classLinkFromCore(headerOnly);
+    expect(joined.ai).toMatchObject({ auth: { type: 'none' }, header: 'X-District-Class' });
+    expect(isClassLinkV1(joined)).toBe(true);
+    expect(classLinkToCore(joined)).toEqual({ ...headerOnly, policy: { enabled: true, mode: 'on', ageBand: 'middle' } });
+    expect(classLinkFromCore(classLinkToCore(joined)!)).toEqual(joined);
+    const read = parseClassLink(`#class=${encodeClassLink(headerOnly)}`, NOW);
+    expect(read).toEqual({ ok: true, link: joined });
+    // App → flat → app, and through the Teacher desk's own format.
+    const app2: ClassLinkV1 = { ...app, ai: { ...app.ai!, auth: { type: 'none' }, header: 'X-District-Class' } };
+    expect(classLinkFromCore(classLinkToCore(app2)!)).toEqual(app2);
+    expect(parseClassLink(fragment(app2), NOW)).toEqual({ ok: true, link: app2 });
+    // A header the AI core would drop makes the link unreadable, as with a code.
+    expect(parseClassLink(fragment({ ...app2, ai: { ...app2.ai!, header: 'Cookie' } }), NOW)).toEqual({ ok: false, reason: 'damaged' });
+  });
+
   it('joins a flat link from the address bar with its policy, and the AI config follows it', async () => {
     const read = parseClassLink(`#class=${encodeClassLink(flat)}`, NOW);
     expect(read?.ok).toBe(true);
@@ -237,7 +270,10 @@ describe("the class code's header on the Teacher desk", () => {
 });
 
 describe('joining and leaving', () => {
-  afterEach(() => resetState());
+  afterEach(() => {
+    resetState();
+    vi.unstubAllGlobals();
+  });
 
   it('keeps the class in the store and the config slice', async () => {
     const store = new MemoryStore();
@@ -257,5 +293,77 @@ describe('joining and leaving', () => {
     createSchool(store);
     await new Promise((r) => setTimeout(r, 10));
     expect(getState().config.classLink?.cls).toBe('Room 9');
+  });
+
+  it('brings the class back with its assignment when the store lost its copy', async () => {
+    const local = memoryStorage();
+    vi.stubGlobal('localStorage', local);
+    const link = sampleClassLink({ cls: 'Room 9', exp: '2027-06-30', asg: sampleAssignment() });
+    await createSchool(new MemoryStore()).join(link);
+    expect(loadClassCopy(local)).toEqual(link);
+    resetState();
+
+    // A new store (its data was cleared, or its save failed): localStorage still has the class.
+    const fresh = new MemoryStore();
+    const school = createSchool(fresh);
+    await vi.waitFor(() => expect(getState().config.classLink).toEqual(link));
+    await vi.waitFor(async () => expect(await fresh.settings.get('classLink')).toEqual(link));
+
+    // Leaving forgets both copies.
+    await school.leave();
+    expect(loadClassLink(local)).toBeNull();
+    expect(loadClassCopy(local)).toBeNull();
+  });
+
+  it('brings back a class with no AI address, which the AI core never keeps', async () => {
+    const local = memoryStorage();
+    vi.stubGlobal('localStorage', local);
+    const link = sampleClassLink({ ai: null, mode: 'off', asg: sampleAssignment() });
+    await createSchool(new MemoryStore()).join(link);
+    expect(loadClassLink(local)).toBeNull();
+    resetState();
+    createSchool(new MemoryStore());
+    await vi.waitFor(() => expect(getState().config.classLink).toEqual(link));
+  });
+
+  it("rebuilds the AI core's copy from the app's when only that one is left", async () => {
+    const local = memoryStorage();
+    vi.stubGlobal('localStorage', local);
+    const link = sampleClassLink({ asg: sampleAssignment() });
+    saveClassCopy(link, local);
+    createSchool(new MemoryStore());
+    await vi.waitFor(() => expect(getState().config.classLink).toEqual(link));
+    await vi.waitFor(() => expect(loadClassLink(local)).toMatchObject({ baseUrl: 'https://ai.test/v1', code: 'TEST-1234', name: 'Room 12' }));
+  });
+});
+
+describe('the class rebuilt from localStorage', () => {
+  const link = sampleClassLink({ asg: sampleAssignment() });
+  const checked = validateClassLink(classLinkToCore(link));
+  const core = checked.ok ? checked.link : null;
+
+  it("takes the app's copy when it is the AI core's class: the assignment comes back", () => {
+    expect(core).not.toBeNull();
+    expect(restoredClassLink(core, link)).toEqual(link);
+    expect(restoredClassLink(null, link)).toEqual(link);
+  });
+
+  it("takes the AI core's copy, converted, when there is no other or they disagree", () => {
+    expect(restoredClassLink(core, null)).toEqual({ ...link, asg: null });
+    const other = sampleClassLink({ cls: 'Room 7', asg: sampleAssignment() });
+    expect(restoredClassLink(core, other)?.cls).toBe('Room 12');
+    expect(restoredClassLink(core, other)?.asg).toBeNull();
+    // An app copy the AI core would refuse is not used either.
+    const unsafe = sampleClassLink({ ai: { baseUrl: 'http://ai.example/v1', model: 'm', auth: { type: 'none' } } });
+    expect(restoredClassLink(null, unsafe)).toBeNull();
+    expect(restoredClassLink(null, null)).toBeNull();
+  });
+
+  it('ignores a copy that is not a class link', () => {
+    const local = memoryStorage();
+    local.setItem('amble:class-link:app', '{"v":1,"cls":{"no":"name"}}');
+    expect(loadClassCopy(local)).toBeNull();
+    local.setItem('amble:class-link:app', 'not json');
+    expect(loadClassCopy(local)).toBeNull();
   });
 });

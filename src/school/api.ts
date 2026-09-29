@@ -1,19 +1,19 @@
 /**
  * Class links, joining a class and assignment checks (§2.13, §2.14, §8.4; M7).
  *
- * The class this Chromebook joined lives in two places: `settings.classLink` (the app's `ClassLinkV1`,
- * with the class's AI mode and assignment) and the AI core's own copy in localStorage, which is what
- * `resolveAiConfig` reads for the address and the class code. Joining and leaving keep both in step, and
- * so does boot, if one of them was lost.
+ * The class this Chromebook joined lives in `settings.classLink` (the app's `ClassLinkV1`, with the class's
+ * AI mode and assignment) and in localStorage: the AI core's own copy, which is what `resolveAiConfig` reads
+ * for the address and the class code, and the app's copy beside it (the core's format has no place for the
+ * assignment). Joining and leaving keep them in step, and so does boot, if one of them was lost.
  */
-import { classLinkFromCore, classLinkToCore, clearClassLink, loadClassLink, saveClassLink } from '../cores/ai';
+import { classLinkToCore, clearClassLink, loadClassLink, saveClassLink } from '../cores/ai';
 import type { GameManifest } from '../cores/play';
 import { isClassLinkV1 } from '../model/guards';
 import type { CheckResult, ClassLinkIntake, ClassLinkV1, World } from '../model/types';
 import { refreshConfig, setConfig } from '../state/config';
 import { getState } from '../state/store';
 import type { Store } from '../store/api';
-import { currentClassName, readIntake } from './classLink';
+import { currentClassName, loadClassCopy, readIntake, restoredClassLink, saveClassCopy } from './classLink';
 
 export interface SchoolApi {
   /** Called by the router at boot with the location hash. */
@@ -39,6 +39,7 @@ function saveCoreCopy(link: ClassLinkV1): void {
   try {
     if (core) saveClassLink(core, local());
     else clearClassLink(local());
+    saveClassCopy(link, local());
   } catch {
     // Storage blocked: the class lasts for this visit (files-only mode).
   }
@@ -48,23 +49,27 @@ function saveCoreCopy(link: ClassLinkV1): void {
 async function restoreClass(store: Store): Promise<void> {
   const stored = await store.settings.get('classLink').catch(() => null);
   let core = null;
+  let copy = null;
   try {
     core = loadClassLink(local());
+    copy = loadClassCopy(local());
   } catch {
-    core = null;
+    // Storage blocked: only the store's copy can be read.
   }
   if (stored && isClassLinkV1(stored)) {
     setConfig({ classLink: stored });
-    if (!core && stored.ai) {
-      saveCoreCopy(stored);
-      await refreshConfig().catch(() => undefined);
-    }
+    if ((!core && stored.ai) || !copy) saveCoreCopy(stored);
+    if (!core && stored.ai) await refreshConfig().catch(() => undefined);
     return;
   }
-  if (core) {
-    const link = classLinkFromCore(core);
-    setConfig({ classLink: link });
-    await store.settings.put('classLink', link).catch(() => undefined);
+  // The store's copy is gone (cleared, or a save that failed): the class comes back, assignment and all.
+  const link = restoredClassLink(core, copy);
+  if (!link) return;
+  setConfig({ classLink: link });
+  await store.settings.put('classLink', link).catch(() => undefined);
+  if (!core && link.ai) {
+    saveCoreCopy(link);
+    await refreshConfig().catch(() => undefined);
   }
 }
 
@@ -83,6 +88,7 @@ export function createSchool(store: Store): SchoolApi {
     async leave() {
       try {
         clearClassLink(local());
+        saveClassCopy(null, local());
       } catch {
         // Nothing stored to clear.
       }

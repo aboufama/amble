@@ -273,6 +273,7 @@ function readSpecPayload(v: Record<string, unknown>, now: Date): ClassLinkParse 
         auth && auth.type === 'class-code' && typeof auth.code === 'string'
           ? { type: 'class-code', header: typeof auth.header === 'string' ? auth.header : 'X-Amble-Class', code: auth.code.slice(0, 80) }
           : { type: 'none' },
+      ...(typeof a.header === 'string' && !(auth && auth.type === 'class-code') ? { header: a.header.slice(0, 64) } : {}),
       ...classAiPolicy(a),
     };
   }
@@ -298,15 +299,17 @@ function readSpecPayload(v: Record<string, unknown>, now: Date): ClassLinkParse 
     if (!checked.ok) return { ok: false, reason: /key|secret|token|https|safe/i.test(checked.error) ? 'unsafe' : 'damaged' };
     const auth = link.ai.auth;
     if (auth.type === 'class-code' && (checked.link.code !== auth.code || (checked.link.header ?? 'X-Amble-Class') !== auth.header)) return { ok: false, reason: 'damaged' };
+    if (auth.type === 'none' && checked.link.header !== link.ai.header) return { ok: false, reason: 'damaged' };
   }
   return { ok: true, link };
 }
 
 /**
  * The core's class link as the app's `ClassLinkV1`. Every field comes across (`classLinkToCore` takes it back):
- * the address, models, capabilities and class code, the name and district (cut to the app's 40 and 60
- * characters), the AI mode, level and expiry, and the district policy (pictures, moderation, locks, the safety
- * identifier and whether requests may be reviewed). A link with no name is named after its district.
+ * the address, models, capabilities, class code and its header (a header with no code too), the name and
+ * district (cut to the app's 40 and 60 characters), the AI mode, level and expiry, and the district policy
+ * (pictures, moderation, locks, the safety identifier and whether requests may be reviewed). A link with no
+ * name is named after its district. The core's format has no assignment: the app keeps it in its own copy.
  */
 export function classLinkFromCore(link: ClassLink): ClassLinkV1 {
   const p = link.policy;
@@ -321,6 +324,7 @@ export function classLinkFromCore(link: ClassLink): ClassLinkV1 {
       ...(link.visionModel ? { visionModel: link.visionModel } : {}),
       ...(p?.caps ? { caps: p.caps.join(',') } : {}),
       auth: link.code ? { type: 'class-code', header: link.header ?? 'X-Amble-Class', code: link.code } : { type: 'none' },
+      ...(!link.code && link.header ? { header: link.header } : {}),
       ...classAiPolicy({ visionAllowed: link.visionAllowed, moderation: p?.moderation, lock: p?.lock, safetyIdentifier: p?.safetyIdentifier, requestsMayBeReviewed: p?.requestsMayBeReviewed }),
     },
     mode: p?.enabled === false || p?.mode === 'off' ? 'off' : (p?.mode ?? 'on'),
@@ -348,7 +352,7 @@ export function classLinkToCore(link: ClassLinkV1): ClassLink | null {
     fastModel: ai.fastModel,
     visionModel: ai.visionModel,
     ...(ai.visionAllowed !== undefined ? { visionAllowed: ai.visionAllowed } : {}),
-    ...(ai.auth.type === 'class-code' ? { code: ai.auth.code, header: ai.auth.header } : {}),
+    ...(ai.auth.type === 'class-code' ? { code: ai.auth.code, header: ai.auth.header } : ai.header ? { header: ai.header } : {}),
     name: link.cls,
     district: link.district ?? undefined,
     policy: {

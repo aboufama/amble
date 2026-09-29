@@ -215,23 +215,21 @@ test('Explain this shows kit docs with the AI helper off, and its note when on',
   await expect(note).toContainText('The name shows above the bar.');
 });
 
-test('other screens open Look inside at a line, or with an explanation beside it', async ({ page }) => {
+test("the world's problem card opens Look inside at the line that broke", async ({ page }) => {
   const id = await openWorld(page);
   const source = await page.evaluate(async (worldId) => (await (window as unknown as { __amble: Hook }).__amble.store.worlds.get(worldId))!.code[0].source, id);
   const line = source.split('\n').findIndex((l) => l.includes('this.ui.bossBar(')) + 1;
-  // What the world's problem card and the explain-only Ask card call (src/screens/code/open.ts).
-  await page.evaluate(
-    async ({ worldId, from }) => {
-      const url = '/src/screens/code/open.ts';
-      const { lookInside } = (await import(url)) as { lookInside(r: unknown): void };
-      lookInside({ worldId, file: 'game.js', explain: { from, to: from, reply: { answer: 'This puts the boss health bar at the top.', lines: [], safetyNote: '' } } });
-    },
-    { worldId: id, from: line },
-  );
+  // The game reports that line broke, as the kit does when a callback throws (the player's own message).
+  await page.evaluate((at) => {
+    const player = (window as unknown as { __amble: { services: { player: { emit(m: unknown): void } } } }).__amble.services.player;
+    player.emit({ type: 'error', error: { phase: 'update', message: "Cannot read properties of undefined (reading 'hp')", file: 'game.js', line: at, column: 5, count: 1, fatal: true } });
+  }, line);
+  const card = page.getByTestId('problem-card');
+  await expect(card).toContainText(`Something in the game broke (game.js, line ${line}).`);
+  await card.getByRole('button', { name: 'Show me the line' }).click();
   await expect(page.getByTestId('screen-code')).toBeVisible();
-  await expect(page.locator('.cm-explain--ai')).toContainText('This puts the boss health bar at the top.');
-  await expect(page.locator('.cm-activeLine')).toContainText('this.ui.bossBar(');
   await expect(page).toHaveURL(new RegExp(`#/w/${id}/code/game\\.js$`));
+  await expect(page.locator('.cm-activeLine')).toContainText('this.ui.bossBar(');
 });
 
 test('kit calls have hover docs and autocomplete', async ({ page }) => {

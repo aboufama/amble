@@ -11,6 +11,7 @@ export { loadRuntime, loadRuntimeText } from './runtimeBytes';
 export { PLAYER_BOOT, STANDALONE_BOOT, playerCsp, playerSrcdoc, scriptHash } from './bootstrap';
 export { isScrollKey, keyCodeFor, shouldForwardKey, type KeyLike } from './keys';
 export { PLAYER_LIMITS, RateLimiter, type Limit } from './limits';
+export { CAPTION_CHARS, CAPTION_LINES, CAPTION_MS, CaptionQueue, type CaptionLine } from './captions';
 export * from './protocol';
 // The kit's API as data and the model-facing d.ts (pure: no Phaser comes with them).
 export {
