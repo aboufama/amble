@@ -96,10 +96,10 @@ export function runRobotTest(options: RobotTestOptions): Promise<RobotReport> {
   };
 
   const limits: RobotLimits = { ...ROBOT_LIMITS, ceilingMs: options.timeoutMs ?? ROBOT_LIMITS.ceilingMs };
-  const why = (stop: RobotStop): string => {
+  const why = (stop: RobotStop, stallMs: number): string => {
     const secs = (ms: number) => Math.round(ms / 1000);
     if (stop === 'start') return 'The game froze before it started playing (a loop that never ends in create()?).';
-    if (stop === 'stall') return `The game froze: no frame finished for ${secs(limits.stallMs)} seconds (a loop that never ends?).`;
+    if (stop === 'stall') return `The game froze: no frame finished for ${secs(stallMs)} seconds (a loop that never ends?).`;
     return `The game froze: ${secs(gameMs)} seconds of play took longer than ${secs(limits.ceilingMs)} seconds.`;
   };
 
@@ -123,7 +123,7 @@ export function runRobotTest(options: RobotTestOptions): Promise<RobotReport> {
       window.clearInterval(watchTimer);
       watchTimer = window.setInterval(() => {
         const stop = watch?.check(performance.now());
-        if (stop) finish(frozenReport(why(stop), expectedFrames, played(), thresholds, earlyErrors));
+        if (stop) finish(frozenReport(why(stop, watch?.stallLimit() ?? limits.stallMs), expectedFrames, played(), thresholds, earlyErrors));
       }, 250);
     };
     bootTimer = window.setTimeout(() => finish(frozenReport('The game did not start.', expectedFrames, played(), thresholds, earlyErrors)), BOOT_LIMIT_MS);
