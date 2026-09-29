@@ -77,3 +77,16 @@ test('#/new?idea=1 puts the caret in the idea box, not on the sheet\'s close but
   await openAmble(page, { clean: true, ai: 'mock', route: '#/new?idea=1' });
   await expect(page.getByTestId('idea-field')).toBeFocused();
 });
+
+test.describe('large text on 1280x600', () => {
+  test.use({ viewport: { width: 1280, height: 600 } });
+
+  test('the First page cards hold their words at 130 % text', async ({ page }) => {
+    await openAmble(page, { clean: true, prefs: { textScale: 1.3 } });
+    await expect(page.getByTestId('first-column').locator('.seed-card')).toHaveCount(4);
+    const spill = await page.evaluate(() =>
+      [...document.querySelectorAll('.first-col__card')].map((li) => li.querySelector('.seed-card__line')!.getBoundingClientRect().bottom - li.querySelector('.seed-card')!.getBoundingClientRect().bottom),
+    );
+    for (const s of spill) expect(s, 'the world type line stays on its card').toBeLessThanOrEqual(0);
+  });
+});

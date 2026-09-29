@@ -874,8 +874,10 @@
   margin-top: 20px;
 }
 
+/* A card is at least --card-h tall and grows with larger text (130 %) instead of spilling its words out of
+ * the paper; the column scrolls. */
 .first-col__card {
-  height: var(--card-h);
+  min-height: var(--card-h);
 }
 
 .first-col__card:nth-child(2) .seed-card {
