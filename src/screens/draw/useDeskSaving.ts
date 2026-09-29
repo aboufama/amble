@@ -93,9 +93,13 @@ export function useDeskSaving(ctrl: DeskController | null, setup: DeskSetup, sto
         });
         record.current = rec;
         saved.current = new Set(rec.cels);
-        c.surface.markSaved();
-        setStatus('saved');
-        setDraw({ dirty: false });
+        // A stroke made while this saved is not in it: the drawing stays unsaved, so the next checkpoint
+        // (or the one as the Desk closes) takes it. Marking it saved here would make leaving skip it.
+        if (!changed.current) {
+          c.surface.markSaved();
+          setStatus('saved');
+          setDraw({ dirty: false });
+        }
       } catch (err) {
         changed.current = true;
         failed(err);
