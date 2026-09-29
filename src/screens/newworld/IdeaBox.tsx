@@ -1,21 +1,19 @@
 /**
- * The idea box (§2.3, §2.5): "Tell Amble your idea" on the First page and "Or describe your own world…"
- * on the New world sheet. The words are checked on the device as the student types (400 ms after typing
- * stops): personal info shows the warning, a crisis shows the support card and nothing is sent. Sending
- * starts the plan call and goes to the plan card. With the AI helper off, it says so plainly.
+ * The idea box (§2.3, §2.5): "Or describe a whole new world" on the First page and the New world sheet.
+ * It is there only when wishes are available; otherwise the world cards are the whole choice. The words
+ * are checked on the device as the student types (400 ms after typing stops): personal info shows the
+ * warning, a crisis shows the support card and nothing is sent. Sending starts the plan and goes to the
+ * plan card. **How wishes work** opens the short, honest explainer, only when the student asks.
  */
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { Link } from '../../app/Link';
 import { navigate } from '../../app/router';
 import { useServices } from '../../app/services';
 import { t } from '../../i18n';
 import { startPlan, setIdea, usePlanSession, type PlanHero } from '../../home/planSession';
 import { useAiView } from '../../home/useAiStatus';
 import type { SafetyVerdict } from '../../model/types';
-import { markSeen } from '../../state/prefs';
 import { getState, useStore } from '../../state/store';
 import { Button } from '../../ui/components';
-import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
 import { playUiSound } from '../../ui/sounds';
 import { AiExplainer } from '../ai/AiExplainer';
@@ -27,39 +25,33 @@ import './cards.css';
 export interface IdeaBoxProps {
   variant: 'first' | 'sheet';
   hero: PlanHero | null;
-  /** The First page before Bring it to life: "Or tell Amble your idea". */
-  lead?: boolean;
   autoFocus?: boolean;
   /** Called once the plan call has started (the sheet shows its waiting state). */
   onPlanning?(): void;
-  /** With the AI helper off, show nothing (the New world sheet: world types only). */
-  hideWhenOff?: boolean;
   className?: string;
 }
 
 const MAX = 300;
 
-export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlanning, hideWhenOff = false, className }: IdeaBoxProps) {
+export function IdeaBox({ variant, hero, autoFocus = false, onPlanning, className }: IdeaBoxProps) {
   const { ai, starters } = useServices();
   const view = useAiView();
   const session = usePlanSession();
   const level = useStore((s) => s.config.level);
-  const seenExplainer = useStore((s) => Boolean(s.prefs.seen.aiExplainer));
   const [text, setText] = useState(() => (session.hero?.id === hero?.id || !hero ? session.idea : ''));
   const [verdict, setVerdict] = useState<SafetyVerdict>({ kind: 'allow' });
   const [refusal, setRefusal] = useState<Extract<SafetyVerdict, { kind: 'refuse' }> | null>(null);
   const [crisis, setCrisis] = useState(false);
   const [explainer, setExplainer] = useState(false);
-  const pending = useRef<string | null>(null);
   const field = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   const fieldId = useId();
-  const statusId = useId();
+  const titleId = useId();
 
   // In a sheet, the dialog focuses its [data-autofocus] element once it opens (showModal() would move focus
   // to its first button after this runs); on a page this puts the caret in the field.
   useEffect(() => {
     if (autoFocus) field.current?.focus({ preventScroll: true });
-  }, [autoFocus]);
+  }, [autoFocus, view.on]);
 
   // The local safety floor runs 400 ms after typing stops (§5.13).
   useEffect(() => {
@@ -97,13 +89,6 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
       return;
     }
     if (v.kind === 'pii' && v.block) return;
-    // The explainer card opens before the first idea on this device; the idea goes when it closes.
-    if (!seenExplainer) {
-      markSeen('aiExplainer');
-      pending.current = idea;
-      setExplainer(true);
-      return;
-    }
     send(idea);
   };
 
@@ -116,27 +101,8 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
     }
   };
 
-  if (!view.on && hideWhenOff) return null;
-  if (!view.on) {
-    const blocked = view.status === 'blocked' || view.status === 'offline';
-    return (
-      <section className={cx('idea-box', 'idea-box--off', `idea-box--${variant}`, className)} aria-labelledby={statusId} data-testid="idea-box-off">
-        <Icon name={blocked ? 'warning' : 'info'} size={22} className="idea-box__off-icon" />
-        <div className="idea-box__off-text">
-          <p id={statusId}>{blocked ? t('home.ideaAiBlocked', { host: view.host ?? t('home.aiHostFallback') }) : t('home.ideaAiOff')}</p>
-          {!blocked &&
-            (view.school ? (
-              <p className="idea-box__meta">{t('home.ideaAiOffSchool')}</p>
-            ) : (
-              <Link to={{ name: 'settings', section: 'ai' }} className="btn btn--ghost btn--h38 idea-box__setup">
-                <Icon name="settings" size={18} />
-                <span className="btn__label">{t('home.setUpAi')}</span>
-              </Link>
-            ))}
-        </div>
-      </section>
-    );
-  }
+  // Wishes aren't available here (off, not set up, offline, blocked...): just the world cards.
+  if (!view.on) return null;
 
   const placeholder =
     variant === 'sheet'
@@ -148,27 +114,26 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
         : t('home.ideaPlaceholder');
   const blocked = verdict.kind === 'pii' && verdict.block;
   const planning = session.status === 'waiting';
-  const status = view.district ? t('home.aiOnFrom', { district: view.district }) : t('home.aiOn');
+  // Beside the title on the wide sheet, under the field in the First page's narrower column.
+  const how = (
+    <Button variant="quiet" size={38} icon="info" className="idea-box__how" onClick={() => setExplainer(true)} data-testid="how-wishes">
+      {t('home.howWishesWork')}
+    </Button>
+  );
 
   return (
-    <section className={cx('idea-box', `idea-box--${variant}`, className)} aria-labelledby={statusId} data-testid="idea-box">
+    <section className={cx('idea-box', `idea-box--${variant}`, className)} aria-labelledby={titleId} data-testid="idea-box">
       <div className="idea-box__head">
         {variant === 'first' ? (
-          <h2 id={statusId} className="idea-box__title">
-            <span className="idea-box__nib" aria-hidden="true">
-              <Icon name="sparkle" size={18} />
-            </span>
-            {lead ? t('home.ideaTitleFirst') : t('home.ideaTitle')}
+          <h2 id={titleId} className="idea-box__title">
+            {t('home.ideaTitle')}
           </h2>
         ) : (
-          <label id={statusId} htmlFor={fieldId} className="idea-box__title idea-box__title--sheet">
-            {t('home.describe')}
+          <label id={titleId} htmlFor={fieldId} className="idea-box__title">
+            {t('home.ideaTitle')}
           </label>
         )}
-        <span className="idea-box__status">
-          <span className="chip__dot chip__dot--alive" aria-hidden="true" />
-          {status}
-        </span>
+        {variant === 'sheet' && how}
       </div>
       <form className="idea-box__row" onSubmit={submit}>
         {variant === 'first' ? (
@@ -201,10 +166,11 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
             data-testid="idea-field"
           />
         )}
-        <Button type="submit" variant="ai" size={variant === 'first' ? 38 : 44} icon={variant === 'first' ? 'star' : 'sparkle'} disabled={blocked || planning || !text.trim()} data-testid="idea-go">
+        <Button type="submit" variant="lantern" size={44} disabled={blocked || planning || !text.trim()} data-testid="idea-go">
           {variant === 'first' ? t('home.go') : t('home.imagineIt')}
         </Button>
       </form>
+      {variant === 'first' && <div className="idea-box__foot">{how}</div>}
       {verdict.kind === 'pii' && (
         <PiiWarning
           text={text}
@@ -237,15 +203,10 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
       />
       <AiExplainer
         open={explainer}
-        onClose={() => {
-          setExplainer(false);
-          const idea = pending.current;
-          pending.current = null;
-          if (idea) send(idea);
-        }}
+        onClose={() => setExplainer(false)}
         onWhatsSent={() => {
           // The idea waits in the box for the student's return.
-          if (pending.current) setIdea(pending.current, hero);
+          if (text.trim()) setIdea(text.trim(), hero);
           navigate({ name: 'page', page: 'sent' });
         }}
       />

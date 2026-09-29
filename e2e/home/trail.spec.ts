@@ -2,7 +2,8 @@
  * The Trail (§2.4): the student's worlds stand first, the most recently opened leading, then the Starter
  * worlds signpost and the starters; signs are one tab stop with arrow keys between them; the List view
  * sorts by recent or by name; Put away (Shift+F10) sends a world to Lost and found, and Bring it back
- * puts it back on the Trail.
+ * puts it back on the Trail. On a first visit the starters' heroes stand on the trail at once, and no
+ * walker ever crosses a sign's name.
  */
 import type { Page } from '@playwright/test';
 import { expect, gotoRoute, openAmble, test } from '../helpers/app';
@@ -151,3 +152,35 @@ test("a returning student's Trail opens on their own worlds, even when they are 
   expect(await scroller.evaluate((el) => el.scrollLeft)).toBe(0);
   await expect(page.locator('.trail-copy')).toBeVisible();
 });
+
+/** Walkers whose box crosses a sign's board (the board's name and date must stay readable). */
+async function walkersOnBoards(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const boards = [...document.querySelectorAll('.sign__board')].map((b) => ({ name: b.querySelector('.sign__title')?.textContent ?? '', r: b.getBoundingClientRect() }));
+    const out: string[] = [];
+    for (const w of document.querySelectorAll('[data-testid="walker"]')) {
+      const r = w.getBoundingClientRect();
+      for (const b of boards) if (r.left < b.r.right && r.right > b.r.left && r.top < b.r.bottom && r.bottom > b.r.top) out.push(`${w.getAttribute('aria-label')} on ${b.name}`);
+    }
+    return out;
+  });
+}
+
+for (const size of [
+  { width: 1366, height: 768 },
+  { width: 1366, height: 657 },
+]) {
+  test(`a first visit's starter walkers stand on the trail at once, clear of the sign names (${size.width}x${size.height})`, async ({ page }) => {
+    await page.setViewportSize(size);
+    // Still walkers (reduced motion), so what is measured is where they stand.
+    await openAmble(page, { clean: true, prefs: { seen: { firstPage: Date.now() }, reduceMotion: 'on' } });
+    await gotoRoute(page, '#/trail');
+    await expect(page.getByTestId('trail-sign').first()).toBeVisible();
+    // A cold profile: the heroes stand there as their drawings before any walk is baked.
+    await expect.poll(() => page.getByTestId('walker').count(), { timeout: 4000 }).toBeGreaterThanOrEqual(4);
+    expect(await walkersOnBoards(page)).toEqual([]);
+    // And once they walk, they still keep clear.
+    await expect.poll(() => page.locator('.walker__sprite').count(), { timeout: 60_000 }).toBeGreaterThanOrEqual(4);
+    expect(await walkersOnBoards(page)).toEqual([]);
+  });
+}

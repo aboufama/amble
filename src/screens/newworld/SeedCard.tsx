@@ -46,7 +46,7 @@ export function SeedCard({ seed, info, kind, pose = null, heroName = null, check
     <button
       ref={cardRef}
       type="button"
-      className={cx('seed-card', 'on-paper', `seed-card--${kind}`, checked && 'seed-card--checked', busy && 'seed-card--busy', className)}
+      className={cx('seed-card', `seed-card--${kind}`, checked && 'seed-card--checked', busy && 'seed-card--busy', className)}
       style={style}
       role={radio ? 'radio' : undefined}
       aria-checked={radio ? Boolean(checked) : undefined}

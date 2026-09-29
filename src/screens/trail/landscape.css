@@ -1,41 +1,70 @@
 /*
- * The Night Trail landscape (§2.4, §3): sky, hills, the lit path, lanterns. Tokens only; every loop stops
- * under reduced motion and with Pause the trail (`.trail--still`).
+ * The Trail's landscape in daylight (§2.4): a light sky, soft green hills, a sandy path. Flat shapes, no
+ * glow and no texture. The landscape's colours are the palette's tokens, mixed once here: greens from
+ * Scratch's pen green warmed with its control orange, sand from the control orange on the workspace
+ * grey. High contrast draws the same shapes as white lines on black.
  */
+.trail,
+.first {
+  --land-green: color-mix(in srgb, var(--alive-bright) 75%, var(--warm));
+  --land-hill-far: color-mix(in srgb, var(--land-green) 22%, var(--bg));
+  --land-hill-mid: color-mix(in srgb, var(--land-green) 38%, var(--surface));
+  --land-grass: color-mix(in srgb, var(--land-green) 52%, var(--surface));
+  --land-grass-edge: color-mix(in srgb, var(--land-green) 64%, var(--surface));
+  --land-sand: color-mix(in srgb, var(--warm) 22%, var(--well));
+  --land-sand-edge: color-mix(in srgb, var(--warm) 46%, var(--well));
+  --land-wood: color-mix(in srgb, var(--warm) 34%, var(--text));
+  --land-metal: color-mix(in srgb, var(--text) 88%, var(--surface));
+  --land-shadow: color-mix(in srgb, var(--text) 16%, transparent);
+  --land-line: transparent;
+}
 
-.night-sky {
+:root[data-theme='contrast'] :is(.trail, .first) {
+  --land-hill-far: var(--bg);
+  --land-hill-mid: var(--bg);
+  --land-grass: var(--bg);
+  --land-grass-edge: var(--line);
+  --land-sand: var(--bg);
+  --land-sand-edge: var(--line);
+  --land-wood: var(--line);
+  --land-metal: var(--line);
+  --land-shadow: transparent;
+  --land-line: var(--line);
+}
+
+/* ---------- the sky ---------- */
+.day-sky {
   position: absolute;
   inset: 0;
   z-index: 0;
+  overflow: hidden;
   pointer-events: none;
-  background:
-    radial-gradient(760px 300px at 51% 92%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%),
-    radial-gradient(700px 420px at 10% 14%, color-mix(in srgb, var(--change) 12%, transparent), transparent 70%),
-    linear-gradient(180deg, var(--bg-deep) 0%, var(--bg) 36%, var(--bg-lift) 68%, color-mix(in srgb, var(--bg-lift), var(--change) 9%) 100%);
+  /* --bg where the hero copy is (its words keep 4.5:1), fading to white at the horizon. */
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 34%, var(--surface) 86%);
 }
 
-.night-sky__decor {
+.day-sky__clouds {
   position: absolute;
-  inset: 0;
-  background-repeat: no-repeat;
-  background-position: right top;
-  background-size: 1366px 768px;
+  top: var(--topbar);
+  right: 0;
 }
 
-:root[data-theme='contrast'] .night-sky__decor {
+.cloud {
+  fill: var(--surface);
+}
+
+:root[data-theme='contrast'] .day-sky {
+  background: var(--bg);
+}
+
+:root[data-theme='contrast'] .day-sky__clouds {
   display: none;
 }
 
-/* Narrow screens: the moon and the waiting constellation step right, clear of the hero copy. */
+/* Narrow screens: the clouds step right, clear of the hero copy. */
 @media (max-width: 1200px) {
-  .night-sky__decor {
-    background-position: calc(100% + 110px) 0;
-  }
-}
-
-@media (max-height: 720px) {
-  .bottom-path__lantern {
-    display: none;
+  .day-sky__clouds {
+    right: -110px;
   }
 }
 
@@ -60,31 +89,20 @@
 }
 
 .hills__far {
-  fill: var(--surface-bottom);
-}
-
-.hills__far-ridge {
-  fill: none;
-  stroke: var(--line);
-  stroke-width: 1.6;
-  opacity: 0.8;
-}
-
-.hills__lights circle {
-  fill: color-mix(in srgb, var(--accent), white 22%);
+  fill: var(--land-hill-far);
 }
 
 .hills__mid {
-  fill: color-mix(in srgb, var(--bg) 72%, var(--surface-bottom));
+  fill: var(--land-hill-mid);
 }
 
-.hills__mid-ridge {
+.hills__ridge {
   fill: none;
-  stroke: color-mix(in srgb, var(--line) 78%, var(--bg));
-  stroke-width: 1.4;
+  stroke: var(--land-line);
+  stroke-width: 1.5px;
 }
 
-/* ---------- the ground and the lit path ---------- */
+/* ---------- the grass and the path ---------- */
 .trail-ground {
   position: absolute;
   left: 0;
@@ -92,147 +110,34 @@
   pointer-events: none;
 }
 
-.trail-ground__ground {
-  fill: var(--well);
+.trail-ground__grass {
+  fill: var(--land-grass);
 }
 
-.trail-ground__glow-wide {
-  fill: var(--accent);
-  fill-opacity: 0.08;
-  stroke: var(--accent);
-  stroke-width: 28px;
-  stroke-opacity: 0.05;
-  stroke-linejoin: round;
+.trail-ground__grass-edge {
+  fill: none;
+  stroke: var(--land-grass-edge);
+  stroke-width: 2px;
 }
 
-.trail-ground__glow {
-  fill: var(--accent);
-  fill-opacity: 0.1;
-  stroke: var(--accent);
-  stroke-width: 11px;
-  stroke-opacity: 0.09;
-  stroke-linejoin: round;
-}
-
-.tg-trail-a,
-.tg-trail-c {
-  stop-color: var(--paper-3);
-  stop-opacity: 0.3;
-}
-
-.tg-trail-c {
-  stop-opacity: 0.22;
-}
-
-.tg-trail-b {
-  stop-color: color-mix(in srgb, var(--accent), white 30%);
-  stop-opacity: 0.42;
+.trail-ground__path {
+  fill: var(--land-sand);
 }
 
 .trail-ground__edge {
   fill: none;
-  stroke: var(--paper-2);
-  stroke-opacity: 0.38;
-  stroke-width: 1.6px;
-}
-
-.trail-ground__edge--low {
-  stroke-opacity: 0.24;
-  stroke-width: 1.4px;
+  stroke: var(--land-sand-edge);
+  stroke-width: 2px;
+  stroke-linecap: round;
 }
 
 .trail-ground__steps ellipse {
-  fill: var(--paper-2);
-  opacity: 0.42;
-}
-
-.tg-pool-a {
-  stop-color: color-mix(in srgb, var(--accent), white 35%);
-  stop-opacity: 0.34;
-}
-
-.tg-pool-b,
-.tg-poolbig-b {
-  stop-color: var(--accent);
-  stop-opacity: 0;
-}
-
-.tg-poolbig-a {
-  stop-color: color-mix(in srgb, var(--accent), white 35%);
-  stop-opacity: 0.62;
-}
-
-.tg-poolbig-m {
-  stop-color: color-mix(in srgb, var(--accent), var(--warn) 18%);
-  stop-opacity: 0.2;
+  fill: var(--land-sand-edge);
+  opacity: 0.7;
 }
 
 .trail-ground__shadow {
-  fill: var(--bg-deep);
-  opacity: 0.35;
-}
-
-.trail-flies {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-/* An HTML box around the picture: Chrome runs opacity and translate on the compositor for HTML boxes,
-   never for SVG elements (an animated <svg> still costs a main-thread frame every frame). */
-.trail-fly {
-  position: absolute;
-  display: block;
-  animation: firefly 3.6s var(--ease-soft) infinite alternate;
-}
-
-.trail-fly svg {
-  display: block;
-  overflow: visible;
-}
-
-.trail-fly__dot {
-  fill: color-mix(in srgb, var(--alive), white 40%);
-}
-
-.trail-fly__glow {
-  fill: var(--alive);
-  opacity: 0.28;
-}
-
-@keyframes firefly {
-  from {
-    opacity: 0.35;
-    translate: 0 3px;
-  }
-  to {
-    opacity: 1;
-    translate: 0 -3px;
-  }
-}
-
-/* ---------- a sign's hanging lantern ---------- */
-.bracket {
-  overflow: visible;
-}
-
-.bracket__glow {
-  fill: var(--accent);
-  opacity: 0.2;
-}
-
-.bracket__arm {
-  fill: none;
-  stroke: color-mix(in srgb, var(--bg-lift), var(--change) 22%);
-  stroke-width: 3px;
-}
-
-.bracket__lantern {
-  fill: var(--accent);
-}
-
-.bracket__light {
-  fill: color-mix(in srgb, var(--accent), white 72%);
+  fill: var(--land-shadow);
 }
 
 /* ---------- the First page's path along the bottom ---------- */
@@ -240,68 +145,7 @@
   position: absolute;
   inset: auto 0 0 0;
   width: 100%;
-  height: 110px;
+  height: 128px;
   z-index: 0;
   pointer-events: none;
-}
-
-.bottom-path__post {
-  fill: none;
-  stroke: color-mix(in srgb, var(--bg-lift), var(--change) 22%);
-  stroke-width: 3px;
-  stroke-linecap: round;
-}
-
-.bottom-path__glow {
-  fill: var(--accent);
-  opacity: 0;
-}
-
-.bottom-path__lantern .bracket__lantern,
-.bottom-path__lantern .bracket__light {
-  opacity: 0.3;
-}
-
-.bottom-path--lit .bottom-path__lantern .bracket__lantern,
-.bottom-path--lit .bottom-path__lantern .bracket__light {
-  animation: lantern-on 240ms var(--ease-amble) both;
-  animation-delay: calc(260ms + var(--i) * 80ms);
-}
-
-.bottom-path--lit .bottom-path__glow {
-  animation: lantern-glow 240ms var(--ease-amble) both;
-  animation-delay: calc(260ms + var(--i) * 80ms);
-}
-
-@keyframes lantern-on {
-  from {
-    opacity: 0.3;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes lantern-glow {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 0.28;
-  }
-}
-
-:root[data-motion='reduced'] .bottom-path__lantern .bracket__lantern,
-:root[data-motion='reduced'] .bottom-path__lantern .bracket__light {
-  animation: none;
-  opacity: 1;
-}
-
-:root[data-motion='reduced'] .bottom-path__glow {
-  animation: none;
-  opacity: 0.28;
-}
-
-:root[data-motion='reduced'] .trail-fly {
-  animation: none;
 }

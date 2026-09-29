@@ -1,56 +1,41 @@
 /*
- * World cards, seed scenes and the idea box (§2.3, §2.5). Paper cards are the student's ("paper means
- * yours"); the idea box is the AI helper's (dusk blue). Tokens only.
+ * World cards, seed scenes and the idea box (§2.3, §2.5), as Scratch's tiles: white, 8 px corners, a
+ * 1 px line, a blue edge on hover and Scratch's purple selection with its halo when chosen. Flat: no
+ * tilt, no shadow. Tokens only.
  */
 
 /* ---------- a world card ---------- */
 .seed-card {
-  --tilt: 0deg;
   position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 8px 8px 10px;
-  border: 0;
-  border-radius: 10px;
-  color: var(--ink);
+  padding: 6px 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
   text-align: left;
-  background: var(--paper);
-  box-shadow:
-    0 12px 26px -12px color-mix(in srgb, var(--bg-deep) 90%, transparent),
-    0 3px 0 color-mix(in srgb, var(--ink) 22%, transparent);
-  rotate: var(--tilt);
+  background: var(--surface);
   transition:
-    transform var(--t-ui) var(--ease-amble),
-    box-shadow var(--t-ui) var(--ease-amble);
+    border-color var(--t-micro) var(--ease-soft),
+    box-shadow var(--t-micro) var(--ease-soft);
 }
 
 .seed-card:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow:
-    0 18px 30px -12px color-mix(in srgb, var(--bg-deep) 95%, transparent),
-    0 3px 0 color-mix(in srgb, var(--ink) 22%, transparent);
+  border-color: var(--brand-bright);
+  box-shadow: inset 0 0 0 1px var(--brand-bright);
 }
 
-.seed-card:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.seed-card:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 3px;
-  box-shadow: 0 0 0 3px var(--bg-deep);
-}
-
-/* The picked card keeps its ring while the pointer is still on it (the hover rule would drop it). */
+/* The chosen card: a 2 px purple edge (without moving the layout) and the 4 px halo, exactly how Scratch
+   marks the picked sprite. It keeps them while the pointer is still on it. */
 .seed-card--checked,
 .seed-card--checked:hover:not(:disabled) {
+  border-color: var(--change-bright);
   box-shadow:
-    0 0 0 3px var(--bg),
-    0 0 0 6px var(--accent),
-    0 12px 26px -12px color-mix(in srgb, var(--bg-deep) 90%, transparent);
+    inset 0 0 0 1px var(--change-bright),
+    0 0 0 4px var(--select-ring);
 }
 
 .seed-card:disabled {
@@ -62,22 +47,19 @@
   opacity: 1;
 }
 
-.seed-card--busy .seed-card__thumb::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--paper) 55%, transparent) 50%, transparent 70%);
-  background-size: 250% 100%;
-  animation: card-shimmer 900ms linear infinite;
+.seed-card--busy .seed-card__thumb {
+  animation: card-busy 900ms var(--ease-soft) infinite alternate;
 }
 
-@keyframes card-shimmer {
-  from {
-    background-position: 120% 0;
-  }
+@keyframes card-busy {
   to {
-    background-position: -120% 0;
+    opacity: 0.55;
   }
+}
+
+:root[data-motion='reduced'] .seed-card--busy .seed-card__thumb {
+  animation: none;
+  opacity: 0.7;
 }
 
 .seed-card__thumb {
@@ -86,7 +68,7 @@
   flex: none;
   height: var(--thumb-h, 96px);
   overflow: hidden;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   background: var(--bg-deep);
 }
 
@@ -103,7 +85,7 @@
   flex: none;
   margin: 8px 4px 0;
   overflow: hidden;
-  font: var(--weight-display) 1.1875rem/1.3 var(--font-display);
+  font: var(--weight-display) 1.0625rem/1.3 var(--font-display);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -113,22 +95,23 @@
   flex: none;
   margin: 1px 4px 0;
   font: var(--type-meta);
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
+/* "From your teacher": a small tag on the picture's corner. */
 .seed-card__ribbon {
   position: absolute;
-  top: 12px;
-  right: -8px;
-  padding: 3px 10px 3px 12px;
-  border-radius: 6px 3px 3px 6px;
+  top: 10px;
+  right: 10px;
+  max-width: calc(100% - 20px);
+  padding: 2px 7px;
+  overflow: hidden;
+  border-radius: var(--r-chip);
   font: var(--type-caps);
-  letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
-  color: var(--ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text);
   background: var(--note);
-  box-shadow: 0 3px 8px color-mix(in srgb, var(--bg-deep) 45%, transparent);
-  rotate: 3deg;
 }
 
 /* ---------- a seed's scene ---------- */
@@ -139,143 +122,83 @@
 }
 
 .seed-scene__hero {
-  filter: drop-shadow(2.2px 0 0 var(--paper)) drop-shadow(-2.2px 0 0 var(--paper)) drop-shadow(0 2.2px 0 var(--paper)) drop-shadow(0 -2.2px 0 var(--paper))
-    drop-shadow(0 4px 4px color-mix(in srgb, var(--bg-deep) 50%, transparent));
+  filter: drop-shadow(2px 0 0 var(--sheet)) drop-shadow(-2px 0 0 var(--sheet)) drop-shadow(0 2px 0 var(--sheet)) drop-shadow(0 -2px 0 var(--sheet));
 }
 
 /* ---------- the idea box ---------- */
 .idea-box {
-  --line-control: var(--line-control-panel);
   position: relative;
-  padding: 14px 16px 16px;
-  border-radius: 16px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1.5px color-mix(in srgb, var(--ai) 42%, transparent),
-    var(--lift);
 }
 
-/* With a long district name the status drops under the title instead of breaking the title in two. */
 .idea-box__head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
+  justify-content: space-between;
+  gap: 2px 10px;
   min-width: 0;
 }
 
 .idea-box__title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   min-width: 0;
-  font: var(--type-heading);
-}
-
-.idea-box__title--sheet {
   font: var(--type-label);
+  font-weight: 700;
 }
 
-.idea-box__nib {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  color: var(--bg-deep);
-  background: var(--ai);
+.idea-box__how {
+  margin: 0 -6px 0 auto;
 }
 
-.idea-box__status {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 7px;
-  margin-left: auto;
-  font: var(--type-meta);
-  color: var(--text-2);
+.idea-box__foot {
+  display: flex;
+  margin: 4px 0 -8px;
 }
 
 .idea-box__row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  min-height: 50px;
-  margin-top: 12px;
-  padding: 4px 6px 4px 14px;
-  border-radius: 12px;
-  background: var(--well);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
-}
-
-.idea-box__row:focus-within {
-  box-shadow:
-    inset 0 0 0 2px var(--ai),
-    0 0 0 3px color-mix(in srgb, var(--ai) 22%, transparent);
+  margin-top: 8px;
 }
 
 .idea-box__field {
   flex: 1;
   min-width: 0;
-  padding: 8px 0;
-  border: 0;
-  outline: none;
+  min-height: var(--control);
+  padding: 9px 12px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-btn);
   font: var(--type-body);
   color: var(--text);
-  background: transparent;
+  background: var(--surface);
   resize: none;
-}
-
-.idea-box__field:focus-visible {
-  outline: none;
-  box-shadow: none;
 }
 
 .idea-box__field::placeholder {
   color: var(--text-2);
-  opacity: 0.9;
+  opacity: 1;
+}
+
+/* Focus, as Scratch's fields: a 2 px blue edge and the soft blue halo, plus the focus ring. */
+.idea-box__field:focus-visible {
+  padding: 8px 11px;
+  border: 2px solid var(--brand);
+  outline-offset: 5px;
+  box-shadow:
+    0 0 0 4px var(--hover-ring),
+    0 0 0 5px var(--focus-gap);
 }
 
 .idea-box__field--area {
-  min-height: 52px;
+  min-height: 70px;
 }
 
-/* Inside the sheet the box sits on the sheet's own surface: no lift (the sheet's scroller would cut the
- * shadow into a hard-edged band), just its dusk-blue edge. */
+/* Inside the sheet the box sits on the sheet's own white. */
 .idea-box--sheet {
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ai) 42%, transparent);
-}
-
-.idea-box--sheet .idea-box__row {
-  align-items: flex-end;
-  padding-bottom: 6px;
-}
-
-.idea-box--off {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent),
-    var(--lift);
-}
-
-.idea-box__off-icon {
-  flex: none;
-  margin-top: 1px;
-  color: var(--ai);
-}
-
-.idea-box__off-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  font: var(--type-body);
-}
-
-.idea-box__meta {
-  font: var(--type-meta);
-  color: var(--text-2);
+  padding: 12px 14px 14px;
+  background: var(--well);
 }

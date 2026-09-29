@@ -1,8 +1,8 @@
 /**
  * The First page's right column (§2.3). Before the doodle is alive: **"Or play one first."** with four
- * starter cards and the idea box. After Bring it to life: **"Now give {name} a world."** with four world
- * cards showing the creature inside each world, **More worlds ▸** and the idea box. A class assignment
- * pins its note above the cards, and its world type comes first with a ribbon.
+ * starter cards. After Bring it to life: **"Now give {name} a world."** with four world cards showing the
+ * creature inside each world and **More worlds ▸**. The idea box follows the cards when wishes are
+ * available. A class assignment puts its note above the cards, and its world type comes first, marked.
  */
 import type { CSSProperties } from 'react';
 import { Link } from '../../app/Link';
@@ -46,8 +46,7 @@ export function FirstColumn({ alive, assignment, busySeed, onSeed, onStarter, fi
     <div className={cx('first-col', alive && 'first-col--alive')} data-testid="first-column">
       {legacy && <LegacyCard legacy={legacy} onDone={() => setLegacy(null)} />}
       {assignment && !alive && (
-        <div className="teacher-note on-paper" role="note">
-          <span className="tape tape--lemon" aria-hidden="true" />
+        <div className="teacher-note" role="note">
           <p className="teacher-note__from">{t('home.fromTeacher')}</p>
           <p className="teacher-note__title">{assignment.title}</p>
           <p className="teacher-note__text">{t('home.teacherDrawFirst')}</p>
@@ -98,7 +97,7 @@ export function FirstColumn({ alive, assignment, busySeed, onSeed, onStarter, fi
           </div>
         </>
       )}
-      <IdeaBox variant="first" hero={alive?.hero ?? null} lead={!alive} className="first-col__idea" />
+      <IdeaBox variant="first" hero={alive?.hero ?? null} className="first-col__idea" />
     </div>
   );
 }

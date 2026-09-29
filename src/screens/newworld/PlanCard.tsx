@@ -1,29 +1,29 @@
 /**
- * `#/plan` the plan card (§2.5; spec-mocks/10-plan-card.png restyled to Night Trail): the AI's plan made
- * visible. Title, pitch, how you play, **The twist**, **You draw these** (hero first, the rest as just
- * bones), **Amble will build**, the dials, and what goes to the AI helper. **✎ Draw {hero} while I build**
- * makes the world at once (its Warm-up plays the cast idling), starts the build in the background and
- * opens the Desk on the hero; **Build it first, draw later** opens the world. While the plan is on its
- * way it shows the waiting card; a failed plan offers the closest starter (the ladder's first rung).
+ * `#/plan` the plan card (§2.5; spec-mocks/10-plan-card.png in the Scratch look): the student's idea as a
+ * world plan. Title, pitch, how you play, **The twist**, **You draw these** (hero first, the rest as just
+ * bones), **Amble will build** and the dials, with a quiet **How wishes work**. **✎ Draw {hero} while I
+ * build** makes the world at once (its Warm-up plays the cast idling), starts the build in the background
+ * and opens the Desk on the hero; **Build it first, draw later** opens the world. While the plan is on its
+ * way it shows the waiting card; a plan that can't be made offers the closest starter (the ladder's first
+ * rung).
  */
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from '../../app/Link';
-import { AiChip } from '../../app/frame/AiChip';
 import { navigate } from '../../app/router';
 import { useServices } from '../../app/services';
 import { t } from '../../i18n';
 import { createPlanWorld, firstToDraw, openSeed, planHeroKey, startBuild } from '../../home/createWorld';
-import { clearPlanOutcome, getPlanSession, planSeconds, startPlan, stopPlan, usePlanSession, type PlanSessionState } from '../../home/planSession';
-import { useAiView } from '../../home/useAiStatus';
+import { clearPlanOutcome, getPlanSession, startPlan, stopPlan, usePlanSession, type PlanSessionState } from '../../home/planSession';
 import type { PlanCastItem, PlanReply, StarterId } from '../../model/types';
 import { showToast } from '../../state/app';
 import { getState } from '../../state/store';
 import { Button, Keycap, PlaceholderGlyph, Tag, Wordmark } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
+import { AiExplainer } from '../ai/AiExplainer';
 import { CrisisCard } from '../ai/CrisisCard';
 import { RefusalCard } from '../ai/RefusalCard';
-import { NightSky } from '../trail/Landscape';
+import '../trail/header.css';
 import { PlanWaiting } from './PlanWaiting';
 import './newworld.css';
 
@@ -63,8 +63,8 @@ function optionalLine(items: PlanCastItem[]): string {
 }
 
 function Plan({ plan, session, onReplan }: { plan: PlanReply; session: PlanSessionState; onReplan(text: string): void }) {
-  const view = useAiView();
   const [busy, setBusy] = useState<'draw' | 'build' | null>(null);
+  const [how, setHow] = useState(false);
   const [again, setAgain] = useState('');
   const heroId = session.hero?.id ?? null;
   const heroKey = planHeroKey(plan);
@@ -72,7 +72,6 @@ function Plan({ plan, session, onReplan }: { plan: PlanReply; session: PlanSessi
   const toDraw = firstToDraw(plan, Boolean(heroId));
   const main = plan.cast.filter(isMain);
   const optional = plan.cast.filter((c) => !isMain(c));
-  const seconds = planSeconds(session);
 
   const go = async (mode: 'draw' | 'build') => {
     if (busy) return;
@@ -81,7 +80,7 @@ function Plan({ plan, session, onReplan }: { plan: PlanReply; session: PlanSessi
       const world = await createPlanWorld(plan, session.idea, heroId);
       startBuild(world, plan);
       clearPlanOutcome();
-      showToast(t('home.buildStarted', { title: world.title }), { kind: 'ai' });
+      showToast(t('home.buildStarted', { title: world.title }), { kind: 'info' });
       if (mode === 'draw' && toDraw) navigate({ name: 'draw', worldId: world.id, key: toDraw.key });
       else navigate({ name: 'world', id: world.id });
     } catch (err) {
@@ -100,10 +99,6 @@ function Plan({ plan, session, onReplan }: { plan: PlanReply; session: PlanSessi
   return (
     <section className="plan-card" aria-label={t('home.planLabel')} data-testid="plan-card">
       <div className="plan-card__left">
-        <span className="plan-card__kicker">
-          <Icon name="check" size={16} />
-          {seconds === 1 ? t('home.plannedInOne') : t('home.plannedIn', { n: seconds })}
-        </span>
         <h1 className="plan-card__title">{plan.title}</h1>
         <p className="plan-card__pitch">{plan.pitch}</p>
         {plan.controls.length > 0 && (
@@ -172,15 +167,12 @@ function Plan({ plan, session, onReplan }: { plan: PlanReply; session: PlanSessi
             ))}
           </ul>
         )}
-        <div className="plan-card__sent">
-          <Icon name="info" size={20} />
-          <div>
-            <b>{view.district ? t('home.whatGoesDistrict', { district: view.district }) : t('home.whatGoes')}</b>
-            <span>{t('home.whatGoesBody')}</span> <Link to={{ name: 'page', page: 'sent' }}>{t('home.seeSent')}</Link>
-          </div>
-        </div>
+        <Button variant="quiet" size={38} icon="info" className="plan-card__how" onClick={() => setHow(true)} data-testid="how-wishes">
+          {t('home.howWishesWork')}
+        </Button>
+        <AiExplainer open={how} onClose={() => setHow(false)} onWhatsSent={() => navigate({ name: 'page', page: 'sent' })} />
         {plan.status === 'toned_down' && plan.safetyNote && (
-          <p className="plan-card__note on-paper" role="note">
+          <p className="plan-card__note" role="note">
             {plan.safetyNote}
           </p>
         )}
@@ -201,7 +193,7 @@ function Plan({ plan, session, onReplan }: { plan: PlanReply; session: PlanSessi
           <span className="plan-card__again-label">{t('home.sayIt')}</span>
           <input value={again} maxLength={200} placeholder={t('home.sayItPlaceholder')} onChange={(e) => setAgain(e.target.value)} data-testid="plan-again" />
         </label>
-        <Button type="submit" variant="ai" size={44} icon="sparkle" disabled={!again.trim()}>
+        <Button type="submit" variant="ghost" size={44} disabled={!again.trim()} data-testid="plan-again-go">
           {t('home.replan')}
         </Button>
       </form>
@@ -227,17 +219,17 @@ function Fallback({ starter, idea, heroId }: { starter: StarterId; idea: string;
     }
   };
   return (
-    <section className="plan-fallback on-paper" data-testid="plan-fallback" aria-labelledby="plan-fallback-text">
+    <section className="plan-fallback" data-testid="plan-fallback" aria-labelledby="plan-fallback-text">
       <Icon name="footprint" size={28} />
       <p id="plan-fallback-text" className="plan-fallback__text">
-        {t('home.fallback', { starter: info.title, type: info.genre })}
+        {t('home.fallback', { starter: info.title })}
       </p>
       {idea && <p className="plan-fallback__idea">“{idea}”</p>}
       <div className="plan-fallback__actions">
         <Button variant="lantern" icon="play" busy={busy} onClick={() => void start()} data-testid="fallback-start">
           {t('home.startIt')}
         </Button>
-        <Button variant="paper" onClick={() => navigate({ name: 'trail', view: 'trail' })}>
+        <Button variant="ghost" onClick={() => navigate({ name: 'trail', view: 'trail' })}>
           {t('home.notNow')}
         </Button>
       </div>
@@ -307,12 +299,10 @@ export function PlanCard() {
 
   return (
     <div className="plan-page" data-testid="screen-plan">
-      <NightSky decor={false} />
-      <header className="plan-top">
-        <Link to={{ name: 'trail', view: 'trail' }} className="plan-top__brand" aria-label={t('home.backToTrail')}>
+      <header className="home-bar on-brand plan-top">
+        <Link to={{ name: 'trail', view: 'trail' }} className="home-bar__brand" aria-label={t('home.backToTrail')}>
           <Wordmark size={34} />
         </Link>
-        <AiChip />
       </header>
       <main id="main" tabIndex={-1} className="plan-page__main">
         {session.idea && (

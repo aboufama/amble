@@ -1,6 +1,7 @@
 /**
- * Visual details of the home screens that broke once (QA): the First page column's shadows, the picked
- * world card's ring, the Trail for a student with worlds but no free drawing, and the empty world list.
+ * Visual details of the home screens that broke once (QA): the First page column's room for focus rings,
+ * the picked world card's selection, the Trail for a student with worlds but no free drawing, the empty
+ * world list, and the right column at 1366x657.
  */
 import type { Page } from '@playwright/test';
 import { expect, gotoRoute, openAmble, test } from '../helpers/app';
@@ -21,34 +22,45 @@ async function makeWorlds(page: Page, titles: string[]): Promise<void> {
   }, titles);
 }
 
-test("the First page column leaves room for its cards' and idea box's shadows", async ({ page }) => {
+test("the First page column leaves room for its cards' focus rings", async ({ page }) => {
   await openAmble(page, { clean: true });
   await expect(page.getByTestId('screen-first')).toBeVisible();
   const room = await page.evaluate(() => {
     const col = document.querySelector('.first__col')!.getBoundingClientRect();
-    const box = document.querySelector('.first-col__idea')!.getBoundingClientRect();
-    return { left: box.left - col.left, right: col.right - box.right };
+    const cards = [...document.querySelectorAll('.first-col__card')].map((c) => c.getBoundingClientRect());
+    return {
+      left: Math.min(...cards.map((c) => c.left)) - col.left,
+      right: col.right - Math.max(...cards.map((c) => c.right)),
+      top: Math.min(...cards.map((c) => c.top)) - col.top,
+    };
   });
-  // The idea box casts a 34 px blur: a scroller edge closer than that cuts it into a hard-edged box.
-  expect(room.left).toBeGreaterThanOrEqual(24);
-  expect(room.right).toBeGreaterThanOrEqual(24);
+  // A focus ring reaches 6 px past a card (3 px away, 3 px wide): a scroller edge closer than that cuts it.
+  expect(room.left).toBeGreaterThanOrEqual(6);
+  expect(room.right).toBeGreaterThanOrEqual(6);
+  expect(room.top).toBeGreaterThanOrEqual(6);
 });
 
-test('a picked world card keeps its ring while the pointer is still on it', async ({ page }) => {
+test('a picked world card keeps its purple selection while the pointer is still on it', async ({ page }) => {
   await openAmble(page, { clean: true, route: '#/new' });
   const card = page.getByTestId('screen-new').getByRole('radio').first();
   await card.click();
   await expect(card).toHaveAttribute('aria-checked', 'true');
   await card.hover();
-  const [shadow, accent] = await card.evaluate((el) => {
-    const probe = document.createElement('i');
-    probe.style.color = 'var(--accent)';
-    document.body.append(probe);
-    const c = getComputedStyle(probe).color;
-    probe.remove();
-    return [getComputedStyle(el).boxShadow, c];
+  const look = await card.evaluate((el) => {
+    const color = (v: string) => {
+      const probe = document.createElement('i');
+      probe.style.color = `var(${v})`;
+      document.body.append(probe);
+      const c = getComputedStyle(probe).color;
+      probe.remove();
+      return c;
+    };
+    const s = getComputedStyle(el);
+    return { shadow: s.boxShadow, border: s.borderTopColor, halo: color('--select-ring'), edge: color('--change-bright') };
   });
-  expect(shadow).toContain(accent);
+  // Scratch's selection: a 2 px purple edge and the 4 px halo.
+  expect(look.border).toBe(look.edge);
+  expect(look.shadow).toContain(look.halo);
 });
 
 test('a student with worlds but no free drawing is welcomed back with New world', async ({ page }) => {
@@ -103,7 +115,7 @@ test.describe('large text on 1280x600', () => {
   });
 });
 
-test('with storage blocked, the First page banner clears the tapes and the paper makes room for it', async ({ page }) => {
+test('with storage blocked, the First page banner sits above the paper, which makes room for it', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(window, 'indexedDB', {
       configurable: true,
@@ -119,12 +131,12 @@ test('with storage blocked, the First page banner clears the tapes and the paper
     const box = (el: Element) => el.getBoundingClientRect();
     return {
       bannerBottom: box(document.querySelector('[data-testid="storage-banner"]')!).bottom,
-      tapesTop: Math.min(...[...document.querySelectorAll('.first__tape')].map((t) => box(t).top)),
+      paperTop: box(document.querySelector('.first__sheet')!).top,
       trustBottom: box(document.querySelector('.first__trust')!).bottom,
     };
   });
-  expect(g.tapesTop, 'the tapes stay below the banner (they covered Why?)').toBeGreaterThanOrEqual(g.bannerBottom);
-  // The trust line stays where it is without the banner (696 at 1366x768), off the lit path.
+  expect(g.paperTop, 'the paper starts below the banner').toBeGreaterThanOrEqual(g.bannerBottom);
+  // The trust line stays where it is without the banner (at 1366x768), off the path along the bottom.
   expect(g.trustBottom).toBeLessThanOrEqual(700);
 });
 
@@ -147,4 +159,23 @@ test("with storage blocked, the Trail's banner pushes Welcome back down instead 
   const banner = (await page.getByTestId('storage-banner').boundingBox())!;
   const button = (await newWorld.boundingBox())!;
   expect(button.y, 'New world sits under the banner').toBeGreaterThanOrEqual(banner.y + banner.height);
+});
+
+test.describe('a Chromebook in a tab (1366x657)', () => {
+  test.use({ viewport: { width: 1366, height: 657 } });
+
+  test('the First page column shows all of itself, the idea box and the teacher note too', async ({ page }) => {
+    await mockAi(page);
+    const asg = { id: 'as_boss', title: 'Boss Battle Week', text: 'Make a boss fight.', starter: 'moon-king', require: ['hero'], goals: [], ai: 'on', level: null, due: 'Friday', locked: {} };
+    for (const classLink of [{}, { asg }]) {
+      await openAmble(page, { clean: true, ai: 'mock', classLink });
+      await expect(page.getByTestId('idea-box')).toBeVisible();
+      await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+      const col = await page.locator('.first__col').evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight, bottom: el.getBoundingClientRect().bottom }));
+      expect(col.scroll, `nothing hides below the column's edge (${Object.keys(classLink).join() || 'no assignment'})`).toBeLessThanOrEqual(col.client + 1);
+      expect(col.bottom).toBeLessThanOrEqual(657);
+      const go = (await page.getByTestId('idea-go').boundingBox())!;
+      expect(go.y + go.height).toBeLessThanOrEqual(657);
+    }
+  });
 });

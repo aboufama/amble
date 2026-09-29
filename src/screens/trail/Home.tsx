@@ -1,7 +1,7 @@
 /**
  * `#/` Home (§2.1): the First page for a student with no worlds and no drawings (and the First page
  * never finished), otherwise the Trail (or its List view, when that was the last choice). It never shows
- * a spinner: while the library loads, the night sky is already there.
+ * a spinner: while the library loads, the sky is already there.
  */
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { useServices } from '../../app/services';
@@ -9,7 +9,8 @@ import { starterCopiesPending, starterCopiesSettled } from '../../home/starterCo
 import { homeChoice, type HomeChoice } from '../../home/trailData';
 import { refreshLibrary } from '../../state/library';
 import { useStore } from '../../state/store';
-import { NightSky } from './Landscape';
+import { HomeHeader } from './HomeHeader';
+import { DaySky } from './Landscape';
 import { Trail } from './Trail';
 
 const FirstPage = lazy(async () => ({ default: (await import('../first')).FirstPage }));
@@ -48,7 +49,8 @@ export function Home() {
 
   const sky = (
     <div className="home-wait">
-      <NightSky />
+      <DaySky clouds={false} />
+      <HomeHeader />
     </div>
   );
   return (

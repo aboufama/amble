@@ -1,7 +1,8 @@
 /*
- * The Trail (§2.4; spec-mocks/03-trail.png): hero copy over the night, a sideways-scrolling trail of lit
- * signs, the lamppost, walkers, and the nav cluster. y values in the trail are design px, anchored to the
- * bottom edge (`calc(100% - 768px + y)`), so every screen height keeps the path at the bottom. Tokens only.
+ * The Trail (§2.4; spec-mocks/03-trail.png, repainted in daylight): hero copy on the sky, a sideways-
+ * scrolling trail of white signboards, the lamppost, walkers, and the nav toolbar. y values in the trail
+ * are design px, anchored to the bottom edge (`calc(100% - 768px + y)`), so every screen height keeps the
+ * path at the bottom. Flat and square: 8 px boards and panels, 1 px lines, no shadows. Tokens only.
  */
 
 .trail {
@@ -10,6 +11,12 @@
   overflow: hidden;
   isolation: isolate;
   background: var(--bg);
+  /* Drawings on the trail wear a sticker edge that shows on grass, sand and sky. */
+  --edge: var(--surface);
+}
+
+:root[data-theme='contrast'] .trail {
+  --edge: var(--line);
 }
 
 .trail__main {
@@ -23,15 +30,20 @@
   box-shadow: none;
 }
 
+.home-wait {
+  position: relative;
+  height: 100%;
+  background: var(--bg);
+}
+
 /*
- * The files-only banner and the hero copy share one column under the header: a banner pushes the copy down
- * (it used to lie on top of it, covering + New world and Draw a character). Without a banner the copy starts
- * at y 108 (96 for Welcome back.), as in the mockup.
+ * The files-only banner and the hero copy share one column under the bar: a banner pushes the copy down
+ * (it used to lie on top of it, covering + New world and Draw a character).
  */
 .trail__top {
   position: absolute;
-  top: calc(var(--header) + 8px);
-  left: 74px;
+  top: calc(var(--topbar) + 8px);
+  left: 72px;
   right: 30px;
   z-index: 8;
   display: flex;
@@ -45,15 +57,15 @@
 }
 
 .trail__top > .files-banner {
-  margin: 0 0 16px;
+  margin: 8px 0 12px;
 }
 
 /* ---------- the hero copy ---------- */
 .trail-copy {
   position: relative;
   z-index: 6;
-  width: min(610px, calc(100vw - 110px));
-  margin-top: 34px;
+  width: min(600px, calc(100vw - 110px));
+  margin-top: 24px;
 }
 
 .trail__top > .files-banner + .trail-copy {
@@ -66,85 +78,68 @@
 }
 
 .trail-copy__eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font: var(--type-caps);
-  font-size: 0.875rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-2);
-}
-
-.trail-copy__eyebrow::before {
-  content: '';
-  width: 26px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
+  font: var(--type-label);
+  color: var(--accent-text);
 }
 
 .trail-copy__headline {
   display: flex;
   flex-direction: column;
-  margin: 12px 0 16px;
+  margin: 6px 0 12px;
   font: var(--display-xl);
-  font-size: 3.75rem;
-  line-height: 1.02;
-  letter-spacing: -0.015em;
+  font-size: 3.25rem;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
 }
 
 .trail-copy__alive {
   color: var(--accent-text);
-  text-shadow: 0 0 28px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .trail-copy__lede {
   max-width: 540px;
-  margin: 0 0 24px;
-  font: 400 1.1875rem/1.55 var(--font-ui);
-  color: color-mix(in srgb, var(--text) 55%, var(--text-2));
+  margin: 0 0 20px;
+  font: 400 1.125rem/1.5 var(--font-ui);
+  color: var(--text);
 }
 
 .trail-copy__lede b {
   font-weight: 700;
-  color: var(--text);
 }
 
 .trail-copy__ctas {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .trail-copy__trust {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 16px;
-  font: 400 0.90625rem/1.3 var(--font-ui);
+  margin-top: 14px;
+  font: var(--type-meta);
   color: var(--text-2);
 }
 
 .trail-copy--back {
   width: auto;
-  margin-top: 22px;
+  margin-top: 20px;
 }
 
 .trail-copy__back {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .trail-copy__welcome {
-  margin-right: 10px;
+  margin-right: 8px;
   font: var(--display-m);
-  font-size: 2.25rem;
-  line-height: 1.1;
+  font-size: 2.125rem;
+  line-height: 1.15;
 }
 
 .trail-copy .legacy-card {
@@ -164,14 +159,15 @@
   }
 }
 
+/* A shorter window (a Chromebook in a tab): the copy tightens so the signs keep their room above the path. */
 @media (max-height: 720px) {
   .trail-copy {
-    margin-top: 10px;
+    margin-top: 14px;
   }
 
   .trail-copy__headline {
-    margin: 8px 0 10px;
-    font-size: 2.75rem;
+    margin: 4px 0 8px;
+    font-size: 2.5rem;
   }
 
   .trail-copy__lede {
@@ -185,7 +181,7 @@
   }
 
   .trail-copy--back {
-    margin-top: 10px;
+    margin-top: 12px;
   }
 }
 
@@ -245,7 +241,7 @@
   position: absolute;
 }
 
-/* ---------- a world's sign ---------- */
+/* ---------- a world's signboard ---------- */
 .trail-stop--sign {
   width: 170px;
   pointer-events: auto;
@@ -265,9 +261,11 @@
 
 .sign {
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   width: 170px;
-  color: var(--ink);
+  color: var(--text);
   text-decoration: none;
   -webkit-touch-callout: none;
   user-select: none;
@@ -278,23 +276,39 @@
   box-shadow: none;
 }
 
-.sign__frame {
+.sign__board {
   position: relative;
   z-index: 1;
-  display: block;
-  width: 170px;
-  height: 96px;
-  overflow: hidden;
-  border-radius: 12px;
-  background: var(--bg-deep);
-  box-shadow:
-    0 0 0 4px var(--paper-2),
-    0 0 0 5.5px color-mix(in srgb, var(--ink) 70%, transparent),
-    0 14px 26px color-mix(in srgb, var(--bg-deep) 55%, transparent),
-    0 0 46px color-mix(in srgb, var(--accent) 16%, transparent);
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
   transition:
-    transform var(--t-ui) var(--ease-amble),
-    box-shadow var(--t-ui) var(--ease-amble);
+    border-color var(--t-micro) var(--ease-soft),
+    box-shadow var(--t-micro) var(--ease-soft);
+}
+
+.sign:hover .sign__board {
+  border-color: var(--brand-bright);
+  box-shadow: inset 0 0 0 1px var(--brand-bright);
+}
+
+.sign:focus-visible .sign__board {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--focus-gap);
+}
+
+.sign__frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+  background: var(--bg-deep);
 }
 
 .sign__frame > img,
@@ -305,166 +319,80 @@
   object-fit: cover;
 }
 
-.sign:hover .sign__frame {
-  transform: translateY(-3px);
-  box-shadow:
-    0 0 0 4px var(--paper),
-    0 0 0 5.5px color-mix(in srgb, var(--ink) 70%, transparent),
-    0 18px 30px color-mix(in srgb, var(--bg-deep) 60%, transparent),
-    0 0 56px color-mix(in srgb, var(--accent) 28%, transparent);
-}
-
-.sign:focus-visible .sign__frame {
-  outline: 3px solid var(--accent);
-  outline-offset: 8px;
-}
-
 .sign__hero {
   display: grid;
   place-items: center;
   width: 100%;
   height: 100%;
-  background: radial-gradient(90% 90% at 50% 100%, var(--bg-lift), var(--bg-deep));
+  background: var(--bg-lift);
 }
 
 .sign__hero img {
   max-width: 74%;
   max-height: 84%;
-  filter: drop-shadow(1.6px 0 0 var(--paper)) drop-shadow(-1.6px 0 0 var(--paper)) drop-shadow(0 1.6px 0 var(--paper)) drop-shadow(0 -1.6px 0 var(--paper));
-}
-
-.sign__legs {
-  position: absolute;
-  left: 30px;
-  right: 30px;
-  top: 98px;
-  height: var(--legs, 34px);
-  border-left: 5px solid color-mix(in srgb, var(--bg-lift), var(--change) 20%);
-  border-right: 5px solid color-mix(in srgb, var(--bg-lift), var(--change) 20%);
-}
-
-.sign__bracket {
-  position: absolute;
-  right: 16px;
-  top: -34px;
-  z-index: 0;
-  width: 30px;
-  height: 36px;
-}
-
-.sign__bracket::before {
-  content: '';
-  position: absolute;
-  left: -30px;
-  top: -26px;
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent), white 20%) 0%, color-mix(in srgb, var(--accent) 16%, transparent) 45%, transparent 70%);
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-.sign__bracket .bracket__glow {
-  display: none;
+  filter: drop-shadow(1.6px 0 0 var(--edge)) drop-shadow(-1.6px 0 0 var(--edge)) drop-shadow(0 1.6px 0 var(--edge)) drop-shadow(0 -1.6px 0 var(--edge));
 }
 
 .sign__tag {
-  position: absolute;
-  left: 50%;
-  top: 84px;
-  z-index: 2;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 4px 13px 5px;
-  border-radius: 9px;
-  text-align: center;
-  white-space: nowrap;
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--bg-deep) 50%, transparent);
-  transform: translateX(-50%) rotate(var(--tag-tilt, -1.5deg));
-}
-
-.trail-stop--sign:nth-child(3n + 2) .sign__tag {
-  --tag-tilt: 1.2deg;
-}
-
-.trail-stop--sign:nth-child(3n) .sign__tag {
-  --tag-tilt: -1deg;
+  min-width: 0;
+  padding: 5px 4px 2px;
 }
 
 .sign__name {
-  max-width: 190px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sign__title {
+  min-width: 0;
   overflow: hidden;
-  font: var(--weight-display) 1rem/1.2 var(--font-display);
+  font: var(--weight-display) 1rem/1.25 var(--font-display);
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .sign__sub {
-  font: 600 0.75rem/1.25 var(--font-ui);
-  color: var(--ink-2);
-}
-
-.sign__sub--caps {
-  font: var(--type-caps);
-  font-size: 0.71875rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  overflow: hidden;
+  font: var(--type-meta);
+  font-size: 0.78125rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-2);
 }
 
 .sign__scroll {
-  position: absolute;
-  left: -12px;
-  top: -12px;
-  padding: 3px;
-  border-radius: 50%;
-  color: var(--ink);
-  background: var(--note);
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--bg-deep) 40%, transparent);
+  flex: none;
+  color: var(--text-2);
 }
 
 .sign__ribbon {
   position: absolute;
-  top: 8px;
-  right: -12px;
-  z-index: 3;
-  padding: 3px 10px;
-  border-radius: 6px 3px 3px 6px;
+  top: 9px;
+  right: 9px;
+  z-index: 2;
+  padding: 2px 7px;
+  border-radius: var(--r-chip);
   font: var(--type-caps);
-  letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
-  color: var(--ink);
+  color: var(--text);
   background: var(--note);
-  box-shadow: 0 3px 8px color-mix(in srgb, var(--bg-deep) 45%, transparent);
-  rotate: 4deg;
 }
 
 .sign__ribbon--done {
-  color: var(--bg-deep);
+  color: var(--on-alive);
   background: var(--alive);
 }
 
-/* The lanterns light left to right on the first load of a session (§3.6). */
-.trail--first-load .sign__bracket,
-.trail--first-load .lamp__lantern,
-.trail--first-load .lamp__light,
-.trail--first-load .lamp__glow {
-  animation: lantern-on 240ms var(--ease-amble) both;
-  animation-delay: calc(300ms + var(--i, 2) * 80ms);
-}
-
-.trail--first-load .sign__bracket::before {
-  animation: lantern-glow-in 240ms var(--ease-amble) both;
-  animation-delay: calc(300ms + var(--i, 2) * 80ms);
-}
-
-@keyframes lantern-glow-in {
-  from {
-    opacity: 0;
-    transform: scale(0.4);
-  }
+/* The board's two posts, down to the ground. */
+.sign__legs {
+  flex: none;
+  height: var(--legs, 34px);
+  margin: 0 32px;
+  border-left: 5px solid var(--land-wood);
+  border-right: 5px solid var(--land-wood);
 }
 
 /* ---------- the lamppost ---------- */
@@ -481,60 +409,30 @@
   overflow: visible;
 }
 
-.lamp__cone-a {
-  stop-color: color-mix(in srgb, var(--accent), white 35%);
-  stop-opacity: 0.3;
-}
-
-.lamp__cone-b {
-  stop-color: color-mix(in srgb, var(--accent), white 35%);
-  stop-opacity: 0;
-}
-
-.lamp__glow-a {
-  stop-color: color-mix(in srgb, var(--accent), white 35%);
-  stop-opacity: 0.5;
-}
-
-.lamp__glow-b {
-  stop-color: var(--accent);
-  stop-opacity: 0;
-}
-
 .lamp__pole {
   fill: none;
-  stroke: color-mix(in srgb, var(--bg-lift), var(--change) 22%);
-  stroke-width: 7px;
+  stroke: var(--land-metal);
+  stroke-width: 6px;
   stroke-linecap: round;
 }
 
-.lamp__pole-hi {
+.lamp__foot {
+  fill: var(--land-metal);
+}
+
+.lamp__cap {
   fill: none;
-  stroke: color-mix(in srgb, var(--line), var(--change) 20%);
-  stroke-width: 2px;
+  stroke: var(--land-metal);
+  stroke-width: 4px;
   stroke-linecap: round;
-  opacity: 0.7;
 }
 
 .lamp__lantern {
-  fill: var(--accent);
+  fill: var(--land-metal);
 }
 
 .lamp__light {
-  fill: color-mix(in srgb, var(--accent), white 72%);
-}
-
-.lamp--breathing .lamp__glow {
-  animation: lamp-breathe 3.2s var(--ease-soft) infinite alternate;
-}
-
-@keyframes lamp-breathe {
-  from {
-    opacity: 0.82;
-  }
-  to {
-    opacity: 1;
-  }
+  fill: var(--warm);
 }
 
 .lamp__spot {
@@ -548,19 +446,13 @@
   overflow: visible;
 }
 
-.lamp__ph-halo {
-  fill: none;
-  stroke: var(--dash-halo);
-  stroke-width: 5.5px;
-}
-
-/* Still dashes that march while the "goes here" sign is pointed at or focused: a march never stops
-   repainting, and the Trail must cost nothing while it waits. */
+/* A flat dashed figure waits for the student's character: still dashes that march while the "goes here"
+   sign is pointed at or focused (a march never stops repainting, and the Trail costs nothing at rest). */
 .lamp__ph-body {
-  fill: color-mix(in srgb, var(--dash) 7%, transparent);
-  stroke: var(--dash);
-  stroke-width: 2.4px;
-  stroke-dasharray: 7 6;
+  fill: color-mix(in srgb, var(--surface) 60%, transparent);
+  stroke: var(--text-2);
+  stroke-width: 2px;
+  stroke-dasharray: 6 5;
   stroke-linecap: round;
 }
 
@@ -573,40 +465,29 @@
   stroke: var(--bones);
   stroke-width: 2px;
   stroke-linecap: round;
-  opacity: 0.85;
 }
 
 .lamp__ph-joint {
   fill: var(--bones);
 }
 
+:root[data-theme='contrast'] .lamp__ph-body {
+  fill: var(--bg);
+  stroke: var(--line);
+}
+
 .lamp__garden {
   position: absolute;
   left: calc(var(--spot) + 60px);
-  top: 156px;
+  top: 150px;
   z-index: 2;
-  display: block;
-  color: var(--ink);
-  text-decoration: none;
-  pointer-events: auto;
-}
-
-.lamp__garden-card {
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
-  padding: 7px 14px 8px;
-  border-radius: 10px;
-  background: var(--paper);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--bg-deep) 60%, transparent);
-  line-height: 1.15;
-  rotate: -3deg;
-  transition: transform var(--t-ui) var(--ease-amble);
-}
-
-.lamp__garden:hover .lamp__garden-card {
-  transform: translateY(-2px);
+  align-items: flex-start;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: var(--r-card);
+  pointer-events: auto;
 }
 
 .lamp__garden:focus-visible {
@@ -614,33 +495,50 @@
   box-shadow: none;
 }
 
+.lamp__garden-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 7px 12px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  line-height: 1.2;
+  transition:
+    border-color var(--t-micro) var(--ease-soft),
+    box-shadow var(--t-micro) var(--ease-soft);
+}
+
+.lamp__garden:hover .lamp__garden-card {
+  border-color: var(--brand-bright);
+  box-shadow: inset 0 0 0 1px var(--brand-bright);
+}
+
 .lamp__garden:focus-visible .lamp__garden-card {
-  outline: 3px solid var(--accent);
-  outline-offset: 4px;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--focus-gap);
 }
 
 .lamp__garden-card b {
-  font: var(--type-caps);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-2);
+  font: var(--type-chip);
+  font-weight: 700;
+  color: var(--text-2);
 }
 
 .lamp__garden-card span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font: var(--weight-display) 1.1875rem/1.2 var(--font-display);
+  font: var(--type-heading);
 }
 
 .lamp__garden-stick {
-  position: absolute;
-  left: 60px;
-  top: 46px;
   width: 5px;
-  height: 60px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--bg-lift), var(--change) 26%);
+  height: 56px;
+  margin: 0 0 0 40px;
+  background: var(--land-wood);
 }
 
 .lamp__give {
@@ -648,7 +546,7 @@
   left: calc(var(--spot) + 70px);
   top: 150px;
   pointer-events: auto;
-  animation: chip-rise 360ms var(--ease-pop) 700ms both;
+  animation: chip-rise 360ms var(--ease-amble) 700ms both;
 }
 
 @keyframes chip-rise {
@@ -674,37 +572,30 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px 6px;
-  border-radius: 8px;
-  font: var(--type-caps);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink);
-  background: var(--paper-2);
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--bg-deep) 50%, transparent);
-  rotate: 2deg;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  font: var(--type-label);
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface);
 }
 
 .signpost__plate--link {
   min-height: var(--target);
-  font: var(--type-label);
-  letter-spacing: normal;
-  text-transform: none;
+  border-color: var(--line-control);
   text-decoration: none;
   pointer-events: auto;
-  rotate: -2deg;
 }
 
 .signpost__plate--link:hover {
-  background: var(--paper);
+  background: var(--bg);
 }
 
 .signpost__post {
   width: 5px;
   height: 64px;
-  margin-top: -4px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--bg-lift), var(--change) 22%);
+  background: var(--land-wood);
 }
 
 /* ---------- walkers ---------- */
@@ -712,29 +603,36 @@
   position: absolute;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r-card);
   background: none;
   pointer-events: auto;
   cursor: pointer;
 }
 
-.walker:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}
-
 .walker__turn {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* A flat shadow under the feet. */
+.walker__shadow {
+  position: absolute;
+  left: calc(var(--foot-x) - 40%);
+  top: calc(var(--foot-y) - 4px);
+  width: 80%;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--land-shadow);
 }
 
 .walker__frame {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(2.2px 0 0 var(--paper)) drop-shadow(-2.2px 0 0 var(--paper)) drop-shadow(0 2.2px 0 var(--paper)) drop-shadow(0 -2.2px 0 var(--paper))
-    drop-shadow(0 6px 6px color-mix(in srgb, var(--bg-deep) 55%, transparent));
+  filter: drop-shadow(2px 0 0 var(--edge)) drop-shadow(-2px 0 0 var(--edge)) drop-shadow(0 2px 0 var(--edge)) drop-shadow(0 -2px 0 var(--edge));
 }
 
 .walker__window {
@@ -784,19 +682,14 @@
 }
 
 .walker--still img {
+  position: relative;
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: bottom;
-  filter: drop-shadow(2px 0 0 var(--paper)) drop-shadow(-2px 0 0 var(--paper)) drop-shadow(0 2px 0 var(--paper)) drop-shadow(0 -2px 0 var(--paper));
+  filter: drop-shadow(2px 0 0 var(--edge)) drop-shadow(-2px 0 0 var(--edge)) drop-shadow(0 2px 0 var(--edge)) drop-shadow(0 -2px 0 var(--edge));
 }
 
-/* Reduced motion: the lanterns are simply lit, and signs and chips simply there (§3.6: instant). */
-:root[data-motion='reduced'] .trail--first-load .sign__bracket,
-:root[data-motion='reduced'] .trail--first-load .sign__bracket::before,
-:root[data-motion='reduced'] .trail--first-load .lamp__lantern,
-:root[data-motion='reduced'] .trail--first-load .lamp__light,
-:root[data-motion='reduced'] .trail--first-load .lamp__glow,
+/* Reduced motion: signs and chips are simply there (§3.6: instant). */
 :root[data-motion='reduced'] .trail__main--loaded .trail-stop--sign,
 :root[data-motion='reduced'] .lamp__give {
   animation: none;
@@ -806,86 +699,84 @@
 .trail--still .walker__turn,
 .trail__walkers--paused .walker__sprite,
 .trail__walkers--paused .walker__turn,
-.trail--still .lamp__ph-body,
-.trail--still .trail-fly,
-.trail--still .lamp__glow {
+.trail--still .lamp__ph-body {
   animation: none;
 }
 
 /* A hidden tab keeps its place: everything that loops holds still until the student is back (§3.6). */
 .trail--hidden .walker__sprite,
-.trail--hidden .walker__turn,
-.trail--hidden .trail-fly,
-.trail--hidden .lamp__glow {
+.trail--hidden .walker__turn {
   animation-play-state: paused;
 }
 
-/* ---------- the nav cluster ---------- */
+/* ---------- the nav toolbar ---------- */
 .trail-nav {
   position: absolute;
-  right: 30px;
-  bottom: 22px;
+  right: 24px;
+  bottom: 18px;
   z-index: 7;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
 }
 
 .trail-nav__count {
-  margin-right: 6px;
-  font: 600 0.875rem/1.2 var(--font-ui);
+  margin: 0 8px 0 8px;
+  font: var(--type-meta);
+  font-weight: 600;
   color: var(--text-2);
 }
 
+/* ▸ is ◂ turned around (the icon's meaning). */
 .trail-nav__right .icon {
   transform: scaleX(-1);
 }
 
-.trail-nav .btn--ghost {
-  background: color-mix(in srgb, var(--bg-deep) 55%, transparent);
-}
-
-/* ---------- the assignment note ---------- */
+/* ---------- the assignment note: a board on two posts, standing on the ground by the lamppost ---------- */
 .assignment-note {
   z-index: 4;
+  display: flex;
+  flex-direction: column;
   width: 184px;
+  translate: 0 -100%;
   pointer-events: auto;
 }
 
-.assignment-note__string {
-  position: absolute;
-  left: 50%;
-  top: -18px;
-  width: 2px;
-  height: 22px;
-  background: color-mix(in srgb, var(--paper-3) 70%, transparent);
+.assignment-note__legs {
+  flex: none;
+  height: 18px;
+  margin: 0 40px;
+  border-left: 5px solid var(--land-wood);
+  border-right: 5px solid var(--land-wood);
 }
 
 .assignment-note__paper {
   padding: 12px 12px 10px;
-  border-radius: var(--r-cut);
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: var(--lift-paper);
-  rotate: -2deg;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
+  background: var(--surface);
 }
 
 .assignment-note__from {
-  font: var(--type-caps);
-  letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
-  color: var(--ink-2);
+  font: var(--type-chip);
+  font-weight: 700;
+  color: var(--accent-text);
 }
 
 .assignment-note__title {
   margin-top: 2px;
-  font: var(--weight-display) 1.1875rem/1.2 var(--font-display);
+  font: var(--weight-display) 1.125rem/1.25 var(--font-display);
 }
 
 .assignment-note__text {
   margin-top: 4px;
   font: var(--type-meta);
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 .assignment-note__chips {
@@ -895,17 +786,9 @@
   margin-top: 8px;
 }
 
-.assignment-note__chips .chip {
-  min-height: 26px;
-  padding: 0 8px;
-  font: 600 0.8125rem/1.1 var(--font-ui);
-  color: var(--ink);
-  background: var(--paper-2);
-  box-shadow: inset 0 0 0 1px var(--paper-3);
-}
-
 .assignment-note__foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 10px;
@@ -913,7 +796,7 @@
 
 .assignment-note__due {
   font: var(--type-meta);
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 /* ---------- the come-alive flight onto the trail (§2.17) ---------- */
@@ -922,7 +805,6 @@
   z-index: 60;
   pointer-events: none;
   animation: come-alive-fly 450ms var(--ease-amble) both;
-  filter: drop-shadow(0 10px 14px color-mix(in srgb, var(--bg-deep) 60%, transparent));
 }
 
 @keyframes come-alive-fly {
@@ -945,20 +827,17 @@
 /* ---------- List view and Lost and found ---------- */
 .trail__main--sheet {
   overflow: auto;
-  padding: calc(var(--header) + 14px) 30px 40px;
+  padding: calc(var(--topbar) + 20px) 30px 40px;
 }
 
 .trail-list {
-  --line-control: var(--line-control-panel);
   position: relative;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 22px 24px 26px;
+  padding: 20px 24px 24px;
+  border: 1px solid var(--line);
   border-radius: var(--r-card);
   background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent),
-    var(--lift);
 }
 
 .trail-list__head {
@@ -990,7 +869,7 @@
 .trail-list__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(214px, 1fr));
-  gap: 18px;
+  gap: 16px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1014,17 +893,20 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 8px 8px 10px;
-  border-radius: 10px;
-  color: var(--ink);
+  padding: 6px 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
   text-decoration: none;
-  background: var(--paper);
-  box-shadow: 0 12px 26px -12px color-mix(in srgb, var(--bg-deep) 90%, transparent);
-  transition: transform var(--t-ui) var(--ease-amble);
+  background: var(--surface);
+  transition:
+    border-color var(--t-micro) var(--ease-soft),
+    box-shadow var(--t-micro) var(--ease-soft);
 }
 
 .world-card__link:hover {
-  transform: translateY(-3px);
+  border-color: var(--brand-bright);
+  box-shadow: inset 0 0 0 1px var(--brand-bright);
 }
 
 .world-card__thumb {
@@ -1032,8 +914,8 @@
   place-items: center;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border-radius: 6px;
-  background: var(--bg-deep);
+  border-radius: var(--r-sm);
+  background: var(--bg-lift);
 }
 
 .world-card__thumb img {
@@ -1042,21 +924,16 @@
   object-fit: cover;
 }
 
-.world-card__thumb {
-  background: radial-gradient(90% 90% at 50% 100%, var(--bg-lift), var(--bg-deep));
-}
-
 .world-card__thumb .world-card__hero {
   width: 60%;
   height: 80%;
   object-fit: contain;
-  filter: drop-shadow(1.6px 0 0 var(--paper)) drop-shadow(-1.6px 0 0 var(--paper)) drop-shadow(0 1.6px 0 var(--paper)) drop-shadow(0 -1.6px 0 var(--paper));
 }
 
 .world-card__name {
   margin: 8px 4px 0;
   overflow: hidden;
-  font: var(--weight-display) 1.1875rem/1.3 var(--font-display);
+  font: var(--weight-display) 1.125rem/1.3 var(--font-display);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -1064,7 +941,7 @@
 .world-card__meta {
   margin: 0 4px;
   font: var(--type-meta);
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 .world-card__cast {
@@ -1079,20 +956,18 @@
   width: 32px;
   height: 32px;
   object-fit: contain;
-  filter: drop-shadow(1.2px 0 0 var(--paper)) drop-shadow(-1.2px 0 0 var(--paper)) drop-shadow(0 1.2px 0 var(--paper)) drop-shadow(0 -1.2px 0 var(--paper))
-    drop-shadow(0 2px 2px color-mix(in srgb, var(--ink) 35%, transparent));
 }
 
 .world-card__count {
   margin-left: auto;
   font: var(--type-meta);
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 .lost__list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1103,10 +978,10 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 14px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--surface-raised) 60%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line);
+  padding: 10px 12px 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
 }
 
 .lost__name {

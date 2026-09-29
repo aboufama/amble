@@ -1,6 +1,7 @@
 /*
  * New world (§2.5): the sheet over the Trail, the plan's waiting state, the plan card
- * (spec-mocks/10-plan-card.png in Night Trail), the ladder's first rung, and opening a starter. Tokens only.
+ * (spec-mocks/10-plan-card.png in the Scratch look), the ladder's first rung, and opening a starter.
+ * Flat: white panels with a 1 px line, 8 px corners, no tilt, no shadow. Tokens only.
  */
 
 /* ---------- the New world sheet ---------- */
@@ -28,11 +29,12 @@
   color: var(--text-2);
 }
 
+/* The cards' selection halo reaches 4 px past them: the row keeps that room inside the sheet's scroller. */
 .new-world__cards {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
-  padding: 6px 6px 4px;
+  padding: 8px 8px 6px;
 }
 
 .new-world__card {
@@ -41,16 +43,8 @@
   min-height: 156px;
 }
 
-.new-world__cards .new-world__card:nth-child(2) {
-  --tilt: 0.8deg;
-}
-
-.new-world__cards .new-world__card:nth-child(4) {
-  --tilt: -0.8deg;
-}
-
 .new-world__idea {
-  margin-top: 6px;
+  margin: 4px 8px 0;
 }
 
 @media (max-width: 1100px) {
@@ -102,13 +96,11 @@
 
 .plan-waiting--page {
   max-width: 640px;
-  margin: 60px auto 0;
-  padding: 36px 28px 28px;
-  border-radius: 28px;
+  margin: 48px auto 0;
+  padding: 32px 28px 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent),
-    var(--lift);
 }
 
 /* ---------- the plan page ---------- */
@@ -123,28 +115,15 @@
 .plan-top {
   position: relative;
   z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  padding: 0 16px 0 22px;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
-}
-
-.plan-top__brand {
-  display: inline-flex;
-  color: var(--text);
-  text-decoration: none;
-  border-radius: var(--r-btn);
 }
 
 .plan-page__main {
   position: absolute;
-  inset: 56px 0 0 0;
+  inset: var(--topbar) 0 0 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  padding: 18px 40px 18px;
+  padding: 16px 36px 18px;
   overflow: auto;
 }
 
@@ -157,8 +136,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin: 0 0 14px;
+  gap: 10px;
+  margin: 0 0 12px;
   font: var(--type-body);
   font-size: 0.9375rem;
   color: var(--text-2);
@@ -166,33 +145,32 @@
 
 .plan-said__idea {
   max-width: min(880px, 70vw);
-  padding: 8px 14px;
+  padding: 7px 12px;
   overflow: hidden;
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   color: var(--text);
   white-space: nowrap;
   text-overflow: ellipsis;
-  background: var(--well);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--surface);
 }
 
 .plan-said__edit {
   min-height: var(--target);
-  padding: 0 8px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-btn);
   font: var(--type-label);
-  color: var(--ai);
+  color: var(--accent-text);
   background: transparent;
 }
 
 .plan-said__edit:hover {
-  background: color-mix(in srgb, var(--ai) 12%, transparent);
+  background: var(--surface);
 }
 
 /* ---------- the plan card ---------- */
 .plan-card {
-  --line-control: var(--line-control-panel);
   display: grid;
   flex: 1 1 auto;
   grid-template-columns: minmax(0, 410fr) minmax(0, 420fr) minmax(0, 336fr);
@@ -203,12 +181,10 @@
   column-gap: 30px;
   row-gap: 16px;
   min-height: 0;
-  padding: 26px 30px;
-  border-radius: 28px;
+  padding: 24px 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 50%, transparent),
-    var(--lift);
 }
 
 .plan-card__left,
@@ -233,21 +209,9 @@
   flex-direction: column;
 }
 
-.plan-card__kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 28px;
-  padding: 0 11px;
-  border-radius: var(--r-chip);
-  font: 700 0.8125rem/1 var(--font-ui);
-  color: var(--alive);
-  background: color-mix(in srgb, var(--alive) 12%, transparent);
-}
-
 .plan-card__title {
-  margin: 14px 0 8px;
-  font: var(--weight-display) 2.75rem/1.05 var(--font-display);
+  margin: 4px 0 8px;
+  font: var(--weight-display) 2.5rem/1.1 var(--font-display);
 }
 
 .plan-card__pitch {
@@ -284,28 +248,29 @@
   gap: 8px;
   min-height: 38px;
   padding: 0 12px 0 6px;
-  border-radius: 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   font: var(--type-chip);
   font-weight: 400;
   color: var(--text-2);
-  background: color-mix(in srgb, var(--surface-raised) 40%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--surface);
 }
 
+/* The twist: a flat blue callout. */
 .plan-card__twist {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 14px;
-  border-radius: 16px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--brand-bright) 55%, transparent);
+  border-radius: var(--r-md);
   font: 400 0.96875rem/1.4 var(--font-ui);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent), color-mix(in srgb, var(--accent) 3%, transparent));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--brand-bright) 10%, var(--surface));
 }
 
 .plan-card__twist .icon {
   flex: none;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .plan-card__twist b {
@@ -322,7 +287,7 @@
 
 .plan-card__cast {
   margin: 0;
-  padding: 8px 0 0 10px;
+  padding: 10px 0 0 10px;
   list-style: none;
 }
 
@@ -333,34 +298,36 @@
   gap: 14px;
   margin-bottom: 8px;
   padding: 10px 12px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--surface-raised) 45%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
 }
 
+/* The one to draw first: Scratch's blue edge. */
 .plan-cast--first {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent), color-mix(in srgb, var(--accent) 3%, transparent));
-  box-shadow: inset 0 0 0 2px var(--accent);
+  border-color: var(--brand-bright);
+  box-shadow: inset 0 0 0 1px var(--brand-bright);
+  background: color-mix(in srgb, var(--brand-bright) 8%, var(--surface));
 }
 
 .plan-cast__num {
   position: absolute;
-  left: -9px;
-  top: -9px;
+  left: -10px;
+  top: -10px;
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  font: 700 0.875rem/1 var(--font-ui);
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-round);
+  font: 700 0.8125rem/1 var(--font-ui);
   color: var(--text);
-  background: var(--surface-raised);
-  box-shadow: 0 0 0 1px var(--line-control);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line-control);
 }
 
 .plan-cast--first .plan-cast__num {
-  color: var(--on-accent);
-  background: var(--accent);
+  color: var(--on-brand);
+  background: var(--brand);
   box-shadow: none;
 }
 
@@ -370,9 +337,8 @@
   place-items: center;
   width: 70px;
   height: 70px;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--bg-deep);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--line-control) 60%, transparent);
 }
 
 .plan-cast__glyph--small {
@@ -404,9 +370,8 @@
 
 .plan-cast--optional {
   margin-top: 4px;
+  border: 1px dashed var(--line-control);
   background: transparent;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 80%, transparent);
-  border: 1px dashed color-mix(in srgb, var(--line-control) 55%, transparent);
 }
 
 .plan-cast--optional .plan-cast__name {
@@ -425,7 +390,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 7px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-bottom: 1px solid var(--line);
   font: 400 0.9375rem/1.35 var(--font-ui);
   color: var(--text-2);
 }
@@ -451,54 +416,29 @@
   gap: 6px;
   min-height: 30px;
   padding: 0 10px;
-  border-radius: 9px;
+  border-radius: var(--r-chip);
   font: var(--type-chip);
   color: var(--text);
-  background: color-mix(in srgb, var(--change) 14%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--change) 45%, transparent);
+  background: color-mix(in srgb, var(--change-bright) 14%, var(--surface));
 }
 
 .plan-card__dials .icon {
   color: var(--change);
 }
 
-.plan-card__sent {
-  display: flex;
-  gap: 10px;
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  font: var(--type-meta);
-  color: var(--text-2);
-  background: var(--well);
-  box-shadow: inset 0 0 0 1px var(--line);
-}
-
-.plan-card__sent .icon {
-  flex: none;
-  color: var(--ai);
-}
-
-.plan-card__sent b {
-  display: block;
-  font: var(--type-chip);
-  color: var(--text);
-}
-
-.plan-card__sent a {
-  font-weight: 700;
-  color: var(--ai);
+.plan-card__how {
+  align-self: flex-start;
+  margin: 10px 0 0 -8px;
 }
 
 .plan-card__note {
   margin: 12px 0 0;
   padding: 10px 14px;
-  border-radius: var(--r-cut);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   font: var(--type-meta);
-  color: var(--ink);
+  color: var(--text);
   background: var(--note);
-  box-shadow: var(--lift-paper);
-  rotate: -1deg;
 }
 
 .plan-card__cta {
@@ -537,28 +477,29 @@
   gap: 10px;
 }
 
+/* "Want something different? Say it:": a field row, as Scratch's fields (white, a 1 px edge, 8 px). */
 .plan-card__again-field {
   display: flex;
   flex: 1;
   align-items: center;
   gap: 10px;
-  min-height: 50px;
-  padding: 0 16px;
-  border-radius: 14px;
+  min-height: var(--control);
+  padding: 0 14px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-btn);
   color: var(--text-2);
-  background: var(--well);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ai) 45%, transparent);
+  background: var(--surface);
 }
 
 .plan-card__again-field:focus-within {
-  box-shadow:
-    inset 0 0 0 2px var(--ai),
-    0 0 0 3px color-mix(in srgb, var(--ai) 22%, transparent);
+  border: 2px solid var(--brand);
+  padding: 0 13px;
+  box-shadow: 0 0 0 4px var(--hover-ring);
 }
 
 .plan-card__again-field .icon {
   flex: none;
-  color: var(--ai);
+  color: var(--text-2);
 }
 
 .plan-card__again-label {
@@ -571,18 +512,19 @@
   min-width: 0;
   padding: 10px 0;
   border: 0;
-  outline: none;
   font: var(--type-body);
   color: var(--text);
   background: transparent;
 }
 
 .plan-card__again-field input:focus-visible {
+  outline-offset: 6px;
   box-shadow: none;
 }
 
 .plan-card__again-field input::placeholder {
   color: var(--text-2);
+  opacity: 1;
 }
 
 /* ---------- the ladder's first rung, refusals, nothing to plan ---------- */
@@ -594,10 +536,14 @@
   max-width: 620px;
   margin: 40px auto 0;
   padding: 24px 26px;
-  border-radius: var(--r-cut);
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: var(--lift-paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
+  background: var(--surface);
+}
+
+.plan-fallback > .icon {
+  color: var(--accent-text);
 }
 
 .plan-fallback__text {
@@ -606,11 +552,12 @@
 
 .plan-fallback__idea {
   font: var(--type-body);
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 .plan-fallback__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -623,10 +570,10 @@
   max-width: 620px;
   margin: 40px auto 0;
   padding: 22px 24px;
-  border-radius: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   font: var(--type-body);
   background: var(--surface);
-  box-shadow: var(--lift);
 }
 
 /* ---------- opening a starter ---------- */
@@ -651,13 +598,28 @@
 }
 
 /* ---------- smaller screens ---------- */
+/* A short window: the card grows to its content and the page scrolls, instead of its columns hiding
+   their last rows behind the "Say it" field. */
+@media (max-height: 720px) {
+  .plan-card {
+    flex: none;
+    grid-template-rows: auto auto;
+  }
+
+  .plan-card__left,
+  .plan-card__mid,
+  .plan-card__right {
+    overflow: visible;
+  }
+}
+
 :root:is([data-layout='touch'], [data-layout='tab'], [data-layout='small']) .plan-card {
   column-gap: 22px;
   padding: 20px 22px;
 }
 
 :root:is([data-layout='touch'], [data-layout='tab'], [data-layout='small']) .plan-card__title {
-  font-size: 2.25rem;
+  font-size: 2.125rem;
 }
 
 :root[data-layout='small'] .plan-card,

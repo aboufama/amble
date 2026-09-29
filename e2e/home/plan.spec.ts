@@ -1,7 +1,7 @@
 /**
  * From an idea to a world (§2.5), with `mockAi` behind the test class link: the New world sheet's idea
- * goes to the AI (after the AI explainer, the first time on a device), the plan card comes back,
- * **Build it first** opens the new world in its Warm-up while the build runs in the background, and
+ * becomes a plan (the explainer "How wishes work" opens only when the student asks), the plan card comes
+ * back, **Build it first** opens the new world in its Warm-up while the build runs in the background, and
  * **Draw {hero} while I build** opens the Desk on the hero. When the plan call fails, the closest starter
  * is offered instead.
  */
@@ -10,6 +10,9 @@ import { expect, gotoRoute, openAmble, test } from '../helpers/app';
 import { mockAi, type MockAiLog, type MockAiOptions } from '../helpers/mockAi';
 
 const IDEA = 'a snail who rescues her friends from a grumpy salt king';
+
+/** Words the student never reads on these screens (the "How wishes work" sheet is the only exception). */
+const MACHINE_WORDS = /\bAI\b|AI helper|\bmodel\b|\bprompt\b|generating|robot/;
 
 interface WorldLike {
   origin: { kind: string; planTitle?: string };
@@ -22,10 +25,10 @@ interface AmbleLike {
   getState(): { ai: { job: { worldId: string; task: string } | null } };
 }
 
-/** Joins the test class; `explainerSeen` skips the AI explainer card. */
-async function openWithAi(page: Page, o: MockAiOptions, explainerSeen = true): Promise<MockAiLog> {
+/** Joins the test class, so wishes are available. */
+async function openWithAi(page: Page, o: MockAiOptions): Promise<MockAiLog> {
   const log = await mockAi(page, o);
-  await openAmble(page, { ai: 'mock', ...(explainerSeen ? { prefs: { seen: { aiExplainer: Date.now() } } } : {}) });
+  await openAmble(page, { ai: 'mock' });
   return log;
 }
 
@@ -51,18 +54,25 @@ async function worldOf(page: Page): Promise<{ id: string; world: WorldLike | nul
 }
 
 test('an idea becomes a plan card, and Build it first opens the world in its Warm-up', async ({ page }) => {
-  const log = await openWithAi(page, { plan: 'plan-snail.json' }, false);
-  await sendIdea(page);
+  const log = await openWithAi(page, { plan: 'plan-snail.json' });
+  await gotoRoute(page, '#/new?idea=1');
+  await expect(page.getByTestId('idea-field')).toBeVisible();
 
-  // The first idea on this device waits for the AI explainer; Got it sends it.
-  const explainer = page.getByTestId('ai-explainer');
-  await expect(explainer).toBeVisible();
-  expect(log.ofKind('plan')).toHaveLength(0);
-  await page.getByRole('dialog').getByRole('button', { name: 'Got it' }).click();
+  // How wishes work opens only when asked, and sends nothing.
+  const dialogs = page.getByRole('dialog');
+  const open = await dialogs.count();
+  await page.getByTestId('how-wishes').click();
+  await expect(dialogs).toHaveCount(open + 1);
+  await page.keyboard.press('Escape');
+  await expect(dialogs).toHaveCount(open);
 
+  // The idea goes straight to the plan: no explainer in the way.
+  await page.getByTestId('idea-field').fill(IDEA);
+  await page.getByTestId('idea-go').click();
   await expect(page).toHaveURL(/#\/plan$/);
   const card = page.getByTestId('plan-card');
   await expect(card).toBeVisible();
+  expect(await page.getByTestId('screen-plan').innerText()).not.toMatch(MACHINE_WORDS);
   await expect(card).toContainText("Shelly's Big Rescue");
   await expect(card).toContainText('The Salt King');
   await expect(page.getByTestId('screen-plan')).toContainText(IDEA);
@@ -98,6 +108,9 @@ test('when the plan call fails, the closest starter is offered', async ({ page }
   await sendIdea(page);
   const fallback = page.getByTestId('plan-fallback');
   await expect(fallback).toBeVisible({ timeout: 60_000 });
+  // The plain words: no helper that couldn't answer, just a world close to the idea.
+  await expect(fallback).toContainText("Let's start from a world close to your idea: Moon King.");
+  expect(await page.getByTestId('screen-plan').innerText()).not.toMatch(MACHINE_WORDS);
   // An eager double click still makes one world.
   await page.getByTestId('fallback-start').dblclick();
   await expect(page).toHaveURL(/#\/w\/w_[A-Za-z0-9_-]+$/);
