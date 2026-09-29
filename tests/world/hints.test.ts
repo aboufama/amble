@@ -22,6 +22,12 @@ describe('key hints', () => {
     expect(keyHints(['up', 'down'], {})[0].word).toBe('world.actionUpDown');
   });
 
+  it('shows only jump for a runner (it runs by itself), and nothing the game never reads', () => {
+    const runner = [{ source: "this.player = this.spawnHero(160, 400, 'hero').runner({ speed: () => this.dials.speed, jumps: 2 });" }];
+    expect(actionsFromCode(runner)).toEqual(['jump']);
+    expect(keyHints(hintActions(['jump'], runner), {}).map((h) => h.word)).toEqual(['world.actionJump']);
+  });
+
   it('names picked keys briefly', () => {
     expect(keyLabel('KeyQ')).toBe('Q');
     expect(keyLabel('Digit7')).toBe('7');

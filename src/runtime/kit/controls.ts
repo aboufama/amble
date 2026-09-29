@@ -95,6 +95,14 @@ export class Controls {
   /** True only on the frame the action started (never lost on slow frames). */
   pressed(a: Action): boolean {
     this.used.add(a);
+    return this.kitPressed(a);
+  }
+
+  /**
+   * `pressed` for the kit's own screens (the title card, game over, pause). It does not count as the game
+   * using that control, so the keys row and the touch buttons show only what the game itself reads.
+   */
+  kitPressed(a: Action): boolean {
     return !!this.state[a] && !this.prev[a];
   }
 

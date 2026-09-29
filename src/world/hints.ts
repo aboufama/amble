@@ -29,7 +29,9 @@ export function actionsFromCode(code: readonly { source: string }[]): Action[] {
   const text = code.map((f) => f.source).join('\n');
   const out = new Set<Action>();
   const add = (...a: Action[]) => a.forEach((x) => out.add(x));
-  if (/\.platformer\(|\.runner\(/.test(text)) add('left', 'right', 'jump');
+  if (/\.platformer\(/.test(text)) add('left', 'right', 'jump');
+  // A runner runs by itself: jumping is all the player does.
+  if (/\.runner\(/.test(text)) add('jump');
   if (/\.topdown\(|\.flyer\(/.test(text)) add('left', 'right', 'up', 'down');
   if (/\.shooter\(|(pressed|held)\(['"]fire/.test(text)) add('fire');
   if (/\bdash\s*:\s*true|(pressed|held)\(['"]dash/.test(text)) add('dash');

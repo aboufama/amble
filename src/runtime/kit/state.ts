@@ -206,15 +206,16 @@ export class Kit {
   pre(_time: number, delta: number): void {
     this.controls.poll();
     const c = this.controls;
+    // The kit's own screens read input without it counting as the game's controls.
     if (this.state === 'title') {
-      if (c.pressed('jump') || c.pressed('fire') || c.pressed('action') || c.pointer.justDown || c.anyKey) this.start();
+      if (c.kitPressed('jump') || c.kitPressed('fire') || c.kitPressed('action') || c.pointer.justDown || c.anyKey) this.start();
       return;
     }
     if (this.state === 'won' || this.state === 'lost') {
-      if (this.now() - this.endedAt > 900 && (c.tappedRestart || c.pointer.justDown || c.pressed('jump'))) this.scene.restart();
+      if (this.now() - this.endedAt > 900 && (c.tappedRestart || c.pointer.justDown || c.kitPressed('jump'))) this.scene.restart();
       return;
     }
-    if (c.pressed('pause')) this.togglePause();
+    if (c.kitPressed('pause')) this.togglePause();
     if (env().crashed() || this.paused) return;
     this.clock += delta;
     const dt = delta / 1000;
