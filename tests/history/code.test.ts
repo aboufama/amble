@@ -4,7 +4,7 @@
  * docs. CodeMirror's state runs in Node; no view is created.
  */
 import { EditorState } from '@codemirror/state';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createHistory } from '../../src/history/api';
 import type { World } from '../../src/model/types';
 import { liveAuthors, provenanceExtension, setBaseline } from '../../src/screens/code/cm/gutter';
@@ -12,7 +12,7 @@ import { kitDocsInRange, kitIndex, kitRefAt } from '../../src/screens/code/cm/ki
 import { lineChanges, nearLine } from '../../src/screens/code/cm/lineEdits';
 import { kidText, lintSources } from '../../src/screens/code/cm/lint';
 import { lockBypass, lockedField, lockedLines, setLocked } from '../../src/screens/code/cm/locked';
-import { checkRun, runIt, type RunDeps } from '../../src/screens/code/run';
+import { checkRun, runIt, unkindWords, type RunDeps } from '../../src/screens/code/run';
 import { MemoryStore } from '../../src/store/memory';
 import { FIXTURE_GAME } from '../../src/starters/fixtureGame';
 import { sampleWorld } from '../foundation/samples';
@@ -32,7 +32,7 @@ describe('Run it', () => {
   it('holds back code that does not parse and names the first problem', () => {
     const world = fixtureWorld();
     const broken = FIXTURE_GAME.replace('this.rage = 0;', 'this.rage = 0; )');
-    const check = checkRun(world, { 'game.js': { source: broken, locked: [] } }, createHistory().attribute);
+    const check = checkRun(world, { 'game.js': { source: broken, locked: [] } }, createHistory().attribute, 'middle');
     expect(check.kind).toBe('blocked');
     if (check.kind !== 'blocked') return;
     expect(check.errors[0].line).toBe(FIXTURE_GAME.split('\n').findIndex((l) => l.includes('this.rage = 0;')) + 1);
@@ -46,7 +46,7 @@ describe('Run it', () => {
     const history = createHistory({ store: () => store });
     const played: World[] = [];
     let shown: World | null = null;
-    const deps: RunDeps = { history, play: async (w) => void played.push(w), setWorld: (w) => (shown = w) };
+    const deps: RunDeps = { history, play: async (w) => void played.push(w), setWorld: (w) => (shown = w), level: 'middle' };
     const source = FIXTURE_GAME.replace('gravity: 1500', 'gravity: 1200');
     const out = await runIt(world, { 'game.js': { source, locked: [] } }, deps);
     expect(out.kind).toBe('ran');
@@ -66,7 +66,7 @@ describe('Run it', () => {
   it('replays an unchanged world without a footstep', async () => {
     const world = fixtureWorld();
     const played: World[] = [];
-    const out = await runIt(world, { 'game.js': { source: FIXTURE_GAME, locked: [] } }, { history: createHistory(), play: async (w) => void played.push(w), setWorld: () => undefined });
+    const out = await runIt(world, { 'game.js': { source: FIXTURE_GAME, locked: [] } }, { history: createHistory(), play: async (w) => void played.push(w), setWorld: () => undefined, level: 'middle' });
     expect(out.kind).toBe('replayed');
     expect(played).toEqual([world]);
   });
@@ -84,11 +84,82 @@ describe('Run it', () => {
       setWorld: () => {
         throw new Error('nothing to record');
       },
+      level: 'middle',
     };
     expect((await runIt(world, { 'game.js': { source, locked: [] } }, failing)).kind).toBe('failed');
     expect(played).toEqual([source, FIXTURE_GAME]);
     const replaced: RunDeps = { ...failing, play: async () => Promise.reject(new DOMException('replaced', 'AbortError')) };
     expect((await runIt(world, { 'game.js': { source, locked: [] } }, replaced)).kind).toBe('superseded');
+  });
+});
+
+describe('Run it: the words a student types (§5.13)', () => {
+  const rot13 = (s: string) => s.replace(/[a-z]/g, (c) => String.fromCharCode(((c.charCodeAt(0) - 97 + 13) % 26) + 97));
+  const WIN = "this.boss.on('die', () => this.win('MOON KING DEFEATED!'));";
+  const winLine = FIXTURE_GAME.split('\n').findIndex((l) => l.includes(WIN)) + 1;
+  const saying = (words: string, base = FIXTURE_GAME) => base.replace("this.win('MOON KING DEFEATED!')", `this.win('${words}')`);
+
+  function tracked(level: RunDeps['level']) {
+    const played: World[] = [];
+    const recorded: World[] = [];
+    const history = createHistory();
+    const deps: RunDeps = {
+      history: { attribute: history.attribute, record: async (w) => (recorded.push(w), w) },
+      play: async (w) => void played.push(w),
+      setWorld: () => undefined,
+      level,
+    };
+    return { deps, played, recorded };
+  }
+
+  it("won't run new words that aren't OK for school, and says which line, on the Chromebook alone", async () => {
+    expect(winLine).toBeGreaterThan(0);
+    const rude = `Moon King, you ${rot13('fuvg')}!`;
+    const run = tracked('high');
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    try {
+      const out = await runIt(fixtureWorld(), { 'game.js': { source: saying(rude), locked: [] } }, run.deps);
+      expect(out).toEqual({ kind: 'words', file: 'game.js', line: winLine });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    expect(run.played).toEqual([]);
+    expect(run.recorded).toEqual([]);
+  });
+
+  it('reads the words at the student\'s level: insults stop a grades 3-5 world only', async () => {
+    const words = 'You beat him, you stupid slime!';
+    const low = tracked('elementary');
+    expect(await runIt(fixtureWorld(), { 'game.js': { source: saying(words), locked: [] } }, low.deps)).toEqual({ kind: 'words', file: 'game.js', line: winLine });
+    const mid = tracked('middle');
+    expect((await runIt(fixtureWorld(), { 'game.js': { source: saying(words), locked: [] } }, mid.deps)).kind).toBe('ran');
+    expect(mid.played).toHaveLength(1);
+  });
+
+  it('never reads again the words the world already shows, and runs kind words', async () => {
+    // The running version already says it (a world from before this check, say); a number change still runs.
+    const before = saying('You stupid slime!');
+    const world = sampleWorld({ code: [{ path: 'game.js', source: before, authors: [['starter', LINES]], locked: [] }], cast: {}, dials: {}, twists: [] });
+    const run = tracked('elementary');
+    expect((await runIt(world, { 'game.js': { source: before.replace('gravity: 1500', 'gravity: 1200'), locked: [] } }, run.deps)).kind).toBe('ran');
+    const kind = tracked('elementary');
+    expect((await runIt(fixtureWorld(), { 'game.js': { source: saying('You saved the moon! Great jumping!'), locked: [] } }, kind.deps)).kind).toBe('ran');
+    expect(kind.recorded).toHaveLength(1);
+  });
+
+  it("finds the words in any file, where the game shows them, and leaves code's own names alone", () => {
+    const helper = (said: string) => `// Cheers from the crowd.\nfunction cheer(boss) {\n  boss.say('${said}');\n}\n`;
+    const code = [
+      { path: 'game.js', source: FIXTURE_GAME, authors: [['starter', LINES]] as World['code'][number]['authors'], locked: [] },
+      { path: 'cheer.js', source: helper('Go, go, go!'), authors: [['starter', 4]] as World['code'][number]['authors'], locked: [] },
+    ];
+    expect(unkindWords(code, [code[0], { ...code[1], source: helper('you are such an idiot') }], 'elementary')).toEqual({ file: 'cheer.js', line: 3 });
+    expect(unkindWords(code, [code[0], { ...code[1], source: helper('you are such an idiot') }], 'high')).toBeNull();
+    // Code is never read as words: a function named for what it does in the game is fine.
+    const names = FIXTURE_GAME.replace("this.boss.on('die'", 'const stupidSlimeKiller = 1; this.boss.on(\'die\'');
+    expect(unkindWords(code, [{ ...code[0], source: names }, code[1]], 'elementary')).toBeNull();
   });
 });
 

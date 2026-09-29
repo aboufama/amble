@@ -23,13 +23,14 @@ const LOOK: Record<RunState['kind'], { icon: IconName | null; tone: string }> = 
   starting: { icon: null, tone: 'accent' },
   done: { icon: 'check', tone: 'alive' },
   blocked: { icon: 'warning', tone: 'warn' },
+  words: { icon: 'warning', tone: 'warn' },
   failed: { icon: 'warning', tone: 'warn' },
   runtime: { icon: 'warning', tone: 'warn' },
 };
 
 export function RunBar({ run, message, oldDraft, onShow, onBringBack }: RunBarProps) {
   const look = LOOK[run.kind];
-  const canShow = run.kind === 'blocked' || ((run.kind === 'runtime' || run.kind === 'failed') && run.line !== null);
+  const canShow = run.kind === 'blocked' || run.kind === 'words' || ((run.kind === 'runtime' || run.kind === 'failed') && run.line !== null);
   return (
     <div className={cx('run-bar', `run-bar--${look.tone}`)} data-testid="run-bar" data-run={run.kind}>
       <p className="run-bar__status">

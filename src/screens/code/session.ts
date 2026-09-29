@@ -14,6 +14,7 @@ import { loadWorld, setSessionWorld } from '../../history/live';
 import { t } from '../../i18n';
 import type { Author, CodeFile, ExplainOutcome, ExplainReply, Role, World } from '../../model/types';
 import { announce } from '../../state/app';
+import { effectiveLevel } from '../../state/config';
 import type { ArtChipInfo } from './cm/artChips';
 import { chipsChanged } from './cm/artChips';
 import { addNote, removeNote, type ExplainNote } from './cm/explain';
@@ -32,6 +33,8 @@ export type RunState =
   | { kind: 'starting' }
   | { kind: 'done' }
   | { kind: 'blocked'; count: number; line: number; file: string }
+  /** The change would show words that aren't OK for school (the local check, §5.13); the last version plays. */
+  | { kind: 'words'; line: number; file: string }
   /** The new version broke as it started (at `line` of `file` when the game said where); the last one plays. */
   | { kind: 'failed'; line: number | null; file: string | null }
   | { kind: 'runtime'; line: number | null; file: string | null };
@@ -304,11 +307,15 @@ export class CodeSession {
       history: this.o.services.history,
       play: (w) => loadWorld(w),
       setWorld: (w) => setSessionWorld(w),
+      level: effectiveLevel(this.world.assignment),
     });
     if (this.disposed) return;
     if (outcome.kind === 'blocked') {
       const first = outcome.errors[0];
       this.run = { kind: 'blocked', count: outcome.errors.length, line: first.line, file: first.file };
+      announce(this.runMessage(), 'polite');
+    } else if (outcome.kind === 'words') {
+      this.run = { kind: 'words', line: outcome.line, file: outcome.file };
       announce(this.runMessage(), 'polite');
     } else if (outcome.kind === 'failed') {
       const where = this.runtime[0];
@@ -350,6 +357,8 @@ export class CodeSession {
         if (r.count === 1) return other ? t('history.runBlockedOneIn', { line: r.line, file: r.file }) : t('history.runBlockedOne', { line: r.line });
         return other ? t('history.runBlockedManyIn', { n: r.count, line: r.line, file: r.file }) : t('history.runBlockedMany', { n: r.count, line: r.line });
       }
+      case 'words':
+        return r.file !== this.active || this.world.code.length > 1 ? t('history.runWordsIn', { line: r.line, file: r.file }) : t('history.runWords', { line: r.line });
     }
   }
 

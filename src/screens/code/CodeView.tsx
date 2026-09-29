@@ -247,7 +247,7 @@ export function CodeView({ route }: { route: RouteOf<'code'> }) {
                 oldDraft={snap.oldDraft}
                 onShow={() => {
                   const r = snap.run;
-                  if (r.kind === 'blocked') session.jumpTo(r.file, r.line);
+                  if (r.kind === 'blocked' || r.kind === 'words') session.jumpTo(r.file, r.line);
                   else if ((r.kind === 'runtime' || r.kind === 'failed') && r.file && r.line) session.jumpTo(r.file, r.line);
                 }}
                 onBringBack={() => session.bringBackDraft()}

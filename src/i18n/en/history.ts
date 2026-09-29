@@ -81,6 +81,8 @@ export const history = {
   runBlockedOneIn: 'Not running your changes yet: 1 problem on line {line} of {file}.',
   runBlockedMany: 'Not running your changes yet: {n} problems. The first is on line {line}.',
   runBlockedManyIn: 'Not running your changes yet: {n} problems. The first is on line {line} of {file}.',
+  runWords: "Let's keep the words in games friendly: line {line}.",
+  runWordsIn: "Let's keep the words in games friendly: line {line} of {file}.",
   runFailed: "Amble couldn't start your changes. Your world is just like before.",
   runBrokeAt: 'Your changes broke on line {line} of {file}. Your world is just like before.',
   runtimeProblem: 'The game broke here while it ran: {message}',
