@@ -10,6 +10,7 @@ import { t } from '../../i18n';
 import type { ArtId, GalleryNote } from '../../model/types';
 import { goalsFor, runChecks, teacherEvidence, type ArtFacts } from '../../school/checks';
 import { codeFacts } from '../../school/codeFacts';
+import { tn } from '../../school/count';
 import type { GalleryItem } from '../../school/gallery';
 import { formatMinutes } from '../../school/story';
 import { updateTeacherData, useTeacherData } from '../../school/teacherData';
@@ -171,20 +172,20 @@ export function GalleryDetail({ item, index, total, showNames, onMove, onBack }:
             <h4 id={ids.story} className="gbox__h">
               <SchoolIcon name="clock" size={18} />
               {t('school.staff_howBuilt')}
-              <small>{t('school.staff_sessions', { n: story.sessions, time: formatMinutes(story.minutes) })}</small>
+              <small>{tn('school.staff_sessions', story.sessions, { time: formatMinutes(story.minutes) })}</small>
             </h4>
             <p className="gbox__chips">
               <span className="gstat gstat--draw">
                 <Icon name="draw" size={16} />
-                {by ? t('school.staff_drawingsBy', { n: story.drawings, name: by }) : t('school.staff_drawingsN', { n: story.drawings })}
+                {by ? tn('school.staff_drawingsBy', story.drawings, { name: by }) : tn('school.staff_drawingsN', story.drawings)}
               </span>
               <span className="gstat gstat--ai">
                 <Icon name="sparkle" size={16} />
-                {t('school.staff_aiChanges', { n: story.aiChanges })}
+                {tn('school.staff_aiChanges', story.aiChanges)}
               </span>
               <span className="gstat">
                 <SchoolIcon name="code" size={16} />
-                {t('school.staff_codeEdits', { n: story.codeEdits })}
+                {tn('school.staff_codeEdits', story.codeEdits)}
               </span>
             </p>
             {story.requests.length > 0 && (

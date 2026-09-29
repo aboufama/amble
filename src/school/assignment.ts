@@ -4,6 +4,7 @@
  * and assignment files. Assignments carried in a class link must use a built-in starter.
  */
 import { extractManifest, sourceFilesOf } from '../cores/ai';
+import { safeBaseName } from '../files/names';
 import { t } from '../i18n';
 import { uid } from '../model/ids';
 import type { Assignment, AutoCheck, CastKey, CodeFile, Goal, Role, StarterId, World } from '../model/types';
@@ -61,7 +62,11 @@ export function castFromCode(code: readonly CodeFile[]): CastInfo[] {
   for (const [key, raw] of Object.entries(art as Record<string, unknown>)) {
     const spec = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
     const name = typeof spec.name === 'string' && spec.name.trim() ? spec.name.trim().slice(0, 40) : nameFromKey(key);
-    out.push({ key, name, role: roleOf(spec, key), required: spec.required === true });
+    const role = roleOf(spec, key);
+    // The kit's rule: characters that are the hero, the boss or an enemy are needed unless marked otherwise.
+    const character = spec.kind === 'character' || (spec.kind === undefined && (role === 'hero' || role === 'boss' || role === 'enemy' || role === 'npc'));
+    const required = spec.spare === true ? false : typeof spec.required === 'boolean' ? spec.required : character && (role === 'hero' || role === 'boss' || role === 'enemy');
+    out.push({ key, name, role, required });
   }
   return out;
 }
@@ -200,6 +205,5 @@ export function assignmentWorld(base: World, asg: Assignment, now = Date.now()):
 
 /** The file name for an assignment file ("Boss Battle Week (starter).amble"). */
 export function assignmentFileName(asg: Assignment): string {
-  const title = (asg.title.trim() || t('school.staff_asgUntitled')).replace(/[\\/:*?"<>|]+/g, ' ').trim();
-  return `${title} (${t('school.staff_asgFileSuffix')}).amble`;
+  return `${safeBaseName(asg.title, t('school.staff_asgUntitled'))} (${t('school.staff_asgFileSuffix')}).amble`;
 }

@@ -1,7 +1,8 @@
 /**
  * What a world's code does, read statically for the assignment checks (§2.13, §4.2 `AutoCheck`): the boss's
- * distinct attacks (pattern.* and shoot calls inside `brain()` or `phases()`), brain states, win and lose,
- * the dials it reads, the sounds it plays and their captions. Files that don't parse (a student's typo)
+ * distinct attacks (pattern.* and shoot calls inside `brain()` or `phases()`), brain states, win and lose
+ * (a `win()`/`lose()` call, or the kit's own ending: a boss that dies wins, a hero that dies loses), the
+ * dials it reads, the sounds it plays and their captions. Files that don't parse (a student's typo)
  * are skipped; the checks still say what they found in the rest.
  */
 import { parse, type AnyNode, type CallExpression, type Expression, type MemberExpression, type PrivateIdentifier, type Super } from 'acorn';
@@ -66,6 +67,13 @@ function shotKey(call: CallExpression, src: string): string {
   return first ? src.slice(first.start, first.end) : '';
 }
 
+/** `{ boss: true }` among a call's arguments. */
+function bossOption(call: CallExpression): boolean {
+  return call.arguments.some(
+    (a) => a.type === 'ObjectExpression' && a.properties.some((p) => p.type === 'Property' && !p.computed && p.key.type === 'Identifier' && p.key.name === 'boss' && p.value.type === 'Literal' && p.value.value === true),
+  );
+}
+
 /** `this.dials.jump` (and the kit's alias `this.dial.jump`). */
 function isThisDial(m: MemberExpression): boolean {
   const obj = m.object as Expression | Super;
@@ -84,6 +92,10 @@ export function codeFacts(code: readonly CodeFile[]): CodeFacts {
   let brainStates = 0;
   let win = false;
   let lose = false;
+  // The kit ends a game by itself: a boss's death wins it and the hero's loses it (unless the code handles 'die').
+  let heroSpawned = false;
+  let bossSpawned = false;
+  const spawnedKeys = new Set<string>();
 
   for (const file of code) {
     let ast: AnyNode;
@@ -107,6 +119,12 @@ export function codeFacts(code: readonly CodeFile[]): CodeFacts {
         }
         if (name === 'win') win = true;
         if (name === 'lose') lose = true;
+        if (name && /^spawn/.test(name)) {
+          if (name === 'spawnHero') heroSpawned = true;
+          if (bossOption(call)) bossSpawned = true;
+          const key = stringArg(call, 2);
+          if (key) spawnedKeys.add(key);
+        }
         if (name === 'sfx') {
           const s = stringArg(call, 0);
           if (s) sfx.add(s);
@@ -140,6 +158,12 @@ export function codeFacts(code: readonly CodeFile[]): CodeFacts {
   let sounds: Record<string, string> = {};
   try {
     const statics = extractManifest(sourceFilesOf(code)).statics;
+    const art = statics.art && typeof statics.art === 'object' ? (statics.art as Record<string, unknown>) : {};
+    for (const key of spawnedKeys) {
+      const role = (art[key] as { role?: unknown } | undefined)?.role;
+      if (role === 'boss') bossSpawned = true;
+      if (role === 'hero') heroSpawned = true;
+    }
     if (statics.dials && typeof statics.dials === 'object') dials = Object.keys(statics.dials as Record<string, unknown>);
     if (statics.sounds && typeof statics.sounds === 'object') {
       for (const [k, v] of Object.entries(statics.sounds as Record<string, unknown>)) {
@@ -152,5 +176,5 @@ export function codeFacts(code: readonly CodeFile[]): CodeFacts {
     sounds = {};
   }
 
-  return { attacks: attacks.sort(), brainStates, win, lose, dials, dialsRead: [...dialsRead].sort(), sounds, sfx: [...sfx].sort(), unreadable };
+  return { attacks: attacks.sort(), brainStates, win: win || bossSpawned, lose: lose || heroSpawned, dials, dialsRead: [...dialsRead].sort(), sounds, sfx: [...sfx].sort(), unreadable };
 }

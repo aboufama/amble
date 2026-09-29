@@ -5,12 +5,13 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useServices } from '../../app/services';
+import { safeBaseName } from '../../files/names';
 import { t } from '../../i18n';
 import { toCsv } from '../../school/csv';
 import { goalsFor, runChecks } from '../../school/checks';
 import { codeFacts } from '../../school/codeFacts';
+import { tn } from '../../school/count';
 import { assignmentName, matchesFilter, openGallery, robotResultOf, selectGalleryItem, setGalleryFilter, useGallery, type GalleryFilter, type GalleryItem } from '../../school/gallery';
-import { downloadBlob } from '../../school/saveFile';
 import { useTeacherData } from '../../school/teacherData';
 import { announce, showToast } from '../../state/app';
 import { useStore } from '../../state/store';
@@ -128,15 +129,19 @@ export function GalleryTab({ showNames = true }: { showNames?: boolean }) {
       showToast(t('school.staff_galleryNoFiles'), { kind: 'error' });
       return;
     }
-    announce(t('school.staff_galleryOpening', { n: amble.length }));
-    await openGallery(services.files, amble, kind);
+    announce(tn('school.staff_galleryOpening', amble.length));
+    await openGallery(amble, kind);
   };
 
-  const exportCsv = () => {
+  const exportCsv = async () => {
     const csv = csvFor(gallery.items, notes);
-    const name = `${t('school.staff_csvName')} - ${(asg ?? teacherClass ?? t('school.staff_csvClass')).replace(/[\\/:*?"<>|]+/g, ' ')}.csv`;
-    downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), name);
-    showToast(t('school.staff_csvSaved', { name }), { kind: 'success' });
+    const name = `${t('school.staff_csvName')} - ${safeBaseName(asg ?? teacherClass ?? '', t('school.staff_csvClass'))}.csv`;
+    try {
+      const saved = await services.files.saveBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), name, 'csv');
+      if (saved) showToast(saved.method === 'download' ? t('school.staff_csvDownloaded', { name: saved.name }) : t('school.staff_csvSaved', { name: saved.name }), { kind: 'success' });
+    } catch {
+      showToast(t('school.staff_csvFailed'), { kind: 'error' });
+    }
   };
 
   if (!gallery.items.length) {
@@ -188,14 +193,14 @@ export function GalleryTab({ showNames = true }: { showNames?: boolean }) {
           {teacherClass && <span className="gallery__class">{teacherClass}</span>}
           <p className="gallery__source">
             <SchoolIcon name="folder" size={18} />
-            {gallery.source === 'folder' ? t('school.staff_sourceFolder', { n: gallery.items.length }) : t('school.staff_sourceFiles', { n: gallery.items.length })}
+            {gallery.source === 'folder' ? tn('school.staff_sourceFolder', gallery.items.length) : tn('school.staff_sourceFiles', gallery.items.length)}
             {gallery.loading && <span className="gallery__loading">{t('school.staff_reading')}</span>}
           </p>
           <div className="gallery__tools">
             <Button variant="quiet" size={38} icon="fileOpen" onClick={() => void open('folder')}>
               {t('school.staff_openAnother')}
             </Button>
-            <TButton variant="ghost" icon="download" onClick={exportCsv} testId="feedback-csv">
+            <TButton variant="ghost" icon="download" onClick={() => void exportCsv()} testId="feedback-csv">
               {t('school.staff_feedbackCsv')}
             </TButton>
           </div>

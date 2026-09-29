@@ -1,45 +1,35 @@
 /**
  * Settings → Storage (§2.15, §4.3): how much space Amble uses, Keep my worlds safe (persistent storage),
- * Save all my worlds (one zip of .amble files), Lost and found, and Delete everything Amble keeps on this
- * Chromebook (typed confirmation). Old Amble's data and files saved to Drive are never touched.
+ * Save all my worlds (M6's one zip of .amble files), Lost and found, and Delete everything Amble keeps on
+ * this Chromebook (typed confirmation). Old Amble's data and files saved to Drive are never touched.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from '../../app/Link';
 import { useServices } from '../../app/services';
 import { t } from '../../i18n';
-import { saveBlob } from '../../school/saveFile';
 import { flushTeacherData } from '../../school/teacherData';
 import { announce, showToast } from '../../state/app';
+import { upkeepOf, type Store } from '../../store';
+import { formatBytes, requestPersist, spaceInfo, type SpaceInfo } from '../../store/quota';
 import { Button, Meter } from '../../ui/components';
 import { askUser } from '../../ui/dialogs';
 import { Icon } from '../../ui/icons';
+import { SaveAllButton } from '../files/SaveAllButton';
 import { Group } from './parts';
 
-export function formatBytes(n: number): string {
-  if (n >= 1e9) return t('school.sizeGb', { n: (n / 1e9).toFixed(1) });
-  if (n >= 1e6) return t('school.sizeMb', { n: Math.max(1, Math.round(n / 1e6)) });
-  return t('school.sizeKb', { n: Math.max(1, Math.round(n / 1e3)) });
-}
+export { formatBytes };
 
-function clearKeys(storage: Storage | null): void {
-  if (!storage) return;
-  for (const key of Object.keys(storage)) if (key.startsWith('amble')) storage.removeItem(key);
-}
-
-function safe<T>(get: () => T): T | null {
+function clearKeys(get: () => Storage): void {
   try {
-    return get();
+    const storage = get();
+    for (const key of Object.keys(storage)) if (key.startsWith('amble')) storage.removeItem(key);
   } catch {
-    return null;
+    // Storage blocked: nothing kept there.
   }
 }
 
-/** Deletes Amble's database and its keys in this browser profile, then starts Amble fresh. */
-export async function deleteEverything(): Promise<void> {
-  await flushTeacherData().catch(() => undefined);
-  clearKeys(safe(() => localStorage));
-  clearKeys(safe(() => sessionStorage));
-  await new Promise<void>((resolve) => {
+function deleteDatabase(): Promise<void> {
+  return new Promise<void>((resolve) => {
     try {
       const r = indexedDB.deleteDatabase('amble');
       r.onsuccess = r.onerror = r.onblocked = () => resolve();
@@ -47,63 +37,70 @@ export async function deleteEverything(): Promise<void> {
       resolve();
     }
   });
-  location.replace(`${location.pathname}${location.search}#/`);
-  location.reload();
+}
+
+/**
+ * Deletes what Amble keeps in this browser profile: the store (every world, drawing, footstep, setting and
+ * the What Amble sends log) and Amble's own keys (the class joined, the AI settings, the device id). Then
+ * Amble starts fresh on the first page.
+ */
+export async function deleteEverything(store: Store, reload: () => void = () => location.reload()): Promise<void> {
+  await flushTeacherData().catch(() => undefined);
+  const upkeep = upkeepOf(store);
+  let wiped = false;
+  if (upkeep) {
+    try {
+      await upkeep.wipe();
+      wiped = true;
+    } catch {
+      wiped = false;
+    }
+  }
+  if (!wiped) await deleteDatabase();
+  clearKeys(() => localStorage);
+  clearKeys(() => sessionStorage);
+  try {
+    history.replaceState(null, '', `${location.pathname}${location.search}#/`);
+  } catch {
+    // Some embedders block history; the reload still starts fresh.
+  }
+  reload();
 }
 
 export function StorageSection() {
   const services = useServices();
   const { store } = services;
-  const [usage, setUsage] = useState<{ usage: number; quota: number; persisted: boolean } | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [space, setSpace] = useState<SpaceInfo | null>(null);
   const [asked, setAsked] = useState<'granted' | 'denied' | null>(null);
 
   const measure = useCallback(() => {
     void store
       .estimate()
-      .then(setUsage)
-      .catch(() => setUsage(null));
+      .then((e) => setSpace(e.quota > 0 ? spaceInfo(e) : null))
+      .catch(() => setSpace(null));
   }, [store]);
   useEffect(measure, [measure]);
 
   const keepSafe = async () => {
-    let granted = false;
-    try {
-      granted = (await navigator.storage?.persist?.()) ?? false;
-    } catch {
-      granted = false;
-    }
+    const granted = await requestPersist();
     setAsked(granted ? 'granted' : 'denied');
     announce(granted ? t('school.setSafeYes') : t('school.setSafeNotYet'));
     measure();
   };
 
-  const saveAll = async () => {
-    setSaving(true);
-    try {
-      const zip = await services.files.saveAll();
-      const day = new Date().toISOString().slice(0, 10);
-      const saved = await saveBlob(zip, t('school.setSaveAllName', { day }), { description: t('school.setZipType'), mime: 'application/zip', ext: '.zip' });
-      if (saved) showToast(t('school.setSaveAllDone', { name: saved.name }), { kind: 'success' });
-    } catch {
-      showToast(t('school.setSaveAllFailed'), { kind: 'error' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const wipe = async () => {
     const typed = await askUser({ title: t('school.setDeleteTitle'), body: t('school.setDeleteBody'), label: t('school.setDeleteType'), ok: t('school.setDeleteOk'), maxLength: 20 });
     if (typed === null) return;
-    if (typed.trim() !== 'DELETE') {
+    if (typed.trim().toUpperCase() !== 'DELETE') {
       showToast(t('school.setDeleteNot'));
       return;
     }
-    await deleteEverything();
+    await deleteEverything(store);
   };
 
   const memory = store.mode === 'memory';
-  const persisted = usage?.persisted || asked === 'granted';
+  const persisted = space?.persisted || asked === 'granted';
+  const used = space ? t('school.setUsing', { used: formatBytes(space.usage), total: formatBytes(space.quota) }) : '';
 
   return (
     <div className="set-storage">
@@ -113,12 +110,12 @@ export function StorageSection() {
             <Icon name="warning" size={16} />
             {t('school.setFilesOnly')}
           </p>
-        ) : usage ? (
+        ) : space ? (
           <>
             <p className="set-row__label" data-testid="storage-usage">
-              {t('school.setUsing', { used: formatBytes(usage.usage), total: formatBytes(usage.quota) })}
+              {used}
             </p>
-            <Meter label={t('school.setSpaceTitle')} value={usage.usage} max={Math.max(usage.quota, 1)} tone={usage.usage / Math.max(usage.quota, 1) > 0.8 ? 'warn' : 'alive'} valueText={t('school.setUsing', { used: formatBytes(usage.usage), total: formatBytes(usage.quota) })} />
+            <Meter label={t('school.setSpaceTitle')} value={space.usage} max={Math.max(space.quota, 1)} tone={space.low ? 'warn' : 'alive'} valueText={used} />
           </>
         ) : (
           <p className="set-row__hint">{t('school.setSpaceUnknown')}</p>
@@ -139,9 +136,7 @@ export function StorageSection() {
       <Group title={t('school.setBackupTitle')}>
         <p className="set-row__hint">{t('school.setBackupText')}</p>
         <div className="set-actions">
-          <Button variant="lantern" icon="drive" busy={saving} onClick={() => void saveAll()}>
-            {t('school.setSaveAll')}
-          </Button>
+          <SaveAllButton variant="lantern" />
           <Link to={{ name: 'trail', view: 'lost' }} className="btn btn--ghost btn--h44">
             <Icon name="trail" size={20} />
             <span className="btn__label">{t('common.routeTrailLost')}</span>

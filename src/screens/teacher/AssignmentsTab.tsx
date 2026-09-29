@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useServices } from '../../app/services';
 import { t } from '../../i18n';
+import { tn } from '../../school/count';
 import type { Assignment } from '../../model/types';
 import { fitsInLink, newAssignment } from '../../school/assignment';
 import { updateTeacherData, useTeacherData } from '../../school/teacherData';
@@ -81,7 +82,7 @@ export function AssignmentsTab() {
                   {a.due && ` · ${t('school.staff_asgDue', { due: a.due })}`}
                 </p>
                 <p className="asg-card__chips">
-                  <Chip>{t('school.staff_asgGoals', { n: a.goals.length })}</Chip>
+                  <Chip>{tn('school.staff_asgGoals', a.goals.length)}</Chip>
                   <Chip dot={a.ai === 'off' ? 'off' : 'ai'}>{t('school.staff_asgAi', { mode: t(a.ai === 'on' ? 'school.staff_modeOn' : a.ai === 'explain' ? 'school.staff_modeExplain' : 'school.staff_modeOff') })}</Chip>
                   {a.level && <Chip>{t(`school.${LEVEL_WORDS[a.level]}`)}</Chip>}
                   {inLink === a.id && (

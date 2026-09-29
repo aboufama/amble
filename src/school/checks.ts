@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import type { ArtId, CastKey, CheckResult, Goal, World } from '../model/types';
 import type { CastInfo } from './assignment';
 import type { CodeFacts } from './codeFacts';
+import { tn } from './count';
 
 /** What a drawing says about who made it. */
 export interface ArtFacts {
@@ -151,7 +152,7 @@ export function studentLabel(goal: Goal, cast: readonly CastInfo[]): string {
       return t('school.goalDrawn', { name: member?.name ?? c.key });
     }
     case 'min-drawings':
-      return t('school.goalMinDrawings', { n: c.n });
+      return tn('school.goalMinDrawings', c.n);
     case 'boss-attacks':
       return t('school.goalBossAttacks', { n: c.min });
     case 'uses-dials':
@@ -183,11 +184,11 @@ export function studentEvidence(e: Evidence): string {
     case 'winLose':
       return e.win && e.lose ? t('school.evWinLose') : e.win ? t('school.evNoLose') : e.lose ? t('school.evNoWin') : t('school.evNeither');
     case 'captions':
-      return e.total === 0 ? t('school.evNoSounds') : e.missing === 0 ? t('school.evCaptions', { n: e.total }) : t('school.evCaptionsMissing', { n: e.missing });
+      return e.total === 0 ? t('school.evNoSounds') : e.missing === 0 ? tn('school.evCaptions', e.total) : tn('school.evCaptionsMissing', e.missing);
     case 'clean':
       return t('school.evTested');
     case 'errors':
-      return t('school.evErrors', { n: e.n });
+      return tn('school.evErrors', e.n);
     case 'untested':
       return t('school.evUntested');
     case 'teacher':
@@ -215,7 +216,7 @@ export function teacherEvidence(e: Evidence): string {
     case 'clean':
       return t('school.staff_evTestPlay', { n: e.seconds });
     case 'errors':
-      return t('school.staff_evErrors', { n: e.n });
+      return tn('school.staff_evErrors', e.n);
     case 'untested':
       return t('school.staff_evUntested');
     case 'teacher':

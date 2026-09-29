@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useServices } from '../../app/services';
 import { t, type MessageKey } from '../../i18n';
+import { tn } from '../../school/count';
 import type { AiLogEntry } from '../../model/types';
 import { announce } from '../../state/app';
 import { Button, Chip, Footprints } from '../../ui/components';
@@ -112,7 +113,7 @@ export function SentLog() {
       ) : (
         <>
           <div className="sent__tools">
-            <p className="page__meta">{t('school.sentCount', { n: entries.length })}</p>
+            <p className="page__meta">{tn('school.sentCount', entries.length)}</p>
             <Button variant="ghost" size={38} icon="close" onClick={() => void clear()}>
               {t('school.sentClear')}
             </Button>

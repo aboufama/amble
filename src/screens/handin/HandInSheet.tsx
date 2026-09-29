@@ -9,6 +9,7 @@ import { navigate } from '../../app/router';
 import type { RouteOf } from '../../app/routes';
 import { useServices } from '../../app/services';
 import { t } from '../../i18n';
+import { tn } from '../../school/count';
 import type { World } from '../../model/types';
 import { artFactsOf, checkWorld, cleanInitials, commitWorld, loadWorld, robotRun, storyOf, suggestedFileName, withAmbleExtension, type HandinCheck } from '../../school/handin';
 import { runChecks, goalsFor } from '../../school/checks';
@@ -329,7 +330,7 @@ export function HandInSheet({ route }: { route: RouteOf<'handin'> }) {
 
           <p className="handin__honesty">
             <Icon name="eye" size={20} />
-            <span>{story ? t('school.honesty', { drawings: story.drawings, ai: story.aiChanges, code: story.codeEdits }) : t('school.honestyShort')}</span>
+            <span>{story ? t('school.honesty', { drawings: tn('school.countDrawings', story.drawings), ai: tn('school.countAi', story.aiChanges), code: tn('school.countCode', story.codeEdits) }) : t('school.honestyShort')}</span>
           </p>
         </div>
       </div>

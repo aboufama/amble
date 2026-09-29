@@ -23,7 +23,6 @@ import {
   type AutoGoalId,
   type CastInfo,
 } from '../../school/assignment';
-import { saveBlob } from '../../school/saveFile';
 import { updateTeacherData } from '../../school/teacherData';
 import { showToast } from '../../state/app';
 import { LEVELS } from '../../state/config';
@@ -54,8 +53,8 @@ export async function saveAssignmentFile(services: Services, asg: Assignment, ow
   try {
     const base = ownWorld ? await services.store.worlds.get(ownWorld) : (await services.starters.open(asg.starter ?? 'moon-king', { withArt: false })).world;
     if (!base) throw new Error('missing world');
-    const blob = await services.files.write(assignmentWorld(base, asg), 'assignment');
-    const saved = await saveBlob(blob, assignmentFileName(asg), { description: t('school.staff_fileType'), mime: 'application/x-amble', ext: '.amble' });
+    const world = assignmentWorld(base, asg);
+    const saved = await services.files.saveBlob(() => services.files.write(world, 'assignment'), assignmentFileName(asg), 'amble');
     if (saved) showToast(saved.method === 'fs-access' ? t('school.staff_asgFileSaved', { name: saved.name }) : t('school.staff_asgFileDownloaded', { name: saved.name }), { kind: 'success' });
   } catch {
     showToast(t('school.staff_asgFileFailed'), { kind: 'error' });

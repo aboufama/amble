@@ -9,6 +9,7 @@ import { playerPrefsFrom } from '../app/player/prefs';
 import type { GameManifest } from '../cores/play';
 import type { ArtId, World, WorldId } from '../model/types';
 import { getState, setState } from '../state/store';
+import { safeBaseName, worldFileName } from '../files/names';
 import { toInitMessage } from '../world/init';
 import { castFromCode, type CastInfo } from './assignment';
 import { goalsFor, runChecks, type ArtFacts, type CheckOutcome, type RobotRun } from './checks';
@@ -104,14 +105,13 @@ export function cleanInitials(text: string): string {
   return text.replace(/[^\p{L}\p{N}. -]+/gu, '').replace(/\s+/g, ' ').trim().slice(0, 20);
 }
 
-/** "{title} - {initials}.amble" (without the initials when there are none). */
+/** "{title} - {initials}.amble" (without the initials when there are none), cleaned as M6 cleans every file name. */
 export function suggestedFileName(world: World, initials: string): string {
-  const title = world.title.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'World';
-  const who = cleanInitials(initials);
-  return who ? `${title} - ${who}.amble` : `${title}.amble`;
+  return worldFileName(world.title, cleanInitials(initials) || undefined);
 }
 
+/** What the student typed in the file name box, as a safe `.amble` name. */
 export function withAmbleExtension(name: string): string {
-  const clean = name.replace(/[\\/:*?"<>|]+/g, ' ').trim();
-  return /\.amble$/i.test(clean) ? clean : `${clean || 'World'}.amble`;
+  const base = safeBaseName(name.trim().replace(/\.amble$/i, ''));
+  return `${base}.amble`;
 }

@@ -1,7 +1,7 @@
 /**
  * The class gallery (§2.14): a teacher opens the Classroom assignment folder (or some files) and every
- * student's `.amble` becomes a card. Only the manifest, the world JSON and the thumbnail are read for a card
- * (`FilesApi.read({ manifestOnly })`); a world's drawings are read only when the teacher opens it. Nothing is
+ * student's `.amble` becomes a card. Only the manifest, the thumbnail, the world JSON and the drawing records are
+ * read for a card (`readForCard`); pictures and sounds are read only when the teacher opens a world. Nothing is
  * imported and nothing is uploaded. Shared by the Gallery tab and Present mode for this page's lifetime.
  */
 import { useSyncExternalStore } from 'react';
@@ -9,7 +9,7 @@ import { kitManifest, sourceFilesOf, validateGame } from '../cores/ai';
 import { t } from '../i18n';
 import { blobRefOf } from '../model/ids';
 import type { AmbleFile, ArtId, World } from '../model/types';
-import type { FilesApi } from '../files/api';
+import { readForCard, type CardRead } from './galleryRead';
 import { castFromCode, type CastInfo } from './assignment';
 import type { ArtFacts } from './checks';
 import { buildStory, type Story } from './story';
@@ -143,9 +143,9 @@ function patchItem(id: string, patch: Partial<GalleryItem>): void {
   set((s) => ({ items: s.items.map((it) => (it.id === id ? { ...it, ...patch } : it)) }));
 }
 
-async function readCard(files: FilesApi, item: GalleryItem): Promise<void> {
+async function readCard(read: CardReader, item: GalleryItem): Promise<void> {
   try {
-    const amble = await files.read(item.file, { manifestOnly: true });
+    const amble = await read(item.file);
     const facts = cardFacts(amble);
     if (!amble.world || !facts) throw new Error('no world');
     const world = amble.world;
@@ -169,8 +169,11 @@ async function readCard(files: FilesApi, item: GalleryItem): Promise<void> {
   }
 }
 
+/** Reads what one card shows (the light read; tests pass their own). */
+export type CardReader = (file: Blob) => Promise<Pick<CardRead, 'manifest' | 'world' | 'art' | 'thumb'>>;
+
 /** Opens files as cards; they stream in, three at a time. */
-export async function openGallery(files: FilesApi, list: readonly File[], source: 'folder' | 'files'): Promise<void> {
+export async function openGallery(list: readonly File[], source: 'folder' | 'files', read: CardReader = readForCard): Promise<void> {
   resetGallery();
   const amble = list.filter((f) => /\.amble$/i.test(f.name)).sort((a, b) => a.name.localeCompare(b.name));
   const items: GalleryItem[] = [];
@@ -205,7 +208,7 @@ export async function openGallery(files: FilesApi, list: readonly File[], source
   const worker = async () => {
     while (next < items.length) {
       const item = items[next++];
-      await readCard(files, item);
+      await readCard(read, item);
     }
   };
   await Promise.all([worker(), worker(), worker()]);

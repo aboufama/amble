@@ -3,6 +3,7 @@
  * drawings done / needed (✎), AI changes (✦), own code edits (‹›) and problems (⚠) or ✓.
  */
 import { t } from '../../i18n';
+import { tn } from '../../school/count';
 import type { GalleryItem } from '../../school/gallery';
 import { PlaceholderGlyph } from '../../ui/components';
 import { Icon } from '../../ui/icons';
@@ -20,9 +21,9 @@ export function GalleryCard({ item, selected, showNames, onOpen }: { item: Galle
           by: by ?? '',
           drawn: item.drawn,
           needed: item.needed,
-          ai: item.story?.aiChanges ?? 0,
-          code: item.story?.codeEdits ?? 0,
-          problems: item.errors,
+          ai: tn('school.staff_aiChanges', item.story?.aiChanges ?? 0),
+          code: tn('school.staff_codeEdits', item.story?.codeEdits ?? 0),
+          problems: tn('school.staff_evErrors', item.errors),
         });
   return (
     <li className="gcard-wrap">
