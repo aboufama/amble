@@ -1,18 +1,18 @@
 /**
- * The six kinds as pictograms (§3.4): Person, Four legs, Flies, Swims, Blob, Thing. Line art on the icon
- * grid, with the kind's word (shown, or as the image's name).
+ * The six kinds as pictograms (§3.4): Person, Four legs, Flies, Swims, Blob, Thing. Clean line art on the
+ * 24 px icon grid (2 px strokes, round caps and joins), with the kind's word (shown, or as the image's name).
  */
 import { t, type MessageKey } from '../../i18n';
 import type { CharacterKind } from '../../model/types';
 import { cx } from '../cx';
 
 const PICTOS: Record<CharacterKind, string[]> = {
-  biped: ['M12 3.2a2.3 2.3 0 1 0 .1 4.6 2.3 2.3 0 0 0-.1-4.6z', 'M12 8.2c.1 3.3.1 6.5 0 9.8', 'M12 10.2c-1.9 1.2-3.8 2.2-5.8 3', 'M12 10.2c1.9 1.2 3.8 2.2 5.8 3', 'M12 17.8c-1.3 1-2.4 2.1-3.4 3.2', 'M12 17.8c1.3 1 2.4 2.1 3.4 3.2'],
-  quadruped: ['M5.2 10.2c3.9-.4 7.8-.4 11.6-.1l1.4-2.9c.4-.8 1.2-1.2 2-1 .9.2 1.4 1 1.3 1.9l-.4 2.6-2.8 1.7', 'M5.2 10.2c-.6 1.6-.6 3.1 0 4.6h12.1l1.8-2.4', 'M6.6 14.8c-.1 1.9-.1 3.7 0 5.6', 'M15.8 14.8c.1 1.9.1 3.7 0 5.6', 'M5.2 10.8c-.9-1-1.7-2.1-2.3-3.3'],
-  flyer: ['M12 8.5c1.6 0 2.6 1.6 2.6 3.6 0 3.2-1.2 5.8-2.6 7.4-1.4-1.6-2.6-4.2-2.6-7.4 0-2 1-3.6 2.6-3.6z', 'M9.6 11.6c-2.5-1.6-4.7-3.8-6.4-6.6 3.2.4 5.3 1.5 6.7 3.2', 'M14.4 11.6c2.5-1.6 4.7-3.8 6.4-6.6-3.2.4-5.3 1.5-6.7 3.2'],
-  swimmer: ['M6.4 12c2.4-3 5.5-4.5 9.2-4.5 2.4 0 4.4 1.3 5.8 4.5-1.4 3.2-3.4 4.5-5.8 4.5-3.7 0-6.8-1.5-9.2-4.5z', 'M6.4 12L2.6 8.8c.1 2.1.1 4.3 0 6.4z'],
-  blob: ['M4.6 19.4C4.2 11.7 7.6 4.6 12 4.6s7.8 7.1 7.4 14.8c-4.9.9-9.9.9-14.8 0z'],
-  object: ['M5 7.6l7-3.4 7 3.4v8.8l-7 3.4-7-3.4z', 'M5 7.6l7 3.4 7-3.4', 'M12 11c.1 2.9.1 5.9 0 8.8'],
+  biped: ['M12 3a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z', 'M12 8v7', 'M6.5 12L12 10l5.5 2', 'M8.5 21l3.5-6 3.5 6'],
+  quadruped: ['M6 10.5h8a2.5 2.5 0 0 1 0 5H6a2.5 2.5 0 0 1 0-5z', 'M17.5 6a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z', 'M6.5 15.5V20', 'M13.5 15.5V20', 'M3.8 12L2 9.5'],
+  flyer: ['M12 13C10 9 6.5 6.5 2.5 6.5c1 4 4.5 7 9.5 6.5z', 'M12 13c2-4 5.5-6.5 9.5-6.5-1 4-4.5 7-9.5 6.5z', 'M12 11v8'],
+  swimmer: ['M5 12c2.2-3.2 5-4.8 8.5-4.8S19.8 9 21 12c-1.2 3-4 4.8-7.5 4.8S7.2 15.2 5 12z', 'M5 12L2 8.8v6.4z', 'M16.5 11h.01'],
+  blob: ['M4.5 19.5c-.6-7 2.6-14 7.5-14s8.1 7 7.5 14c-5 .8-10 .8-15 0z'],
+  object: ['M12 3.5l8 4v9l-8 4-8-4v-9z', 'M4 7.5l8 4 8-4', 'M12 11.5v9'],
 };
 
 const WORDS: Record<CharacterKind, MessageKey> = {

@@ -1,13 +1,21 @@
 /**
- * Buttons (§3.4): lantern (the one primary action), ghost, quiet, paper, ai, danger; 38, 44 or 58 px
- * high; an icon plus words. Icon-only buttons are `IconButton`, which requires a label and shows it as a
- * tooltip.
+ * Buttons (§3.4), in Scratch's shapes: 8 px corners, sentence-case words, 38, 44 or 58 px high, an icon
+ * plus words.
+ * - `lantern`: the primary action (Scratch blue, white words). One per place.
+ * - `ghost` (and `paper`, the same look): secondary (white, a --line-control edge).
+ * - `quiet`: words or an icon only (toolbars, icon buttons).
+ * - `danger`: destructive (--warn); the words say so too.
+ * - `pressed` / `aria-pressed`: selected or toggled on (Scratch's purple).
+ * - `ai` is retired (the AI has no look of its own) and draws as secondary.
+ * On the top bar (`.topbar`, `.on-brand`) ghosts are white-outlined and the primary is white with blue
+ * words. Icon-only buttons are `IconButton`, which requires a label and shows it as a tooltip.
  */
 import type { ComponentProps, ReactNode } from 'react';
 import { Icon, type IconName } from '../icons';
 import { cx } from '../cx';
 import { Tooltip } from './Tooltip';
 
+/** `ai` is kept for older callers only: it draws as `ghost`. */
 export type ButtonVariant = 'lantern' | 'ghost' | 'quiet' | 'paper' | 'ai' | 'danger';
 export type ButtonSize = 38 | 44 | 58;
 

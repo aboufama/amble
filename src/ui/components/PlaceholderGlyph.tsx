@@ -1,7 +1,8 @@
 /**
- * A "just bones" member as an SVG (§3.8) for cards, the plan card and the gallery: the rig template's
- * silhouette in its role tint at 55 %, white hatching at 38°, a dashed cream outline over a dark halo,
- * and the mint bones with star-joints. Never eyes, faces, shading or texture.
+ * A "just bones" member as an SVG (§3.8) for cards, the plan card and the gallery, drawn flat: the rig
+ * template's silhouette in its role tint at 55 %, white hatching at 38°, a flat dashed outline (--dash)
+ * and the bones with round joints. Never eyes, faces, shading or texture. (The game's own stand-ins are
+ * drawn by the runtime.)
  */
 import { useId } from 'react';
 import { t } from '../../i18n';
@@ -101,11 +102,6 @@ function tintOf(role: GlyphRole): string {
   return role;
 }
 
-function star(x: number, y: number, r: number): string {
-  const q = r * 0.38;
-  return `M${x} ${y - r}L${x + q} ${y - q}L${x + r} ${y}L${x + q} ${y + q}L${x} ${y + r}L${x - q} ${y + q}L${x - r} ${y}L${x - q} ${y - q}Z`;
-}
-
 export interface PlaceholderGlyphProps {
   rig: RigKind;
   role: GlyphRole;
@@ -149,9 +145,6 @@ export function PlaceholderGlyph({ rig, role, shape = 'capsule', size = 64, name
         </clipPath>
       </defs>
       {fig.outline.map((d, i) => (
-        <path key={`h${i}`} className="ph-glyph__halo" d={d} />
-      ))}
-      {fig.outline.map((d, i) => (
         <path key={`f${i}`} className="ph-glyph__fill" d={d} />
       ))}
       <rect x="0" y="0" width="100" height="100" fill={`url(#${hatch})`} clipPath={`url(#${clip})`} className="ph-glyph__hatches" />
@@ -163,7 +156,7 @@ export function PlaceholderGlyph({ rig, role, shape = 'capsule', size = 64, name
           <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} />
         ))}
         {[...joints.values()].map(([x, y]) => (
-          <path key={`${x},${y}`} className="ph-glyph__joint" d={star(x, y, 4)} />
+          <circle key={`${x},${y}`} className="ph-glyph__joint" cx={x} cy={y} r={3} />
         ))}
       </g>
     </svg>

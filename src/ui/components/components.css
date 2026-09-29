@@ -1,9 +1,19 @@
 /*
- * The shared components (§3.4). Tokens only: colours come from tokens.css / themes.css (mixed with
- * `color-mix` where a tint is needed), never hex values.
+ * The shared components (§3.4) in Scratch 3's shape language: flat white surfaces with a 1 px --line,
+ * 4 px corners on chips, tags and keycaps and 8 px on everything else, circles only for round icon
+ * buttons, knobs, avatars and count badges, and Scratch's purple selection (a 2 px --change-bright edge
+ * with a 4 px --select-ring halo). Tokens only: colours come from tokens.css / themes.css (mixed with
+ * `color-mix` where a tint is needed), never hex values. No glows, gradients, textures or rotation.
+ *
+ * A 2 px edge is a 1 px border plus a 1 px inset shadow, so choosing something never moves the layout.
  */
 
 /* ---------- buttons ---------- */
+/*
+ * lantern: primary (Scratch blue, white words) · ghost and paper: secondary (white, a --line-control
+ * edge) · quiet: words only · danger: destructive (--warn) · aria-pressed="true": selected (--change).
+ * `ai` is retired (the AI has no colour of its own) and draws as secondary.
+ */
 .btn {
   --btn-h: var(--control);
   display: inline-flex;
@@ -11,8 +21,8 @@
   justify-content: center;
   gap: var(--s2);
   min-height: var(--btn-h);
-  padding: 0 18px;
-  border: 0;
+  padding: 0 17px;
+  border: 1px solid transparent;
   border-radius: var(--r-btn);
   font: var(--type-label);
   white-space: nowrap;
@@ -21,8 +31,8 @@
   background: transparent;
   transition:
     background-color var(--t-micro) var(--ease-soft),
-    box-shadow var(--t-micro) var(--ease-soft),
-    transform var(--t-micro) var(--ease-soft);
+    border-color var(--t-micro) var(--ease-soft),
+    color var(--t-micro) var(--ease-soft);
 }
 
 .btn:active:not(:disabled) {
@@ -36,7 +46,7 @@
 
 .btn--h38 {
   --btn-h: var(--control-sm);
-  padding: 0 14px;
+  padding: 0 13px;
 }
 
 .btn--h44 {
@@ -45,7 +55,7 @@
 
 .btn--h58 {
   --btn-h: var(--control-lg);
-  padding: 0 26px;
+  padding: 0 25px;
   border-radius: var(--r-btn-lg);
   font-size: 1.25rem;
   line-height: 1.5rem;
@@ -63,29 +73,31 @@
 
 .btn--lantern {
   color: var(--on-accent);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent), white 24%), var(--accent) 55%, color-mix(in srgb, var(--accent), black 7%));
-  box-shadow:
-    inset 0 0 0 1.5px var(--accent-border),
-    inset 0 -3px 0 color-mix(in srgb, var(--accent), black 30%),
-    var(--glow-lantern);
+  background: var(--accent);
+  border-color: var(--accent-border);
 }
 
 .btn--lantern:hover:not(:disabled) {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent), white 34%), color-mix(in srgb, var(--accent), white 8%));
+  background: var(--brand-hover);
 }
 
-.btn--ghost {
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+.btn--ghost,
+.btn--paper,
+.btn--ai {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--line-control);
 }
 
-.btn--ghost:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text) 9%, transparent);
+.btn--ghost:hover:not(:disabled),
+.btn--paper:hover:not(:disabled),
+.btn--ai:hover:not(:disabled) {
+  background: var(--bg);
 }
 
 .btn--quiet {
   color: var(--text-2);
-  padding: 0 12px;
+  padding: 0 11px;
 }
 
 .btn--quiet.btn--icon {
@@ -94,105 +106,84 @@
 
 .btn--quiet:hover:not(:disabled) {
   color: var(--text);
-  background: color-mix(in srgb, var(--text) 7%, transparent);
+  background: color-mix(in srgb, var(--brand-bright) 15%, transparent);
 }
 
-.btn--paper {
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow:
-    inset 0 0 0 1.5px var(--paper-line),
-    0 3px 0 color-mix(in srgb, var(--ink) 18%, transparent);
-  --focus-ring: var(--ink);
-}
-
-.btn--paper:hover:not(:disabled) {
-  background: var(--paper-2);
-}
-
-/* AI and danger buttons: the role colour on the edge and the icon; the words stay --text, because
-   role-coloured words on a role tint fall under 4.5:1 on raised surfaces and on hover. */
-.btn--ai {
-  color: var(--text);
-  background: color-mix(in srgb, var(--ai) 14%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--ai);
-}
-
-.btn--ai .icon {
-  color: var(--ai);
-}
-
-.btn--ai:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--ai) 22%, transparent);
-}
-
+/* Destructive: the words say so too ("Delete everything"). */
 .btn--danger {
-  color: var(--text);
-  background: color-mix(in srgb, var(--warn) 12%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--warn);
-}
-
-.btn--danger .icon {
-  color: var(--warn);
+  color: var(--on-accent);
+  background: var(--warn);
 }
 
 .btn--danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--warn) 20%, transparent);
+  background: color-mix(in srgb, var(--warn) 85%, var(--text));
 }
 
+/* Selected or toggled on (Mirror, Guides, a chosen tool): Scratch's looks purple. */
 .btn[aria-pressed='true'] {
-  color: var(--text);
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  color: var(--on-accent);
+  background: var(--change);
+  border-color: var(--change);
+}
+
+.btn[aria-pressed='true']:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--change) 88%, var(--text));
 }
 
 /* ---------- chips, tags, keycaps ---------- */
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 32px;
-  padding: 0 12px;
-  border: 0;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
   border-radius: var(--r-chip);
   font: var(--type-chip);
-  color: var(--text-2);
+  font-weight: 700;
+  color: var(--text);
   text-decoration: none;
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: color-mix(in srgb, var(--brand-bright) 12%, transparent);
 }
 
 .chip--button {
   min-height: var(--target);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  padding: 0 12px;
+  border-color: var(--line-control);
+  background: var(--surface);
 }
 
 .chip--button:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--text) 10%, transparent);
+  background: var(--bg);
 }
 
 .chip--selected {
-  color: var(--text);
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  color: var(--change);
+  background: var(--surface);
+  border-color: var(--change-bright);
+  box-shadow:
+    inset 0 0 0 1px var(--change-bright),
+    0 0 0 4px var(--select-ring);
+}
+
+.chip--selected:hover {
+  background: var(--surface);
 }
 
 .chip__dot {
   width: 8px;
   height: 8px;
   flex: none;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   background: var(--text-2);
 }
 
 .chip__dot--alive {
   background: var(--alive);
-  box-shadow: 0 0 8px var(--alive);
 }
 
 .chip__dot--ai {
-  background: var(--ai);
+  background: var(--accent-text);
 }
 
 .chip__dot--warn {
@@ -203,27 +194,32 @@
   background: var(--change);
 }
 
+.chip__dot--off {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--text-2);
+}
+
+/* Tags (BOSS, LIVE, NEW, ×3): small caps at the most, on an opaque face so they read over a game too. */
 .tag {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 9px 3px 8px;
-  border-radius: 8px;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-chip);
   font: var(--type-caps);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .tag--paper {
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: 0 3px 8px color-mix(in srgb, var(--bg-deep) 45%, transparent);
+  color: var(--text);
+  background: var(--surface);
 }
 
 .tag--dark {
   color: var(--text);
-  background: color-mix(in srgb, var(--bg-deep) 82%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 35%, transparent);
+  background: color-mix(in srgb, var(--brand-bright) 15%, var(--surface));
 }
 
 .tag--role {
@@ -237,13 +233,11 @@
   min-width: 28px;
   height: 28px;
   padding: 0 7px;
-  border-radius: 7px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-chip);
   font: var(--type-chip);
   color: var(--text);
-  background: color-mix(in srgb, var(--text) 8%, transparent);
-  box-shadow:
-    inset 0 0 0 1px var(--line-control),
-    0 2px 0 var(--line);
+  background: var(--surface);
 }
 
 /* role tints (placeholder glyphs and role underlines only) */
@@ -283,51 +277,53 @@
   --tint: var(--tint-decor);
 }
 
-/* ---------- segmented, toggle ---------- */
+/* ---------- segmented (Scratch's tab style), toggle ---------- */
+/* A --bg-deep well; the chosen option is a white face with --change words and a 2 px --change-bright edge. */
 .segmented {
   display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: var(--r-btn);
-  background: var(--well);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--r-md);
+  background: var(--bg-deep);
 }
 
 .segmented__option {
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
-  min-height: calc(var(--control) - 6px);
-  padding: 0 16px;
-  border: 0;
-  border-radius: 11px;
+  min-height: calc(var(--control) - 8px);
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
   font: var(--type-label);
-  color: var(--text-2);
+  color: var(--text);
   background: transparent;
+  transition: background-color var(--t-micro) var(--ease-soft);
 }
 
 .segmented--h38 .segmented__option {
-  min-height: calc(var(--control-sm) - 6px);
-  padding: 0 12px;
+  min-height: calc(var(--control-sm) - 8px);
+  padding: 0 11px;
 }
 
-/* Only the options on the dark well light up; the chosen one is on paper and keeps its ink. */
 .segmented__option:hover:not(.segmented__option--on) {
-  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
 }
 
 .segmented__option--on {
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--bg-deep) 40%, transparent);
-  --focus-ring: var(--ink);
+  color: var(--change);
+  background: var(--surface);
+  border-color: var(--change-bright);
+  box-shadow: inset 0 0 0 1px var(--change-bright);
 }
 
-.segmented--change .segmented__option--on {
-  color: var(--on-accent);
-  background: var(--change);
+.segmented__option--on:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--change-bright),
+    0 0 0 3px var(--focus-gap);
 }
 
+/* A switch: a square-cornered track, a round knob, on in --change. */
 .toggle {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -341,32 +337,36 @@
   height: 28px;
   margin: 8px 0;
   padding: 0;
-  border: 0;
-  border-radius: var(--r-chip);
-  background: var(--well);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
-  transition: background-color var(--t-ui) var(--ease-soft);
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  transition:
+    background-color var(--t-ui) var(--ease-soft),
+    border-color var(--t-ui) var(--ease-soft);
 }
 
 .toggle__knob {
   position: absolute;
-  top: 4px;
-  left: 4px;
+  top: 50%;
+  left: 3px;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   background: var(--text-2);
-  transition: transform var(--t-ui) var(--ease-pop);
+  translate: 0 -50%;
+  transition:
+    left var(--t-ui) var(--ease-soft),
+    background-color var(--t-ui) var(--ease-soft);
 }
 
 .toggle__switch--on {
-  background: var(--alive);
-  box-shadow: none;
+  background: var(--change);
+  border-color: var(--change);
 }
 
 .toggle__switch--on .toggle__knob {
-  transform: translateX(20px);
-  background: var(--on-alive);
+  left: calc(100% - 23px);
+  background: var(--on-accent);
 }
 
 .toggle__label {
@@ -397,13 +397,13 @@
 }
 
 .slider__badge {
-  padding: 1px 7px;
-  border-radius: 6px;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-chip);
   font: var(--type-caps);
   letter-spacing: var(--caps-spacing);
   text-transform: uppercase;
   color: var(--text-2);
-  box-shadow: inset 0 0 0 1px currentColor;
 }
 
 .slider__badge--live {
@@ -421,11 +421,22 @@
   width: 96px;
   height: 32px;
   padding: 0 8px;
-  border: 0;
-  border-radius: 8px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-md);
   font: var(--type-code);
-  background: var(--well);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  color: var(--text);
+  background: var(--surface);
+}
+
+.slider__number:focus {
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 0 4px var(--hover-ring);
+}
+
+.slider__number:focus-visible {
+  outline-offset: 4px;
 }
 
 .slider__reset {
@@ -435,9 +446,14 @@
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r-round);
   color: var(--text-2);
   background: transparent;
+}
+
+.slider__reset:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--brand-bright) 15%, transparent);
 }
 
 .slider:focus-within .slider__reset {
@@ -453,39 +469,43 @@
   cursor: pointer;
 }
 
+/* The track is two flat colours with a hard edge at the value (the filled part, then the rest). */
 .slider__range::-webkit-slider-runnable-track {
   height: 8px;
-  border-radius: var(--r-chip);
-  background: linear-gradient(90deg, var(--change) var(--fill, 0%), var(--well) var(--fill, 0%));
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--change) var(--fill, 0%), var(--surface) var(--fill, 0%));
   box-shadow: inset 0 0 0 1px var(--line-control);
 }
 
 .slider__range::-moz-range-track {
   height: 8px;
-  border-radius: var(--r-chip);
-  background: linear-gradient(90deg, var(--change) var(--fill, 0%), var(--well) var(--fill, 0%));
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line-control);
+}
+
+.slider__range::-moz-range-progress {
+  height: 8px;
+  border-radius: var(--r-sm);
+  background: var(--change);
 }
 
 .slider__range::-webkit-slider-thumb {
   width: 24px;
   height: 24px;
   margin-top: -8px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--paper);
-  box-shadow:
-    0 0 0 2px var(--change),
-    0 3px 8px color-mix(in srgb, var(--bg-deep) 50%, transparent);
+  border: 2px solid var(--change-bright);
+  border-radius: var(--r-round);
+  background: var(--surface);
   appearance: none;
 }
 
 .slider__range::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--paper);
-  box-shadow: 0 0 0 2px var(--change);
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--change-bright);
+  border-radius: var(--r-round);
+  background: var(--surface);
 }
 
 .slider__range:focus-visible {
@@ -499,7 +519,14 @@
     0 0 0 6px var(--focus-ring);
 }
 
+.slider__range:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 3px var(--focus-gap),
+    0 0 0 6px var(--focus-ring);
+}
+
 /* ---------- fields ---------- */
+/* White, a 1 px --line-control edge, 8 px corners; focused: a 2 px blue edge, the --hover-ring halo and the ring. */
 .field {
   display: grid;
   gap: 6px;
@@ -517,13 +544,15 @@
 .field__input {
   width: 100%;
   min-height: var(--control);
-  padding: 10px 12px;
-  border: 0;
-  border-radius: 12px;
+  padding: 9px 11px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-md);
   color: var(--text);
-  background: var(--well);
-  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  background: var(--surface);
   font: var(--type-body);
+  transition:
+    border-color var(--t-micro) var(--ease-soft),
+    box-shadow var(--t-micro) var(--ease-soft);
 }
 
 .field__input--area {
@@ -535,12 +564,30 @@
   opacity: 1;
 }
 
+.field__input:focus {
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 0 4px var(--hover-ring);
+}
+
 .field__input:focus-visible {
-  outline-offset: 2px;
+  outline-offset: 4px;
+}
+
+.field--error .field__input,
+.field--error .field__input:focus {
+  border-color: var(--warn);
 }
 
 .field--error .field__input {
-  box-shadow: inset 0 0 0 2px var(--warn);
+  box-shadow: inset 0 0 0 1px var(--warn);
+}
+
+.field--error .field__input:focus {
+  box-shadow:
+    inset 0 0 0 1px var(--warn),
+    0 0 0 4px var(--hover-ring);
 }
 
 .field__foot {
@@ -564,14 +611,13 @@
 }
 
 /* ---------- surfaces ---------- */
+/* Flat white cards with a 1 px --line: no shadow, no gradient, square to the page. */
 .panel {
   --line-control: var(--line-control-panel);
   padding: 16px 18px;
+  border: 1px solid var(--line);
   border-radius: var(--r-card);
   background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent),
-    var(--lift);
 }
 
 .panel__head {
@@ -592,58 +638,38 @@
   margin-left: auto;
 }
 
+/* Paper that means "yours" is a white card too; it keeps dark words even on the brand bar. */
 .paper,
 .sticky-note {
   --text: var(--ink);
   --text-2: var(--ink-2);
-  --line: var(--paper-3);
   --line-control: var(--paper-line);
-  --well: var(--paper-2);
   position: relative;
   color: var(--ink);
 }
 
 .paper {
   padding: 14px 18px;
+  border: 1px solid var(--line);
   border-radius: var(--r-paper);
   background: var(--paper);
-  box-shadow: var(--lift-paper);
 }
 
-.paper--cut {
-  border-radius: var(--r-cut);
-}
-
+/* The request note: a Scratch comment note, square to the page and untaped. */
 .sticky-note {
   padding: 16px 16px 14px;
-  border-radius: var(--r-cut);
+  border: 1px solid var(--line);
+  border-radius: var(--r-paper);
   background: var(--note);
-  box-shadow: var(--lift-paper);
 }
 
+/* Retired: tape draws nothing (older markup may still hold an empty tape span). */
 .tape {
-  display: none; /* retired: no tape anywhere */
-}
-
-.tape--lemon {
-  left: -16px;
-  background: var(--tape-lemon);
-  rotate: -9deg;
-}
-
-.tape--lime {
-  right: -16px;
-  background: var(--tape-lime);
-  rotate: 8deg;
-}
-
-.sticky-note .tape--lemon {
-  left: 50%;
-  translate: -50% 0;
-  rotate: 2deg;
+  display: none;
 }
 
 /* ---------- dialogs and sheets ---------- */
+/* White with 8 px corners on Scratch's blue scrim. */
 .dialog {
   --line-control: var(--line-control-panel);
   width: min(560px, calc(100vw - 16px));
@@ -654,9 +680,7 @@
   border-radius: var(--r-card);
   color: var(--text);
   background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent),
-    var(--lift);
+  box-shadow: var(--lift);
   overflow: hidden;
 }
 
@@ -675,16 +699,6 @@
 
 .dialog--lg {
   width: min(760px, calc(100vw - 16px));
-}
-
-.dialog--paper {
-  --text: var(--ink);
-  --text-2: var(--ink-2);
-  --line-control: var(--paper-line);
-  --well: var(--paper-2);
-  color: var(--ink);
-  background: var(--paper);
-  border-radius: var(--r-paper);
 }
 
 .dialog__body {
@@ -707,8 +721,10 @@
   font: var(--type-title);
 }
 
+/* Scratch's modal close: a round icon button. */
 .dialog__close {
-  margin: -8px -10px 0 0;
+  margin: -6px -8px 0 0;
+  border-radius: var(--r-round);
 }
 
 /* The content scrolls; the title and the actions stay in view on a short window (1280x600). The inset
@@ -762,7 +778,7 @@
 @keyframes dialog-in {
   from {
     opacity: 0;
-    translate: 0 24px;
+    translate: 0 16px;
   }
 }
 
@@ -798,12 +814,11 @@
   min-height: 52px;
   max-width: min(640px, calc(100vw - 32px));
   padding: 6px 6px 6px 14px;
-  border-radius: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   color: var(--text);
   background: var(--surface-raised);
-  box-shadow:
-    inset 0 0 0 1px var(--line-control-panel),
-    var(--lift);
+  box-shadow: var(--lift);
   pointer-events: auto;
   animation: toast-in var(--t-ui) var(--ease-amble);
 }
@@ -818,17 +833,15 @@
   color: var(--text-2);
 }
 
-.toast--success .toast__icon {
+.toast--success .toast__icon,
+.toast--ai .toast__icon {
   color: var(--alive);
 }
 
-.toast--ai .toast__icon {
-  color: var(--ai);
-}
-
 .toast--error {
+  border-color: var(--warn);
   box-shadow:
-    inset 0 0 0 2px var(--warn),
+    inset 0 0 0 1px var(--warn),
     var(--lift);
 }
 
@@ -851,12 +864,11 @@
   flex-direction: column;
   min-width: 220px;
   max-width: min(360px, calc(100vw - 16px));
-  padding: 6px;
-  border-radius: 14px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   background: var(--surface-raised);
-  box-shadow:
-    inset 0 0 0 1px var(--line-control-panel),
-    var(--lift);
+  box-shadow: var(--lift);
   animation: fade-in var(--t-micro) var(--ease-soft);
 }
 
@@ -867,26 +879,33 @@
   min-height: var(--target);
   padding: 0 12px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   font: var(--type-label);
   text-align: left;
   color: var(--text);
   background: transparent;
 }
 
+/* Scratch's menus: the item under the pointer or the keyboard turns blue with white words. */
 .menu__item:hover:not(:disabled),
 .menu__item:focus-visible {
-  background: color-mix(in srgb, var(--text) 9%, transparent);
+  color: var(--on-accent);
+  background: var(--accent);
 }
 
 .menu__item:focus-visible {
-  outline-offset: -3px;
+  outline: 2px solid var(--on-accent);
+  outline-offset: -5px;
   box-shadow: none;
 }
 
-/* Destructive items say so in words and a --warn icon (--warn text is 4.49:1 on --surface-raised). */
+/* Destructive items say so in words and a --warn icon. */
 .menu__item--danger .icon {
   color: var(--warn);
+}
+
+.menu__item:is(:hover, :focus-visible):not(:disabled) .icon {
+  color: inherit;
 }
 
 .menu__item:disabled {
@@ -898,11 +917,18 @@
 }
 
 .menu__badge {
-  padding: 1px 8px;
-  border-radius: var(--r-chip);
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: var(--r-round);
   font: var(--type-chip);
+  text-align: center;
   color: var(--on-accent);
   background: var(--accent);
+}
+
+.menu__item:is(:hover, :focus-visible):not(:disabled) .menu__badge {
+  color: var(--accent);
+  background: var(--on-accent);
 }
 
 .popover {
@@ -911,56 +937,69 @@
   z-index: var(--z-popover);
   max-width: min(320px, calc(100vw - 16px));
   padding: 14px;
-  border-radius: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   color: var(--text);
   background: var(--surface);
-  box-shadow:
-    inset 0 0 0 1px var(--line-control-panel),
-    var(--lift);
+  box-shadow: var(--lift);
   animation: fade-in var(--t-micro) var(--ease-soft);
 }
 
-.popover--lantern {
-  box-shadow:
-    inset 0 0 0 2px var(--accent),
-    var(--glow-lantern),
-    var(--lift);
-}
-
-.popover--paper {
-  --text: var(--ink);
-  --text-2: var(--ink-2);
-  color: var(--ink);
-  background: var(--paper);
-}
-
-.popover::before {
+/* The arrow: two stacked triangles, the edge and then the face (no rotation). */
+.popover::before,
+.popover::after {
   content: '';
   position: absolute;
-  width: 14px;
-  height: 14px;
-  background: inherit;
-  rotate: 45deg;
+  border: 8px solid transparent;
+  pointer-events: none;
 }
 
 .popover--bottom::before {
-  top: -7px;
-  left: calc(var(--arrow, 50%) - 7px);
+  bottom: calc(100% + 1px);
+  left: calc(var(--arrow, 50%) - 8px);
+  border-bottom-color: var(--line);
+}
+
+.popover--bottom::after {
+  bottom: 100%;
+  left: calc(var(--arrow, 50%) - 8px);
+  border-bottom-color: var(--surface);
 }
 
 .popover--top::before {
-  bottom: -7px;
-  left: calc(var(--arrow, 50%) - 7px);
+  top: calc(100% + 1px);
+  left: calc(var(--arrow, 50%) - 8px);
+  border-top-color: var(--line);
+}
+
+.popover--top::after {
+  top: 100%;
+  left: calc(var(--arrow, 50%) - 8px);
+  border-top-color: var(--surface);
 }
 
 .popover--right::before {
-  left: -7px;
-  top: calc(var(--arrow, 50%) - 7px);
+  right: calc(100% + 1px);
+  top: calc(var(--arrow, 50%) - 8px);
+  border-right-color: var(--line);
+}
+
+.popover--right::after {
+  right: 100%;
+  top: calc(var(--arrow, 50%) - 8px);
+  border-right-color: var(--surface);
 }
 
 .popover--left::before {
-  right: -7px;
-  top: calc(var(--arrow, 50%) - 7px);
+  left: calc(100% + 1px);
+  top: calc(var(--arrow, 50%) - 8px);
+  border-left-color: var(--line);
+}
+
+.popover--left::after {
+  left: 100%;
+  top: calc(var(--arrow, 50%) - 8px);
+  border-left-color: var(--surface);
 }
 
 .tooltip-anchor {
@@ -972,16 +1011,85 @@
   z-index: var(--z-tooltip);
   max-width: 260px;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   font: var(--type-chip);
-  color: var(--text);
-  background: var(--bg-deep);
-  box-shadow:
-    inset 0 0 0 1px var(--line-control-panel),
-    var(--lift-sm);
+  color: var(--surface);
+  background: var(--text);
+  box-shadow: var(--lift-sm);
+}
+
+/* ---------- on the brand fill: the top bar (Scratch's menu bar) and anything marked .on-brand ---------- */
+/*
+ * White words and icons; ghost buttons are white-outlined, the primary one is white with blue words, the
+ * focus ring turns white. White things on the bar (fields, paper, the chosen option) keep dark words.
+ */
+.on-brand,
+.topbar {
+  --text: var(--on-brand);
+  --text-2: var(--on-brand);
+  --line-control: var(--on-brand);
+  --line-control-panel: var(--on-brand);
+  --focus-ring: var(--on-brand);
+  --focus-gap: var(--brand);
+  color: var(--on-brand);
+}
+
+:is(.on-brand, .topbar) :is(.field__input, .paper, .sticky-note, .panel, .keycap, .segmented__option--on, .tag--paper) {
+  --text: var(--ink);
+  --text-2: var(--ink-2);
+  --line-control: var(--paper-line);
+}
+
+:is(.on-brand, .topbar) a:not(.btn) {
+  color: inherit;
+}
+
+:is(.on-brand, .topbar) :is(.btn--ghost, .btn--paper, .btn--ai) {
+  color: var(--on-brand);
+  background: transparent;
+  border-color: var(--on-brand);
+}
+
+:is(.on-brand, .topbar) .btn--quiet {
+  color: var(--on-brand);
+}
+
+:is(.on-brand, .topbar) :is(.btn--ghost, .btn--paper, .btn--ai, .btn--quiet, .chip--button):hover:not(:disabled) {
+  color: var(--on-brand);
+  background: var(--brand-hover);
+}
+
+:is(.on-brand, .topbar) .btn--lantern {
+  color: var(--accent-text);
+  background: var(--on-brand);
+  border-color: var(--on-brand);
+}
+
+:is(.on-brand, .topbar) .btn--lantern:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+/* Toggled on, on the bar: a white face with purple words, like the chosen option of a segmented control. */
+:is(.on-brand, .topbar) .btn[aria-pressed='true'] {
+  color: var(--change);
+  background: var(--on-brand);
+  border-color: var(--on-brand);
+}
+
+:is(.on-brand, .topbar) .chip--button {
+  background: transparent;
+}
+
+:is(.on-brand, .topbar) .segmented {
+  background: var(--brand-hover);
+}
+
+:is(.on-brand, .topbar) .segmented__option:hover:not(.segmented__option--on) {
+  background: var(--brand);
 }
 
 /* ---------- stickers, placeholders, kinds ---------- */
+/* A drawing sits flat, as Scratch shows a costume: its baked die-cut edge is its only frame. */
 .sticker {
   display: inline-grid;
   place-items: center;
@@ -992,26 +1100,17 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 3px 4px color-mix(in srgb, var(--bg-deep) 45%, transparent));
 }
 
 .sticker__empty {
   width: 70%;
   height: 70%;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   border: 2px dashed var(--line-control);
 }
 
 .ph-glyph {
   overflow: visible;
-}
-
-.ph-glyph__halo {
-  fill: none;
-  stroke: var(--dash-halo);
-  stroke-width: 5.5px;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
 }
 
 .ph-glyph__fill {
@@ -1029,16 +1128,16 @@
 }
 
 /*
- * The dashes stand still, and march while the student points at or focuses what holds the glyph (a cast
- * card, a plan member). A dash march repaints the glyph every frame, and games share the editor's
- * renderer: a cast line of just-bones members marching forever starved the game and its robot tests.
- * In the game itself the stand-ins march (the kit steps pre-painted dash phases).
+ * A flat dashed outline. The dashes stand still, and march while the student points at or focuses what
+ * holds the glyph (a cast card, a plan member). A dash march repaints the glyph every frame, and games
+ * share the editor's renderer: a cast line of just-bones members marching forever starved the game and
+ * its robot tests. In the game itself the stand-ins march (the kit steps pre-painted dash phases).
  */
 .ph-glyph__dash {
   fill: none;
   stroke: var(--dash);
-  stroke-width: 2.4px;
-  stroke-dasharray: 7 6;
+  stroke-width: 2px;
+  stroke-dasharray: 6 5;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
@@ -1062,7 +1161,7 @@
 
 @keyframes dash-march {
   to {
-    stroke-dashoffset: -13;
+    stroke-dashoffset: -11;
   }
 }
 
@@ -1081,7 +1180,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--ai);
+  color: var(--accent-text);
 }
 
 .footprints__step {
@@ -1107,7 +1206,7 @@
   display: none;
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   background: currentColor;
 }
 
@@ -1141,8 +1240,8 @@
 .meter {
   position: relative;
   height: 8px;
-  border-radius: var(--r-chip);
-  background: var(--well);
+  border-radius: var(--r-sm);
+  background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--line-control);
   overflow: hidden;
 }
@@ -1163,20 +1262,37 @@
   background: var(--warn);
 }
 
-.meter--ai .meter__fill {
-  background: var(--ai);
+/* Working on it, amount unknown: a short bar slides along (it holds still under reduced motion). */
+.meter--busy .meter__fill {
+  width: 36%;
+  animation: meter-slide 1.4s var(--ease-soft) infinite;
 }
 
-/* ---------- tabs ---------- */
+@keyframes meter-slide {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 280% 0;
+  }
+}
+
+:root[data-motion='reduced'] .meter--busy .meter__fill {
+  width: 100%;
+  opacity: 0.5;
+  animation: none;
+}
+
+/* ---------- tabs (the Teacher desk and Settings) ---------- */
+/* The current tab is selected the Scratch way: a white face, --change words, the purple edge and halo. */
 .tabs {
   display: flex;
   gap: 4px;
-  box-shadow: inset 0 -1px 0 var(--line);
+  padding: 4px;
 }
 
 .tabs--vertical {
   flex-direction: column;
-  box-shadow: inset -1px 0 0 var(--line);
 }
 
 .tabs__tab {
@@ -1184,31 +1300,39 @@
   align-items: center;
   gap: var(--s2);
   min-height: var(--target);
-  padding: 0 14px;
-  border: 0;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
   font: var(--type-label);
-  color: var(--text-2);
+  color: var(--text);
   background: transparent;
 }
 
-.tabs__tab:hover {
-  color: var(--text);
+.tabs__tab:hover:not(.tabs__tab--on) {
+  background: color-mix(in srgb, var(--brand-bright) 15%, transparent);
 }
 
 .tabs__tab--on {
-  color: var(--text);
-  box-shadow: inset 0 -3px 0 var(--accent);
+  color: var(--change);
+  background: var(--surface);
+  border-color: var(--change-bright);
+  box-shadow:
+    inset 0 0 0 1px var(--change-bright),
+    0 0 0 4px var(--select-ring);
 }
 
-.tabs--vertical .tabs__tab--on {
-  box-shadow: inset -3px 0 0 var(--accent);
+.tabs__tab--on:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--change-bright),
+    0 0 0 3px var(--focus-gap);
 }
 
 /* ---------- the wordmark ---------- */
+/* "amble" in Fredoka (the only place it appears); the "l" is a flat lamppost with an orange lantern. */
 .wordmark {
   display: inline-flex;
   align-items: flex-end;
-  font-family: 'Fredoka', var(--font-ui);
+  font-family: var(--font-wordmark);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.01em;
@@ -1223,9 +1347,10 @@
 .lamppost__post,
 .lamppost__cap {
   fill: none;
-  stroke: var(--text);
+  stroke: currentColor;
   stroke-width: 4.2;
   stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .lamppost__cap {
@@ -1233,11 +1358,5 @@
 }
 
 .lamppost__lantern {
-  fill: var(--accent);
-}
-
-.lamppost__glow {
-  fill: var(--accent);
-  opacity: 0.32;
-  filter: blur(3px);
+  fill: var(--warm);
 }

@@ -1,6 +1,8 @@
 /**
- * Chips, tags and keycaps (§3.4). A chip with `onClick` is a button (pressed state when `selected` is
- * given); otherwise it is text. Tags come in paper and dark, and in a role variant with its word.
+ * Chips, tags and keycaps (§3.4): 4 px corners, small and bold. A chip is a light palette tint with
+ * --text words; with `onClick` it is a button (white, a control edge), and `selected` marks it the Scratch
+ * way (purple edge and halo). Tags (BOSS, LIVE, NEW, ×3) are small caps on an opaque face, white (`paper`)
+ * or tinted (`dark`), and come in a role variant with its word and a role-colour underline.
  */
 import type { ReactNode } from 'react';
 import { t, type MessageKey } from '../../i18n';

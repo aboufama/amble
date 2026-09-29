@@ -2,6 +2,9 @@
  * Dialog (§3.4, §2.16): the native `<dialog>` with `showModal()`, so focus is trapped and only the top
  * dialog handles Esc. Focus returns to where it was when the dialog closes. Never `alert`, `confirm` or
  * `prompt`: use this, or `askUser`/`confirmUser`/`alertUser` from src/ui/dialogs.ts.
+ *
+ * One look for every dialog and sheet, as in Scratch: a white card with 8 px corners on the blue scrim,
+ * with a round close button.
  */
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
 import { t } from '../../i18n';
@@ -21,7 +24,7 @@ export interface DialogProps {
   /** Buttons, right-aligned at the bottom. */
   actions?: ReactNode;
   size?: 'sm' | 'md' | 'lg';
-  /** 'paper' for cards that are the student's (the AI explainer, the crisis card). */
+  /** Retired: every dialog has the same neutral look now. Accepted from older callers and ignored. */
   tone?: 'night' | 'paper';
   /** A close button in the corner (default true). */
   closeButton?: boolean;
@@ -41,7 +44,6 @@ export function Dialog({
   children,
   actions,
   size = 'md',
-  tone = 'night',
   closeButton = true,
   dismissOnBackdrop = false,
   initialFocus,
@@ -101,7 +103,7 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      className={cx('dialog', `dialog--${size}`, `dialog--${tone}`, `dialog--${variant}`, tone === 'paper' && 'on-paper', className)}
+      className={cx('dialog', `dialog--${size}`, `dialog--${variant}`, className)}
       aria-labelledby={titleId}
       onClick={(e) => {
         if (dismissOnBackdrop && e.target === ref.current) close.current('backdrop');

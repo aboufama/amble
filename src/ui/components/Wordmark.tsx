@@ -1,4 +1,7 @@
-/** The wordmark (§3.5): "amble" in Fredoka 700 with the "l" drawn as a lamppost whose lantern glows. */
+/**
+ * The wordmark (§3.5): "amble" in Fredoka 700 (the only place Fredoka appears), with the "l" drawn as a
+ * flat lamppost. It takes the colour of its words: `--text` on the page, white on the top bar.
+ */
 import { t } from '../../i18n';
 import { Lamppost } from '../icons';
 import { cx } from '../cx';
