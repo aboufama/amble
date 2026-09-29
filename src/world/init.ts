@@ -1,15 +1,18 @@
 /**
- * World + its drawings → the player's init message (§8.4; M2 owns). A working minimal version: code in
- * load order, each drawn cast member as `DrawnArt` (flat PNG, rig, part layers), sounds as PCM or bytes,
- * dials, twists, the game's storage and the game fonts.
+ * World + its drawings → the player's init message (§8.4; M2 owns): code in load order, each drawn cast
+ * member as `DrawnArt` (flat PNG, bones, part layers), sounds as PCM or bytes, dials, twists, the game's
+ * storage and the game fonts. The student's own keys (the Controls sheet, `World.controls`) ride in one
+ * small generated file that runs after game.js and sets them before the game's `create()`.
  */
 import { applyEffect } from '../audio/effects';
-import { SAMPLE_RATE, renderSynth, SOUND_PRESETS } from '../audio/synth';
+import { SAMPLE_RATE, renderSynth } from '../audio/synth';
 import { getServices } from '../app/services';
 import { loadGameFonts } from '../app/player/fonts';
 import type { DrawnArt, GameFile, InitMessage, PlayerPrefs, RobotOptions, SoundAsset } from '../cores/play';
-import type { SoundPiece, World } from '../model/types';
+import type { Action, SoundPiece, World } from '../model/types';
+import { instrument } from '../cores/ai';
 import type { Store } from '../store/api';
+import { presetRecipe } from './sounds';
 
 export interface ToInitOptions {
   mode: 'play' | 'robot';
@@ -18,11 +21,60 @@ export interface ToInitOptions {
   autostart?: boolean;
 }
 
-/** Helper files first (alphabetical), `game.js` last (§4.2). */
+/** The runtime's loop guard (`Amble.__loop`), the same one the AI pipeline's robot test uses. */
+export const LOOP_GUARD = 'Amble.__loop()';
+
+/**
+ * Helper files first (alphabetical), `game.js` last (§4.2), then the student's keys when they set any.
+ * Every loop gets the guard at the top of its body (line numbers unchanged), so a loop that never ends
+ * is stopped with "This loop never ends" instead of freezing the Chromebook.
+ */
 export function orderFiles(world: World): GameFile[] {
   const helpers = world.code.filter((f) => f.path !== 'game.js').sort((a, b) => a.path.localeCompare(b.path));
   const game = world.code.filter((f) => f.path === 'game.js');
-  return [...helpers, ...game].map((f) => ({ name: f.path, source: f.source }));
+  const files = [...helpers, ...game].map((f) => ({ name: f.path, source: instrument(f.source, { guard: LOOP_GUARD }).code }));
+  const keys = controlsFile(world.controls);
+  return keys ? [...files, keys] : files;
+}
+
+/** KeyboardEvent.code → the key name games bind (Phaser's KeyCodes). */
+export function phaserKeyName(code: string): string | null {
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  const digits = ['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
+  if (/^Digit[0-9]$/.test(code)) return digits[Number(code.slice(5))];
+  if (/^Numpad[0-9]$/.test(code)) return `NUMPAD_${digits[Number(code.slice(6))]}`;
+  const named: Record<string, string> = {
+    ArrowLeft: 'LEFT', ArrowRight: 'RIGHT', ArrowUp: 'UP', ArrowDown: 'DOWN', Space: 'SPACE', Enter: 'ENTER', NumpadEnter: 'ENTER',
+    ShiftLeft: 'SHIFT', ShiftRight: 'SHIFT', ControlLeft: 'CTRL', ControlRight: 'CTRL', AltLeft: 'ALT', AltRight: 'ALT', Backspace: 'BACKSPACE',
+    Comma: 'COMMA', Period: 'PERIOD', Slash: 'FORWARD_SLASH', Semicolon: 'SEMICOLON', Quote: 'QUOTES', BracketLeft: 'OPEN_BRACKET',
+    BracketRight: 'CLOSED_BRACKET', Minus: 'MINUS', Equal: 'PLUS', Backquote: 'BACKTICK', Backslash: 'BACK_SLASH',
+  };
+  return named[code] ?? null;
+}
+
+export const CONTROLS_FILE = 'amble-keys.js';
+
+/** The generated file that puts the student's keys on the game's controls (null when they set none). */
+export function controlsFile(controls: World['controls']): GameFile | null {
+  const bind: Partial<Record<Action, string[]>> = {};
+  for (const [action, codes] of Object.entries(controls) as Array<[Action, string[] | undefined]>) {
+    const names = [...new Set((codes ?? []).map(phaserKeyName).filter((n): n is string => !!n))];
+    if (names.length) bind[action] = names;
+  }
+  if (!Object.keys(bind).length) return null;
+  const source = `// Your keys, from the Controls sheet (Amble writes this file; it is not part of your code).
+(function () {
+  var keys = ${JSON.stringify(bind)};
+  if (typeof Game !== 'function' || !Game.prototype) return;
+  var create = Game.prototype.create;
+  Game.prototype.create = function () {
+    var c = this.controls;
+    if (c && c.bind) for (var a in keys) c.bind[a] = keys[a].slice();
+    return create ? create.apply(this, arguments) : undefined;
+  };
+})();
+`;
+  return { name: CONTROLS_FILE, source };
 }
 
 async function drawnArt(world: World, store: Store): Promise<DrawnArt[]> {
@@ -55,7 +107,7 @@ async function soundAsset(piece: SoundPiece, store: Store): Promise<SoundAsset |
     const blob = await store.blobs.get(src.blob);
     return blob ? { key: piece.name, bytes: await blob.arrayBuffer(), caption: piece.caption } : null;
   }
-  const recipe = src.kind === 'synth' ? src.recipe : SOUND_PRESETS[src.preset];
+  const recipe = src.kind === 'synth' ? src.recipe : presetRecipe(src.preset, src.variation);
   if (!recipe) return null;
   let pcm = renderSynth(recipe);
   for (const effect of piece.effects) pcm = applyEffect(pcm, SAMPLE_RATE, effect);

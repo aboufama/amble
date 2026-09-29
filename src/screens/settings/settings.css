@@ -1,0 +1,372 @@
+/* Settings (§2.15): the section list and one section at a time; reflows to one column at 320 px. Tokens only. */
+.settings {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 760px);
+  justify-content: center;
+  gap: var(--s5);
+  min-height: 100%;
+  padding: var(--s5) var(--s5) var(--s8);
+}
+
+.settings__nav ul {
+  position: sticky;
+  top: 0;
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent), var(--lift-sm);
+  list-style: none;
+}
+
+.settings__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--target);
+  padding: 0 12px;
+  border-radius: 12px;
+  font: var(--type-label);
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.settings__link:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.settings__link--on {
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.settings__link--on .icon {
+  color: var(--accent);
+}
+
+.settings__panel {
+  display: grid;
+  align-content: start;
+  gap: var(--s4);
+  min-width: 0;
+}
+
+.settings__title {
+  font: var(--display-m);
+}
+
+.set-group {
+  --line-control: var(--line-control-panel);
+  display: grid;
+  gap: var(--s3);
+  padding: 16px 18px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent), var(--lift-sm);
+}
+
+.set-ai,
+.set-sound,
+.set-reading,
+.set-drawing,
+.set-keys,
+.set-storage,
+.set-about {
+  display: grid;
+  gap: var(--s3);
+}
+
+.set-group__title {
+  font: var(--type-heading);
+}
+
+.set-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2) var(--s4);
+}
+
+.set-row__words {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 220px;
+}
+
+.set-row__label {
+  font: var(--type-label);
+}
+
+.set-row__hint {
+  font: var(--type-meta);
+  font-size: 0.9375rem;
+  color: var(--text-2);
+}
+
+.set-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--type-chip);
+  color: var(--text-2);
+}
+
+.set-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  font: var(--type-meta);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--warn);
+}
+
+.set-warn .icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.set-dim {
+  opacity: 0.55;
+}
+
+.set-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.set-status {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--s3);
+}
+
+.set-status__dot {
+  width: 12px;
+  height: 12px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--text-2);
+}
+
+.set-status--on .set-status__dot {
+  background: var(--alive);
+  box-shadow: 0 0 10px var(--alive);
+}
+
+.set-status__words {
+  display: grid;
+  gap: 4px;
+}
+
+.set-status__line {
+  font: var(--type-title);
+}
+
+.set-class {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.set-class > .icon {
+  color: var(--accent);
+}
+
+.set-class__name {
+  font: var(--type-heading);
+}
+
+.set-manual__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: var(--target);
+  font: var(--type-label);
+  cursor: pointer;
+  list-style: none;
+}
+
+.set-manual__summary::-webkit-details-marker {
+  display: none;
+}
+
+.set-manual__chev {
+  display: inline-grid;
+  margin-left: auto;
+  color: var(--text-2);
+  transition: transform var(--t-ui) var(--ease-soft);
+}
+
+.set-manual[open] .set-manual__chev {
+  transform: rotate(90deg);
+}
+
+.set-manual__body {
+  display: grid;
+  gap: var(--s3);
+  padding-top: var(--s2);
+}
+
+.set-key {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s2);
+}
+
+.set-key > .btn {
+  margin-top: 28px;
+}
+
+.set-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+}
+
+.set-test {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font: var(--type-label);
+}
+
+.set-test--ok {
+  color: var(--alive);
+}
+
+.set-test--bad {
+  color: var(--warn);
+}
+
+.set-pressure {
+  width: 100%;
+  height: 96px;
+  border-radius: var(--r-paper);
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: var(--lift-paper);
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.set-keylist {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.set-keylist__row {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s3);
+}
+
+.set-keylist dt {
+  display: flex;
+  align-items: center;
+}
+
+.set-keylist dd {
+  margin: 0;
+  font: var(--type-body);
+}
+
+.set-keylist__plus {
+  margin: 0 4px;
+  color: var(--text-2);
+}
+
+.set-about__version {
+  font: var(--type-title);
+}
+
+.set-about__promise {
+  font: var(--type-body);
+}
+
+.set-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.set-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
+  font: var(--type-label);
+}
+
+.set-licences {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.set-licences li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font: var(--type-body);
+}
+
+.set-licences li:first-child {
+  border-top: 0;
+}
+
+/* Small screens: the sections become a row of tabs; at 320 px everything is one column. */
+@media (max-width: 900px) {
+  .settings {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s3);
+    padding: var(--s3);
+  }
+
+  .settings__nav ul {
+    position: static;
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .settings__link {
+    white-space: nowrap;
+  }
+
+  .settings__link--on {
+    box-shadow: inset 0 -3px 0 var(--accent);
+  }
+}
+
+@media (max-width: 480px) {
+  .set-two,
+  .set-keylist__row,
+  .set-class {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .set-key > .btn {
+    margin-top: 0;
+  }
+}

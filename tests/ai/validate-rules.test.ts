@@ -93,9 +93,34 @@ describe('dials stay live', () => {
         '    this.fx.shake({ amount: Math.min(this.dials.shake, 0.05) });',
       ].join('\n'),
     );
-    expect(out).toContain("{ hp: () => this.tune('bossHp', 150, { min: 50, max: 400 }) }");
+    // Health is read once (the kit wants a number there); behaviour options are read live.
+    expect(out).toContain("{ hp: this.tune('bossHp', 150, { min: 50, max: 400 }) }");
     expect(out).toContain('every: () => dials.fireRate, speed: () => this.tune.shotSpeed * 2, dash: { speed: () => this.dial.dash } }');
-    expect(out).toContain('{ amount: () => Math.min(this.dials.shake, 0.05) }');
+    expect(out).toContain('{ amount: Math.min(this.dials.shake, 0.05) }');
+  });
+
+  it('only wraps options the kit reads live, and unwraps thunks where the kit wants a number', () => {
+    const out = fixCode(
+      [
+        "    this.boss = this.spawnEnemy(700, 200, 'moonKing', { boss: true, hp: () => this.dials.bossHp, points: this.dials.bonus });",
+        "    this.pattern.ring(this.boss, { key: 'orb', count: this.dials.orbs, speed: this.dials.orbSpeed });",
+        "    this.shoot(this.boss, 90, { speed: this.dials.orbSpeed * 0.5, damage: this.dials.hurt });",
+      ].join('\n'),
+    );
+    expect(out).toContain("{ boss: true, hp: this.dials.bossHp, points: this.dials.bonus }");
+    expect(out).toContain("{ key: 'orb', count: this.dials.orbs, speed: () => this.dials.orbSpeed }");
+    expect(out).toContain('{ speed: () => this.dials.orbSpeed * 0.5, damage: () => this.dials.hurt }');
+  });
+
+  it('makes live positional arguments live: every(ms), patrol(speed), chase(target, speed)', () => {
+    const out = fixCode(
+      [
+        '    this.every(this.dials.spawnRate, () => this.spawnGrumble());',
+        "    this.spawnEnemy(1, 2, 'grumble').patrol(this.dials.walk).chase(this.hero, this.dials.chase);",
+      ].join('\n'),
+    );
+    expect(out).toContain('this.every(() => this.dials.spawnRate, () => this.spawnGrumble());');
+    expect(out).toContain('.patrol(() => this.dials.walk).chase(this.hero, () => this.dials.chase);');
   });
 
   it('records the fix, and warns instead when not fixing', () => {

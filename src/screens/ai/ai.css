@@ -1,0 +1,612 @@
+/*
+ * The AI helper's cards (§2.8, §2.16; M5): the inside of the Ask card, the progress list, the safety
+ * cards, the steer toast, the build pill and What Amble sends. Tokens only.
+ */
+
+/* ---------- the Ask card's inside ---------- */
+.ai-ask {
+  display: grid;
+  gap: var(--s3);
+  min-width: 0;
+}
+
+.ai-ask__scope {
+  justify-self: start;
+}
+
+.ai-ask__scope .chip {
+  color: var(--text);
+  box-shadow: inset 0 0 0 1.5px var(--change);
+}
+
+.ai-ask__field .field__input {
+  min-height: 96px;
+  max-height: 168px;
+  resize: none;
+  font: var(--type-body);
+  font-size: 1.0625rem;
+}
+
+.ai-ask__field .field__input:focus-visible {
+  outline: 0;
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    var(--glow-lantern);
+}
+
+.ai-ask__field .field__input[readonly] {
+  color: var(--text-2);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+}
+
+.ai-ask__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+}
+
+.ai-ask__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-ask__send {
+  flex: none;
+  margin-left: auto;
+}
+
+.ai-ask__info {
+  margin: 0;
+  font: var(--type-meta);
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+
+.ai-ask__info .icon {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: -3px;
+}
+
+.ai-link {
+  color: var(--ai);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.paper .ai-link {
+  color: var(--pencil-ink);
+}
+
+.ai-ask__note {
+  margin: 0;
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+/* a status line: off, offline, blocked, quota, expired, busy */
+.ai-status {
+  display: grid;
+  gap: var(--s2);
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.ai-status__text {
+  margin: 0;
+  font: var(--type-body);
+}
+
+.ai-status__sub {
+  margin: 0;
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.ai-status--warn {
+  box-shadow: inset 0 0 0 1.5px var(--warn);
+}
+
+.ai-status__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+/* notes on paper inside the card: toned down, added members, hand edits, explain answers */
+.ai-paper {
+  display: grid;
+  gap: var(--s2);
+  padding: 12px 14px;
+}
+
+.ai-paper__text {
+  margin: 0;
+  font: var(--type-body);
+}
+
+.ai-paper__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.ai-failed {
+  display: grid;
+  gap: var(--s2);
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--well);
+  box-shadow: inset 0 0 0 1.5px var(--warn);
+}
+
+.ai-failed__text {
+  margin: 0;
+  font: var(--type-body);
+}
+
+.ai-failed__details {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  list-style: none;
+  font: var(--type-code-diff);
+  color: var(--text-2);
+  background: var(--bg-deep);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- the progress list ---------- */
+.ai-progress {
+  display: grid;
+  gap: var(--s3);
+}
+
+.ai-progress__wait {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font: var(--type-label);
+  background: color-mix(in srgb, var(--ai) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ai) 55%, transparent);
+}
+
+.ai-steps {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-step {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 28px;
+  font: var(--type-label);
+  color: var(--text-2);
+}
+
+.ai-step__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--text-2);
+}
+
+.ai-step--done {
+  color: var(--text);
+}
+
+.ai-step--done .ai-step__mark {
+  color: var(--on-accent);
+  background: var(--alive);
+}
+
+.ai-step--active {
+  color: var(--text);
+}
+
+.ai-step--active .ai-step__mark {
+  color: var(--ai);
+  box-shadow: inset 0 0 0 2px var(--ai);
+  animation: ai-pulse 1.2s var(--ease-soft) infinite;
+}
+
+@keyframes ai-pulse {
+  50% {
+    box-shadow:
+      inset 0 0 0 2px var(--ai),
+      0 0 0 4px color-mix(in srgb, var(--ai) 25%, transparent);
+  }
+}
+
+:root[data-motion='reduced'] .ai-step--active .ai-step__mark {
+  animation: none;
+}
+
+.ai-step--pending .ai-step__mark::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-control);
+}
+
+.ai-step__file {
+  font: var(--type-code);
+  color: var(--ai);
+}
+
+.ai-step__lines {
+  margin-left: var(--s2);
+  font: var(--type-meta);
+  color: var(--alive);
+}
+
+.ai-step__label {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
+}
+
+.ai-progress__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.ai-progress__keep {
+  flex: 1;
+  margin: 0;
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+/* the hero walks along a thin line as the job goes */
+.ai-walk {
+  position: relative;
+  height: 44px;
+  margin-top: 2px;
+}
+
+.ai-walk__line {
+  position: absolute;
+  inset: auto 0 6px 0;
+  height: 3px;
+  border-radius: var(--r-chip);
+  background: repeating-linear-gradient(90deg, var(--line-control) 0 6px, transparent 6px 12px);
+}
+
+.ai-walk__done {
+  position: absolute;
+  inset: auto auto 6px 0;
+  height: 3px;
+  border-radius: var(--r-chip);
+  background: var(--alive);
+  transition: width var(--t-move) var(--ease-soft);
+}
+
+.ai-walk__hero {
+  position: absolute;
+  bottom: 8px;
+  width: 36px;
+  height: 36px;
+  translate: -50% 0;
+  transition: left var(--t-move) var(--ease-soft);
+}
+
+.ai-walk__hero .sticker {
+  box-shadow: none;
+}
+
+.ai-walk__hero--walking > * {
+  display: block;
+  animation: ai-walk-bob 520ms var(--ease-soft) infinite alternate;
+  transform-origin: 50% 100%;
+}
+
+@keyframes ai-walk-bob {
+  from {
+    translate: 0 0;
+    rotate: -4deg;
+  }
+  to {
+    translate: 0 -4px;
+    rotate: 4deg;
+  }
+}
+
+:root[data-motion='reduced'] .ai-walk__hero--walking > * {
+  animation: none;
+}
+
+:root[data-motion='reduced'] :is(.ai-walk__hero, .ai-walk__done) {
+  transition: none;
+}
+
+/* ---------- personal info, refusals ---------- */
+.ai-pii {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s2);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--warn) 12%, var(--well));
+  box-shadow: inset 0 0 0 1.5px var(--warn);
+}
+
+.ai-pii__text {
+  display: flex;
+  gap: var(--s2);
+  align-items: flex-start;
+  margin: 0;
+  font: var(--type-meta);
+  font-size: 0.90625rem;
+  color: var(--text);
+}
+
+.ai-pii__text .icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--warn);
+}
+
+.ai-pii__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.ai-refusal {
+  display: grid;
+  gap: var(--s2);
+}
+
+.ai-refusal__title {
+  margin: 0;
+  font: var(--type-label);
+}
+
+.ai-refusal__note {
+  margin: 0;
+  font: var(--type-meta);
+  font-size: 0.90625rem;
+}
+
+.ai-refusal__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.ai-refusal .chip--button {
+  color: var(--ink);
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1.5px var(--paper-line);
+}
+
+/* ---------- dialogs: the explainer and the crisis card ---------- */
+.ai-card__lines {
+  display: grid;
+  gap: var(--s3);
+  margin: 0;
+}
+
+.ai-card__lines p {
+  margin: 0;
+  font: var(--type-body);
+}
+
+.ai-card__lead {
+  font-weight: 600;
+}
+
+.ai-crisis__help {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px var(--paper-line);
+}
+
+/* ---------- the steer toast ---------- */
+.ai-steer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  max-width: min(560px, calc(100% - 32px));
+  padding: 8px 8px 8px 14px;
+  border-radius: 16px;
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow:
+    inset 0 0 0 1.5px var(--alive),
+    var(--lift);
+  animation: ai-steer-in var(--t-ui) var(--ease-amble);
+}
+
+.ai-steer__icon {
+  color: var(--alive);
+  flex: none;
+}
+
+.ai-steer__text {
+  flex: 1 1 200px;
+  margin: 0;
+  font: var(--type-label);
+}
+
+.ai-steer__actions {
+  display: flex;
+  gap: var(--s2);
+}
+
+.ai-steer-host {
+  position: absolute;
+  left: var(--s4);
+  bottom: var(--s4);
+  z-index: var(--z-overlay);
+  pointer-events: none;
+}
+
+.ai-steer-host > * {
+  pointer-events: auto;
+}
+
+@keyframes ai-steer-in {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+
+:root[data-motion='reduced'] .ai-steer {
+  animation-name: ai-fade;
+}
+
+@keyframes ai-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- the build pill (the Desk's top bar while a world builds) ---------- */
+.ai-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--control);
+  padding: 0 14px;
+  border-radius: 14px;
+  font: var(--type-label);
+  color: var(--text);
+  background: var(--well);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ai) 60%, transparent);
+}
+
+.ai-pill__meter {
+  width: 72px;
+}
+
+.ai-pill__pct {
+  min-width: 3ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-pill--ready {
+  box-shadow: inset 0 0 0 1.5px var(--alive);
+}
+
+.ai-pill--ready .icon {
+  color: var(--alive);
+}
+
+/* ---------- What Amble sends (#/sent) ---------- */
+.ai-sent {
+  display: grid;
+  gap: var(--s4);
+  max-width: 860px;
+}
+
+.ai-sent__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s3);
+}
+
+.ai-sent__title {
+  flex: 1;
+  margin: 0;
+  font: var(--display-m);
+}
+
+.ai-sent__intro {
+  margin: 0;
+  font: var(--type-body);
+  color: var(--text-2);
+}
+
+.ai-sent__list {
+  display: grid;
+  gap: var(--s3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-sent__item {
+  display: grid;
+  gap: var(--s2);
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.ai-sent__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s3);
+}
+
+.ai-sent__kind {
+  font: var(--type-label);
+}
+
+.ai-sent__meta {
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.ai-sent__status {
+  margin-left: auto;
+}
+
+.ai-sent__what {
+  margin: 0;
+  font: var(--type-meta);
+  font-size: 0.90625rem;
+}
+
+.ai-sent__body {
+  max-height: 420px;
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  overflow: auto;
+  font: var(--type-code-diff);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  background: var(--bg-deep);
+}
+
+@media print {
+  .ai-sent__item {
+    break-inside: avoid;
+  }
+
+  .ai-sent button {
+    display: none;
+  }
+}
