@@ -1,9 +1,38 @@
 // Performance: input-to-pixels latency, engine work per frame, pen-up commit, fills (cold and warm), undo and
 // redo, long tasks and frame gaps, per brush and zoomed in, at 1x or 4x CPU throttle; a 120-stroke stress
-// run for undo memory and heap; ArtScript replay speed.
+// run for undo memory and heap; ArtScript replay speed (the starter worlds' drawings).
 // Env: THROTTLE (default 4), DPR (default 1), STRESS=1, ART_GPU=none (CPU raster instead of SwiftShader).
 import { readFileSync, readdirSync } from 'node:fs';
-import { launch, humanStroke, sendStroke, ellipse, line, through, mulberry32, saveJson, settle, sleep } from './lib.mjs';
+import { join } from 'node:path';
+import { transform } from 'esbuild';
+import { ROOT, launch, humanStroke, sendStroke, ellipse, line, through, mulberry32, saveJson, settle, sleep } from './lib.mjs';
+
+/**
+ * The starter worlds' ArtScripts, as the starters build replays them (src/starters/<id>/art/<key>.art.ts):
+ * the first drawing of each starter. Each file is TypeScript with a type-only import, so esbuild's transform
+ * is enough to load it.
+ */
+async function starterScripts() {
+  const base = join(ROOT, 'src/starters');
+  const files = readdirSync(base, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .flatMap((d) => {
+      try {
+        const first = readdirSync(join(base, d.name, 'art')).filter((f) => f.endsWith('.art.ts')).sort()[0];
+        return first ? [`${d.name}/art/${first}`] : [];
+      } catch {
+        return [];
+      }
+    })
+    .sort();
+  const scripts = [];
+  for (const file of files) {
+    const { code } = await transform(readFileSync(join(base, file), 'utf8'), { loader: 'ts', format: 'esm' });
+    const mod = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
+    scripts.push({ file, script: mod.default });
+  }
+  return scripts;
+}
 
 const throttle = Number(process.env.THROTTLE ?? 4);
 const dpr = Number(process.env.DPR ?? 1);
@@ -143,19 +172,11 @@ try {
     console.log('stress', JSON.stringify(out.stress));
   }
 
-  // ArtScript replay speed (the art department's scripts).
-  const dir = '/tmp/claude-0/-home-user-amble/847fd994-c08b-555b-932e-3a1946f04e60/scratchpad/rebuild/art-dept/scripts';
-  let files = [];
-  try {
-    files = readdirSync(dir).filter((f) => f.endsWith('.json') && !f.includes('.rig.')).slice(0, 4);
-  } catch {
-    files = [];
-  }
+  // ArtScript replay speed (the starter worlds' drawings).
   out.replay = [];
-  for (const f of files) {
-    const script = JSON.parse(readFileSync(`${dir}/${f}`, 'utf8'));
+  for (const { file, script } of await starterScripts()) {
     const r = await A('replayScript', script);
-    out.replay.push({ script: f, ops: script.ops?.length ?? 0, ms: Math.round(r.ms) });
+    out.replay.push({ script: file, ops: script.ops?.length ?? 0, ms: Math.round(r.ms) });
   }
   console.log('replay', JSON.stringify(out.replay));
   saveJson(out, `perf-${tag}.json`);

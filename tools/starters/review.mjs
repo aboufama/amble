@@ -3,7 +3,7 @@
 //   --signs   writes public/starters/<id>/sign.png (320x180) from a played frame
 //   --shots   screenshots each starter while a scripted player plays it   -> $OUT/<id>-<n>.png
 //   --rigs    every move of every drawn character (with and without bones)  -> $OUT/rigs/<id>-<key>.png
-// OUT defaults to the scratchpad's out-starters folder (set STARTERS_OUT to change it).
+// OUT defaults to test-results/starters in the repository, which git ignores (set STARTERS_OUT to change it).
 //   node tools/starters/review.mjs --robot --shots [starter ids...]
 import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
@@ -16,7 +16,7 @@ const root = resolve(here, '../..');
 const args = process.argv.slice(2);
 const has = (f) => args.includes(f);
 const only = args.filter((a) => !a.startsWith('--'));
-const OUT = process.env.STARTERS_OUT ?? '/tmp/claude-0/-home-user-amble/847fd994-c08b-555b-932e-3a1946f04e60/scratchpad/rebuild/out-starters';
+const OUT = resolve(process.env.STARTERS_OUT ?? join(root, 'test-results', 'starters'));
 mkdirSync(join(OUT, 'rigs'), { recursive: true });
 const port = Number(process.env.STARTERS_PORT) || 5288;
 
