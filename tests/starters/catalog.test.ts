@@ -20,10 +20,14 @@ interface NodeFs {
 const load = <T>(name: string): Promise<T> => import(/* @vite-ignore */ name) as Promise<T>;
 const root = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 
+/** Every starter's code (its files load on demand, as a lazy chunk in the app). */
+const CODE = new Map(await Promise.all(STARTERS.map(async (m) => [m.id, await starterCode(m)] as const)));
+const codeOf = (id: string) => CODE.get(id as (typeof STARTERS)[number]['id']) ?? [];
+
 function statics(id: string) {
   const meta = STARTERS.find((s) => s.id === id);
   if (!meta) throw new Error(id);
-  const r = validateGame(sourceFilesOf(starterCode(meta)), { manifest: kitManifest(), fix: false });
+  const r = validateGame(sourceFilesOf(codeOf(id)), { manifest: kitManifest(), fix: false });
   return { meta, r, art: r.statics.art as Record<string, { spare?: boolean; kind?: string }>, dials: r.statics.dials as Record<string, { for?: string; label: string }> };
 }
 
@@ -46,14 +50,15 @@ describe('the starter catalog', () => {
       });
 
       it('keeps to the size rules: 1 to 3 files, game.js at most 150 lines, helpers at most 120', () => {
-        expect(meta.files.length).toBeGreaterThanOrEqual(1);
-        expect(meta.files.length).toBeLessThanOrEqual(3);
-        expect(meta.files[meta.files.length - 1].path).toBe('game.js');
-        for (const f of meta.files) expect(f.source.split('\n').length, f.path).toBeLessThanOrEqual(f.path === 'game.js' ? 150 : 120);
+        const files = codeOf(meta.id);
+        expect(files.length).toBeGreaterThanOrEqual(1);
+        expect(files.length).toBeLessThanOrEqual(3);
+        expect(files[files.length - 1].path).toBe('game.js');
+        for (const f of files) expect(f.source.split('\n').length, f.path).toBeLessThanOrEqual(f.path === 'game.js' ? 150 : 120);
       });
 
       it('marks its spares, and uses them only once drawn', () => {
-        const code = meta.files.map((f) => f.source).join('\n');
+        const code = codeOf(meta.id).map((f) => f.source).join('\n');
         for (const key of meta.spare) {
           expect(art[key].spare, key).toBe(true);
           expect(code, key).toContain(`hasArt('${key}')`);

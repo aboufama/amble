@@ -37,7 +37,7 @@ describe('StarterCatalog.open', () => {
       const { world, art, blobs } = await c.open(meta.id, { withArt: true });
       expect(isWorld(world), meta.id).toBe(true);
       expect(world.origin).toEqual({ kind: 'starter', starter: meta.id, withArt: true });
-      expect(world.code.map((f) => f.path)).toEqual(meta.files.map((f) => f.path));
+      expect(world.code.map((f) => f.path)).toEqual((await meta.files()).map((f) => f.path));
       expect(Object.keys(world.cast).sort()).toEqual(meta.cast.map((m) => m.key).sort());
       for (const m of meta.cast) {
         const slot = world.cast[m.key];

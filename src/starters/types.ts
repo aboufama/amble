@@ -32,8 +32,8 @@ export interface StarterMeta {
   /** Words for the ladder's idea match (§9). */
   tags: string[];
   cast: StarterCast[];
-  /** The game's files: helpers first (alphabetical), `game.js` last. */
-  files: Array<{ path: string; source: string }>;
+  /** The game's files: helpers first (alphabetical), `game.js` last. Loaded on demand (lazy chunks, not the first page's). */
+  files: () => Promise<Array<{ path: string; source: string }>>;
   /** "Watch it drawn": the ArtScripts of the drawn members, loaded on demand. */
   scripts: Partial<Record<CastKey, () => Promise<ArtScript>>>;
 }
