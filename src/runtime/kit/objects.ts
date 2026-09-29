@@ -3,27 +3,13 @@
  * the Cast's counts): one entry per spawned thing, in CSS px of the game frame, at most 64.
  */
 import Phaser from 'phaser';
-import type { Role } from '../../play/protocol';
+import type { WorldObject } from '../../play/protocol';
 import { registryFor } from './art';
 import { Character } from './character';
 import { currentScene } from './scene';
 import { isActor, type Actor } from './types';
 
-export interface WorldObject {
-  id: number;
-  key: string | null;
-  label: string;
-  role: Role | 'scenery';
-  group: string | null;
-  /** CSS px inside the game frame's viewport. */
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  drawn: boolean;
-  /** Live things sharing this key (on the first of them; 0 on the others). */
-  count: number;
-}
+export type { WorldObject };
 
 const ids = new WeakMap<object, number>();
 let nextId = 1;

@@ -13,7 +13,7 @@
  */
 
 export const PROTOCOL_VERSION = 2;
-export const PLAYER_CHANNEL = 'amble-player';
+export { PLAYER_CHANNEL } from './boot';
 
 // ------------------------------------------------------------------ vocabulary (shared with the kit)
 
@@ -95,6 +95,9 @@ export const DEFAULT_PREFS: PlayerPrefs = {
   ghostTaps: true,
 };
 
+/** The same defaults under the name the app's barrel (src/cores/play.ts) uses. */
+export const DEFAULT_PLAYER_PREFS = DEFAULT_PREFS;
+
 /** Robot test: the game runs on a manual clock (no requestAnimationFrame) with a scripted input bot. */
 export interface RobotOptions {
   /** Game time to simulate, in ms. */
@@ -127,6 +130,23 @@ export interface InitMessage {
 
 export type KeyPhase = 'down' | 'up';
 
+/**
+ * Editor -> player messages for the World screen's Change mode (step 5). The runtime hands them to the
+ * handler its editor module registers (`registerEditorHandler`, src/runtime/shell/editor.ts); until one
+ * is registered they are ignored.
+ */
+export type ToPlayerAdditions =
+  /** 'change' = paused, objects streamed at 4 Hz, art keys outlined. */
+  | { type: 'mode'; mode: 'play' | 'change' }
+  /** Lantern outline around one object in Change mode. */
+  | { type: 'select'; id: number | null }
+  /** After Bring to life: the character's cheer (or a hop) and eight mint sparks. */
+  | { type: 'celebrate'; key: string }
+  /** While paused: advance N frames (0 = just draw one frame). */
+  | { type: 'step'; frames: number }
+  /** Reply 'snapshot' with a PNG of the current frame, at most maxW px wide. */
+  | { type: 'snapshot'; maxW: number };
+
 export type ToPlayer =
   | { type: 'runtime'; scripts: ArrayBuffer[] }
   | { type: 'port' }
@@ -142,7 +162,8 @@ export type ToPlayer =
   | { type: 'key'; phase: KeyPhase; key: string; code: string; keyCode: number }
   | { type: 'releaseKeys' }
   | { type: 'unlockAudio' }
-  | { type: 'dispose' };
+  | { type: 'dispose' }
+  | ToPlayerAdditions;
 
 // ------------------------------------------------------------------ data the player reports
 
@@ -309,6 +330,29 @@ export interface RobotRaw {
 
 export type LogLevel = 'log' | 'info' | 'warn' | 'error';
 
+/** One thing in the world, as the editor sees it (Change mode's tags, the Cast's counts). */
+export interface WorldObject {
+  id: number;
+  key: string | null;
+  label: string;
+  role: Role | 'scenery';
+  group: string | null;
+  /** CSS px inside the game frame's viewport. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  drawn: boolean;
+  /** Live things sharing this key (on the first of them; 0 on the others). */
+  count: number;
+}
+
+/** Player -> editor messages for Change mode (step 5). */
+export type FromPlayerAdditions =
+  /** Change mode: at most 64 items, 4 times a second. */
+  | { type: 'objects'; items: WorldObject[] }
+  | { type: 'snapshot'; png: Blob };
+
 export type FromPlayer =
   | { type: 'boot' }
   | { type: 'hello'; protocol: number; phaser: string }
@@ -328,9 +372,13 @@ export type FromPlayer =
   | { type: 'audio'; state: AudioState }
   | { type: 'robotResult'; raw: RobotRaw }
   | { type: 'csp'; directive: string; blocked: string }
-  | { type: 'escape' };
+  | { type: 'escape' }
+  | FromPlayerAdditions;
 
 export type FromPlayerType = FromPlayer['type'];
+
+/** What the editor shows before a game has reported anything. */
+export const EMPTY_MANIFEST: GameManifest = { title: '', subtitle: '', physics: 'phaser', kit: false, art: [], dials: [], twists: [], controls: [] };
 
 // ------------------------------------------------------------------ exported pages
 
@@ -590,6 +638,26 @@ function parseRect(v: unknown): Rect | null {
   return x === undefined || y === undefined || w === undefined || h === undefined ? null : { x, y, w, h };
 }
 
+const MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024;
+
+function parseWorldObject(v: unknown): WorldObject | null {
+  if (!isObj(v)) return null;
+  const id = num(v.id);
+  const rect = parseRect(v);
+  if (id === undefined || !rect) return null;
+  const role = v.role === 'scenery' ? 'scenery' : oneOf(v.role, ROLES);
+  return {
+    id: Math.round(id),
+    key: v.key === null ? null : text(v.key, MAX_KEY) ?? null,
+    label: text(v.label, 80) ?? '',
+    role: role ?? 'scenery',
+    group: v.group === null ? null : text(v.group, MAX_KEY) ?? null,
+    ...rect,
+    drawn: bool(v.drawn) ?? false,
+    count: Math.round(nonNeg(v.count) ?? 0),
+  };
+}
+
 function parseRobotRaw(v: unknown): RobotRaw | null {
   if (!isObj(v)) return null;
   const start = parseStats(v.start);
@@ -705,6 +773,14 @@ export function parseFromPlayer(data: unknown): FromPlayer | null {
       return { type: 'csp', directive: text(data.directive, 60) ?? '', blocked: text(data.blocked, 200) ?? '' };
     case 'escape':
       return { type: 'escape' };
+    case 'objects': {
+      const items = list(data.items, parseWorldObject, 64);
+      return items ? { type: 'objects', items } : null;
+    }
+    case 'snapshot':
+      return typeof Blob !== 'undefined' && data.png instanceof Blob && data.png.type === 'image/png' && data.png.size <= MAX_SNAPSHOT_BYTES
+        ? { type: 'snapshot', png: data.png }
+        : null;
     default:
       return null;
   }
@@ -863,6 +939,27 @@ export function parseToPlayer(data: unknown): ToPlayer | null {
       const code = text(data.code, 32);
       if (!phase || key === undefined || code === undefined) return null;
       return { type: 'key', phase, key, code, keyCode: Math.round(nonNeg(data.keyCode) ?? 0) };
+    }
+    case 'mode': {
+      const mode = oneOf(data.mode, ['play', 'change'] as const);
+      return mode ? { type: 'mode', mode } : null;
+    }
+    case 'select': {
+      if (data.id === null) return { type: 'select', id: null };
+      const id = nonNeg(data.id);
+      return id === undefined ? null : { type: 'select', id: Math.round(id) };
+    }
+    case 'celebrate': {
+      const key = text(data.key, MAX_KEY);
+      return key ? { type: 'celebrate', key } : null;
+    }
+    case 'step': {
+      const frames = nonNeg(data.frames);
+      return frames === undefined ? null : { type: 'step', frames: Math.min(600, Math.round(frames)) };
+    }
+    case 'snapshot': {
+      const maxW = num(data.maxW);
+      return maxW === undefined ? null : { type: 'snapshot', maxW: Math.max(16, Math.min(4096, Math.round(maxW))) };
     }
     default:
       return null;

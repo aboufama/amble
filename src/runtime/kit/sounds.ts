@@ -3,6 +3,9 @@
  * so games need no sound files), with captions for players who turn captions on. Pure.
  */
 import type { SynthSegment, Wave } from '../../audio/synth';
+import { MUSIC_STYLES, SOUND_NAMES, type MusicStyle, type SoundName } from '../../play/kit/names';
+
+export { MUSIC_STYLES, SOUND_NAMES, type MusicStyle, type SoundName };
 
 const seg = (wave: Wave, startFreq: number, endFreq: number, duration: number, startVolume: number, endVolume: number): SynthSegment => ({
   wave,
@@ -13,11 +16,6 @@ const seg = (wave: Wave, startFreq: number, endFreq: number, duration: number, s
   endVolume,
 });
 
-export const SOUND_NAMES = [
-  'coin', 'jump', 'laser', 'shoot', 'hit', 'stomp', 'explosion', 'boom', 'powerup', 'blip', 'pop', 'dash', 'zap', 'thud', 'roar',
-  'flip', 'slowmo', 'combo', 'hurt', 'win', 'lose', 'bubble', 'splash',
-] as const;
-export type SoundName = (typeof SOUND_NAMES)[number];
 
 export const SOUNDS: Record<SoundName, SynthSegment[]> = {
   coin: [seg('square', 988, 988, 0.06, 0.5, 0.5), seg('square', 1319, 1319, 0.18, 0.5, 0)],
@@ -51,8 +49,6 @@ export const SOUND_CAPTIONS: Record<SoundName, string> = {
   slowmo: '[slow-motion]', combo: '[combo]', hurt: '[ouch]', win: '[fanfare]', lose: '[sad trombone]', bubble: '[bloop]', splash: '[splash]',
 };
 
-export const MUSIC_STYLES = ['boss', 'adventure', 'chase', 'chill', 'spooky', 'chaos'] as const;
-export type MusicStyle = (typeof MUSIC_STYLES)[number];
 
 export interface MusicStyleDef {
   bpm: number;

@@ -15,7 +15,7 @@ import { templateFor, type Template } from './ghost/templates';
 import { riggedFactory, type RiggedCharacter } from './rigged';
 import type { ArtSpec } from './spec';
 import type { Kit } from './state';
-import { CLIP_NAMES, resolveClip } from './synonyms';
+import { CLIP_NAMES, resolveClip } from '../../play/kit/synonyms';
 import { arcadeBody, type Point } from './types';
 
 /** One-shot clips: they play once over the current movement. */

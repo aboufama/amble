@@ -32,6 +32,7 @@ import {
   type RuntimeStats,
   type SoundAsset,
   type ToPlayer,
+  type WorldObject,
 } from './protocol';
 import { runRobotTest, type RobotTestOptions } from './robot';
 import type { RobotReport } from './robotJudge';
@@ -82,6 +83,10 @@ export interface PlayerEvents {
   navigated: () => void;
   /** Escape was pressed inside the game: leave full screen / give focus back to the editor. */
   escape: () => void;
+  /** Change mode's object reports (at most 64, 4 times a second), sent by the runtime's editor module. */
+  objects: (items: WorldObject[]) => void;
+  /** A PNG of the current frame: the answer to `send({ type: 'snapshot', maxW })`. */
+  snapshot: (png: Blob) => void;
 }
 
 type Listeners = { [K in keyof PlayerEvents]: Set<PlayerEvents[K]> };
@@ -125,7 +130,7 @@ export class Player {
   private readonly listeners: Listeners = {
     state: new Set(), manifest: new Set(), firstFrame: new Set(), booted: new Set(), error: new Set(), warn: new Set(), log: new Set(),
     event: new Set(), artMissing: new Set(), artClicked: new Set(), swapped: new Set(), storage: new Set(), stats: new Set(),
-    audio: new Set(), csp: new Set(), navigated: new Set(), escape: new Set(),
+    audio: new Set(), csp: new Set(), navigated: new Set(), escape: new Set(), objects: new Set(), snapshot: new Set(),
   };
 
   /** Current game state ('idle' before the first load). */
@@ -497,6 +502,12 @@ export class Player {
         break;
       case 'escape':
         this.emit('escape');
+        break;
+      case 'objects':
+        this.emit('objects', msg.items);
+        break;
+      case 'snapshot':
+        this.emit('snapshot', msg.png);
         break;
       default:
         break;

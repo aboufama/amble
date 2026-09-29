@@ -8,7 +8,7 @@ import Phaser from 'phaser';
 import type { RigKind } from '../../../play/protocol';
 import { env } from '../env';
 import type { ClipName, RiggedCharacter } from '../rigged';
-import { resolveClip } from '../synonyms';
+import { resolveClip } from '../../../play/kit/synonyms';
 import { clipFor, type ClipDef, type Pose } from './clips';
 import { GHOST_STYLE } from './paint';
 import { solve, type BoneWorld, type Template } from './templates';

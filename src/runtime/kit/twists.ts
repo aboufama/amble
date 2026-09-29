@@ -9,7 +9,7 @@ import Phaser from 'phaser';
 import { env } from './env';
 import type { AmbleScene } from './scene';
 import type { Kit } from './state';
-import { TWISTS, TWIST_IDS, isTwistId, type TwistId } from './twistCatalog';
+import { TWISTS, TWIST_IDS, isTwistId, type TwistId } from '../../play/kit/twistCatalog';
 import { arcadeBody, isActor, type Actor } from './types';
 import { util } from './util';
 

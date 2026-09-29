@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import dts from '../../src/runtime/kit/amble-kit.d.ts?raw';
+import dts from '../../src/play/kit/amble-kit.d.ts?raw';
 import { FIXTURES } from '../../src/runtime/fixtures/index';
-import { KIT_API, type KitNamespace } from '../../src/runtime/kit/manifest';
+import { KIT_API, KIT_REFERENCE, type KitNamespace } from '../../src/play/kit/manifest';
 
 // Node's modules, loaded at run time: the project's type-check has DOM types only.
 interface NodeFs {
@@ -43,6 +43,22 @@ const NS_INTERFACES: Record<KitNamespace, RegExp> = {
   pattern: /interface Pattern \{/,
   twists: /interface Twists \{/,
 };
+
+describe('KIT_REFERENCE', () => {
+  it('lists the scene and every namespace with signatures and docs', () => {
+    const names = KIT_REFERENCE.namespaces.map((n) => n.name);
+    expect(names).toEqual(['', ...Object.keys(KIT_API.namespaces)]);
+    const scene = KIT_REFERENCE.namespaces[0];
+    expect(scene.members.map((m) => m.name)).toEqual(KIT_API.docs.scene.map((m) => m.name));
+    expect(scene.members.find((m) => m.name === 'fx')?.kind).toBe('namespace');
+    expect(scene.members.find((m) => m.name === 'spawnHero')?.kind).toBe('method');
+    for (const ns of KIT_REFERENCE.namespaces.slice(1)) {
+      expect(ns.members.map((m) => m.name), ns.name).toEqual(KIT_API.namespaces[ns.name as KitNamespace]);
+      expect(ns.doc, ns.name).not.toBe('');
+      for (const m of ns.members) expect(m.signature && m.doc, `${ns.name}.${m.name}`).toBeTruthy();
+    }
+  });
+});
 
 describe('KIT_API and amble-kit.d.ts', () => {
   it('declare the same scene members', () => {

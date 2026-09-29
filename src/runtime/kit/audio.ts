@@ -7,7 +7,7 @@ import Phaser from 'phaser';
 import type { SynthSegment } from '../../audio/synth';
 import { env } from './env';
 import { MUSIC, MUSIC_STYLES, SOUND_CAPTIONS, SOUND_NAMES, SOUNDS, parseRecipe, type MusicStyle, type MusicStyleDef, type SoundName } from './sounds';
-import { guessSound } from './synonyms';
+import { guessSound } from '../../play/kit/synonyms';
 import { hash, seeded } from './util';
 
 export interface SfxOptions {

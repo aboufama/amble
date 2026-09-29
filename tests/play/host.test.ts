@@ -7,6 +7,17 @@ import { buildStandaloneHtml } from '../../src/play/standalone';
 import { STANDALONE_DATA_ID, STANDALONE_RUNTIME_ID, type RobotRaw, type RuntimeStats } from '../../src/play/protocol';
 
 describe('the player document', () => {
+  it("gives the editor page's CSP the bootstrap's hash (srcdoc frames inherit that policy)", async () => {
+    // The config-side module imports with .ts extensions (for Node's loader), so it stays out of tsc's app
+    // program: a computed specifier is not followed by the type checker.
+    const pluginPath = '../../vite/ambleRuntime.ts';
+    const { playerBootHashes } = (await import(/* @vite-ignore */ pluginPath)) as { playerBootHashes: () => string[] };
+    const { editorCsp } = await import('../../vite/csp');
+    expect(playerBootHashes()).toEqual([`sha256-${await sha256Base64(PLAYER_BOOT)}`]);
+    const policy = editorCsp({ connect: ['https:'], bootHashes: playerBootHashes });
+    expect(policy).toContain(`script-src 'self' ${await scriptHash(PLAYER_BOOT)} blob:`);
+  });
+
   it('allows only the bootstrap by hash, blob scripts and no network', async () => {
     const hash = await scriptHash(PLAYER_BOOT);
     expect(hash).toBe(`'sha256-${await sha256Base64(PLAYER_BOOT)}'`);

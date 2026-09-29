@@ -13,8 +13,9 @@ import type { KitEnv, VirtualInput } from '../kit/env';
 import { installKit } from '../kit/index';
 import { currentScene } from '../kit/scene';
 import { quality } from '../kit/state';
+import { worldObjects } from '../kit/objects';
 import { countGame } from '../kit/stats';
-import { isTwistId } from '../kit/twistCatalog';
+import { isTwistId } from '../../play/kit/twistCatalog';
 import { setTwist } from '../kit/twists';
 import { seeded } from '../kit/util';
 import { DrawnStore } from './assets';
@@ -30,7 +31,8 @@ import { KeyInjector } from './keys';
 import { createLink } from './link';
 import { loadArt, loadFonts, loadSounds, runFiles, runStart } from './load';
 import { hideErrorPanel, hideSoundChip, showSoundChip } from './overlay';
-import { currentGame, patchPhaser, renderOnly, retire } from './patches';
+import { editorHandler, type EditorShell } from './editor';
+import { currentGame, patchPhaser, renderOnly, retire, stepFrame } from './patches';
 import { runRobot, type RobotRecorder } from './robot';
 import { readStandalone, showPlayCard } from './standalone';
 import { createStorage, installStorage } from './storage';
@@ -373,6 +375,40 @@ function resumeGame(): void {
   post({ type: 'state', state: kitState() });
 }
 
+/** Change mode's "step": simulate frames of a paused game on its own clock, drawing only the last. */
+function advancePaused(frames: number): void {
+  const game = currentGame();
+  if (!game || !editorPaused || mode !== 'play') return;
+  if (frames <= 0) {
+    renderOnly(game);
+    return;
+  }
+  const dt = 1000 / 60;
+  let t = game.loop.time;
+  for (let i = 0; i < frames; i++) {
+    t += dt;
+    stepFrame(game, t, dt, i === frames - 1);
+  }
+}
+
+const editorShell: EditorShell = {
+  game: () => currentGame(),
+  scene: () => currentScene() ?? currentGame()?.scene.getScenes(true)[0] ?? null,
+  post,
+  paused: () => editorPaused,
+  pause: pauseGame,
+  resume: resumeGame,
+  advance: advancePaused,
+  render: () => {
+    const game = currentGame();
+    if (game) renderOnly(game);
+  },
+  objects: (max = 64) => {
+    const game = currentGame();
+    return game ? worldObjects(game, max) : [];
+  },
+};
+
 function dispose(): void {
   const game = currentGame();
   if (game) retire(game);
@@ -418,6 +454,17 @@ function handle(msg: ToPlayer): void {
       break;
     case 'unlockAudio':
       audio.unlock();
+      break;
+    case 'mode':
+    case 'select':
+    case 'celebrate':
+    case 'step':
+    case 'snapshot':
+      try {
+        editorHandler()?.(msg, editorShell);
+      } catch (err) {
+        post({ type: 'log', level: 'error', message: `Change mode: ${String(err instanceof Error ? err.message : err).slice(0, 300)}` });
+      }
       break;
     default:
       break;

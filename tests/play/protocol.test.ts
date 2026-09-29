@@ -130,6 +130,37 @@ describe('parseToPlayer', () => {
     expect(parseToPlayer({ type: 'pause', extra: 1 })).toEqual({ type: 'pause' });
     expect(parseToPlayer({ type: 'prefs', prefs: { muted: true, volume: 7, quality: 'ultra' } })).toEqual({ type: 'prefs', prefs: { muted: true, volume: 1 } });
   });
+
+  it("validates Change mode's messages (step 5)", () => {
+    expect(parseToPlayer({ type: 'mode', mode: 'change' })).toEqual({ type: 'mode', mode: 'change' });
+    expect(parseToPlayer({ type: 'mode', mode: 'edit' })).toBeNull();
+    expect(parseToPlayer({ type: 'select', id: null })).toEqual({ type: 'select', id: null });
+    expect(parseToPlayer({ type: 'select', id: 4.2 })).toEqual({ type: 'select', id: 4 });
+    expect(parseToPlayer({ type: 'select', id: 'x' })).toBeNull();
+    expect(parseToPlayer({ type: 'celebrate', key: 'hero' })).toEqual({ type: 'celebrate', key: 'hero' });
+    expect(parseToPlayer({ type: 'step', frames: 9999 })).toEqual({ type: 'step', frames: 600 });
+    expect(parseToPlayer({ type: 'snapshot', maxW: 1e9 })).toEqual({ type: 'snapshot', maxW: 4096 });
+  });
+});
+
+describe("Change mode's reports (step 5)", () => {
+  it('validates world objects and snapshots', () => {
+    const item = { id: 3, key: 'hero', label: 'Sir Pip', role: 'hero', group: null, x: 10, y: 20, w: 30, h: 40, drawn: false, count: 1, evil: 1 };
+    expect(parseFromPlayer({ type: 'objects', items: [item, { id: 'no' }, { ...item, id: 4, role: 'wizard', key: null }] })).toEqual({
+      type: 'objects',
+      items: [
+        { id: 3, key: 'hero', label: 'Sir Pip', role: 'hero', group: null, x: 10, y: 20, w: 30, h: 40, drawn: false, count: 1 },
+        { id: 4, key: null, label: 'Sir Pip', role: 'scenery', group: null, x: 10, y: 20, w: 30, h: 40, drawn: false, count: 1 },
+      ],
+    });
+    const many = Array.from({ length: 100 }, (_, i) => ({ ...item, id: i }));
+    const capped = parseFromPlayer({ type: 'objects', items: many });
+    expect(capped?.type === 'objects' && capped.items.length).toBe(64);
+    const png = new Blob([new Uint8Array(8)], { type: 'image/png' });
+    expect(parseFromPlayer({ type: 'snapshot', png })).toEqual({ type: 'snapshot', png });
+    expect(parseFromPlayer({ type: 'snapshot', png: new Blob(['<html>'], { type: 'text/html' }) })).toBeNull();
+    expect(parseFromPlayer({ type: 'snapshot', png: 'data:image/png;base64,AAAA' })).toBeNull();
+  });
 });
 
 describe('prefs and transferables', () => {

@@ -11,7 +11,7 @@ import { patchLoader } from './loader';
 import { registerRiggedFactory } from './rigged';
 import { AmbleScene } from './scene';
 import { SOUND_NAMES } from './sounds';
-import { TWIST_IDS } from './twistCatalog';
+import { TWIST_IDS } from '../../play/kit/twistCatalog';
 import { util } from './util';
 
 export const KIT_VERSION = '2.0.0';

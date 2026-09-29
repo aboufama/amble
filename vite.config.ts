@@ -4,7 +4,10 @@ import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
-import { ambleRuntime } from './vite/ambleRuntime.ts';
+import { ambleRuntime, playerBootHashes } from './vite/ambleRuntime.ts';
+import { aiConnectSources, csp } from './vite/csp.ts';
+import { envGuard } from './vite/envGuard.ts';
+import { swPlugin } from './vite/swPlugin.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -77,6 +80,8 @@ function openaiProxy(env: Record<string, string>): Plugin {
 
   return {
     name: 'amble-openai-proxy',
+    // Dev and preview servers only: production builds never request /api/*.
+    apply: 'serve',
     configureServer(server) {
       const allowed = allowedHostsOf(server.config.server);
       server.middlewares.use(handler(allowed));
@@ -99,9 +104,13 @@ export default defineConfig(({ mode }) => {
     cacheDir: '.vite',
     plugins: [
       react(),
-      // Bundles the Phaser game runtime for the sandboxed game iframe, serves it from the dev server
-      // and emits it into the build (`import runtimeUrl from 'virtual:amble-runtime'`).
+      // The game runtime plugin: it bundles the Phaser player for the sandboxed game iframe, serves it
+      // from the dev server and emits it into the build (`import runtimeUrl from 'virtual:amble-runtime'`).
       ambleRuntime({ root }),
+      envGuard(env),
+      // Game frames (srcdoc) inherit this policy, so it allows the player's bootstrap by its hash.
+      csp({ connect: aiConnectSources(env), bootHashes: playerBootHashes }),
+      swPlugin(),
       openaiProxy(env),
     ],
     build: {
@@ -110,6 +119,8 @@ export default defineConfig(({ mode }) => {
     test: {
       include: ['tests/**/*.test.ts', 'server/**/*.test.ts'],
       environment: 'node',
+      // CSS reaches tests as text (`?raw`), so the token and style checks read the real stylesheets.
+      css: { include: [/\.css/] },
     },
   };
 });

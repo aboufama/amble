@@ -5,7 +5,7 @@
 import runtimeUrl from 'virtual:amble-runtime';
 import { buildStandaloneHtml, loadRuntimeText, Player, type DrawnArt, type GameBundle, type PlayerPrefs, type RobotReport } from '../../src/play/index';
 import { FIXTURES, type FixtureName } from '../../src/runtime/fixtures/index';
-import { KIT_API } from '../../src/runtime/kit/manifest';
+import { KIT_API } from '../../src/play/kit/manifest';
 
 const stage = document.getElementById('stage') as HTMLDivElement;
 const logEl = document.getElementById('log') as HTMLPreElement;

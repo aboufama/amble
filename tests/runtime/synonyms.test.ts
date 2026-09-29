@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { editDistance, forgiving, guessSound, resolveClip, suggest } from '../../src/runtime/kit/synonyms';
+import { editDistance, forgiving, guessSound, resolveClip, suggest } from '../../src/play/kit/synonyms';
 import { SOUND_NAMES, parseRecipe } from '../../src/runtime/kit/sounds';
-import { isTwistId, TWISTS } from '../../src/runtime/kit/twistCatalog';
+import { isTwistId, TWISTS } from '../../src/play/kit/twistCatalog';
 
 describe('forgiving names', () => {
   it('resolves clip names models invent', () => {

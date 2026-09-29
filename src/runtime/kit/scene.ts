@@ -29,7 +29,7 @@ import * as matter from './matter';
 import { Pattern } from './pattern';
 import { applyTwists, twistsView, undoTwists } from './twists';
 import { Kit, type Brain, type BrainState, type KitConfig, type PhaseDef, type Shot } from './state';
-import { SCENE_SYNONYMS, forgiving } from './synonyms';
+import { SCENE_SYNONYMS, forgiving } from '../../play/kit/synonyms';
 import { arcadeBody, isActor, type Actor, type Point, type ShotOptions } from './types';
 import { Ui, UI_SCENE } from './ui';
 import { DEG, isPoint, util } from './util';

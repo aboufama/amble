@@ -1,0 +1,25 @@
+{
+  "status": "ok",
+  "safetyNote": "",
+  "title": "Shelly's Big Rescue",
+  "pitch": "Help Shelly the snail rescue her friends from the Salt King's castle.",
+  "starter": "moon-king",
+  "twist": { "name": "Slow-mo", "does": "Everything moves at snail speed for a while." },
+  "controls": [
+    { "keys": "← →", "does": "crawl" },
+    { "keys": "Space", "does": "jump" },
+    { "keys": "X", "does": "shoot bubbles" }
+  ],
+  "cast": [
+    { "key": "hero", "name": "Shelly", "ask": "Draw Shelly, a brave snail", "about": "Your hero. Gets bones: walks, jumps, cheers.", "role": "hero", "kind": "character", "rig": "blob", "facing": "right", "pronoun": "her", "size": "hero", "required": true, "mapsTo": "hero" },
+    { "key": "saltKing", "name": "The Salt King", "ask": "Draw the Salt King, a grumpy salt shaker", "about": "The boss. Throws salt in three phases.", "role": "boss", "kind": "character", "rig": "biped", "facing": "left", "pronoun": "him", "size": "huge", "required": true, "mapsTo": "moonKing" },
+    { "key": "crumb", "name": "Salt crumb", "ask": "Draw a salt crumb", "about": "Little crumbs that chase you.", "role": "enemy", "kind": "character", "rig": "blob", "facing": "left", "pronoun": "them", "size": "small", "required": false, "mapsTo": "grumble" },
+    { "key": "leaf", "name": "Lettuce leaf", "ask": "Draw a lettuce leaf", "about": "It makes your bubbles bigger.", "role": "item", "kind": "item", "rig": "none", "facing": "viewer", "pronoun": "it", "size": "small", "required": false, "mapsTo": "star" }
+  ],
+  "builds": ["A boss fight against the Salt King in three phases", "Salt crumbs that chase Shelly", "Lettuce that powers up your bubbles"],
+  "dials": [
+    { "key": "jump", "label": "Jump height" },
+    { "key": "bossHp", "label": "Salt King health" },
+    { "key": "saltSpeed", "label": "Salt speed" }
+  ]
+}

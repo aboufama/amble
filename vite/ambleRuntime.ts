@@ -19,6 +19,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Plugin, ViteDevServer } from 'vite';
 
+import { PLAYER_BOOT } from '../src/play/boot.ts';
+
 export const RUNTIME_VIRTUAL_ID = 'virtual:amble-runtime';
 const RESOLVED_ID = '\0' + RUNTIME_VIRTUAL_ID;
 const DEV_FILE = 'amble-player.js';
@@ -65,6 +67,16 @@ async function bundleRuntime(root: string, entry: string, minify: boolean): Prom
   const meta: Metafile = result.metafile ?? { inputs: {}, outputs: {} };
   const inputs = new Set(Object.keys(meta.inputs).map((p) => path.resolve(root, p)));
   return { code: `${phaser}\n;\n${result.outputFiles[0].text}`, inputs };
+}
+
+/**
+ * CSP sources ('sha256-...') for the player's srcdoc bootstrap. A srcdoc game frame inherits the editor
+ * page's Content Security Policy, so the page's script-src must allow the bootstrap by its hash (plus
+ * blob:, for the runtime and the game's files): `csp({ bootHashes: playerBootHashes })` in vite.config.ts.
+ * Hashed from the bootstrap's source when called, so it can never go stale.
+ */
+export function playerBootHashes(): string[] {
+  return [`sha256-${createHash('sha256').update(PLAYER_BOOT, 'utf8').digest('base64')}`];
 }
 
 export function runtimeFileName(code: string): string {

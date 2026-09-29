@@ -1,0 +1,275 @@
+/*
+ * The app frame (§2.2): the skip link, screens (header, main, complementary), the 60 px top bar, the toast
+ * region, the error card and the FOUNDATION-STUB screen bodies. Tokens only.
+ */
+
+/* ---------- the skip link (§3.9): hidden until focused ---------- */
+.skip-link {
+  position: fixed;
+  left: var(--s3);
+  top: var(--s3);
+  z-index: calc(var(--z-fullscreen) + 2);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
+  padding: 0 var(--s4);
+  border-radius: var(--r-btn);
+  font: var(--type-label);
+  color: var(--on-accent);
+  text-decoration: none;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent-border), var(--lift-sm);
+  transform: translateY(calc(-100% - 2 * var(--s3)));
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* ---------- screens ---------- */
+.screen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'top top'
+    'main aside';
+  height: 100%;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 38%, var(--bg-lift), transparent 70%),
+    var(--bg);
+}
+
+.screen > .topbar {
+  grid-area: top;
+}
+
+.screen__main {
+  grid-area: main;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.screen__aside {
+  --line-control: var(--line-control-panel);
+  grid-area: aside;
+  width: 340px;
+  min-height: 0;
+  overflow: auto;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.screen--loading {
+  display: block;
+  background: var(--bg);
+}
+
+.screen--error {
+  display: grid;
+  place-items: center;
+  padding: var(--s6);
+}
+
+/* Portrait: one column; the page may scroll and the complementary region follows main. */
+:root[data-layout='portrait'] .screen {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    'top'
+    'main'
+    'aside';
+  height: auto;
+  min-height: 100%;
+}
+
+:root[data-layout='portrait'] .screen__main {
+  overflow: visible;
+}
+
+:root[data-layout='portrait'] .screen__aside {
+  width: auto;
+  border-left: 0;
+  border-top: 1px solid var(--line);
+}
+
+/* Wrappers a screen stub sits in (Home picks, the in-app pages) keep the screen's full height. */
+.screen-wrap,
+.page-host {
+  height: 100%;
+}
+
+/* ---------- the top bar ---------- */
+.topbar {
+  position: relative;
+  z-index: var(--z-topbar);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  height: var(--topbar);
+  padding: 0 var(--s4);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-deep) 55%, var(--bg));
+}
+
+.topbar__start,
+.topbar__end {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.topbar__end {
+  justify-content: flex-end;
+}
+
+.topbar__center {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.topbar__title {
+  min-width: 0;
+  overflow: hidden;
+  font: var(--type-title);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.topbar__back {
+  flex: none;
+}
+
+/* Narrow windows keep the back link's words for screen readers only. */
+@media (max-width: 760px) {
+  .topbar__back .btn__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .topbar {
+    padding: 0 var(--s2);
+  }
+}
+
+.ai-chip {
+  flex: none;
+  max-width: 320px;
+}
+
+.ai-chip > span:last-child {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chip__dot--off {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--text-2);
+}
+
+/* ---------- the toast region: bottom centre, above the Cast line in a world ---------- */
+.toast-region {
+  position: fixed;
+  left: 50%;
+  bottom: var(--s6);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.toast-region > * {
+  pointer-events: auto;
+}
+
+.toast-region--world {
+  bottom: 170px;
+}
+
+/* ---------- the error card ---------- */
+.error-card {
+  width: min(520px, 100%);
+}
+
+/* ---------- the files-only banner (M6 replaces) ---------- */
+.storage-banner {
+  margin: var(--s3) var(--s4) 0;
+  padding: var(--s3) var(--s4);
+}
+
+/* ---------- FOUNDATION-STUB screen bodies (each module replaces its own) ---------- */
+.stub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--s8) var(--s6);
+}
+
+.stub__title {
+  font: var(--display-m);
+}
+
+.stub__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: 0;
+  list-style: none;
+}
+
+.stub__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
+  padding: 0 var(--s4);
+  border-radius: var(--r-chip);
+  font: var(--type-label);
+  color: var(--text);
+  text-decoration: none;
+  box-shadow: inset 0 0 0 1.5px var(--line-control);
+}
+
+.stub__links a:hover {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.stub-world-view {
+  width: min(calc(100% - 2 * var(--s6)), 880px);
+  aspect-ratio: 16 / 9;
+  margin: var(--s6) auto;
+  border-radius: var(--r-world);
+  background: var(--bg-deep);
+}
+
+.stub-kind-picker,
+.stub-footsteps,
+.stub-ai {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.stub-ai {
+  padding: var(--s3) var(--s4);
+}

@@ -14,7 +14,7 @@ import { AmbleScene, currentScene, setBootHooks, type BootHooks, type SceneClass
 import { askOrder, toArtNeed } from './spec';
 import { quality, type KitConfig } from './state';
 import { countGame } from './stats';
-import { TWISTS } from './twistCatalog';
+import { TWISTS } from '../../play/kit/twistCatalog';
 import { twistAvailability } from './twists';
 import { UiScene } from './ui';
 

@@ -2,20 +2,15 @@
  * The player iframe document ("blob mode", measured in the Phaser probe).
  *
  * - The iframe is sandbox="allow-scripts": an opaque origin with no storage, cookies or access to the editor.
- * - Its srcdoc's ONLY script is the tiny bootstrap below, allowed by its sha256 hash (no 'unsafe-inline').
+ * - Its srcdoc's ONLY script is the tiny bootstrap (PLAYER_BOOT, ./boot.ts), allowed by its sha256 hash.
  *   It asks the editor for the runtime ('boot'), and runs the posted bytes (Phaser + Amble runtime) as blob:
  *   scripts. The sandboxed document never touches the network, which matters because Chrome does not
  *   HTTP-cache anything an opaque-origin frame fetches.
  */
-import { PLAYER_CHANNEL, STANDALONE_RUNTIME_ID } from './protocol';
+import { PLAYER_BOOT } from './boot';
+import { STANDALONE_RUNTIME_ID } from './protocol';
 
-/** Exactly what runs in the iframe before the runtime. Changing it changes its hash (computed, never hard-coded). */
-export const PLAYER_BOOT =
-  "window.__ambleBoot=performance.now();addEventListener('message',function b(e){var d=e.data;" +
-  `if(e.source!==parent||!d||d.channel!=='${PLAYER_CHANNEL}'||d.type!=='runtime')return;removeEventListener('message',b);` +
-  "d.scripts.forEach(function(x){var s=document.createElement('script');s.async=false;" +
-  "s.src=URL.createObjectURL(new Blob([x],{type:'text/javascript'}));document.head.appendChild(s)})});" +
-  `parent.postMessage({channel:'${PLAYER_CHANNEL}',type:'boot'},'*')`;
+export { PLAYER_BOOT };
 
 /**
  * Standalone export bootstrap: the runtime and the game travel inside the page itself, in non-executed
