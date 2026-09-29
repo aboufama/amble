@@ -469,8 +469,8 @@
 
 .new-version {
   position: absolute;
-  top: 12px;
-  left: 50%;
+  left: 16px;
+  bottom: 16px;
   display: flex;
   align-items: center;
   gap: var(--s3);
@@ -482,7 +482,6 @@
   box-shadow:
     inset 0 0 0 1.5px var(--ai),
     var(--lift-sm);
-  translate: -50% 0;
   animation: tag-in var(--t-move) var(--ease-amble);
 }
 
@@ -509,8 +508,7 @@
   }
 }
 
-.problem-card,
-.new-version {
+.problem-card {
   animation-name: tag-in-centred;
 }
 
@@ -1161,19 +1159,21 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  max-height: 232px;
+  max-height: min(236px, calc(100vh - 480px));
+  min-height: 132px;
   margin: 0 0 8px;
-  padding: 2px;
+  padding: 2px 2px 14px;
   list-style: none;
   overflow-y: auto;
+  mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent);
 }
 
 .twist-tile {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
-  min-height: 64px;
-  padding: 9px 10px 8px;
+  min-height: 58px;
+  padding: 8px 10px 7px;
   border: 0;
   border-radius: 12px;
   text-align: left;

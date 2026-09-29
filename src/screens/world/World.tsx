@@ -15,6 +15,7 @@ import { withViewTransition } from '../../app/transitions';
 import { t } from '../../i18n';
 import type { CastMember } from '../../model/types';
 import { announce, showToast } from '../../state/app';
+import { markSeen } from '../../state/prefs';
 import { confirmUser } from '../../ui/dialogs';
 import { runAsk } from '../../world/ask';
 import { loadGame, patchSession, setComeAlive, setMode, updateWorld } from '../../state/session';
@@ -78,6 +79,7 @@ export function World({ route }: { route: RouteOf<'world'> }) {
       const w = getState().session.world;
       if (!w || lifting.current) return;
       lifting.current = true;
+      if (!getState().prefs.seen.ghostTip) markSeen('ghostTip');
       controller.current?.pauseForEditor();
       playUiSound('lift');
       announce(t('world.lifting', { name: member.name }));

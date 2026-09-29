@@ -58,6 +58,8 @@ export function RequestTag({ onDraw }: { onDraw(member: CastMember, from: HTMLEl
 }
 
 const NOTE_W = 300;
+/** How long the coach mark stays before it counts as seen. */
+export const COACH_MS = 12_000;
 
 /** Where the coach mark sits: beside the "just bones" member it points at, inside the world view. */
 export function coachPlace(box: Box | null, frame: { width: number; height: number }): { left: number; top: number; side: 'left' | 'right' | null } {
@@ -72,7 +74,9 @@ export function coachPlace(box: Box | null, frame: { width: number; height: numb
 export function CoachMark({ pointer, frame, locate }: { pointer: boolean; frame: DOMRect | null; locate(key: string): Promise<Box | null> }) {
   const seen = useStore((s) => !!s.prefs.seen.ghostTip);
   const target = useStore((s) =>
-    s.session.ready && s.session.mode === 'play' && !s.session.request ? (s.session.cast.find((m) => m.status === 'needed' && m.onScreen)?.key ?? null) : null,
+    s.session.ready && s.session.mode === 'play' && !s.session.request && !s.session.problems.some((p) => p.fatal)
+      ? (s.session.cast.find((m) => m.status === 'needed' && m.onScreen)?.key ?? null)
+      : null,
   );
   const [box, setBox] = useState<Box | null>(null);
   const [placed, setPlaced] = useState(false);
@@ -88,6 +92,12 @@ export function CoachMark({ pointer, frame, locate }: { pointer: boolean; frame:
       live = false;
     };
   }, [seen, target, locate]);
+  // Once it has been read for a while, it is seen: it never covers the game for long.
+  useEffect(() => {
+    if (seen || !placed) return;
+    const timer = setTimeout(() => markSeen('ghostTip'), COACH_MS);
+    return () => clearTimeout(timer);
+  }, [seen, placed]);
   if (seen || !target || !placed || !frame) return null;
   const at = coachPlace(box, frame);
   return (
