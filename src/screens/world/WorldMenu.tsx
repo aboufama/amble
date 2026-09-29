@@ -2,7 +2,8 @@
  * The world's ⋯ menu (§2.6): Look inside, Sounds, Controls, Problems (n), Share as a web page, Make a
  * copy, World info, Save to Drive (or Hand in), Help, and "Last saved to Drive 10:42".
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useCommand } from '../../app/keys';
 import { navigate } from '../../app/router';
 import { useServices } from '../../app/services';
 import { t } from '../../i18n';
@@ -10,8 +11,9 @@ import { uid } from '../../model/ids';
 import type { World } from '../../model/types';
 import { showToast } from '../../state/app';
 import { flushWorld } from '../../state/session';
-import { useStore } from '../../state/store';
+import { getState, useStore } from '../../state/store';
 import { Menu, type MenuItem } from '../../ui/components';
+import { saveWorldToDrive } from '../files/SaveButton';
 
 export type SheetName = 'sounds' | 'controls' | 'problems' | 'info' | null;
 
@@ -77,14 +79,26 @@ export function WorldMenu({ world, onOpen }: { world: World; onOpen(sheet: Sheet
     }
   };
 
+  const saving = useRef(false);
   const saveToDrive = async () => {
+    if (saving.current) return;
+    saving.current = true;
     try {
       await flushWorld();
-      await files.saveWorld(world);
-    } catch (err) {
-      console.warn('Save to Drive failed:', err);
+      const open = getState().session.world;
+      await saveWorldToDrive(files, open?.id === world.id ? open : world);
+    } finally {
+      saving.current = false;
     }
   };
+  // Hand in has the top bar's place in an assignment's world: Ctrl+S still saves it to Drive (§2.2).
+  useCommand(
+    'save',
+    () => {
+      void saveToDrive();
+    },
+    !!world.assignment,
+  );
 
   const items: MenuItem[] = [
     { id: 'code', label: t('world.menuLookInside'), icon: 'eye', onSelect: () => navigate({ name: 'code', worldId: world.id, file: null }) },

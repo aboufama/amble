@@ -5,6 +5,7 @@
  * never blocks.
  */
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCommand } from '../../app/keys';
 import { navigate } from '../../app/router';
 import type { RouteOf } from '../../app/routes';
 import { useServices } from '../../app/services';
@@ -144,6 +145,12 @@ export function HandInSheet({ route }: { route: RouteOf<'handin'> }) {
     };
   }, [worldId, assignment0, code0]);
 
+  // Ctrl+S here is step 1: the file with the initials, not the world's plain save behind the sheet.
+  const saveNow = useRef<() => void>(() => undefined);
+  useCommand('save', () => {
+    saveNow.current();
+  });
+
   if (missing) {
     return (
       <Dialog open size="sm" title={t('school.handinTitle')} onClose={close} className="handin" actions={<Button variant="lantern" onClick={() => navigate({ name: 'trail', view: 'trail' })}>{t('school.handinMissingBack')}</Button>}>
@@ -196,6 +203,8 @@ export function HandInSheet({ route }: { route: RouteOf<'handin'> }) {
       setSaving(false);
     }
   };
+
+  saveNow.current = () => void save();
 
   const turnIn = async () => {
     if (!world || turning) return;
