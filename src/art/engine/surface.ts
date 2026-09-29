@@ -350,9 +350,14 @@ class Surface implements ArtSurface {
 
   // ------------------------------------------------------------------------------------------ recording
 
-  /** Pushes a history step and logs its op; the one place operations are committed. */
+  /**
+   * Pushes a history step and logs its op; the one place operations are committed. An operation that changed
+   * nothing (a stroke on the desk beside the paper) is neither: every logged op is exactly one undo step, so
+   * the log's undo marks take back what the student's undos took back, and replays match the drawing.
+   */
   private record(label: string, steps: Step[], op: Exclude<LogOp, { op: 'undo' } | { op: 'redo' } | { op: 'init' }>, layer: string | null): void {
-    if (steps.length) this.hist.push({ label, steps });
+    if (!steps.length) return;
+    this.hist.push({ label, steps });
     if (this.recording) {
       if (logSamples(this.ops) + (op.op === 'stroke' ? op.dts.length : 0) > LIMITS.logSamples) this.recording = false;
       else this.ops.push(op);
@@ -816,8 +821,10 @@ class Surface implements ArtSurface {
       xyp,
       dts,
     };
-    this.lastStroke = { op, points: st.session.pointsBeforeFinish };
-    this.record(st.session.spec.brush.label, this.takePending(), op, layer);
+    const steps = this.takePending();
+    // A stroke that left no ink (all of it off the paper) is nothing "Make it perfect" could take back.
+    this.lastStroke = steps.length ? { op, points: st.session.pointsBeforeFinish } : null;
+    this.record(st.session.spec.brush.label, steps, op, layer);
     this.comp.flush();
     this.st.commit.push(performance.now() - t0);
   }
