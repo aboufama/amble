@@ -96,7 +96,7 @@ export interface PlayerOptions {
   prefs?: Partial<PlayerPrefs>;
   /** Keep a spare iframe booted so Run is fast (default true; turn off on low-memory machines). */
   prewarm?: boolean;
-  /** Milliseconds without any message from a running game before it counts as frozen (default 6000). */
+  /** Milliseconds without any message from a running game before it counts as frozen (default 10000). */
   frozenAfterMs?: number;
 }
 
@@ -120,6 +120,8 @@ export class Player {
   private autoPaused = false;
   private userPaused = false;
   private destroyed = false;
+  /** Navigations of the current bundle: rebuilt once, then it counts as broken (no rebuild loop). */
+  private navigations = 0;
   private readonly listeners: Listeners = {
     state: new Set(), manifest: new Set(), firstFrame: new Set(), booted: new Set(), error: new Set(), warn: new Set(), log: new Set(),
     event: new Set(), artMissing: new Set(), artClicked: new Set(), swapped: new Set(), storage: new Set(), stats: new Set(),
@@ -153,7 +155,7 @@ export class Player {
     this.title = options.title ?? 'Game';
     this.prefs = { ...DEFAULT_PREFS, ...options.prefs };
     this.prewarmEnabled = options.prewarm !== false;
-    this.frozenAfterMs = options.frozenAfterMs ?? 6000;
+    this.frozenAfterMs = options.frozenAfterMs ?? 10_000;
     if (getComputedStyle(this.container).position === 'static') this.container.style.position = 'relative';
     document.addEventListener('visibilitychange', this.onVisibility);
     this.watchdog = window.setInterval(() => this.checkFrozen(), WATCHDOG_MS);
@@ -191,6 +193,7 @@ export class Player {
    */
   load(bundle: GameBundle): Promise<void> {
     if (this.destroyed) return Promise.reject(new Error('This player was destroyed.'));
+    if (bundle !== this.bundle) this.navigations = 0;
     this.bundle = cloneBundle(bundle);
     this.pending?.reject(new Error('Replaced by a newer load.'));
     this.manifest = null;
@@ -220,6 +223,7 @@ export class Player {
   /** Runs the same game again in a fresh realm (clean memory, fresh WebGL context). */
   restart(): Promise<void> {
     if (!this.bundle) return Promise.reject(new Error('Nothing to restart yet.'));
+    this.navigations = 0;
     return this.load(this.bundle);
   }
 
@@ -372,8 +376,23 @@ export class Player {
       navigated: () => {
         if (frame !== this.current) return;
         this.emit('navigated');
-        this.emit('warn', "Games can't open web pages, so Amble restarted this one.", {});
-        if (this.bundle) void this.load(this.bundle).catch(() => undefined);
+        this.navigations++;
+        if (this.navigations > 1 || !this.bundle) {
+          // It did it again: stop here instead of rebuilding forever.
+          const error: PlayerError = { phase: 'uncaught', message: "The game keeps trying to open a web page. Games can't do that, so Amble stopped it.", count: this.navigations, fatal: true };
+          this.errors.push(error);
+          this.emit('error', error);
+          this.setState('crashed');
+          frame.destroy();
+          this.current = null;
+          this.pending?.reject(new Error(error.message));
+          this.pending = null;
+          this.scheduleSpare(500);
+          return;
+        }
+        this.emit('warn', "Games can't open web pages or use the internet, so Amble restarted it.", {});
+        const again = this.bundle;
+        void this.load(again).catch(() => undefined);
       },
       failed: (message) => {
         if (frame !== this.current) return;
@@ -428,6 +447,12 @@ export class Player {
       }
       case 'state':
         this.setState(msg.state);
+        if (msg.state === 'crashed' && this.pending) {
+          // Broken before its first frame: show the new realm (with its "Oops!" panel), not the old game.
+          this.finishLeaving();
+          this.pending.reject(new Error(this.errors[0]?.message ?? 'The game stopped with an error.'));
+          this.pending = null;
+        }
         break;
       case 'event':
         this.emit('event', msg.event);

@@ -209,7 +209,32 @@ function patchGameConstructor(hooks: GameHooks): void {
   (Phaser as unknown as { Game: unknown }).Game = AmbleGame;
 }
 
+let installed: GameHooks | null = null;
+
+/**
+ * One frame on a manual clock (the robot test). Without `render` it simulates only (Phaser's headless step):
+ * with a software renderer drawing is most of a frame's cost, and the test needs pictures only now and then.
+ */
+export function stepFrame(game: Phaser.Game, time: number, delta: number, render: boolean): void {
+  const hooks = installed;
+  if (render || !hooks) {
+    game.step(time, delta);
+    return;
+  }
+  const started = performance.now();
+  loopFrameStart();
+  if (!hooks.crashed()) {
+    try {
+      game.headlessStep(time, delta);
+    } catch (err) {
+      hooks.report(err, 'frame');
+    }
+  }
+  hooks.stepped(game, performance.now() - started);
+}
+
 export function patchPhaser(hooks: GameHooks): void {
+  installed = hooks;
   patchStep(hooks);
   patchSceneBoot(hooks);
   patchTweens();

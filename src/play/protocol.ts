@@ -168,6 +168,8 @@ export interface ArtNeed {
   /** 1 = ask first. */
   priority: number;
   required: boolean;
+  /** A spare member: the game uses it only once it is drawn (`if (this.hasArt(key))`). */
+  spare: boolean;
   /** Declared in `static art` (false: only used at runtime). */
   declared: boolean;
   /** The running game has used it. */
@@ -499,6 +501,7 @@ function parseArtNeed(v: unknown): ArtNeed | null {
     facing: oneOf(v.facing, ['viewer', 'right', 'left'] as const) ?? 'viewer',
     priority: Math.round(num(v.priority) ?? 50),
     required: bool(v.required) ?? false,
+    spare: bool(v.spare) ?? false,
     declared: bool(v.declared) ?? false,
     used: bool(v.used) ?? false,
     drawn: bool(v.drawn) ?? false,
@@ -790,7 +793,7 @@ function parseInit(v: Obj): InitMessage | null {
   if (!files) return null;
   const robot = isObj(v.robot)
     ? {
-        gameMs: Math.max(100, Math.min(60_000, num(v.robot.gameMs) ?? 5000)),
+        gameMs: Math.max(100, Math.min(60_000, num(v.robot.gameMs) ?? 6000)),
         seed: Math.round(num(v.robot.seed) ?? 1),
         bot: v.robot.bot === 'none' ? ('none' as const) : ('auto' as const),
       }

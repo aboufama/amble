@@ -1,6 +1,7 @@
 /** Bullet patterns (pooled, culled, capped): rings, fans, aimed shots, spirals, rain, walls, lasers. */
 import Phaser from 'phaser';
 import { colorInt } from './color';
+import { numOf } from './dials';
 import type { Kit } from './state';
 import type { Point, ShotOptions } from './types';
 import { DEG, TAU, util } from './util';
@@ -19,7 +20,7 @@ export class Pattern {
     const off = o.offset ?? util.rand(0, 360 / n);
     const out: Phaser.Physics.Arcade.Sprite[] = [];
     for (let i = 0; i < n; i++) {
-      const base = typeof o.speed === 'number' ? o.speed : 200;
+      const base = numOf(o.speed, 200);
       const speed = o.petals ? base * (1 + 0.45 * Math.sin((i / n) * TAU * o.petals)) : o.speed;
       const shot = this.s.shoot(from, off + (i * 360) / n, { ...o, speed });
       if (shot) out.push(shot);

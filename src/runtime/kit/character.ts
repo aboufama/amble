@@ -23,6 +23,20 @@ const ONE_SHOTS = new Set(['attack', 'shoot', 'hurt', 'land', 'die']);
 
 const SPRITE_TEMPLATE: Template = { kind: 'object', bones: [{ name: 'body', parent: null, x: 0, y: 0, rest: 0, length: 0, depth: 1 }] };
 
+/** Where `attach()` puts things, as fractions of the character's box (x toward its facing, y down from the centre). */
+const ANCHORS: Record<string, { x: number; y: number; depth: number }> = {
+  head: { x: 0.05, y: -0.42, depth: 1 },
+  hat: { x: 0, y: -0.5, depth: 1 },
+  hand: { x: 0.42, y: 0.02, depth: 1 },
+  handR: { x: 0.42, y: 0.02, depth: 1 },
+  handL: { x: -0.36, y: 0.02, depth: -1 },
+  back: { x: -0.3, y: -0.1, depth: -1 },
+  body: { x: 0, y: 0, depth: 1 },
+  feet: { x: 0, y: 0.5, depth: 1 },
+};
+
+type Attachable = Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Transform & { setDepth?(d: number): unknown; setFlipX?(f: boolean): unknown };
+
 /** Which character shows the name tag for each key (one tag per key, so crowds stay readable). */
 const tagOwners = new Map<string, Character>();
 
@@ -68,6 +82,7 @@ export class Character extends Phaser.GameObjects.Container implements ArtListen
   private locked = false;
   private dashClip = false;
   private wasDrawn: boolean;
+  private readonly attached: Array<{ obj: Attachable; at: { x: number; y: number; depth: number } }> = [];
 
   constructor(
     scene: Phaser.Scene,
@@ -234,6 +249,29 @@ export class Character extends Phaser.GameObjects.Container implements ArtListen
     return this;
   }
 
+  /** Carries something (a hat, a wand) at a place on the body: head, hat, hand, handL, back, body or feet. */
+  attach(obj: Attachable, bone = 'hand'): this {
+    const at = ANCHORS[bone] ?? ANCHORS[resolveAnchor(bone)] ?? ANCHORS.hand;
+    this.attached.push({ obj, at });
+    this.placeAttached();
+    return this;
+  }
+
+  private placeAttached(): void {
+    for (let i = this.attached.length - 1; i >= 0; i--) {
+      const { obj, at } = this.attached[i];
+      if (!obj.active) {
+        this.attached.splice(i, 1);
+        continue;
+      }
+      const sx = Math.abs(this.scaleX);
+      const sy = Math.abs(this.scaleY) * this.kit.gravitySign;
+      obj.setPosition(this.x + at.x * this.spec.w * sx * this.facing, this.y + at.y * this.spec.h * sy);
+      obj.setDepth?.(this.depth + at.depth * 0.5);
+      obj.setFlipX?.(this.facing < 0);
+    }
+  }
+
   /** Turns into another drawing (a transformation); the body and behaviours stay. */
   setArt(key: string): this {
     if (!key || key === this.key) return this;
@@ -328,6 +366,7 @@ export class Character extends Phaser.GameObjects.Container implements ArtListen
     const t = this.lookTarget;
     if (t && t.active !== false && (!b || Math.abs(b.velocity.x) < 12)) this.face(t.x - this.x);
     this.visual.update(delta * this.animSpeed);
+    if (this.attached.length) this.placeAttached();
     const flip = grav && k.gravitySign < 0 ? -1 : 1;
     this.mount.setPosition(0, (this.spec.h / 2) * flip);
     this.mount.setScale(this.fit * this.squashScale.x, this.fit * this.squashScale.y * flip);
@@ -348,6 +387,7 @@ export class Character extends Phaser.GameObjects.Container implements ArtListen
     this.tagImg?.destroy();
     this.tagImg = null;
     this.tagKind = null;
+    for (const { obj } of this.attached ?? []) obj.destroy();
     this.visual?.destroy();
     super.destroy(fromScene);
   }
@@ -381,4 +421,16 @@ for (const name of ['scale', 'scaleY'] as const) {
       this.keepFeetOnFloor(old);
     },
   });
+}
+
+/** Other words for the attach points ("hands", "top", "tail"...). */
+function resolveAnchor(name: string): string {
+  const n = name.toLowerCase();
+  if (/hat|top|crown/.test(n)) return 'hat';
+  if (/head|face|eye|mouth/.test(n)) return 'head';
+  if (/left/.test(n)) return 'handL';
+  if (/hand|arm|paw|claw|wand|sword/.test(n)) return 'hand';
+  if (/back|tail|cape|wing/.test(n)) return 'back';
+  if (/foot|feet|leg|shoe/.test(n)) return 'feet';
+  return 'body';
 }

@@ -24,6 +24,8 @@ export interface ArtSpec {
   facing: Facing;
   priority: number;
   required: boolean;
+  /** Used only if drawn (`if (this.hasArt(key))`): never asked for as missing. */
+  spare: boolean;
   declared: boolean;
 }
 
@@ -155,7 +157,8 @@ export function normalizeSpec(key: string, input?: unknown, declared = input !==
     pronoun: pick(o.pronoun, ['him', 'her', 'them', 'it'] as const) ?? 'it',
     facing: pick(o.facing, ['viewer', 'right', 'left'] as const) ?? (kind === 'character' ? 'right' : 'viewer'),
     priority: priorityIn ?? 10 + ROLE_ORDER.indexOf(role),
-    required: typeof o.required === 'boolean' ? o.required : kind === 'character' && (role === 'hero' || role === 'boss' || role === 'enemy'),
+    required: o.spare === true ? false : typeof o.required === 'boolean' ? o.required : kind === 'character' && (role === 'hero' || role === 'boss' || role === 'enemy'),
+    spare: o.spare === true,
     declared,
   };
 }
@@ -197,6 +200,7 @@ export function toArtNeed(spec: ArtSpec, flags: { used: boolean; drawn: boolean 
     facing: spec.facing,
     priority: spec.priority,
     required: spec.required,
+    spare: spec.spare,
     declared: spec.declared,
     used: flags.used,
     drawn: flags.drawn,

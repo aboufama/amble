@@ -13,6 +13,7 @@ import { countGame } from '../kit/stats';
 import type { Actor } from '../kit/types';
 import { RobotBot } from './bot';
 import { advanceManualClock } from './clock';
+import { stepFrame } from './patches';
 import type { ErrorReporter } from './errors';
 import type { KeyInjector } from './keys';
 
@@ -116,7 +117,7 @@ export async function runRobot(ctx: RobotContext): Promise<RobotRaw> {
   const sampleAt = Math.min(30, Math.max(1, Math.floor(options.gameMs / FRAME_MS / 4)));
   const total = Math.max(1, Math.round(options.gameMs / FRAME_MS));
 
-  const stepOne = (): void => {
+  const stepOne = (render: boolean): void => {
     t += FRAME_MS;
     advanceManualClock(FRAME_MS);
     bot?.tick(t);
@@ -127,7 +128,7 @@ export async function runRobot(ctx: RobotContext): Promise<RobotRaw> {
     loop.delta = FRAME_MS;
     loop.rawDelta = FRAME_MS;
     loop.frame++;
-    game.step(t, FRAME_MS);
+    stepFrame(game, t, FRAME_MS, render);
     frames++;
     const h = heroNow();
     if (h) {
@@ -153,7 +154,7 @@ export async function runRobot(ctx: RobotContext): Promise<RobotRaw> {
   while (frames < total && !ctx.errors.crashed) {
     for (let i = 0; i < BATCH && frames < total && !ctx.errors.crashed; i++) {
       try {
-        stepOne();
+        stepOne(frames + 1 === sampleAt);
       } catch (err) {
         ctx.errors.report(err, 'frame');
       }

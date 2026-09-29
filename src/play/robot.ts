@@ -12,7 +12,7 @@ import type { GameBundle } from './player';
 export interface RobotTestOptions {
   runtimeUrl: string;
   bundle: GameBundle;
-  /** Game time to simulate (default 5000 ms). */
+  /** Game time to simulate (default 6000 ms). */
   gameMs?: number;
   /** Seeds Math.random and Phaser's RNG (default 1). */
   seed?: number;
@@ -55,7 +55,7 @@ function frozenReport(message: string, expectedFrames: number, gameMs: number, t
 }
 
 export function runRobotTest(options: RobotTestOptions): Promise<RobotReport> {
-  const gameMs = options.gameMs ?? 5000;
+  const gameMs = options.gameMs ?? 6000;
   const seed = options.seed ?? 1;
   const thresholds = options.thresholds ?? ROBOT_THRESHOLDS;
   const expectedFrames = Math.round(gameMs / (1000 / 60));
