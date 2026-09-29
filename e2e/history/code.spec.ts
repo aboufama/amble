@@ -41,10 +41,15 @@ async function openCode(page: Page): Promise<string> {
 /** Scrolls the editor until a line with `text` is rendered (CodeMirror draws only what is in view). */
 async function revealLine(page: Page, text: string) {
   const line = page.locator('.cm-line', { hasText: text });
-  for (let i = 0; i < 40 && !(await line.count()); i++) {
-    await page.locator('.cm-scroller').evaluate((el) => el.scrollBy(0, el.clientHeight * 0.6));
-    await page.waitForTimeout(50);
+  if (!(await line.count())) {
+    // The editor's own search brings the line into view (as a student would find it).
+    await page.locator('.cm-content').focus();
+    await page.keyboard.press('Control+f');
+    await page.keyboard.type(text);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Escape');
   }
+  await expect(line).toHaveCount(1);
   await line.scrollIntoViewIfNeeded();
   return line;
 }
