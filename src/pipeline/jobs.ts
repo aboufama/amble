@@ -299,6 +299,10 @@ async function run(job: CodeJob, deps: JobDeps, events: JobEvents, signal: Abort
       if (r && timedOut(r)) {
         r = await deps.robot(candidate, { signal, seed: deps.seed });
         stop();
+        // Too slow twice, and still nothing thrown: the device is busy, the code isn't broken. The change
+        // goes in untested rather than asking the model to fix working code; the world's own watchdog and
+        // problem card still catch a game that really stops.
+        if (r && timedOut(r)) r = null;
       }
       if (r) {
         robot = r;

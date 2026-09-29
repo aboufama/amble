@@ -265,7 +265,9 @@ export async function chatJson<T>(t: Transport, req: ChatJsonRequest<T>): Promis
  */
 export async function pingModel(t: Transport, model: string, opts: { signal?: AbortSignal; timeoutMs?: number } = {}): Promise<number> {
   const started = Date.now();
-  const req: ChatRequestBase = { model, system: 'You check that a connection works.', user: 'Reply with the word OK.', maxTokens: 16, signal: opts.signal, timeoutMs: opts.timeoutMs ?? 60_000, retries: 1 };
+  // Any HTTP 200 proves it. A reasoning model may spend the whole cap thinking and come back empty
+  // (finish_reason "length"): that is still a working connection, so the reply's text is never read.
+  const req: ChatRequestBase = { model, system: 'You check that a connection works.', user: 'Reply with the word OK.', maxTokens: 64, signal: opts.signal, timeoutMs: opts.timeoutMs ?? 60_000, retries: 1 };
   const call = await startCall({ ...t, caps: { ...t.caps, stream: false } }, req, null);
   await complete(call, req);
   return Date.now() - started;

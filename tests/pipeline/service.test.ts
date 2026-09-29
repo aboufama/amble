@@ -122,7 +122,7 @@ describe('a change, over the wire', () => {
     expect(req.headers.authorization).toBeUndefined();
     expect(req.body.store).toBe(false);
     expect(req.body.model).toBe('main-model');
-    expect(req.body.max_completion_tokens).toBe(8000);
+    expect(req.body.max_completion_tokens).toBe(16000);
     expect((req.body.messages as Array<{ content: string }>)[0].content).toBe(SYSTEM_PROMPT);
 
     const log = await h.store.ailog.list();
@@ -291,7 +291,7 @@ describe('builds and the ladder', () => {
     const fixUser = String((h.sent[1].body.messages as Array<{ content: string }>)[1].content);
     expect(fixUser).toMatch(/^Task: fix\n/);
     expect(fixUser).toContain('boss.js:3');
-    expect(h.sent[1].body.max_completion_tokens).toBe(6000);
+    expect(h.sent[1].body.max_completion_tokens).toBe(12000);
   });
 });
 

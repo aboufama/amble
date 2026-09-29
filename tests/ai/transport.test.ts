@@ -363,7 +363,7 @@ describe('utility calls', () => {
   it('pings a model with a tiny non-streamed request', async () => {
     const ep = fakeEndpoint([plain('', { finish: 'length' })]);
     expect(await pingModel(transport(ep.fetch), 'amble-default')).toBeGreaterThanOrEqual(0);
-    expect(ep.sent[0].body).toMatchObject({ model: 'amble-default', stream: false, max_completion_tokens: 16 });
+    expect(ep.sent[0].body).toMatchObject({ model: 'amble-default', stream: false, max_completion_tokens: 64 });
   });
 
   it('lists models when the endpoint offers them', async () => {

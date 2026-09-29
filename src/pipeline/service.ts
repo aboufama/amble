@@ -58,17 +58,21 @@ import { findBlock } from './blocks';
 export type { AiEnvConfig, AiEnv } from './core';
 export { statusMessage } from './core';
 
-/** Per-job limits (§5.1). */
+/**
+ * Per-job limits (§5.1). On reasoning models `max_completion_tokens` also pays for the model's reasoning, so
+ * each cap leaves room for that on top of the reply (a plan is about 1,000 tokens of JSON; a change's patch
+ * a few thousand). 16,000 is the most that older chat models (gpt-4o) accept for a reply.
+ */
 export const TASK_LIMITS: Record<CodeTask, { maxTokens: number; timeoutMs: number }> = {
   build: { maxTokens: 16_000, timeoutMs: 600_000 },
-  change: { maxTokens: 8_000, timeoutMs: 420_000 },
-  fix: { maxTokens: 6_000, timeoutMs: 300_000 },
-  resend: { maxTokens: 8_000, timeoutMs: 300_000 },
-  continue: { maxTokens: 8_000, timeoutMs: 300_000 },
+  change: { maxTokens: 16_000, timeoutMs: 420_000 },
+  fix: { maxTokens: 12_000, timeoutMs: 300_000 },
+  resend: { maxTokens: 16_000, timeoutMs: 300_000 },
+  continue: { maxTokens: 16_000, timeoutMs: 300_000 },
 };
-export const PLAN_LIMITS = { maxTokens: 2_000, timeoutMs: 120_000 };
-export const EXPLAIN_LIMITS = { maxTokens: 1_500, timeoutMs: 90_000 };
-export const RIG_LIMITS = { maxTokens: 1_000, timeoutMs: 90_000 };
+export const PLAN_LIMITS = { maxTokens: 6_000, timeoutMs: 120_000 };
+export const EXPLAIN_LIMITS = { maxTokens: 4_000, timeoutMs: 90_000 };
+export const RIG_LIMITS = { maxTokens: 4_000, timeoutMs: 90_000 };
 
 /** The helper as the app uses it: the spec's `AiService` plus what the AI cards need. */
 export interface AmbleAi extends AiService {

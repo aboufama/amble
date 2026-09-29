@@ -179,13 +179,13 @@ describe('the job state machine', () => {
     expect(robot.runs).toHaveLength(2);
   });
 
-  it('asks for a fix when the robot times out twice, and at once when the game threw before it froze', async () => {
+  it('takes a change untested when the robot times out twice, and asks for a fix at once when the game threw', async () => {
     const twice = fakeChat([fixture('change-stomp.patch'), REPLACE_GAME]);
     const robot = fakeRobot([robotFrozen(), robotFrozen(), PASS]);
     const r = await runCodeJob(change(), deps(twice.chat, robot.robot), track().events, new AbortController().signal);
-    expect(r).toMatchObject({ kind: 'accepted', repairs: 1 });
-    expect(twice.calls.map((c) => c.task)).toEqual(['change', 'fix']);
-    expect(twice.calls[1].user).toContain('frozen: The game did not start.');
+    expect(r).toMatchObject({ kind: 'accepted', repairs: 0, tested: false });
+    expect(twice.calls.map((c) => c.task)).toEqual(['change']);
+    expect(robot.runs).toHaveLength(2);
 
     const threw = robotFrozen('The game did not start.');
     threw.errors.unshift({ file: 'game.js', line: 12, column: 3, phase: 'load', message: "SyntaxError: Identifier 'FLOOR' has already been declared", count: 1 });
