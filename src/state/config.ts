@@ -8,7 +8,7 @@
  * world's assignment, which can lower both but never raise them (§5.13, §5.14).
  */
 import { BUILD } from '../app/env';
-import { resolveAiConfig, type AiConfig } from '../cores/ai';
+import { onManagedConfigChange, resolveAiConfig, type AiConfig } from '../cores/ai';
 import type { AiMode, Assignment, ClassLinkV1, Level } from '../model/types';
 import { getState, setState } from './store';
 
@@ -76,11 +76,25 @@ export function setConfig(patch: Partial<ConfigSlice>): void {
   });
 }
 
-/** Reads every configuration source again (after Join, Leave, or a change in Settings). */
+let reads = 0;
+
+/**
+ * Reads every configuration source again (at boot, after Join, Leave, a change in Settings, or a new managed
+ * configuration). When reads overlap, only the latest one is kept, so an older answer never replaces a newer.
+ */
 export async function refreshConfig(): Promise<AiConfig> {
+  const read = ++reads;
   const ai = await resolveAiConfig();
-  setConfig({ ai });
+  if (read === reads) setConfig({ ai });
   return ai;
+}
+
+/**
+ * Takes a new ChromeOS managed configuration as soon as the admin pushes it (§5.14): the AI helper, the
+ * class's mode, the content level and the locks follow without a reload. Returns a function that stops.
+ */
+export function watchManagedConfig(nav: unknown = globalThis.navigator): () => void {
+  return onManagedConfigChange(() => void refreshConfig().catch(() => undefined), nav);
 }
 
 /** The AI mode in a world: the class's, lowered by the world's assignment. */

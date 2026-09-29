@@ -38,6 +38,7 @@ export {
   describeAiSource,
   modelFor,
   mergeLayers,
+  onManagedConfigChange,
   pendingClassLink,
   readClassLink,
   validateClassLink,

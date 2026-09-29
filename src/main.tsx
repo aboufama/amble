@@ -17,11 +17,11 @@ import { installGlobalKeys } from './app/keys';
 import { watchLayout } from './app/layout';
 import { initRouter, navigate } from './app/router';
 import { createServices, ServicesProvider, setServices, type Services } from './app/services';
-import { AI_CORE, resolveAiConfig } from './cores/ai';
+import { AI_CORE } from './cores/ai';
 import { PLAYER_CORE } from './cores/play';
 import { startFilesUpkeep } from './files/api';
 import { registerServiceWorker } from './pwa/register';
-import { setConfig } from './state/config';
+import { refreshConfig, watchManagedConfig } from './state/config';
 import { refreshLibrary } from './state/library';
 import { loadPrefs, onPrefsChange, readPrefs, setPrefs } from './state/prefs';
 import { getState, setState, subscribe } from './state/store';
@@ -81,9 +81,9 @@ async function boot(): Promise<void> {
   installGlobalKeys();
   unlockOnFirstGesture();
   if (services.store.mode === 'memory') void refreshLibrary(services.store);
-  void resolveAiConfig()
-    .then((ai) => setConfig({ ai }))
-    .catch(() => undefined);
+  void refreshConfig().catch(() => undefined);
+  // A ChromeOS admin can push a new managed configuration at any time: it takes effect at once.
+  watchManagedConfig();
 
   // The editor's test hook (§10.2), in dev builds only. The art and rig barrels load lazily (their
   // engines belong in the Desk's chunks, not the first one).

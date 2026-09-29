@@ -163,7 +163,7 @@ This is the zero-touch path: students never see a setting.
 
 1. Force-install Amble as a web app (Chrome policy `WebAppInstallForceList`) at its address, for example `https://aboufama.github.io/amble/`.
 2. Push a managed configuration for Amble's origin (policy `ManagedConfigurationPerOrigin`, or the Admin console). Amble reads it with `navigator.managed.getManagedConfiguration`, which works only for force-installed web apps on managed devices. Everywhere else Amble finds no configuration and moves on.
-3. Amble reads the configuration when it starts. It wins over every other source, and a managed device counts as school mode unless the configuration says `"schoolMode": false`.
+3. Amble reads the configuration when it starts, and again whenever you change it (Chrome's `managedconfigurationchange` event), so a new configuration takes effect in an open Amble without a restart. It wins over every other source, and a managed device counts as school mode unless the configuration says `"schoolMode": false`.
 
 ```json
 {

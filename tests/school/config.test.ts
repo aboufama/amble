@@ -3,11 +3,12 @@
  * class link or manual settings from changing what a district set, and a class link (or an assignment) can
  * lower the AI mode and content level but never raise them.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { classLinkToCore, DEFAULT_AI_SETTINGS, resolveAiConfig, saveAiSettings, saveClassLink, type AiConfig } from '../../src/cores/ai';
 import type { ClassLinkV1 } from '../../src/model/types';
 import { capLink } from '../../src/school/classLink';
-import { deriveConfig, effectiveAiMode, effectiveLevel, lowerLevel, lowerMode } from '../../src/state/config';
+import { deriveConfig, effectiveAiMode, effectiveLevel, lowerLevel, lowerMode, refreshConfig, setConfig, watchManagedConfig } from '../../src/state/config';
+import { getState } from '../../src/state/store';
 import { sampleClassLink } from '../foundation/samples';
 
 function memoryStorage() {
@@ -123,5 +124,58 @@ describe('lowering, never raising', () => {
   it('never turns the AI on when the resolved config is off, whatever the link says', () => {
     const off = { enabled: false, expired: false, ageBand: 'middle', ageBandMax: 'high', schoolMode: false, sharedDevice: false } as unknown as AiConfig;
     expect(deriveConfig(off, sampleClassLink({ mode: 'on' }), false).aiMode).toBe('off');
+  });
+});
+
+describe('a managed configuration pushed while Amble is open', () => {
+  const managedAi = (enabled: boolean) => ({ enabled, baseUrl: 'https://amble-ai.sau99.org/v1', auth: { type: 'none' } });
+
+  it('takes effect at once, without a reload, and the watch can stop', async () => {
+    let pushed: Record<string, unknown> = { ai: managedAi(true), content: { max: 'high', default: 'high' } };
+    const listeners = new Set<() => void>();
+    const managed = {
+      getManagedConfiguration: async () => pushed,
+      addEventListener: (_type: string, fn: () => void) => void listeners.add(fn),
+      removeEventListener: (_type: string, fn: () => void) => void listeners.delete(fn),
+    };
+    vi.stubGlobal('navigator', { managed, onLine: true });
+    try {
+      await refreshConfig();
+      expect(getState().config.ai).toMatchObject({ source: 'managed', enabled: true, ageBand: 'high' });
+      expect(getState().config).toMatchObject({ aiMode: 'on', level: 'high' });
+
+      const stop = watchManagedConfig();
+      expect(listeners.size).toBe(1);
+      // The admin turns the AI off and lowers the level; Chrome fires managedconfigurationchange.
+      pushed = { ai: managedAi(false), content: { max: 'elementary', default: 'elementary' } };
+      for (const fn of listeners) fn();
+      await vi.waitFor(() => expect(getState().config.ai).toMatchObject({ enabled: false, offReason: 'turned-off', offBy: 'managed' }));
+      expect(getState().config).toMatchObject({ aiMode: 'off', level: 'elementary', levelMax: 'elementary' });
+
+      stop();
+      expect(listeners.size).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+      setConfig({ ai: null, classLink: null });
+    }
+  });
+
+  it('keeps the newest answer when two reads overlap', async () => {
+    let calls = 0;
+    const managed = {
+      // The first read answers last, with the configuration from before the push.
+      getManagedConfiguration: () => {
+        const n = ++calls;
+        return new Promise<Record<string, unknown>>((resolve) => setTimeout(() => resolve({ ai: managedAi(n > 1) }), n === 1 ? 80 : 5));
+      },
+    };
+    vi.stubGlobal('navigator', { managed, onLine: true });
+    try {
+      await Promise.all([refreshConfig(), refreshConfig()]);
+      expect(getState().config.ai?.enabled).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+      setConfig({ ai: null, classLink: null });
+    }
   });
 });
