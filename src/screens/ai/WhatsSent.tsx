@@ -2,7 +2,8 @@
  * **What Amble sends** (§2.15, §5.2; M5; the `#/sent` page shows it): the last 50 requests to the AI
  * helper with the time, the kind, the host, the sizes, what was included in plain words and the reply, and
  * **Show exactly** for the exact JSON body (never headers: the class code travels in one, and the page says
- * so). **Clear the list** empties it. Printable.
+ * so). **Clear the list** empties it. Printable. Grown-ups read it (Settings and "How wishes work" link
+ * here), so it names the AI plainly.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useServices } from '../../app/services';
@@ -62,7 +63,13 @@ function Entry({ entry }: { entry: AiLogEntry }) {
         </p>
       )}
       <div>
-        <Button size={38} variant="ghost" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Button
+          size={38}
+          variant="ghost"
+          aria-expanded={open}
+          aria-label={t(open ? 'ai.sentHideWhich' : 'ai.sentShowWhich', { kind: t(KIND[entry.kind]), when: when(entry.at) })}
+          onClick={() => setOpen(!open)}
+        >
           {open ? t('ai.sentHide') : t('ai.sentShow')}
         </Button>
       </div>

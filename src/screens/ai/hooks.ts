@@ -1,4 +1,4 @@
-/** Small helpers the AI cards share: the helper's richer interface, stickers, countdowns and names. */
+/** Small helpers the wish box shares: the helper's richer interface, countdowns and names. */
 import { useEffect, useState } from 'react';
 import { useServices } from '../../app/services';
 import type { GameManifest } from '../../cores/play';
@@ -13,28 +13,6 @@ export { nameInSentence };
 /** The app's AI helper with what the cards need (level, host, district, retry). */
 export function useAmbleAi(): AmbleAi | null {
   return asAmbleAi(useServices().ai);
-}
-
-/** The sticker of a drawing (an object URL), or null while it loads or when there is none. */
-export function useArtSticker(artId: ArtId | null | undefined): string | null {
-  const { store } = useServices();
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let live = true;
-    setUrl(null);
-    if (!artId) return;
-    void store.art
-      .get(artId)
-      .then((r) => (r?.export ? store.blobs.url(r.export.sticker) : null))
-      .then((u) => {
-        if (live) setUrl(u);
-      })
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, [artId, store]);
-  return url;
 }
 
 /** Whole seconds left until `until` (a `Date.now()` time), ticking once a second; null without one. */

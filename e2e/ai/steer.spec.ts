@@ -1,16 +1,16 @@
 /**
- * Local steering (§5.10): an Ask that only moves a dial or flips a twist is answered on the device with no
- * AI call and the steer toast (Undo, Ask the AI instead); with the AI off the matcher still works, and
- * anything else says it needs the AI helper.
+ * Dials and twists matched on the device (§5.10): a wish that only moves a dial or flips a twist happens at
+ * once with no request, and its toast offers Undo and Make a wish instead. When wishes rest, the box is one
+ * quiet line: no field, no set-up button, no machine words; Dials and Twists still work.
  */
 import { expect, openAmble, test } from '../helpers/app';
 import { mockAi } from '../helpers/mockAi';
-import { ask, mountHarness, openFixtureWorld, outcomeOf, skipExplainer, type AmbleWindow } from './harness';
+import { ask, mountHarness, openFixtureWorld, outcomeOf, type AmbleWindow } from './harness';
 
 const dialOf = (page: import('@playwright/test').Page, key: string) =>
   page.evaluate((k) => (window as unknown as AmbleWindow).__amble.getState().session.world.dials[k] ?? null, key);
 
-test('"make the jump higher" turns the dial with no AI call; Undo puts it back', async ({ page }) => {
+test('"make the jump higher" turns the dial with no request; Undo puts it back', async ({ page }) => {
   const ai = await mockAi(page, { patches: [] });
   await openAmble(page, { ai: 'mock', clean: true });
   await openFixtureWorld(page);
@@ -18,10 +18,11 @@ test('"make the jump higher" turns the dial with no AI call; Undo puts it back',
 
   await ask(page, 'make the jump higher');
   const toast = page.getByTestId('ai-steer');
-  await expect(toast).toHaveText(/Turned Jump power up to 860\. No AI needed\./);
+  await expect(toast).toContainText('Turned Jump power up to 860.');
+  await expect(toast).not.toContainText(/\bAI\b/);
   expect(await dialOf(page, 'jump')).toBe(860);
   await expect(page.getByTestId('ai-field')).toHaveValue('');
-  // No explainer, no request: nothing went to the AI helper.
+  // Nothing opened and nothing was sent.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(ai.requests).toHaveLength(0);
 
@@ -30,19 +31,18 @@ test('"make the jump higher" turns the dial with no AI call; Undo puts it back',
   expect(await dialOf(page, 'jump')).toBe(720);
 });
 
-test('a twist by name, and Ask the AI instead sends the same words as a change', async ({ page }) => {
+test('a twist by name, and Make a wish instead sends the same words as a wish', async ({ page }) => {
   const ai = await mockAi(page, { patches: ['change-stomp.patch'] });
   await openAmble(page, { ai: 'mock', clean: true });
   const id = await openFixtureWorld(page);
   await mountHarness(page);
-  await skipExplainer(page);
 
   await ask(page, 'turn on moon gravity');
-  await expect(page.getByTestId('ai-steer')).toHaveText(/Switched on Moon gravity\. No AI needed\./);
+  await expect(page.getByTestId('ai-steer')).toContainText('Switched on Moon gravity.');
   const twists = await page.evaluate(() => (window as unknown as AmbleWindow).__amble.getState().session.world.twists);
   expect(twists).toContain('moonGravity');
 
-  await page.getByTestId('ai-steer').getByRole('button', { name: 'Ask the AI instead' }).click();
+  await page.getByTestId('ai-steer').getByRole('button', { name: 'Make a wish instead' }).click();
   expect(await outcomeOf(page, id)).toBe('accepted');
   expect(ai.tasks('change')).toHaveLength(1);
   expect(ai.tasks('change')[0].userText).toContain('<<<\nturn on moon gravity\n>>>');
@@ -50,15 +50,18 @@ test('a twist by name, and Ask the AI instead sends the same words as a change',
   expect(after).not.toContain('moonGravity');
 });
 
-test('with the AI off, dials still turn; other wishes say they need the AI helper', async ({ page }) => {
+test('with wishes off, the box is one quiet line: no field, no set-up button, no machine words', async ({ page }) => {
   await openAmble(page, { clean: true });
   await openFixtureWorld(page);
   await mountHarness(page);
 
-  await expect(page.getByTestId('ai-ask')).toHaveAttribute('data-state', 'off');
-  await expect(page.getByTestId('ai-status')).toContainText('The AI helper is off here. You can still draw, turn the Dials, flip Twists and change the code (⋯ → Look inside).');
-  await ask(page, 'make the jump a lot higher');
-  await expect(page.getByTestId('ai-steer')).toHaveText(/Turned Jump power up to 1000\. No AI needed\./);
-  await ask(page, 'add lava that rises');
-  await expect(page.getByText('That needs the AI helper. You can change it in Look inside, or try a twist.')).toBeVisible();
+  const box = page.getByTestId('ai-ask');
+  await expect(box).toHaveAttribute('data-state', 'off');
+  await expect(page.getByTestId('ai-status')).toHaveText('Wishes are resting right now. Dials and Twists still work.');
+  await expect(page.getByTestId('ai-field')).toHaveCount(0);
+  await expect(page.getByTestId('ai-send')).toHaveCount(0);
+  await expect(page.getByTestId('wish-how')).toHaveCount(0);
+  await expect(box.getByRole('button')).toHaveCount(0);
+  await expect(box.getByRole('link')).toHaveCount(0);
+  await expect(box).not.toContainText(/\bAI\b|set up/i);
 });

@@ -1,8 +1,8 @@
 /**
- * Seam M5 + M2 (§8.6): Ask → change → robot test → new version card → footstep, in the world screen
- * itself. The student asks in the world's Ask card while playing; the AI's change is applied, robot-tested in
- * the spare frame (the game on screen keeps running), and waits as "New version ready" until the student
- * says **Play it now**; then the new version plays and the footstep carries their words and "tested".
+ * Seam M5 + M2 (§8.6): a wish → change → robot test → new version → footstep, in the world screen itself.
+ * The student makes a wish in the world's wish box while playing; the change is applied, robot-tested in
+ * the spare frame (the game on screen keeps running), and waits until the student plays it; then the new
+ * version plays, the "Done!" toast lands over the world, and the footstep carries their words.
  */
 import { expect, openAmble, test } from '../helpers/app';
 import { CLASS_CODE, mockAi } from '../helpers/mockAi';
@@ -10,7 +10,7 @@ import { firstFrames, footsteps, gameFrame, gameSource, JUMP_SUMMARY as SUMMARY,
 
 const WORDS = 'let me jump three times';
 
-test('a change asked in the world is robot-tested, waits as a new version, plays, and is a footstep', async ({ page }) => {
+test('a wish made in the world is robot-tested, waits as a new version, plays, lands, and is a footstep', async ({ page }) => {
   test.setTimeout(240_000);
   const ai = await mockAi(page, { chunkDelayMs: 30 });
   await openAmble(page, { ai: 'mock', clean: true, prefs: { seen: { aiExplainer: Date.now() } } });
@@ -26,7 +26,7 @@ test('a change asked in the world is robot-tested, waits as a new version, plays
   await card.getByTestId('ai-send').click();
   await expect(card.getByTestId('ai-progress')).toBeVisible();
 
-  // Keep playing while the AI works (a key now and then), so the new version has to wait for the student.
+  // Keep playing while the wish is worked on (a key now and then), so the new version waits for the student.
   await page.locator('body').focus();
   const version = page.getByTestId('new-version');
   for (let i = 0; i < 90 && !(await version.isVisible()); i++) {
@@ -38,16 +38,6 @@ test('a change asked in the world is robot-tested, waits as a new version, plays
   await expect(page.getByTestId('request-tag')).toHaveCount(0);
   const outcome = await page.evaluate(() => (window as unknown as { __amble: { getState(): { ai: { lastOutcome: { kind: string; tested?: boolean } | null } } } }).__amble.getState().ai.lastOutcome);
   expect(outcome).toMatchObject({ kind: 'accepted', tested: true });
-
-  // The toast that came with it (toasts go by themselves after a few seconds): its See the change shows
-  // this change in the Footsteps sheet (as the footstep's link does), and goes.
-  const toast = page.locator('.toast', { hasText: 'Amble changed your world' });
-  await toast.getByRole('button', { name: 'See the change' }).click();
-  await expect(page.getByTestId('diff-sheet')).toContainText(WORDS);
-  await expect(page.getByTestId('diff-sheet')).toContainText('game.js');
-  await expect(toast).toHaveCount(0);
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('diff-sheet')).toHaveCount(0);
   // The game on screen was not replaced while the change was tested.
   expect(await firstFrames(page)).toBe(loadsBefore);
   expect(await readGame(frame, (g) => g.state)).toBe('running');
@@ -62,11 +52,19 @@ test('a change asked in the world is robot-tested, waits as a new version, plays
   expect(code?.authors.some(([who]) => who === 'ai')).toBe(true);
   expect(after?.steps.at(-1)).toMatchObject({ kind: 'ask', by: 'ai', text: SUMMARY, request: WORDS, tested: true });
 
-  // The footstep: the student's wish, what changed, and ✓ tested.
+  // The footstep: what changed, and the student's own words.
   const step = footsteps(page).first();
   await expect(step).toContainText(SUMMARY);
-  await expect(step).toContainText(`You wished: '${WORDS}'`);
-  await expect(step).toContainText('tested');
+  await expect(step).toContainText(new RegExp(`You (asked|wished): ["']${WORDS}["']`));
+
+  // The "Done!" toast lands once the new version plays; See what changed shows this change in the
+  // Footsteps sheet (as the footstep's link does), and the toast goes.
+  const toast = page.getByTestId('wish-done');
+  await expect(toast).toContainText(`Done! ${SUMMARY}`);
+  await toast.getByRole('button', { name: 'See what changed' }).click();
+  await expect(page.getByTestId('diff-sheet')).toContainText(WORDS);
+  await expect(page.getByTestId('diff-sheet')).toContainText('game.js');
+  await expect(toast).toHaveCount(0);
 
   // One change request, the class code only in its header, never the student's name or drawings.
   const changes = ai.tasks('change');

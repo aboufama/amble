@@ -1,27 +1,26 @@
 /**
- * Slow, filtering school networks (§5.2): a 429 with Retry-After shows the busy countdown and goes
+ * Slow, filtering school networks (§5.2): a 429 with Retry-After says "Lots of wishes right now" and goes
  * through; a first byte after 120 s still succeeds (no first-byte cutoff); a stall after bytes is cut off
- * after 90 s and continued once; a plain JSON body answering a stream request works; a CORS failure shows
- * the web-filter copy with the host. Long waits run on Playwright's clock.
+ * after 90 s and continued once; a plain JSON body answering a stream request works; a CORS failure rests
+ * the box in one plain line with Try again, which sends the same words. Long waits run on Playwright's clock.
  */
 import { expect, openAmble, test } from '../helpers/app';
 import { mockAi } from '../helpers/mockAi';
-import { ask, askState, mountHarness, openFixtureWorld, outcomeOf, pauseGame, skipExplainer, storedWorld } from './harness';
+import { ask, askState, mountHarness, openFixtureWorld, outcomeOf, pauseGame, storedWorld } from './harness';
 
 async function ready(page: import('@playwright/test').Page): Promise<string> {
   const id = await openFixtureWorld(page);
   await mountHarness(page);
-  await skipExplainer(page);
   return id;
 }
 
-test('429 with Retry-After: the busy countdown, then the change goes through', async ({ page }) => {
+test('429 with Retry-After: "Lots of wishes right now", then the wish goes through', async ({ page }) => {
   const ai = await mockAi(page, { patches: [{ status: 429, retryAfter: 3 }, 'change-stomp.patch'] });
   await openAmble(page, { ai: 'mock', clean: true });
   const id = await ready(page);
 
   await ask(page, 'let me stomp on the minions');
-  await expect(page.getByTestId('ai-wait')).toHaveText(/^The AI helper is busy\. Trying again in [1-3] seconds…$/);
+  await expect(page.getByTestId('ai-wait')).toHaveText('Lots of wishes right now. Yours is next in a few seconds.');
   expect(await outcomeOf(page, id)).toBe('accepted');
   expect(ai.tasks('change')).toHaveLength(2);
 });
@@ -72,7 +71,7 @@ test('a plain JSON body answering a stream request is read as the whole reply', 
   expect(ai.tasks('change')[0].stream).toBe(true);
 });
 
-test('a CORS failure shows the web-filter copy with the host, and Try again', async ({ page }) => {
+test('a CORS failure rests the box in one plain line, and Try again sends the same words', async ({ page }) => {
   await page.clock.install();
   const ai = await mockAi(page, { patches: ['change-stomp.patch'], networkError: true });
   await openAmble(page, { ai: 'mock', clean: true });
@@ -88,8 +87,14 @@ test('a CORS failure shows the web-filter copy with the host, and Try again', as
   }
   expect(await outcomeOf(page, id)).toBe('unavailable');
   await expect(askState(page)).toHaveAttribute('data-state', 'blocked');
-  await expect(page.getByTestId('ai-status')).toContainText("Amble couldn't reach ai.test. Your school's web filter may be blocking it. Everything else still works.");
-  await expect(page.getByTestId('ai-field')).toHaveValue('let me stomp on the minions');
-  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  await expect(page.getByTestId('ai-status')).toContainText("Wishes can't get through right now. Dials and Twists still work.");
+  await expect(page.getByTestId('ai-field')).toHaveCount(0);
   expect(ai.errors).toEqual([]);
+
+  // The filter lets it through again: Try again sends the words the student wrote.
+  ai.set({ networkError: false });
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect.poll(() => ai.tasks('change').length, { timeout: 30_000 }).toBeGreaterThan(0);
+  expect(ai.tasks('change').at(-1)!.userText).toContain('<<<\nlet me stomp on the minions\n>>>');
+  expect(await outcomeOf(page, id)).toBe('accepted');
 });

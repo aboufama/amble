@@ -1,11 +1,11 @@
 /**
  * The robot test and the repair loop (§5.8) in the real player: a change whose boss.js throws on line 3 is
- * caught by the robot test and repaired once; two failed repairs end in Failed with the world untouched
- * and the details (file and line) for the curious.
+ * caught by the robot test and repaired once, out of sight; two failed repairs end in "That wish didn't
+ * work this time" with the world untouched and the details (file and line) for the curious.
  */
 import { expect, openAmble, test } from '../helpers/app';
 import { FIXTURE_FACTS, mockAi } from '../helpers/mockAi';
-import { ask, askState, mountHarness, openFixtureWorld, outcomeOf, skipExplainer, storedWorld } from './harness';
+import { ask, askState, mountHarness, openFixtureWorld, outcomeOf, storedWorld } from './harness';
 
 /** boss.js again, still throwing on line 3. */
 const STILL_BROKEN = `@@amble-patch 1
@@ -25,7 +25,6 @@ test('a runtime error found by the robot test is repaired once', async ({ page }
   await openAmble(page, { ai: 'mock', clean: true });
   const id = await openFixtureWorld(page);
   await mountHarness(page);
-  await skipExplainer(page);
 
   await ask(page, 'make the moon king stomp');
   expect(await outcomeOf(page, id)).toBe('accepted');
@@ -51,7 +50,6 @@ test('two failed repairs: Failed, the world just like before, and the details', 
   await openAmble(page, { ai: 'mock', clean: true });
   const id = await openFixtureWorld(page);
   await mountHarness(page);
-  await skipExplainer(page);
   const before = (await storedWorld(page, id)).code;
 
   await ask(page, 'make the moon king stomp');
@@ -59,7 +57,7 @@ test('two failed repairs: Failed, the world just like before, and the details', 
   expect(ai.tasks('fix')).toHaveLength(2);
 
   await expect(askState(page)).toHaveAttribute('data-state', 'failed');
-  await expect(page.getByTestId('ai-failed')).toContainText("Amble couldn't make that work this time. Your world is just like before.");
+  await expect(page.getByTestId('ai-failed')).toContainText("That wish didn't work this time. Your world is just like before.");
   await expect(page.getByTestId('ai-field')).toHaveValue('make the moon king stomp');
   await page.getByRole('button', { name: 'Details' }).click();
   await expect(page.getByTestId('ai-details')).toContainText('boss.js line 3');

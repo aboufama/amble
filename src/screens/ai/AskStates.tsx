@@ -1,43 +1,38 @@
 /**
- * The inside of the Ask card, in every state of §2.8 (M5; M2's AskCard is the shell with its title and
- * badge): idle (the field with genre placeholders rotating every 8 s, idea chips, ★ Ask, Ctrl+Enter), the
- * AI explainer before the first Ask on a device, personal info, answered locally (the steer), working (the
- * request read-only with the footprint list and Stop), done (the toned-down note, "Draw it now?", hand
- * edits), refused, crisis, failed, explain only, and the helper's status lines (off, offline, blocked,
- * quota, class link expired, busy). With the AI off the field still turns dials and flips twists (§5.10).
+ * The wish box (§2.8 as MAGIC-BRIEF.md reshapes it): everything inside the World's "Change your world"
+ * panel. The student asks the world for something and the world changes; the machinery stays out of sight.
+ *
+ * - Idle: a field whose example wishes rotate every 8 s, idea chips, **Make it happen** (Ctrl+Enter), and
+ *   a small ⓘ **How wishes work**, the only place a student can read how it works (never shown by itself).
+ * - Working: the wish read-only, "Working on it…" with a thin indeterminate bar and **Stop**; the game
+ *   keeps playing. Waiting its turn says so in plain words.
+ * - What lands: the "Done!" toast over the world (`WishToast`); here, only what needs the student (a new
+ *   member to draw, lines they wrote, a gentler version) and the next ideas.
+ * - Private info, refusals, the crisis card and a wish that didn't work, in plain, kind words.
+ * - When wishes can't happen (off, explain-only, offline, quota, blocked, key or link problems): one
+ *   quiet line where the box was, and nothing else.
+ * - A wish that only turns a dial or flips a twist is done on the device at once (the steer toast).
  */
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { Link } from '../../app/Link';
 import { navigate } from '../../app/router';
 import { useServices } from '../../app/services';
 import type { GameManifest } from '../../cores/play';
 import { t, type MessageKey } from '../../i18n';
 import type { AiOutcome, CastKey, SafetyVerdict, World } from '../../model/types';
 import { alternativesFor, refusalNote } from '../../pipeline/safety';
-import {
-  applySteer,
-  askAi,
-  closeExplainer,
-  confirmExplainer,
-  goBackBefore,
-  leftOutText,
-  noteLocalRefusal,
-  startExplain,
-  stopExplain,
-  stopJob,
-} from '../../state/ai';
+import { applySteer, goBackBefore, leftOutText, noteLocalRefusal, startChange, stopJob } from '../../state/ai';
 import { announce } from '../../state/app';
 import { getState, useStore } from '../../state/store';
-import { Button, Chip, Footprints, IconButton, PaperCard, TextArea } from '../../ui/components';
+import { Button, Chip, IconButton, TextArea } from '../../ui/components';
 import { Icon } from '../../ui/icons';
-import { AiExplainer } from './AiExplainer';
-import { AiProgressList } from './AiProgressList';
 import { CrisisCard } from './CrisisCard';
+import { HowWishesWork } from './HowWishesWork';
 import { bossName, heroOf, memberName, nameInSentence, starterOf, useAmbleAi } from './hooks';
 import { PiiWarning } from './PiiWarning';
 import { RefusalCard } from './RefusalCard';
 import { SafetyNote } from './SafetyNote';
-import { addedMemberText, steerText } from './words';
+import { WishWorking } from './WishWorking';
+import { addedMemberText, restingLine, steerText } from './words';
 import './ai.css';
 
 export interface AskStatesProps {
@@ -48,7 +43,7 @@ export interface AskStatesProps {
   onClearScope(): void;
 }
 
-/** Five placeholders per world type (§2.8), with the world's own hero and boss names. */
+/** Five example wishes per world type (§2.8), with the world's own hero and boss names. */
 const PLACEHOLDERS: Record<string, MessageKey[]> = {
   'moon-king': ['ai.phBoss1', 'ai.phBoss2', 'ai.phBoss3', 'ai.phBoss4', 'ai.phBoss5'],
   'sky-run': ['ai.phRun1', 'ai.phRun2', 'ai.phRun3', 'ai.phRun4', 'ai.phRun5'],
@@ -61,17 +56,17 @@ const PLACEHOLDERS: Record<string, MessageKey[]> = {
 const DEFAULT_IDEAS: MessageKey[] = ['ai.ideaHarder', 'ai.ideaPowerUp', 'ai.ideaSurprise'];
 const ROTATE_MS = 8000;
 
-/** Statuses where only the local matcher can answer (nothing can be sent). */
-const LOCAL_ONLY = new Set(['off', 'offline', 'expired']);
+/** Failures whose details are the game's own problems (file and line), worth showing the curious. */
+const CODE_FAILURES = new Set(['validation', 'runtime', 'mismatch']);
 
 type LocalRefusal = { note: string; alternatives: string[] };
 
 /**
- * The words stay in the field after a failure, a stop or an unavailable helper (the student's own words:
- * a fix from the problem card has none to give back).
+ * The words stay in the field after a failure, a stop or a pause in wishes (the student's own words: a fix
+ * from the problem card has none to give back).
  */
 function keptWords(outcome: AiOutcome | null, request: string | undefined, task: string | undefined): string {
-  if (!outcome || !request || task === 'fix') return '';
+  if (!outcome || !request || task === 'fix' || task === 'build') return '';
   return outcome.kind === 'failed' || outcome.kind === 'cancelled' || outcome.kind === 'unavailable' ? request : '';
 }
 
@@ -82,18 +77,14 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
   const job = useStore((s) => (s.ai.job?.worldId === world.id ? s.ai.job : null));
   const outcomeFor = useStore((s) => (s.ai.outcomeFor?.worldId === world.id ? s.ai.outcomeFor : null));
   const outcome = useStore((s) => (s.ai.outcomeFor?.worldId === world.id ? s.ai.lastOutcome : null));
-  const explainerOpen = useStore((s) => s.ai.explainer?.worldId === world.id);
-  const explaining = useStore((s) => s.ai.explaining === world.id);
-  const explained = useStore((s) => (s.ai.explain?.worldId === world.id ? s.ai.explain : null));
-  const school = useStore((s) => s.config.school);
   const level = ai?.levelFor(world) ?? 'middle';
 
   const [text, setText] = useState(() => keptWords(outcome, outcomeFor?.request, outcomeFor?.task));
   const [verdict, setVerdict] = useState<SafetyVerdict | null>(null);
   const [anyway, setAnyway] = useState(false);
   const [localRefusal, setLocalRefusal] = useState<LocalRefusal | null>(null);
-  const [needsAi, setNeedsAi] = useState(false);
   const [crisisOpen, setCrisisOpen] = useState(false);
+  const [howOpen, setHowOpen] = useState(false);
   const [details, setDetails] = useState(false);
   const [later, setLater] = useState<CastKey[]>([]);
   const [ph, setPh] = useState(0);
@@ -101,7 +92,7 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
   const piiId = useId();
   const seenCrisis = useRef(outcome?.kind === 'crisis' ? (outcomeFor?.at ?? 0) : 0);
 
-  // A crisis from the helper (moderation, the model) opens the card once, and clears the words.
+  // A crisis the service found (moderation, the reply) opens the card once, and clears the words.
   useEffect(() => {
     if (outcome?.kind === 'crisis' && outcomeFor && outcomeFor.at !== seenCrisis.current) {
       seenCrisis.current = outcomeFor.at;
@@ -110,11 +101,12 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
     }
   }, [outcome, outcomeFor]);
 
-  // After a new outcome: an accepted change clears the words it came from; a failure puts them back.
+  // After a new outcome: a wish that landed clears its words; one that didn't puts them back.
   const handled = useRef(outcomeFor?.at ?? 0);
   useEffect(() => {
     if (!outcomeFor || outcomeFor.at === handled.current) return;
     handled.current = outcomeFor.at;
+    setDetails(false);
     // A change the student's own edits kept out entirely keeps its words, to ask again.
     const changed = getState().ai.changed;
     const keptOut = changed?.worldId === outcomeFor.worldId && !changed.files.length && changed.leftOut.length > 0;
@@ -123,7 +115,7 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
     if (words) setText((cur) => cur || words);
   }, [outcome, outcomeFor]);
 
-  // Personal info is checked as the student types (debounced 400 ms, §5.13).
+  // Private info is checked as the student types (debounced 400 ms, §5.13).
   useEffect(() => {
     const id = setTimeout(() => {
       const v = text.trim() ? services.ai.checkText(text, level) : null;
@@ -132,28 +124,20 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
     return () => clearTimeout(id);
   }, [text, level, services.ai]);
 
-  // The placeholder rotates every 8 s among five examples for this kind of world.
+  // The example wish in the empty field changes every 8 s.
   useEffect(() => {
     const id = setInterval(() => setPh((n) => n + 1), ROTATE_MS);
     return () => clearInterval(id);
   }, []);
 
   const hero = heroOf(world, manifest);
-  const explainOnly = status === 'explain-only';
-  const localOnly = LOCAL_ONLY.has(status);
   const working = job !== null;
+  const resting = working ? null : restingLine(status);
 
   const placeholder = useMemo(() => {
-    if (explainOnly) return t('ai.askExplainPlaceholder');
-    if (localOnly) {
-      const dial = manifest?.dials[0];
-      const twist = manifest?.twists.find((tw) => tw.available && !tw.on);
-      const local = [dial ? t('ai.phLocalDial', { label: dial.label }) : null, twist ? t('ai.phLocalTwist', { name: twist.name }) : null].filter((x): x is string => !!x);
-      return local.length ? local[ph % local.length] : t('ai.phLocalAny');
-    }
     const keys = PLACEHOLDERS[starterOf(world) ?? 'any'] ?? PLACEHOLDERS.any;
     return t(keys[ph % keys.length], { hero: hero.name, boss: bossName(manifest) });
-  }, [explainOnly, localOnly, manifest, world, ph, hero.name]);
+  }, [manifest, world, ph, hero.name]);
 
   const ideas: string[] = outcome?.kind === 'accepted' && outcome.next.length ? outcome.next.slice(0, 3) : DEFAULT_IDEAS.map((k) => t(k));
 
@@ -161,7 +145,6 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
     setText(words);
     setAnyway(false);
     setLocalRefusal(null);
-    setNeedsAi(false);
   };
 
   const fill = (words: string) => {
@@ -169,7 +152,7 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
     requestAnimationFrame(() => field.current?.focus());
   };
 
-  /** ★ Ask: local safety, the local matcher, then the AI helper (the explainer first, once per device). */
+  /** Make it happen: safety on the device, then a dial or twist the device can match, then the wish. */
   const ask = (given?: string, sendAnyway = anyway) => {
     const words = (given ?? text).trim();
     if (!words || working) return;
@@ -191,10 +174,6 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
       announce(t('ai.piiWarning'));
       return;
     }
-    if (explainOnly) {
-      void startExplain(world, words);
-      return;
-    }
     const steer = manifest ? services.ai.steer(words, world, manifest) : null;
     if (steer) {
       applySteer(world, steer, words);
@@ -202,13 +181,8 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
       announce(steerText(steer));
       return;
     }
-    if (localOnly) {
-      setNeedsAi(true);
-      return;
-    }
     setLocalRefusal(null);
-    setNeedsAi(false);
-    void askAi(world, words, scope);
+    void startChange(world, words, scope);
   };
 
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -218,9 +192,11 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
     }
   };
 
+  /** Try again: a paused helper (a web filter, say) gets another go, with the same words. */
   const retry = () => {
     ai?.retry();
-    ask(text || outcomeFor?.request || '');
+    const words = text || outcomeFor?.request || '';
+    if (words) ask(words);
   };
 
   const piiVerdict = verdict?.kind === 'pii' ? verdict : null;
@@ -229,66 +205,56 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
     ? 'crisis'
     : working
       ? 'working'
-      : explainOnly
-        ? 'explain'
-        : status !== 'ready'
-          ? status
-          : localRefusal || outcome?.kind === 'refused'
-            ? 'refused'
-            : outcome?.kind === 'failed'
-              ? 'failed'
-              : outcome?.kind === 'accepted'
-                ? 'done'
-                : 'idle';
+      : resting
+        ? status
+        : localRefusal || outcome?.kind === 'refused'
+          ? 'refused'
+          : outcome?.kind === 'failed'
+            ? 'failed'
+            : outcome?.kind === 'accepted'
+              ? 'done'
+              : 'idle';
+
+  const cards = (
+    <>
+      <HowWishesWork open={howOpen} onClose={() => setHowOpen(false)} />
+      <CrisisCard
+        open={crisisOpen}
+        onClose={() => {
+          setCrisisOpen(false);
+          requestAnimationFrame(() => field.current?.focus());
+        }}
+      />
+    </>
+  );
+
+  // ------------------------------------------------------------------ wishes are resting: one quiet line
+
+  if (resting) {
+    return (
+      <div className="wish" data-testid="ai-ask" data-state={state}>
+        <p className="wish-rest" data-testid="ai-status">
+          <span>{resting}</span>
+          {status === 'blocked' && (
+            <button type="button" className="wish-link" onClick={retry}>
+              {t('ai.tryAgain')}
+            </button>
+          )}
+        </p>
+        {cards}
+      </div>
+    );
+  }
 
   // ------------------------------------------------------------------ pieces
 
   const scopeName = scope ? nameInSentence(memberName(manifest, scope)) : '';
-  const scopeChip = scope && !explainOnly && (
-    <div className="ai-ask__scope">
-      <Chip icon="change">{t('ai.askAbout', { name: scopeName })}</Chip>{' '}
+  const scopeChip = scope && !working && (
+    <div className="wish__scope">
+      <Chip icon="change">{t('ai.askAbout', { name: scopeName })}</Chip>
       <IconButton icon="close" size={38} label={t('ai.askAboutClear', { name: scopeName })} onClick={onClearScope} />
     </div>
   );
-
-  const statusBlock = (() => {
-    if (working || explainOnly || status === 'ready') return null;
-    const host = ai?.host() ?? t('ai.hostFallback');
-    switch (status) {
-      case 'off':
-        return (
-          <div className="ai-status" data-testid="ai-status">
-            <p className="ai-status__text">{t('ai.offTitle')}</p>
-            {school ? (
-              <p className="ai-status__sub">{t('ai.offSchool')}</p>
-            ) : (
-              <div className="ai-status__actions">
-                <Button size={38} variant="ai" icon="settings" onClick={() => navigate({ name: 'settings', section: 'ai' })}>
-                  {t('ai.offSetUp')}
-                </Button>
-              </div>
-            )}
-          </div>
-        );
-      case 'blocked':
-        return (
-          <div className="ai-status ai-status--warn" data-testid="ai-status">
-            <p className="ai-status__text">{t('ai.blocked', { host })}</p>
-            <div className="ai-status__actions">
-              <Button size={38} variant="ghost" icon="restart" onClick={retry}>
-                {t('ai.tryAgain')}
-              </Button>
-            </div>
-          </div>
-        );
-      default:
-        return (
-          <div className={status === 'busy' ? 'ai-status' : 'ai-status ai-status--warn'} data-testid="ai-status">
-            <p className="ai-status__text">{ai ? statusText(status) : t('ai.offTitle')}</p>
-          </div>
-        );
-    }
-  })();
 
   const outcomeBlock = (() => {
     if (working) return null;
@@ -297,24 +263,23 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
     switch (outcome.kind) {
       case 'refused':
         return <RefusalCard note={outcome.note} alternatives={outcome.alternatives} onPick={fill} />;
-      case 'failed':
+      case 'failed': {
+        const curious = CODE_FAILURES.has(outcome.reason) && outcome.details.length > 0;
         return (
-          <div className="ai-failed" data-testid="ai-failed">
-            <p className="ai-failed__text" role="alert">
-              {outcome.message || t('ai.failed')}
-            </p>
-            <div className="ai-paper__actions">
-              <Button size={38} variant="ghost" icon="restart" onClick={retry} disabled={!(text || outcomeFor?.request)}>
+          <div className="wish-note" data-testid="ai-failed">
+            <p className="wish-note__text">{outcome.message || t('ai.failed')}</p>
+            <div className="wish-note__actions">
+              <Button size={38} variant="ghost" icon="restart" onClick={() => ask(text || outcomeFor?.request)} disabled={!(text || outcomeFor?.request)}>
                 {t('ai.tryAgain')}
               </Button>
-              {outcome.details.length > 0 && (
+              {curious && (
                 <Button size={38} variant="quiet" aria-expanded={details} onClick={() => setDetails(!details)}>
                   {details ? t('ai.hideDetails') : t('ai.details')}
                 </Button>
               )}
             </div>
-            {details && (
-              <ul className="ai-failed__details" data-testid="ai-details">
+            {curious && details && (
+              <ul className="wish-note__details" data-testid="ai-details">
                 {outcome.details.map((d, i) => (
                   <li key={i}>{d}</li>
                 ))}
@@ -322,15 +287,16 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
             )}
           </div>
         );
+      }
       case 'cancelled':
-        return <p className="ai-ask__note">{t('ai.stoppedNothingChanged')}</p>;
+        return <p className="wish-quiet">{t('ai.stoppedNothingChanged')}</p>;
       case 'fallback':
         return (
-          <PaperCard className="ai-paper" tilt={-0.5} cut>
-            <p className="ai-paper__text" role="status">
+          <div className="wish-note">
+            <p className="wish-note__text" role="status">
               {outcome.message}
             </p>
-          </PaperCard>
+          </div>
         );
       case 'accepted':
         return <DoneNotes world={world} manifest={manifest} outcome={outcome} later={later} onLater={(k) => setLater([...later, k])} />;
@@ -339,52 +305,17 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
     }
   })();
 
-  const explainBlock = explainOnly && (explaining || explained) && (
-    <PaperCard className="ai-paper" tilt={0.4}>
-      {explaining ? (
-        <p className="ai-paper__text" role="status">
-          <Footprints label={t('ai.explainWorking')} /> {t('ai.explainWorking')}
-        </p>
-      ) : explained?.reply ? (
-        <div data-testid="ai-explained" role="status">
-          <p className="ai-paper__text">{explained.reply.answer}</p>
-          {explained.reply.lines.length > 0 && (
-            <ul className="ai-card__lines">
-              {explained.reply.lines.slice(0, 5).map((l, i) => (
-                <li key={i} className="ai-paper__text">
-                  <strong>{l.from === l.to ? t('ai.explainLine', { n: l.from }) : t('ai.explainLines', { from: l.from, to: l.to })}</strong> {l.note}
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="ai-paper__actions">
-            <Button size={38} variant="paper" icon="list" onClick={() => navigate({ name: 'code', worldId: world.id, file: explained.path })}>
-              {t('ai.explainSeeCode')}
-            </Button>
-          </div>
-        </div>
-      ) : explained?.error ? (
-        <p className="ai-paper__text" role="status">
-          {explained.error}
-        </p>
-      ) : null}
-    </PaperCard>
-  );
-
-  const canSend = text.trim().length > 0 && !working && !piiBlocks && !explaining;
+  const canSend = text.trim().length > 0 && !working && !piiBlocks;
 
   return (
-    <div className="ai-ask" data-testid="ai-ask" data-state={state}>
-      {statusBlock}
+    <div className="wish" data-testid="ai-ask" data-state={state}>
       {outcomeBlock}
-      {explainBlock}
       {scopeChip}
-      {working && job.task === 'build' && <p className="ai-ask__note">{t('ai.askStillWorking')}</p>}
       <TextArea
         ref={field}
-        className="ai-ask__field"
-        label={explainOnly ? t('ai.askExplainLabel') : t('ai.askLabel')}
-        labelHidden={!explainOnly}
+        className="wish__field"
+        label={t('ai.askLabel')}
+        labelHidden
         rows={3}
         maxLength={600}
         value={working ? job.request : text}
@@ -392,7 +323,7 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
         placeholder={placeholder}
         onChange={(e) => setWords(e.target.value)}
         onKeyDown={onKey}
-        aria-describedby={piiVerdict ? piiId : undefined}
+        aria-describedby={piiVerdict && !working ? piiId : undefined}
         data-testid="ai-field"
       />
       {piiVerdict && !working && (
@@ -415,87 +346,34 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
           }
         />
       )}
-      {needsAi && <p className="ai-ask__note" role="status">{t('ai.needsAi')}</p>}
       {working ? (
-        <AiProgressList job={job} onStop={() => stopJob(world.id)} />
+        <WishWorking job={job} onStop={() => stopJob(world.id)} />
       ) : (
-        <div className="ai-ask__row">
-          {!explainOnly && !localOnly && (
-            <div className="ai-ask__chips" role="group" aria-label={t('ai.askIdeas')}>
-              {ideas.map((idea) => (
-                <Chip key={idea} onClick={() => fill(idea)}>
-                  {idea}
-                </Chip>
-              ))}
-            </div>
-          )}
-          {explaining ? (
-            <Button className="ai-ask__send" variant="ghost" onClick={stopExplain}>
-              {t('ai.stop')}
+        <>
+          <div className="wish__ideas" role="group" aria-label={t('ai.askIdeas')}>
+            {ideas.map((idea) => (
+              <Chip key={idea} onClick={() => fill(idea)}>
+                {idea}
+              </Chip>
+            ))}
+          </div>
+          <div className="wish__foot">
+            <button type="button" className="wish-link wish__how" aria-haspopup="dialog" onClick={() => setHowOpen(true)} data-testid="wish-how">
+              <Icon name="info" size={16} />
+              {t('ai.howLink')}
+            </button>
+            <Button className="wish__go" variant="lantern" disabled={!canSend} aria-keyshortcuts="Control+Enter" title={t('ai.askKeyHint')} onClick={() => ask()} data-testid="ai-send">
+              {t('ai.askButton')}
             </Button>
-          ) : (
-            <Button
-              className="ai-ask__send"
-              variant="lantern"
-              icon={explainOnly ? 'info' : 'star'}
-              disabled={!canSend}
-              aria-keyshortcuts="Control+Enter"
-              title={t('ai.askKeyHint')}
-              onClick={() => ask()}
-              data-testid="ai-send"
-            >
-              {explainOnly ? t('ai.askExplainButton') : t('ai.askButton')}
-            </Button>
-          )}
-        </div>
+          </div>
+        </>
       )}
-      <p className="ai-ask__info">
-        <Icon name="info" size={16} />
-        {t('ai.askInfo')}{' '}
-        <Link className="ai-link" to={{ name: 'page', page: 'sent' }}>
-          {t('ai.askWhatsSent')}
-        </Link>
-      </p>
-      <AiExplainer
-        open={explainerOpen}
-        onClose={() => void confirmExplainer()}
-        onWhatsSent={() => {
-          closeExplainer();
-          navigate({ name: 'page', page: 'sent' });
-        }}
-      />
-      <CrisisCard
-        open={crisisOpen}
-        onClose={() => {
-          setCrisisOpen(false);
-          requestAnimationFrame(() => field.current?.focus());
-        }}
-      />
-      {/* The hero's name, for the progress line's screen-reader text. */}
-      <span className="sr-only">{working ? t('ai.heroWalking', { hero: hero.name }) : ''}</span>
+      {cards}
     </div>
   );
 }
 
-/** The helper's status in words (§2.8), for the statuses that have no action of their own. */
-function statusText(status: string): string {
-  switch (status) {
-    case 'offline':
-      return t('ai.offline');
-    case 'quota':
-      return t('ai.quota');
-    case 'expired':
-      return t('ai.expired');
-    case 'rejected':
-      return t('ai.rejected');
-    case 'busy':
-      return t('ai.busy');
-    default:
-      return t('ai.offTitle');
-  }
-}
-
-/** Done (§2.8): the toned-down note, a new required member to draw, and lines the student wrote. */
+/** What a landed wish still asks of the student: a gentler version, a new member to draw, lines they wrote. */
 function DoneNotes({
   world,
   manifest,
@@ -516,46 +394,45 @@ function DoneNotes({
     .find((a) => a && a.required && !world.cast[a.key]?.art && !later.includes(a.key));
   const handFile = outcome.handEditsTouched ? (changed?.handFile ?? null) : null;
   const leftOut = changed?.leftOut ?? [];
-  const addedText = fresh ? addedMemberText(fresh.name) : '';
   return (
     <>
       <SafetyNote note={outcome.safety} />
       {fresh && (
-        <PaperCard className="ai-paper" tilt={0.6} cut>
-          <p className="ai-paper__text" data-testid="ai-added">
-            {addedText}
+        <div className="wish-note">
+          <p className="wish-note__text" data-testid="ai-added">
+            {addedMemberText(fresh.name)}
           </p>
-          <div className="ai-paper__actions">
+          <div className="wish-note__actions">
             <Button size={38} variant="lantern" icon="draw" onClick={() => navigate({ name: 'draw', worldId: world.id, key: fresh.key })}>
               {t('ai.drawIt')}
             </Button>
-            <Button size={38} variant="paper" onClick={() => onLater(fresh.key)}>
+            <Button size={38} variant="ghost" onClick={() => onLater(fresh.key)}>
               {t('ai.later')}
             </Button>
           </div>
-        </PaperCard>
+        </div>
       )}
       {leftOut.length > 0 && (
-        <PaperCard className="ai-paper" tilt={0.4} cut>
-          <p className="ai-paper__text" role="status" data-testid="ai-left-out">
+        <div className="wish-note">
+          <p className="wish-note__text" role="status" data-testid="ai-left-out">
             {leftOutText(leftOut)}
           </p>
-        </PaperCard>
+        </div>
       )}
       {handFile && (
-        <PaperCard className="ai-paper" tilt={-0.4} cut>
-          <p className="ai-paper__text" data-testid="ai-hand-edits">
+        <div className="wish-note">
+          <p className="wish-note__text" data-testid="ai-hand-edits">
             {t('ai.handEdits', { file: handFile })}
           </p>
-          <div className="ai-paper__actions">
-            <Button size={38} variant="paper" icon="eye" onClick={() => navigate({ name: 'code', worldId: world.id, file: handFile })}>
+          <div className="wish-note__actions">
+            <Button size={38} variant="ghost" icon="eye" onClick={() => navigate({ name: 'code', worldId: world.id, file: handFile })}>
               {t('ai.seeThem')}
             </Button>
-            <Button size={38} variant="paper" icon="undo" onClick={() => void goBackBefore(world.id)}>
+            <Button size={38} variant="ghost" icon="undo" onClick={() => void goBackBefore(world.id)}>
               {t('ai.goBack')}
             </Button>
           </div>
-        </PaperCard>
+        </div>
       )}
     </>
   );

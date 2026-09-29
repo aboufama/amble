@@ -11,6 +11,7 @@ import { parseRig } from '../../cores/rigData';
 import type { RigData } from '../../cores/rig';
 import { stripFor } from '../../home/strips';
 import type { ArtId, SeedId, StarterInfo } from '../../model/types';
+import { readStarterArt, starterFile } from '../../starters/heroFiles';
 import type { StarterArtJson } from '../../starters/types';
 import { whenIdle, type WalkerArt } from './useStrips';
 
@@ -31,17 +32,11 @@ export function heroDir(info: StarterInfo): string | null {
 async function readHero(info: StarterInfo): Promise<Hero | null> {
   const dir = heroDir(info);
   if (!dir) return null;
-  const res = await fetch(`${dir}art.json`, { credentials: 'omit' });
-  if (!res.ok) return null;
-  const json = (await res.json()) as StarterArtJson;
+  const json = await readStarterArt(dir);
+  if (!json) return null;
   const file = json.export ? json.files[json.export.flat] : undefined;
   if (!json.export || !json.rigData || !file) return null;
   return { info, dir, json, flat: dir + file, rig: parseRig(json.rigData) };
-}
-
-async function fetchBlob(url: string): Promise<Blob | null> {
-  const res = await fetch(url, { credentials: 'omit' }).catch(() => null);
-  return res?.ok ? res.blob() : null;
 }
 
 export function useStarterWalkers(infos: readonly StarterInfo[]): Map<SeedId, WalkerArt> {
@@ -58,7 +53,7 @@ export function useStarterWalkers(infos: readonly StarterInfo[]): Map<SeedId, Wa
     const bake = async () => {
       for (const h of heroes) {
         if (!live) return;
-        const strip = await stripFor(store, { artHash: h.json.export.hash, flat: () => fetchBlob(h.flat), rig: h.rig }, 'walk');
+        const strip = await stripFor(store, { artHash: h.json.export.hash, flat: () => starterFile(h.flat), rig: h.rig }, 'walk');
         if (!live) return;
         if (!strip) continue;
         setWalkers((m) => {

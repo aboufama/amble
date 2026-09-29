@@ -16,7 +16,7 @@ test('a failed plan call starts from the closest starter', async ({ page }) => {
   );
   expect(out.kind).toBe('fallback');
   expect(out.starter).toBe('moon-king');
-  expect(out.message).toMatch(/^The AI helper can't answer right now\. Let's start from a world close to your idea: .+ \(.+\)\. You can change it later\.$/);
+  expect(out.message).toMatch(/^Let's start from a world close to your idea: .+\.$/);
 });
 
 test('a build that fails after its repairs becomes the plan starter with the plan written in', async ({ page }) => {
@@ -50,7 +50,8 @@ test('a build that fails after its repairs becomes the plan starter with the pla
   expect(Object.keys(world.cast)).toEqual(expect.arrayContaining(['hero', 'moonKing', 'grumble', 'star']));
   expect((await stepTexts(page, id)).at(-1)).toMatch(/^Amble started your world from .+ with your ideas\.$/);
 
-  await expect(askState(page)).toContainText("Amble couldn't build all of it, so it started you from");
-  await expect(askState(page)).toContainText('Your other characters are waiting on the cast line.');
+  await expect(askState(page)).toContainText('Amble started your world from');
+  await expect(askState(page)).toContainText('Your other characters are waiting on the Cast line.');
+  await expect(askState(page)).not.toContainText(/\bAI\b/);
   await expect(page.getByTestId('ai-build-pill')).toHaveText(/^Your world is ready/);
 });

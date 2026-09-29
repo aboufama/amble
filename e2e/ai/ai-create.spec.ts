@@ -1,7 +1,7 @@
 /**
  * Creating a world from an idea (§2.5, §5.4, §5.5): the plan call (strict JSON, the fast model), a world
- * made from the plan, and the build in the background with the build pill, robot-tested, keeping the
- * plan's art keys, with its footstep.
+ * made from the plan, and the build in the background with the build pill ("Building your world…", no
+ * counter), robot-tested, keeping the plan's art keys, with its footstep.
  */
 import { expect, openAmble, test } from '../helpers/app';
 import { mockAi } from '../helpers/mockAi';
@@ -42,10 +42,10 @@ test('idea → plan → build: the world is built from the plan and tested', asy
     return world.id as string;
   }, plan.out.plan);
   await mountHarness(page);
-  await expect(page.getByTestId('ai-build-pill')).toContainText(/Building your world · \d+%/);
+  await expect(page.getByTestId('ai-build-pill')).toHaveText('Building your world…');
 
   expect(await outcomeOf(page, id, 120_000)).toBe('accepted');
-  await expect(page.getByTestId('ai-build-pill')).toHaveText('Your world is ready · tested');
+  await expect(page.getByTestId('ai-build-pill')).toHaveText('Your world is ready!');
 
   const build = ai.tasks('build');
   expect(build).toHaveLength(1);
@@ -59,6 +59,7 @@ test('idea → plan → build: the world is built from the plan and tested', asy
   expect(game).toContain('class Game extends Amble.Scene');
   // The plan's keys are declared even though the reply forgot them (plan-keys), so the cast can draw them.
   for (const key of ['saltKing', 'crumb', 'leaf']) expect(game).toMatch(new RegExp(`\\b${key}: \\{`));
-  expect((await stepTexts(page, id)).at(-1)).toBe('Amble built your world: I built a boss fight on the moon: run, jump, dash and blast the Moon King.');
+  // The reply's summary speaks as "I built…": the footstep keeps Amble's own words instead.
+  expect((await stepTexts(page, id)).at(-1)).toBe('Amble built your world.');
   expect(ai.errors).toEqual([]);
 });

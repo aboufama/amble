@@ -208,7 +208,7 @@ describe('an AI change that lands after the student ran code', () => {
     expect(getState().session.fresh).toEqual([]);
     expect(getState().ai.changed).toEqual({ worldId: world.id, files: [], handFile: null, leftOut: ['game.js'] });
     const text = leftOutText(['game.js']);
-    expect(text).toBe("You changed game.js while the AI helper was working, so its change to that file was left out. Ask again to try once more.");
+    expect(text).toBe("You changed game.js while your wish was on its way, so the wish left that file alone. Make the wish again to try once more.");
     expect(getState().app.toasts.map((x) => x.text)).toContain(text);
     expect(getState().app.toasts.map((x) => x.text)).not.toContain('Amble changed your world: the boss throws pizza.');
   });

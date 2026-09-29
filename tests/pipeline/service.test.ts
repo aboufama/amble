@@ -78,11 +78,11 @@ describe('the helper status', () => {
     expect(h.statuses).toEqual(['off', 'ready', 'explain-only']);
   });
 
-  it('shows blocked (with the host) after a filter page, and clears on Try again', async () => {
+  it('shows blocked after a filter page (in plain words), and clears on Try again', async () => {
     const h = harness([htmlPage()]);
     const out = await h.service.change(world(), 'make the boss angrier', job());
     expect(out).toMatchObject({ kind: 'unavailable', status: 'blocked' });
-    expect(out.kind === 'unavailable' && out.message).toBe("Amble couldn't reach ai.example.org. Your school's web filter may be blocking it. Everything else still works.");
+    expect(out.kind === 'unavailable' && out.message).toBe("Wishes can't get through right now. Dials and Twists still work.");
     expect(h.service.status()).toBe('blocked');
     h.service.retry();
     expect(h.service.status()).toBe('ready');
@@ -159,7 +159,7 @@ describe('a change, over the wire', () => {
     const first = h.service.change(w, 'stomp', job());
     await new Promise((r) => setTimeout(r, 5));
     expect(h.service.busy(w.id)).toBe(true);
-    expect(await h.service.change(w, 'more', job())).toMatchObject({ kind: 'failed', message: 'Amble is still working on your last change.' });
+    expect(await h.service.change(w, 'more', job())).toMatchObject({ kind: 'failed', message: 'Still working on your last wish.' });
     release();
     expect((await first).kind).toBe('accepted');
     expect(h.service.busy(w.id)).toBe(false);
@@ -236,7 +236,7 @@ describe('plans', () => {
     expect(out.kind).toBe('fallback');
     if (out.kind === 'fallback') {
       expect(out.starter).toBe('lantern-maze');
-      expect(out.message).toContain("The AI helper can't answer right now. Let's start from a world close to your idea:");
+      expect(out.message).toMatch(/^Let's start from a world close to your idea: .+\.$/);
     }
   });
 
@@ -280,7 +280,7 @@ describe('builds and the ladder', () => {
     expect(game).toContain("title: 'Shelly\\'s Big Rescue'");
     expect(game).toMatch(/moonKing: \{[^\n]*name: 'The Salt King'/);
     expect(game).toMatch(/moonKing: \{[^\n]*ask: 'Draw the Salt King, a grumpy salt shaker'/);
-    expect(out.message).toMatch(/^Amble couldn't build all of it, so it started you from .+ with your ideas\. Your other characters are waiting on the cast line\./);
+    expect(out.message).toMatch(/^Amble started your world from .+, with your ideas in it\. Your other characters are waiting on the Cast line\./);
   });
 
   it('robot-tests a change and repairs a runtime error with a fix request', async () => {

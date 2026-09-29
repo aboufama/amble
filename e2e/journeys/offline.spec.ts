@@ -2,18 +2,18 @@
  * Offline (§4.3, §5.15, §10.2 `prod @prod`): once the service worker has installed and warmed the starter
  * worlds, the network can go away: a reload still opens Amble from its sub-path, the student's own world
  * plays, a starter they never opened plays with its drawings, the Desk draws and brings a drawing to
- * life, and the Ask card says the AI helper needs the internet. Runs in the `prod` project; the dev server has no service worker.
+ * life, and the wish box says wishes come back online. Runs in the `prod` project; the dev server has no service worker.
  */
 import { classLinkPayload, expect, test, TEST_CLASS } from '../helpers/app';
 import { mockAi } from '../helpers/mockAi';
 
 const firstFrames = async (page: import('@playwright/test').Page) => Number((await page.getByTestId('player-layer').getAttribute('data-first-frame')) ?? 0);
 
-test('offline after install: my world, a new starter and the Desk work; the Ask card says why the AI is out @prod', async ({ page, context }, info) => {
+test('offline after install: my world, a new starter and the Desk work; the wish box says wishes come back online @prod', async ({ page, context }, info) => {
   test.skip(info.project.name !== 'prod', 'Build only: the dev server has no service worker.');
   test.setTimeout(240_000);
   await mockAi(page);
-  // The class's AI is on, so the Ask card has something to say about being offline.
+  // The class's wishes are on, so the wish box has something to say about being offline.
   await page.goto(`./#class=${classLinkPayload(TEST_CLASS as unknown as Record<string, unknown>)}`);
   await page.getByRole('dialog').getByRole('button', { name: 'Join', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -46,11 +46,11 @@ test('offline after install: my world, a new starter and the Desk work; the Ask 
     await expect(page.locator('[data-testid^="screen-"]').first()).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/amble/');
 
-    // My world plays, and the Ask card says the AI helper needs the internet.
+    // My world plays, and the wish box says wishes come back online.
     await expect(page.getByTestId('screen-world')).toBeVisible();
     expect(new URL(page.url()).hash).toBe(mine);
     await expect(page.getByTestId('player-layer')).toHaveAttribute('data-first-frame', /^[1-9]\d*$/, { timeout: 60_000 });
-    await expect(page.getByTestId('ask-card')).toContainText("You're offline. The AI helper needs the internet; everything else still works.");
+    await expect(page.getByTestId('ask-card')).toContainText("Wishes come back when you're online.");
 
     // A starter never opened before plays with its drawings, from the cache.
     const before = await firstFrames(page);
