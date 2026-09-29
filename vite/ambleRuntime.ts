@@ -114,9 +114,10 @@ export function ambleRuntime(options: AmbleRuntimeOptions = {}): Plugin {
       if (!isBuild) return `export default new URL(import.meta.env.BASE_URL + ${JSON.stringify(DEV_FILE)}, location.href).href;`;
       const { code } = await bundleRuntime(root, entry, true);
       const fileName = runtimeFileName(code);
-      this.emitFile({ type: 'asset', fileName, source: code });
-      // base is './' in this repo, so resolve against the page (https://<user>.github.io/amble/).
-      return `export default new URL(${JSON.stringify(fileName)}, document.baseURI).href;`;
+      const ref = this.emitFile({ type: 'asset', fileName, source: code });
+      // The bundler writes the URL relative to the chunk that imports it, so it works under any base
+      // (GitHub Pages' /amble/) and from pages in sub-folders.
+      return `export default import.meta.ROLLUP_FILE_URL_${ref};`;
     },
     configureServer(server) {
       for (const event of ['change', 'add', 'unlink'] as const) server.watcher.on(event, (file: string) => invalidate(server, file));
