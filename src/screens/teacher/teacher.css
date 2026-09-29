@@ -416,6 +416,8 @@
 .cl__out {
   display: grid;
   gap: var(--s4);
+  /* Room for the link card's tape: the page scrolls, so anything above the card's top edge is cut. */
+  padding-top: 8px;
 }
 
 .linkcard {
@@ -443,6 +445,11 @@
   margin-top: -6px;
   font: var(--display-m);
   font-size: 1.75rem;
+}
+
+/* No class name yet: the example stays an example (quieter than a real name). */
+.linkcard__cls--example {
+  color: var(--ink-2);
 }
 
 .linkcard__row {
