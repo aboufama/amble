@@ -73,10 +73,15 @@ export function tabOrder(code: readonly CodeFile[]): string[] {
   return [...code.map((f) => f.path)].sort((a, b) => (a === 'game.js' ? -1 : b === 'game.js' ? 1 : a.localeCompare(b)));
 }
 
-/** The AI helper's answer as a note (with its notes for line ranges). */
-function aiNote(id: number, pos: number, reply: ExplainReply): ExplainNote {
+/** A note's heading: what the lines it hangs under do ("What lines 12 to 14 do"). No names, no badges. */
+function noteLabel(from: number, to: number): string {
+  return from === to ? t('history.explainNoteOne', { n: from }) : t('history.explainNoteMany', { from, to });
+}
+
+/** An explanation as a note under its lines (with its notes for line ranges). */
+function aiNote(id: number, pos: number, reply: ExplainReply, from: number, to: number): ExplainNote {
   const lines = reply.lines.map((l) => ({ where: `${l.from === l.to ? t('history.lineOne', { n: l.from }) : t('history.linesRange', { from: l.from, to: l.to })}:`, note: l.note }));
-  return { id, pos, kind: 'ai', label: t('history.explainAi'), text: [reply.answer, reply.safetyNote].filter(Boolean).join(' '), lines };
+  return { id, pos, kind: 'ai', label: noteLabel(from, to), text: [reply.answer, reply.safetyNote].filter(Boolean).join(' '), lines };
 }
 
 export interface SessionOptions {
@@ -160,7 +165,14 @@ export class CodeSession {
       doc,
       baseline: { source: file.source, authors: file.authors },
       locked: file.locked,
-      labels: { editor: t('history.editorLabel', { file: file.path }), locked: t('history.lockedLines'), closeNote: t('history.closeNote'), draw: t('history.drawIt') },
+      labels: {
+        editor: t('history.editorLabel', { file: file.path }),
+        locked: t('history.lockedLines'),
+        lockedHover: t('history.authorLocked'),
+        closeNote: t('history.closeNote'),
+        draw: t('history.drawIt'),
+        authors: { ai: t('history.authorAi'), student: t('history.authorStudent'), teacher: t('history.authorTeacher') },
+      },
       chips: () => this.chips,
       onDraw: (key) => this.o.onDraw(key),
       onLockedRefused: () => announce(t('history.lockedLines')),
@@ -489,7 +501,6 @@ export class CodeSession {
     if (!view) return;
     const state = view.state;
     const { from, to } = this.explainRange(state);
-    const where = from === to ? t('history.explainLine', { n: from }) : t('history.explainLines', { from, to });
     const pos = state.doc.line(to).to;
     const id = ++this.noteId;
     const docs = kitDocsInRange(state.doc, state.doc.line(from).from, state.doc.line(to).to).map((d) => ({ call: kitCall(d), doc: d.member.doc }));
@@ -502,8 +513,8 @@ export class CodeSession {
     this.explainAbort?.abort();
     const abort = new AbortController();
     this.explainAbort = abort;
-    view.dispatch({ effects: addNote.of({ id, pos, kind: 'waiting', label: t('history.explainAi'), text: t('history.explainReading', { lines: where }) }) });
-    announce(t('history.explainReading', { lines: where }));
+    view.dispatch({ effects: addNote.of({ id, pos, kind: 'waiting', label: noteLabel(from, to), text: t('history.explainReading') }) });
+    announce(t('history.explainReading'));
     this.emit();
     const path = this.active;
     const world: World = { ...this.world, code: this.world.code.map((f) => (f.path === path ? { ...f, source: this.textOf(path) } : f)) };
@@ -522,7 +533,7 @@ export class CodeSession {
     };
     switch (outcome.kind) {
       case 'explained':
-        put(aiNote(id, pos, outcome.reply));
+        put(aiNote(id, pos, outcome.reply, from, to));
         announce(outcome.reply.answer);
         break;
       case 'crisis':
@@ -533,7 +544,7 @@ export class CodeSession {
         put(null);
         break;
       case 'refused':
-        put({ ...docsNote(outcome.note), kind: 'problem', label: t('history.explainAi') });
+        put({ ...docsNote(outcome.note), kind: 'problem', label: noteLabel(from, to) });
         break;
       default:
         put({ ...docsNote(t('history.explainFailed')), kind: 'problem' });
@@ -553,7 +564,7 @@ export class CodeSession {
     if (explain) {
       const doc = view.state.doc;
       const pos = doc.line(Math.min(Math.max(1, explain.to), doc.lines)).to;
-      view.dispatch({ effects: addNote.of(aiNote(++this.noteId, pos, explain.reply)) });
+      view.dispatch({ effects: addNote.of(aiNote(++this.noteId, pos, explain.reply, explain.from, explain.to)) });
       this.jumpTo(request.file, explain.from);
       announce(explain.reply.answer);
     } else if (request.line) {

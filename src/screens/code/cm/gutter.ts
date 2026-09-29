@@ -1,7 +1,8 @@
 /**
- * The provenance gutter (§2.12): a 3 px bar per line, `--ai` for lines the AI wrote, `--accent` for lines
- * the student wrote or changed (live, while typing), `--change` for a teacher's, nothing for the
- * starter's. The baseline is the version the world runs; edits since then count as the student's.
+ * The provenance gutter (§2.12): a quiet 3 px bar per line, one hue for lines that came from a wish, one
+ * for lines the student wrote or changed (live, while typing), one for a teacher's, nothing for the
+ * starter's; hovering a bar says which ("From a wish", "You wrote this"). The baseline is the version the
+ * world runs; edits since then count as the student's.
  */
 import { StateEffect, StateField, type EditorState, type Extension } from '@codemirror/state';
 import { GutterMarker, gutter } from '@codemirror/view';
@@ -50,26 +51,32 @@ export function liveAuthors(state: EditorState): Author[] {
 }
 
 class AuthorMarker extends GutterMarker {
-  constructor(readonly who: Author) {
+  constructor(
+    readonly who: Author,
+    readonly title: string,
+  ) {
     super();
   }
   eq(other: AuthorMarker): boolean {
-    return other.who === this.who;
+    return other.who === this.who && other.title === this.title;
   }
   toDOM(): Node {
     const el = document.createElement('div');
     el.className = `cm-prov cm-prov--${this.who}`;
+    if (this.title) el.title = this.title;
     return el;
   }
 }
 
-const MARKERS: Record<Exclude<Author, 'starter'>, AuthorMarker> = {
-  ai: new AuthorMarker('ai'),
-  student: new AuthorMarker('student'),
-  teacher: new AuthorMarker('teacher'),
-};
+/** What hovering a bar says, per author (the starter's lines have no bar). */
+export type AuthorTitles = Record<Exclude<Author, 'starter'>, string>;
 
-export function provenanceExtension(baseline: Baseline): Extension {
+export function provenanceExtension(baseline: Baseline, titles: AuthorTitles = { ai: '', student: '', teacher: '' }): Extension {
+  const MARKERS: Record<Exclude<Author, 'starter'>, AuthorMarker> = {
+    ai: new AuthorMarker('ai', titles.ai),
+    student: new AuthorMarker('student', titles.student),
+    teacher: new AuthorMarker('teacher', titles.teacher),
+  };
   return [
     provenanceField.init((state) => provenanceOf(baseline, state.doc.toString())),
     gutter({

@@ -150,7 +150,7 @@ class LockMarker extends GutterMarker {
     if (this.first) {
       el.title = this.title;
       el.innerHTML =
-        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.4 10.8c3.7-.1 7.5-.1 11.2 0 .1 2.8.1 5.6 0 8.4-3.7.1-7.5.1-11.2 0-.1-2.8-.1-5.6 0-8.4z"/><path d="M8.6 10.8V8.2c0-2 1.5-3.6 3.4-3.6s3.4 1.6 3.4 3.6v2.6"/></svg>';
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
     }
     return el;
   }
@@ -171,8 +171,10 @@ function lockDecorations(state: EditorState): DecorationSet {
 
 export interface LockedOptions {
   ranges: readonly LineRange[];
-  /** "Your teacher locked these lines." */
+  /** "Your teacher locked these lines." (the note on a refused edit) */
   note: string;
+  /** "Locked by your teacher" (hovering the lock); the note's words when missing. */
+  hover?: string;
   onRefused(): void;
 }
 
@@ -191,7 +193,7 @@ export function lockedLinesExtension(o: LockedOptions): Extension {
         const set = view.state.field(lockedField);
         let marker: LockMarker | null = null;
         set.between(line.from, line.to, (from) => {
-          marker = new LockMarker(from === line.from, o.note);
+          marker = new LockMarker(from === line.from, o.hover ?? o.note);
           return false;
         });
         return marker;

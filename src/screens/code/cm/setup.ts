@@ -1,6 +1,6 @@
 /**
  * The editor for one file of a world (§2.12): CodeMirror 6 with line numbers, JavaScript highlighting in
- * the Night Trail theme, search, bracket matching, kit autocomplete and hover docs, validator diagnostics
+ * Scratch's palette, search, bracket matching, kit autocomplete and hover docs, validator diagnostics
  * (pushed by the session), the provenance gutter, teacher locks, art-key chips and Explain notes. Each
  * file keeps its own EditorState (and undo history); one EditorView shows the active one.
  */
@@ -25,7 +25,7 @@ import {
 import type { LineRange } from '../../../model/types';
 import { artChips, type ArtChipOptions } from './artChips';
 import { explainNotes } from './explain';
-import { provenanceExtension, type Baseline } from './gutter';
+import { provenanceExtension, type AuthorTitles, type Baseline } from './gutter';
 import { kitAutocomplete, kitHover } from './kitDocs';
 import { lockedLinesExtension } from './locked';
 import { ambleCodeTheme } from './theme';
@@ -38,7 +38,7 @@ export interface FileEditorOptions {
   /** The running version, for provenance. */
   baseline: Baseline;
   locked: readonly LineRange[];
-  labels: { editor: string; locked: string; closeNote: string; draw: string };
+  labels: { editor: string; locked: string; lockedHover: string; closeNote: string; draw: string; authors: AuthorTitles };
   chips: ArtChipOptions['chips'];
   onDraw(key: string): void;
   onLockedRefused(): void;
@@ -49,8 +49,8 @@ export function fileExtensions(o: FileEditorOptions): Extension {
   return [
     lintGutter({ hoverTime: 250 }),
     lineNumbers(),
-    lockedLinesExtension({ ranges: o.locked, note: o.labels.locked, onRefused: o.onLockedRefused }),
-    provenanceExtension(o.baseline),
+    lockedLinesExtension({ ranges: o.locked, note: o.labels.locked, hover: o.labels.lockedHover, onRefused: o.onLockedRefused }),
+    provenanceExtension(o.baseline, o.labels.authors),
     highlightActiveLineGutter(),
     highlightSpecialChars(),
     history(),
