@@ -61,7 +61,8 @@ function tileBytes(d: TileData | undefined): number {
   return isPacked(d) ? d.z.length + 16 : d.length + 16;
 }
 
-function entryBytes(e: HistoryEntry): number {
+/** Bytes one entry keeps alive (its tiles as they are now, raw or packed, plus struct steps' own). */
+export function entryBytes(e: HistoryEntry): number {
   let n = 64;
   for (const s of e.steps) {
     if ('pixels' in s) for (const t of s.pixels.tiles) n += tileBytes(t.before) + tileBytes(t.after);
@@ -150,15 +151,27 @@ export class History {
     return this.redoStack.length > 0;
   }
 
-  /** Undoes the last step; resolves to it (or null). Steps run one at a time. */
+  /**
+   * Undoes the last step; resolves to it (or null). Steps run one at a time. All or nothing: what has to
+   * come back first (packed tiles from the worker, packed frames) is fetched before anything changes, so
+   * when that fails the pixels are untouched, the step stays where it was and the promise rejects.
+   */
   undo(): Promise<HistoryEntry | null> {
     const run = this.busy.then(async () => {
+      const at = this.undoStack.length - 1;
       const e = this.undoStack.pop();
       if (!e) return null;
       this.bytes -= e.bytes;
+      let src: Map<TileSnap, TileData>;
+      try {
+        src = await this.fetch(e, 'before');
+      } catch (err) {
+        this.putBack(this.undoStack, at, e);
+        throw err;
+      }
       for (let i = e.steps.length - 1; i >= 0; i--) {
         const s = e.steps[i];
-        if ('pixels' in s) await this.apply(s.pixels, 'before');
+        if ('pixels' in s) this.apply(s.pixels, 'before', src);
         else s.struct.undo();
       }
       e.bytes = entryBytes(e);
@@ -172,12 +185,23 @@ export class History {
 
   redo(): Promise<HistoryEntry | null> {
     const run = this.busy.then(async () => {
+      const at = this.redoStack.length - 1;
       const e = this.redoStack.pop();
       if (!e) return null;
+      this.bytes -= e.bytes;
+      let src: Map<TileSnap, TileData>;
+      try {
+        src = await this.fetch(e, 'after');
+      } catch (err) {
+        this.putBack(this.redoStack, at, e);
+        throw err;
+      }
       for (const s of e.steps) {
-        if ('pixels' in s) await this.apply(s.pixels, 'after');
+        if ('pixels' in s) this.apply(s.pixels, 'after', src);
         else s.struct.redo();
       }
+      e.bytes = entryBytes(e);
+      this.bytes += e.bytes;
       this.undoStack.push(e);
       return e;
     });
@@ -185,22 +209,48 @@ export class History {
     return run;
   }
 
-  private async apply(p: PixelChange, which: 'before' | 'after'): Promise<void> {
+  /** A step whose undo or redo could not run goes back where it was (below anything pushed meanwhile). */
+  private putBack(stack: HistoryEntry[], at: number, e: HistoryEntry): void {
+    stack.splice(Math.min(at, stack.length), 0, e);
+    e.bytes = entryBytes(e);
+    this.bytes += e.bytes;
+  }
+
+  /**
+   * The tile contents a step's `which` side needs, as raw pixels (null = empty), with the frames they go into
+   * unpacked: the only waiting an undo or redo does. Raw tiles are taken as they are now, so packing that
+   * finishes meanwhile changes nothing.
+   */
+  private async fetch(e: HistoryEntry, which: 'before' | 'after'): Promise<Map<TileSnap, TileData>> {
+    const out = new Map<TileSnap, TileData>();
+    for (const s of e.steps) {
+      if (!('pixels' in s)) continue;
+      const p = s.pixels;
+      if (this.board.frameIndex(p.frame) >= 0) await this.board.ensureFrame(p.frame);
+      for (const t of p.tiles) {
+        const d = t[which];
+        if (d === undefined) continue;
+        if (d && isPacked(d)) {
+          const raw = await this.unpackTile(d);
+          out.set(t, new Uint8ClampedArray(raw.buffer, raw.byteOffset, raw.byteLength));
+        } else out.set(t, d);
+      }
+    }
+    return out;
+  }
+
+  /** Writes one side of a pixel change back (synchronously, from what `fetch` got). */
+  private apply(p: PixelChange, which: 'before' | 'after', fetched: Map<TileSnap, TileData>): void {
     const b = this.board;
     if (!b.layer(p.layer) || b.frameIndex(p.frame) < 0) return;
-    await b.ensureFrame(p.frame);
     const W = b.W;
     let data = b.pixels(p.frame, p.layer, false);
     const dirty = emptyRect();
     for (const t of p.tiles) {
       const r = { x0: t.x, y0: t.y, x1: t.x + t.w, y1: t.y + t.h };
       if (which === 'before' && t.after === undefined) t.after = !data || isZero(data, W, r) ? null : copyOut(data, W, r);
-      let src = which === 'before' ? t.before : t.after;
-      if (src === undefined) continue;
-      if (isPacked(src)) {
-        const raw = await this.unpackTile(src);
-        src = new Uint8ClampedArray(raw.buffer, raw.byteOffset, raw.byteLength);
-      }
+      if (!fetched.has(t)) continue;
+      const src = fetched.get(t) as Uint8ClampedArray | null;
       if (!data) {
         if (!src) continue;
         data = b.pixels(p.frame, p.layer, true);
@@ -226,27 +276,43 @@ export class History {
     for (const list of stacks)
       for (const e of list) {
         let changed = false;
-        for (const s of e.steps) {
-          if (!('pixels' in s)) continue;
-          for (const t of s.pixels.tiles) {
-            if (stop()) return false;
-            for (const k of ['before', 'after'] as const) {
-              const d = t[k];
-              if (!d || isPacked(d)) continue;
-              const z = await this.packer.pack(new Uint8Array(d.buffer, d.byteOffset, d.byteLength));
-              if (t[k] !== d) continue;
-              t[k] = { z };
-              changed = true;
+        try {
+          for (const s of e.steps) {
+            if (!('pixels' in s)) continue;
+            for (const t of s.pixels.tiles) {
+              if (stop()) return false;
+              for (const k of ['before', 'after'] as const) {
+                const d = t[k];
+                if (!d || isPacked(d)) continue;
+                let z: Uint8Array;
+                try {
+                  z = await this.packer.pack(new Uint8Array(d.buffer, d.byteOffset, d.byteLength));
+                } catch {
+                  // The worker went away: the tile stays raw, and packing picks up again next time.
+                  return false;
+                }
+                if (t[k] !== d) continue;
+                t[k] = { z };
+                changed = true;
+              }
             }
           }
-        }
-        if (changed) {
-          const before = e.bytes;
-          e.bytes = entryBytes(e);
-          this.bytes += e.bytes - before;
+        } finally {
+          if (changed) this.recount(e);
         }
       }
     return true;
+  }
+
+  /**
+   * Re-measures an entry whose tiles changed form. Packing runs alongside undo, redo and new steps, so the
+   * entry may have left the stacks meanwhile (dropped, or in the middle of an undo): the total counts it
+   * only while it is on a stack, and whoever puts it back counts it then.
+   */
+  private recount(e: HistoryEntry): void {
+    const before = e.bytes;
+    e.bytes = entryBytes(e);
+    if (this.undoStack.includes(e) || this.redoStack.includes(e)) this.bytes += e.bytes - before;
   }
 
   clear(): void {
