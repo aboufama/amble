@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
+import { ambleRuntime } from './vite/ambleRuntime.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -98,8 +99,9 @@ export default defineConfig(({ mode }) => {
     cacheDir: '.vite',
     plugins: [
       react(),
-      // The game runtime plugin goes here: it bundles the Phaser player for the sandboxed game
-      // iframe, serves it from the dev server and emits it into the build.
+      // Bundles the Phaser game runtime for the sandboxed game iframe, serves it from the dev server
+      // and emits it into the build (`import runtimeUrl from 'virtual:amble-runtime'`).
+      ambleRuntime({ root }),
       openaiProxy(env),
     ],
     build: {
