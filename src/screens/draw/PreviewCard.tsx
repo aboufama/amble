@@ -58,7 +58,7 @@ function useRigged(ctrl: DeskController, s: DeskState): { art: DeskArt | null; r
   return out;
 }
 
-function MovesView({ ctrl, art, rigged, bones, still }: { ctrl: DeskController; art: DeskArt | null; rigged: PreviewRig | null; bones: boolean; still: boolean }) {
+function MovesView({ ctrl, art, rigged, bones, still, hold }: { ctrl: DeskController; art: DeskArt | null; rigged: PreviewRig | null; bones: boolean; still: boolean; hold: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const preview = useRef<RigPreview | null>(null);
   const reduced = useReducedMotion();
@@ -133,6 +133,16 @@ function MovesView({ ctrl, art, rigged, bones, still }: { ctrl: DeskController; 
       }),
     [ctrl, reduced],
   );
+
+  // Nor while Bring to life runs: its frames would hold up the export, the rig and the save on a slow
+  // Chromebook, and the drawing is about to fly into the world anyway. Back to moving if it stopped short.
+  const held = useRef(false);
+  useEffect(() => {
+    if (hold === held.current) return;
+    held.current = hold;
+    if (hold) preview.current?.pause();
+    else if (!reduced || clipRef.current !== 'idle') preview.current?.resume();
+  }, [hold, reduced]);
 
   const play = (c: string) => {
     setClip(c);
@@ -305,9 +315,11 @@ export interface PreviewCardProps {
   store: Store;
   /** Bring to life swapped the finished drawing in (the card leaves it there). */
   brought(): boolean;
+  /** Bring to life is running: the moves hold still (their frames would slow the export, rig and save). */
+  bringing?: boolean;
 }
 
-export function PreviewCard({ ctrl, s, setup, player, store, brought }: PreviewCardProps) {
+export function PreviewCard({ ctrl, s, setup, player, store, brought, bringing = false }: PreviewCardProps) {
   const r = ctrl.request;
   const inWorld = !!setup.world && !!r.key;
   const rigged = r.kind === 'character' && r.rig !== 'none';
@@ -341,7 +353,7 @@ export function PreviewCard({ ctrl, s, setup, player, store, brought }: PreviewC
         {shown === 'world' ? (
           <WorldView ctrl={ctrl} setup={setup} player={player} store={store} art={art} rigged={bones} brought={brought} />
         ) : (
-          <MovesView ctrl={ctrl} art={art} rigged={bones} bones={s.mode === 'bones'} still={!rigged} />
+          <MovesView ctrl={ctrl} art={art} rigged={bones} bones={s.mode === 'bones'} still={!rigged} hold={bringing} />
         )}
         {progress && <span className="preview__progress">{progress}</span>}
       </div>

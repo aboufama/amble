@@ -417,7 +417,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
         {ctrl && s && <ViewBarSlot ctrl={ctrl} />}
       </main>
       <aside className="desk__side" aria-label={t('draw.openPanel')}>
-        {ctrl && s && <SidePanel ctrl={ctrl} s={s} setup={setup} player={player} store={store} options={!touch} brought={() => brought.current} flipFocus={!!flipIntent} />}
+        {ctrl && s && <SidePanel ctrl={ctrl} s={s} setup={setup} player={player} store={store} options={!touch} brought={() => brought.current} flipFocus={!!flipIntent} bringing={bringing} />}
       </aside>
       {ctrl && <TimeLapse open={watching} onClose={() => setWatching(false)} ctrl={ctrl} name={name} />}
       {ctrl && photo && <PhotoImport open={photo !== null} onClose={() => setPhoto(null)} ctrl={ctrl} mode={photo} onDone={setToast} />}
