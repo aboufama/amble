@@ -9,6 +9,7 @@ import { kitSheet } from '../../src/pipeline/prompts/kitSheet';
 import { PLAN_PROMPT } from '../../src/pipeline/prompts/plan';
 import { SYSTEM_PROMPT } from '../../src/pipeline/prompts/system';
 import { check } from '../../src/pipeline/validate';
+import { parseRecipe } from '../../src/runtime/kit/sounds';
 
 const NO_WORLD = { drawn: [], previousArt: {}, locked: {}, previous: [] };
 
@@ -38,6 +39,16 @@ describe('the prompts', () => {
     expect(SYSTEM_PROMPT).toContain("actor.on('die' | 'hurt' | 'stomp' | 'pickup' | 'land' | 'jump' | 'shoot' | 'drawn', fn)");
     expect(SYSTEM_PROMPT).toContain("role: 'hero' | 'enemy'");
     expect(SYSTEM_PROMPT).toContain('this.setLevel(n) then this.restart() builds level n');
+  });
+
+  it("describe a sound segment in the fields the kit reads, in seconds, and config's gravity per physics", () => {
+    // Every other duration in the prompt is in ms; a segment's is seconds (a 180 "ms" boing plays for 8 s).
+    const doc = /sound segments \(static sounds, sfx\): \[\{ ([^]*?) \}\]/.exec(SYSTEM_PROMPT)?.[1] ?? '';
+    expect([...doc.matchAll(/\b(wave|duration|\w+(?:Freq|Volume))\b/g)].map((m) => m[1])).toEqual(['wave', 'startFreq', 'endFreq', 'duration', 'startVolume', 'endVolume']);
+    expect(doc).toContain('duration (seconds');
+    const seg = { wave: 'sine', startFreq: 180, endFreq: 620, duration: 0.15, startVolume: 0.7, endVolume: 0 };
+    expect(parseRecipe({ caption: 'Boing!', segments: [seg] })).toEqual([seg]);
+    expect(SYSTEM_PROMPT).toContain('gravity (arcade: pixels/s², about 1500, 0 for top-down; matter: about 1)');
   });
 
   it('name the scene members a game may not take, and the validator flags each one', () => {

@@ -136,6 +136,10 @@ const KIT_OPTIONS = `Options you will use most:
   shooter: { key, every (ms), speed, damage, count, arc, spread, aim: 'facing' | '8way' | 'pointer' | 'up', auto }
   fx.burst: { colors, count, speed: [min, max], angle: [min, max], life, size, gravity, frames: ['spark' |
          'dot' | 'star' | 'heart' | 'smoke' | 'ring' | 'shard' | 'square'] }; fx.explode: { size, color, power }
+  config: { gravity (arcade: pixels/s², about 1500, 0 for top-down; matter: about 1), background: '#141022',
+         controls: { fire: 'BLAST' } (labels for touch buttons) }
+  sound segments (static sounds, sfx): [{ wave: 'sine' | 'square' | 'triangle' | 'sawtooth' | 'noise',
+         startFreq, endFreq (Hz), duration (seconds, like 0.15), startVolume, endVolume (0-1) }]
 Moves for play(): idle walk run jump rise fall land dash attack shoot hurt die cheer rage fly glide swim wiggle spin.
 Sounds for sfx(): coin jump laser shoot hit stomp explosion boom powerup blip pop dash zap thud roar flip slowmo
 combo hurt win lose bubble splash. Music: boss adventure chase chill spooky chaos.`;
