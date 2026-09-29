@@ -5,7 +5,7 @@ import type { GameManifest } from '../../cores/play';
 import { t } from '../../i18n';
 import type { ArtId, CastKey, StarterId, World } from '../../model/types';
 import { asAmbleAi, type AmbleAi } from '../../pipeline/api';
-import { humanKey } from '../../pipeline/manifest';
+import { humanKey } from '../../pipeline/keyNames';
 import { nameInSentence } from './words';
 
 export { nameInSentence };

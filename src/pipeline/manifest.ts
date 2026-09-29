@@ -6,6 +6,7 @@
 import { extractManifest, sourceFilesOf } from '../cores/ai';
 import type { Action, ArtKind, ArtNeed, ArtShape, DialInfo, Facing, GameManifest, Pronoun, RigKind, Role } from '../cores/play';
 import type { CodeFile } from '../model/types';
+import { humanKey } from './keyNames';
 import { kitManifestFor } from './kit';
 import { kindSize } from './sizes';
 
@@ -52,11 +53,8 @@ const str = (v: Literal | undefined): string | undefined => (typeof v === 'strin
 const num = (v: Literal | undefined): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 const oneOf = <T extends string>(v: Literal | undefined, list: readonly T[]): T | undefined => (typeof v === 'string' && (list as readonly string[]).includes(v) ? (v as T) : undefined);
 
-/** "moonKing" -> "Moon King". */
-export function humanKey(key: string): string {
-  const words = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
-  return words ? words[0].toUpperCase() + words.slice(1).toLowerCase() : key;
-}
+/** "moonKing" -> "Moon King" (defined in ./keyNames, which loads without the code tools). */
+export { humanKey };
 
 function roleOf(kind: ArtKind, spec: Spec): Role {
   const role = oneOf(spec.role, ROLES);
