@@ -111,6 +111,8 @@ export class Compositor {
   private onionStale = true;
   private guide: Guide | null = null;
   private guideLayer: Surface2D | null = null;
+  /** The guide's `above` picture, drawn over the drawing. */
+  private guideAbove: Surface2D | null = null;
   private pending: DRect | null = null;
   private raf = 0;
   private gestureFrom: ViewState | null = null;
@@ -354,6 +356,16 @@ export class Compositor {
       this.guideLayer ??= make(this.board.W, this.board.H);
       drawGuide(this.guideLayer.ctx, this.board.W, this.board.H, g, anchor);
     }
+    const above = g?.above;
+    if (!above) this.guideAbove = null;
+    else {
+      this.guideAbove ??= make(this.board.W, this.board.H);
+      const c = this.guideAbove.ctx;
+      c.clearRect(0, 0, this.board.W, this.board.H);
+      c.globalAlpha = above.opacity ?? 1;
+      c.drawImage(above.image, above.box.x, above.box.y, above.box.w, above.box.h);
+      c.globalAlpha = 1;
+    }
     this.rebuildCaches(null);
     this.renderAll();
   }
@@ -414,6 +426,7 @@ export class Compositor {
       for (let i = Math.max(0, this.board.layerIndex(this.active)) + 1; i < layers.length; i++) this.drawLayer(v, layers[i].id, S);
     }
     if (this.guideLayer && this.guide?.onTop) v.drawImage(this.guideLayer.canvas, S.x0, S.y0, sw, sh, S.x0, S.y0, sw, sh);
+    if (this.guideAbove) v.drawImage(this.guideAbove.canvas, S.x0, S.y0, sw, sh, S.x0, S.y0, sw, sh);
   }
 
   private drawPaper(v: Ctx2D, shadow: boolean): void {

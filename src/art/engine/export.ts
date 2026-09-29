@@ -41,6 +41,12 @@ export interface ArtExport {
   layers: LayerExport[];
   /** Visible lines layers alone, the same size and place as the flat (null without line art). */
   linesMask: PngImage | null;
+  /**
+   * The body parts asked for with `pairs` (drawing on the bones): each part's layers composited in order
+   * (its colours, then its lines over them), the same size and place as the flat, as the rigger and the
+   * game's rigged characters read them.
+   */
+  parts: Array<PngImage & { name: string }>;
   thumb: PngImage;
 }
 
@@ -57,6 +63,8 @@ export interface ExportOptions {
   thumbSize?: number;
   /** Skip the per-layer images and the mask (faster previews). */
   flatOnly?: boolean;
+  /** Body parts to composite (their layer ids, bottom to top), even with `flatOnly`. */
+  pairs?: Array<{ name: string; layers: string[] }>;
 }
 
 /** Visible, exported layers of a frame composited on transparency (or just the given layers). */
@@ -252,6 +260,12 @@ export async function exportArt(board: Board, o: ExportOptions = {}): Promise<Ar
       linesMask = await pngBlob(sized(ink), fw, fh);
     }
   }
+  const parts: ArtExport['parts'] = [];
+  for (const pr of o.pairs ?? []) {
+    const one = flatten(board, frame, (id) => pr.layers.includes(id) && !!board.layer(id)?.visible);
+    if (!trimBox(one, W, H)) continue;
+    parts.push({ ...(await pngBlob(sized(one), fw, fh)), name: pr.name });
+  }
   const ts = o.thumbSize ?? 256;
   const k = Math.min(1, ts / Math.max(fw, fh));
   const [tw, th] = scaledSize(fw, fh, k);
@@ -264,6 +278,7 @@ export async function exportArt(board: Board, o: ExportOptions = {}): Promise<Ar
     anchorBoard: [anchorBoard[0], anchorBoard[1]],
     layers,
     linesMask,
+    parts,
     thumb: await pngBlob(thumbPx, tw, th),
   };
 }

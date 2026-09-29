@@ -1372,7 +1372,7 @@ class Surface implements ArtSurface {
     if (steps.length) this.record('Clear layer', steps, { op: 'layer', action: 'clear', id: lid, ...(allFrames ? {} : { frame: this.frameId }) }, lid);
   }
 
-  async importTrace(image: ImageBitmap | HTMLImageElement | HTMLCanvasElement | Blob): Promise<string | null> {
+  async importTrace(image: ImageBitmap | HTMLImageElement | HTMLCanvasElement | OffscreenCanvas | Blob, o: { role?: 'trace' | 'lines'; name?: string } = {}): Promise<string | null> {
     const b = this.board;
     if (b.layers.length >= b.maxLayers()) {
       this.em.emit('toast', { message: 'That is a lot of layers! Merge some to add more.', kind: 'limit' });
@@ -1391,9 +1391,12 @@ class Surface implements ArtSurface {
     if (!ctx) return null;
     ctx.drawImage(src, Math.round((b.W - w) / 2), Math.round((b.H - h) / 2), w, h);
     const photo = new Uint8ClampedArray(ctx.getImageData(0, 0, b.W, b.H).data);
-    const layer = makeLayer(uid('l'), 'trace', 'Photo to trace');
+    // A photo to trace goes at the bottom; a photo's lines (paper removed on the device) go on top.
+    const lines = o.role === 'lines';
+    const layer = makeLayer(uid('l'), lines ? 'lines' : 'trace', o.name ?? (lines ? 'Photo lines' : 'Photo to trace'));
     const frame = this.frameId;
-    const add = addLayer(b, layer, 0);
+    const index = lines ? b.layers.length : 0;
+    const add = addLayer(b, layer, index);
     const put = (): void => {
       b.setPixels(frame, layer.id, photo.slice());
       b.changed(frame, layer.id, null);
@@ -1408,7 +1411,8 @@ class Surface implements ArtSurface {
       },
       bytes: photo.length,
     };
-    this.record('Add photo', [{ struct: step }], { op: 'trace', layer: { ...layer }, index: 0 }, layer.id);
+    this.record('Add photo', [{ struct: step }], { op: 'trace', layer: { ...layer }, index }, layer.id);
+    if (lines) this.setActiveLayer(layer.id);
     return layer.id;
   }
 

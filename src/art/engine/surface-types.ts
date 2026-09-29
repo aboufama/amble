@@ -238,8 +238,11 @@ export interface ArtSurface {
   setLayer(id: string, patch: Partial<Pick<LayerInfo, 'name' | 'visible' | 'locked' | 'opacity' | 'blend' | 'alphaLock'>>): void;
   /** Clears a layer in the active frame (or all frames). */
   clearLayer(id?: string, allFrames?: boolean): Promise<void>;
-  /** Places a photo on a new trace layer (30%, locked, never exported, never sent anywhere). */
-  importTrace(image: ImageBitmap | HTMLImageElement | HTMLCanvasElement | Blob): Promise<string | null>;
+  /**
+   * Places a photo on a new trace layer (30%, locked, never exported, never sent anywhere), or with role
+   * 'lines' on a new Lines layer on top ("Use a photo of my drawing", the paper already taken out).
+   */
+  importTrace(image: ImageBitmap | HTMLImageElement | HTMLCanvasElement | OffscreenCanvas | Blob, o?: { role?: 'trace' | 'lines'; name?: string }): Promise<string | null>;
 
   // Frames (flipbook)
   frames(): FrameInfo[];
