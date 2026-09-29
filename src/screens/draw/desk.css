@@ -1510,7 +1510,7 @@ body:has(.screen.desk) .toast-region {
   grid-template-columns: 110px minmax(0, 1fr) 306px;
   grid-template-rows: var(--topbar) minmax(0, 1fr);
   grid-template-areas:
-    '. . .'
+    'top top top'
     '. area .';
 }
 
