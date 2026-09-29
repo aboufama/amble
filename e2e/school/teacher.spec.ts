@@ -116,3 +116,20 @@ test('Present shows the world as big as the projector allows', async ({ page }) 
   expect(box.y + box.height, 'the controls stay below the world').toBeLessThanOrEqual(foot.y);
   expect(foot.y + foot.height, 'the controls stay on screen').toBeLessThanOrEqual(768);
 });
+
+test('the chosen tab shows its words: purple on its white face, in both colour themes', async ({ page }) => {
+  await openAmble(page, { clean: true, route: '#/teacher/assignments' });
+  const tab = page.getByRole('link', { name: 'Assignments' });
+  await expect(tab).toHaveAttribute('aria-current', 'page');
+  const colours = () =>
+    tab.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { words: cs.color, face: cs.backgroundColor };
+    });
+  const original = await colours();
+  expect(original.words).toBe('rgb(124, 82, 208)');
+  expect(original.face).toBe('rgb(255, 255, 255)');
+  await page.evaluate(() => (window as unknown as { __amble: { setPrefs(p: { theme: string }): void } }).__amble.setPrefs({ theme: 'contrast' }));
+  await expect.poll(async () => (await colours()).face).toBe('rgb(0, 0, 0)');
+  expect((await colours()).words).not.toBe('rgb(0, 0, 0)');
+});

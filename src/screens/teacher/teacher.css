@@ -77,8 +77,9 @@
   background: var(--brand-hover);
 }
 
-.teacher-tabs__tab--on,
-.teacher-tabs__tab--on:hover {
+/* Three classes: more than the bar's `a:not(.btn)`, which gives the other links on it their white words. */
+.teacher-tabs .teacher-tabs__tab.teacher-tabs__tab--on,
+.teacher-tabs .teacher-tabs__tab.teacher-tabs__tab--on:hover {
   border-color: var(--change-bright);
   color: var(--change);
   background: var(--surface-raised);
