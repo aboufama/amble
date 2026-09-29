@@ -2,8 +2,8 @@
  * Bring to life (§2.10, §8.4; M3 owns): export → rig → one commit → (in a world) hot swap. Used by the
  * Desk and by M1's First page. A working minimal version: it exports with `exportArt`, rigs characters
  * with `rigWorker.autoRig` (kind from the input, `blob` when none), uses the thumbnail as the sticker and
- * commits drawing, blobs and cast slot together. M3 adds parts, guide hints, real stickers, worker
- * offloading, the stroke log and the footstep.
+ * commits drawing, blobs and cast slot together, then keeps the stroke log in the device-only `strokes`
+ * store. M3 adds parts, guide hints, real stickers, worker offloading and the footstep.
  */
 import { getServices } from '../app/services';
 import { exportArt, serializeArtDoc, type ArtDoc } from '../cores/art';
@@ -60,6 +60,7 @@ export async function decodePixels(png: Blob): Promise<Pixels> {
 export async function bringToLife(input: BringToLifeInput): Promise<BringToLifeResult> {
   const { store, player } = getServices();
   const exported = await exportArt(input.doc, { maxSide: input.kind === 'background' ? 1920 : 1024, scale: 1 });
+  if (!exported) throw new Error('There is nothing drawn yet.');
 
   let rigData: RigData | null = null;
   let confidence = 1;
@@ -125,6 +126,11 @@ export async function bringToLife(input: BringToLifeInput): Promise<BringToLifeR
   const blobs = [serialized.docBlob, ...serialized.cels.map((c) => c.blob), exported.flat.png, exported.thumb.png];
   if (exported.linesMask) blobs.push(exported.linesMask.png);
   await store.commit({ blobs, art: [record], worlds: world ? [world] : [], clearDrafts: [record.id] });
+  // The stroke log stays on this device ("Watch it drawn"): never in files, never sent.
+  if (serialized.strokeLog) {
+    await store.strokes.clear(record.id);
+    await store.strokes.append(record.id, new Uint8Array(await serialized.strokeLog.arrayBuffer()));
+  }
 
   let drawn: DrawnArt | null = null;
   if (world && key) {

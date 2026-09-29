@@ -18,9 +18,7 @@ import { watchLayout } from './app/layout';
 import { initRouter, navigate } from './app/router';
 import { createServices, ServicesProvider, setServices, type Services } from './app/services';
 import { AI_CORE, resolveAiConfig } from './cores/ai';
-import { ART_CORE } from './cores/art';
 import { PLAYER_CORE } from './cores/play';
-import { RIG_CORE } from './cores/rig';
 import { registerServiceWorker } from './pwa/register';
 import { setConfig } from './state/config';
 import { refreshLibrary } from './state/library';
@@ -85,8 +83,10 @@ async function boot(): Promise<void> {
     .then((ai) => setConfig({ ai }))
     .catch(() => undefined);
 
-  // The editor's test hook (§10.2), in dev builds only.
+  // The editor's test hook (§10.2), in dev builds only. The art and rig barrels load lazily (their
+  // engines belong in the Desk's chunks, not the first one).
   if (import.meta.env.DEV) {
+    const [{ ART_CORE }, { RIG_CORE }] = await Promise.all([import('./cores/art'), import('./cores/rig')]);
     (window as unknown as { __amble: unknown }).__amble = {
       services,
       store: services.store,
