@@ -40,14 +40,17 @@ export function saveLabel(): string {
 export interface SaveButtonProps {
   world: World;
   compact?: boolean;
+  /** The save state, when the caller tracks it (default: the session's, with the store's health). */
+  state?: SaveState;
   /** Called with the result (M2 shows "Last saved to Drive 10:42" in its menu and World info). */
   onSaved?(r: { name: string; at: number; method: 'fs-access' | 'download' }): void;
 }
 
-export function SaveButton({ world, compact = false, onSaved }: SaveButtonProps) {
+export function SaveButton({ world, compact = false, state: given, onSaved }: SaveButtonProps) {
   const { files } = useServices();
   const [busy, setBusy] = useState(false);
-  const state = useSaveState();
+  const current = useSaveState();
+  const state = given ?? current;
   const latest = useRef(world);
   latest.current = world;
   const busyRef = useRef(false);

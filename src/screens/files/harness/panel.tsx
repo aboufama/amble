@@ -8,6 +8,7 @@
 import { StrictMode, useEffect, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { getServices, ServicesProvider, type Services } from '../../../app/services';
+import { AiChip } from '../../../app/frame/AiChip';
 import { TopBar } from '../../../app/frame/TopBar';
 import type { LegacyImport } from '../../../legacy/reader';
 import type { SaveState } from '../../../model/types';
@@ -54,10 +55,12 @@ function WorldTopbars() {
           <Label>{state}</Label>
           <TopBar
             title={world?.title ?? 'Moon King'}
+            aiChip={false}
             actions={
               <>
                 <SaveStatus state={state} />
-                {world && <SaveButton world={world} />}
+                {world && <SaveButton world={world} state={state} />}
+                <AiChip />
                 <IconButton icon="more" label="More" />
               </>
             }

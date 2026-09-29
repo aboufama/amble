@@ -241,6 +241,10 @@
   transform: translateY(0) rotate(-0.6deg);
 }
 
+.file-drop__icon {
+  color: var(--ink-2);
+}
+
 .file-drop__title {
   margin: 0;
   font: var(--display-m);

@@ -8,6 +8,7 @@
  * - Fetch: pages get the cached app; this build's files come from the cache; other same-origin files
  *   (starters) are served from the cache and refreshed behind. Other origins (the AI helper) are never
  *   touched: they go to the network as if there were no worker, and nothing is ever cached for them.
+ *   Matching ignores `Vary` (hosts send `Vary: Origin`, and module scripts are requested with CORS).
  */
 
 declare const __AMBLE_VERSION__: string;
@@ -55,7 +56,7 @@ async function fill(cacheName: string, urls: string[], o: { required: boolean; p
   const queue = [...urls];
   const worker = async () => {
     for (let url = queue.shift(); url; url = queue.shift()) {
-      if (await cache.match(url)) continue;
+      if (await cache.match(url, { ignoreVary: true })) continue;
       let ok = false;
       for (let attempt = 0; attempt < 3 && !ok; attempt++) {
         try {
@@ -97,7 +98,7 @@ sw.addEventListener('activate', (e) => {
 });
 
 async function page(req: Request): Promise<Response> {
-  const hit = await caches.match(INDEX, { cacheName: APP });
+  const hit = await caches.match(INDEX, { cacheName: APP, ignoreVary: true, ignoreSearch: true });
   if (hit) return hit;
   try {
     return await fetch(req);
@@ -111,7 +112,7 @@ async function page(req: Request): Promise<Response> {
 
 async function fromApp(req: Request): Promise<Response> {
   const cache = await caches.open(APP);
-  const hit = await cache.match(req, { ignoreSearch: true });
+  const hit = await cache.match(req, { ignoreSearch: true, ignoreVary: true });
   if (hit) return hit;
   const res = await fetch(req);
   if (res.ok && res.type === 'basic') await cache.put(req, res.clone());
@@ -120,7 +121,7 @@ async function fromApp(req: Request): Promise<Response> {
 
 async function fromRuntime(e: FetchEvt): Promise<Response> {
   const cache = await caches.open(RUN);
-  const hit = await cache.match(e.request);
+  const hit = await cache.match(e.request, { ignoreVary: true });
   const fresh = fetch(e.request).then(async (res) => {
     if (res.ok && res.type === 'basic') await cache.put(e.request, res.clone());
     return res;

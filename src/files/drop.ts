@@ -5,6 +5,7 @@
  * this listener then leaves them alone.
  */
 import { t } from '../i18n';
+import { ICONS, type IconDef, type IconName } from '../ui/icons';
 import { showToast } from '../state/app';
 import { getState } from '../state/store';
 import type { Route } from '../app/routes';
@@ -21,6 +22,20 @@ function hasFiles(e: DragEvent): boolean {
   return [...(e.dataTransfer?.types ?? [])].includes('Files');
 }
 
+const SVG = 'http://www.w3.org/2000/svg';
+
+/** One icon of the hand-inked set, drawn without React (the overlay lives outside the app's tree). */
+function icon(name: IconName): SVGSVGElement {
+  const svg = document.createElementNS(SVG, 'svg');
+  for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', width: '44', height: '44', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.8', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', class: 'icon file-drop__icon' })) svg.setAttribute(k, v);
+  for (const d of (ICONS[name] as IconDef).paths) {
+    const path = document.createElementNS(SVG, 'path');
+    path.setAttribute('d', d);
+    svg.append(path);
+  }
+  return svg;
+}
+
 function overlay(): HTMLElement {
   let el = document.getElementById('file-drop');
   if (el) return el;
@@ -30,6 +45,7 @@ function overlay(): HTMLElement {
   el.setAttribute('aria-hidden', 'true');
   const card = document.createElement('div');
   card.className = 'file-drop__card';
+  card.append(icon('fileOpen'));
   const title = document.createElement('p');
   title.className = 'file-drop__title';
   title.textContent = t('files.dropHere');
