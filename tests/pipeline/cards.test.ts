@@ -1,7 +1,7 @@
 /** The AI cards' word helpers and the hand-edit check behind "Amble also changed lines you wrote in …". */
 import { describe, expect, it } from 'vitest';
 import { handEditFile } from '../../src/pipeline/service';
-import { addedMemberText, nameInSentence, steerText, withoutSpans } from '../../src/screens/ai/words';
+import { addedMemberText, gentlerText, nameInSentence, steerText, withoutSpans } from '../../src/screens/ai/words';
 
 describe('the steer toast', () => {
   it('says which way a dial went, and what a twist did', () => {
@@ -23,6 +23,15 @@ describe('Remove it', () => {
     expect(withoutSpans('nothing to see', [])).toBe('nothing to see');
     // Overlapping spans are taken out once.
     expect(withoutSpans('abc 123 456 def', [[4, 11], [8, 11]])).toBe('abc def');
+  });
+});
+
+describe('the toned-down note', () => {
+  it('leads with what Amble did, once', () => {
+    expect(gentlerText('the minions bounce off instead of getting hurt.')).toBe('Amble made it a little gentler: the minions bounce off instead of getting hurt.');
+    // Models write the note the way the plan prompt's example does ("Amble made the coconuts bounce off…").
+    expect(gentlerText(' Amble gave Pip a cartoon star blaster instead of a real gun. ')).toBe('Amble gave Pip a cartoon star blaster instead of a real gun.');
+    expect(gentlerText('Ambler the robot bounces off now.')).toBe('Amble made it a little gentler: Ambler the robot bounces off now.');
   });
 });
 

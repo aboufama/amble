@@ -11,6 +11,16 @@ export function steerText(steer: LocalSteer): string {
   return t('ai.steerSet', { label: steer.label, value });
 }
 
+/**
+ * The toned-down note: "Amble made it a little gentler: the minions bounce off instead of getting hurt." A
+ * note that already says what Amble did ("Amble gave Pip a star blaster…", as the plan prompt's example
+ * reads) shows as it is, so it never reads "Amble made it a little gentler: Amble gave…".
+ */
+export function gentlerText(note: string): string {
+  const n = note.trim();
+  return /^amble\b/i.test(n) ? n : t('ai.gentler', { note: n });
+}
+
 /** The text without the flagged spans (and the spaces they leave behind): **Remove it**. */
 export function withoutSpans(text: string, spans: ReadonlyArray<readonly [number, number]>): string {
   let out = '';
