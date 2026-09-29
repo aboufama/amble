@@ -22,7 +22,7 @@ import type { ArtRecord, Facing, StarterId } from '../../model/types';
 import { announce, showToast } from '../../state/app';
 import { refreshLibrary } from '../../state/library';
 import { markSeen } from '../../state/prefs';
-import { setComeAlive } from '../../state/session';
+import { openWorld, setComeAlive } from '../../state/session';
 import { getState, useStore } from '../../state/store';
 import { useReducedMotion } from '../../ui/a11y';
 import { Button } from '../../ui/components';
@@ -419,7 +419,11 @@ export function FirstPage() {
       if (exp && from) {
         const key = Object.values(world.cast).find((slot) => slot.art === alive.record.id)?.key ?? null;
         const sticker = await store.blobs.url(exp.sticker).catch(() => null);
-        if (sticker) setComeAlive({ key, artId: alive.record.id, sticker, from });
+        if (sticker) {
+          // The session holds the new world first, so the world screen keeps the flight when it opens it.
+          await openWorld(world.id);
+          setComeAlive({ key, artId: alive.record.id, sticker, from });
+        }
       }
       // The paper morphs into the world view (§2.3): M2 names its world view the same.
       transitionName(paperRef.current, 'world-view');
