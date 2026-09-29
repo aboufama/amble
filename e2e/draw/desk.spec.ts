@@ -67,6 +67,34 @@ test('fill stays inside a gapped circle', async ({ page }) => {
   expect(await inkedLayers(page)).toEqual(expect.arrayContaining(['lines', 'colors']));
 });
 
+test('a fill that leaks through a wide gap says so, with an Undo; the open paper fills quietly', async ({ page }) => {
+  await openAmble(page);
+  await openDesk(page, '#/draw/new');
+  const { w, h } = await boardSize(page);
+  const cx = w / 2;
+  const cy = h / 2;
+  const r = w * 0.2;
+  // A circle with a gap of about 30 board px at the right: too wide to close, small when zoomed out.
+  const half = ((15 / r) * 180) / Math.PI;
+  await drawOnBoard(page, circle(cx, cy, r, half, 360 - half));
+  await settle(page, 500);
+  await page.getByTestId('desk-board').focus();
+  await page.keyboard.press('g');
+  await tapOnBoard(page, cx, cy);
+  const toast = page.locator('.desk-toast');
+  await expect(toast).toContainText('It leaked through a gap.');
+  expect(await alphaAt(page, 'colors', 20, 20)).toBeGreaterThan(200);
+  await toast.getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(() => alphaAt(page, 'colors', 20, 20), { timeout: 5000 }).toBe(0);
+  await expect(toast).toHaveCount(0);
+
+  // A tap on the open paper around the drawing fills the paper, and says nothing about a leak.
+  await tapOnBoard(page, 30, 30);
+  await expect.poll(() => alphaAt(page, 'colors', 30, 30), { timeout: 5000 }).toBeGreaterThan(200);
+  await page.waitForTimeout(600);
+  await expect(page.getByText('It leaked through a gap.')).toHaveCount(0);
+});
+
 test('undo restores pixels, redo brings them back', async ({ page }) => {
   await openAmble(page);
   await openDesk(page, '#/draw/new');

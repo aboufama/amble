@@ -305,6 +305,7 @@ export const draw = {
   perfect_rectangle: 'Perfect box!',
   perfect_polygon: 'Perfect shape!',
   fillGap: 'Closed a small gap and filled it.',
+  fillLeaked: 'It leaked through a gap.',
   fillTapInside: 'Tap inside a shape to fill it.',
   fillAllNone: 'Tap a colour to change all of it.',
   pageLimit: 'A flipbook can have 24 pages.',
