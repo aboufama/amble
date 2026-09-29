@@ -148,7 +148,15 @@ export class RigPuppet {
 
   /** Advances by dt seconds (game time) and re-skins. */
   update(dt: number, motion: PuppetUpdate = {}): void {
-    const scale = motion.scale || 1;
+    // Game code feeds these (`hero.animSpeed`, positions): one NaN frame would otherwise stick in the clip
+    // clock, the paper flip and the springs for good, and the drawing would vanish for the rest of the run.
+    if (!Number.isFinite(dt)) dt = 0;
+    const scale = motion.scale !== undefined && Number.isFinite(motion.scale) && motion.scale > 0 ? motion.scale : 1;
+    if (!Number.isFinite(motion.dx ?? 0) || !Number.isFinite(motion.dy ?? 0)) {
+      // Not a real move: like a teleport, it doesn't swing the springs.
+      motion = { scale };
+      this.skeleton.resetSprings();
+    }
     this.followStep(scale);
     // paper flip toward the wanted side (side views only)
     const target = this.drawn === 0 ? 1 : this.want * this.drawn;
