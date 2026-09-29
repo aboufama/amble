@@ -27,6 +27,8 @@ export interface StandaloneInput {
   fonts?: FontAsset[];
   dials?: Record<string, number>;
   twists?: string[];
+  /** Show the words for game sounds on the page (the sharer's Captions setting). */
+  captions?: boolean;
 }
 
 function base64(bytes: ArrayBuffer | ArrayBufferView): string {
@@ -95,6 +97,7 @@ export async function buildStandaloneHtml(input: StandaloneInput): Promise<strin
     fonts: (input.fonts ?? []).map((f) => ({ family: f.family, weight: f.weight, bytes: base64(f.bytes) })),
     dials: { ...input.dials },
     twists: [...(input.twists ?? [])],
+    ...(input.captions ? { captions: true } : {}),
   };
   const csp = await standaloneCsp();
   return (

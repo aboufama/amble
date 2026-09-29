@@ -6,6 +6,7 @@
  */
 import { useId, useMemo, useRef } from 'react';
 import { useCommand, useEscape } from '../../app/keys';
+import { GameAccess } from '../../app/player/GameAccess';
 import { t } from '../../i18n';
 import type { ArtId, GalleryNote } from '../../model/types';
 import { goalsFor, runChecks, teacherEvidence, type ArtFacts } from '../../school/checks';
@@ -112,6 +113,7 @@ export function GalleryDetail({ item, index, total, showNames, onMove, onBack }:
             {t('school.staff_cantStart')}
           </span>
         )}
+        <GameAccess />
       </div>
       <div className="gdetail__keys">
         <span>

@@ -437,6 +437,8 @@ export interface StandaloneGame {
   fonts: Array<{ family: string; weight?: number; bytes: string }>;
   dials: Record<string, number>;
   twists: string[];
+  /** The page shows the words for game sounds (whoever made it had Captions on). */
+  captions?: boolean;
 }
 
 // ------------------------------------------------------------------ validation helpers

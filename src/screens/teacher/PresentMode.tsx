@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCommand, useEscape } from '../../app/keys';
 import { Link } from '../../app/Link';
+import { GameAccess } from '../../app/player/GameAccess';
 import { t } from '../../i18n';
 import { selectGalleryItem, useGallery } from '../../school/gallery';
 import { enterPresent } from '../../school/present';
@@ -94,6 +95,7 @@ export function PresentMode() {
                   {t('school.staff_cantStart')}
                 </span>
               )}
+              <GameAccess />
             </div>
             <div className="present__foot">
               <Button variant="ghost" size={58} icon="back" onClick={() => move(-1)} disabled={items.length < 2}>

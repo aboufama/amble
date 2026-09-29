@@ -9,6 +9,7 @@
  * Things with no bones show as their picture on the ground.
  */
 import { useEffect, useRef, useState } from 'react';
+import { GameAccess } from '../../app/player/GameAccess';
 import { usePlayerSlot } from '../../app/player/slots';
 import { playerPrefsFrom } from '../../app/player/prefs';
 import { isSupersededLoad, type PlayerHost } from '../../app/player/host';
@@ -333,6 +334,7 @@ function WorldView({ ctrl, setup, player, store, art, rigged, brought }: { ctrl:
       <div className="preview__stage preview__stage--world">
         <div ref={slot} className="preview__slot" data-testid="desk-preview-slot" aria-label={t('draw.inYourWorld')} role="img" />
         {!ready && <p className="preview__empty">{t('draw.previewLoading')}</p>}
+        <GameAccess compact />
       </div>
       <div className="preview__bar">
         <span className="preview__tag">{moves ? factText(moves) : t('draw.updatesWhenLift')}</span>
