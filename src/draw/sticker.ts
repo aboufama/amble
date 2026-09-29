@@ -7,8 +7,8 @@
 const CREAM = '#fdf8ec';
 const EDGE = 3;
 /**
- * Small canvases drawn once and read back: on the CPU. A GPU canvas would wait for the GPU process to read
- * it back, behind the running game and the Desk (well over a second of Bring to life on a busy GPU).
+ * The sticker's canvases are small, drawn once and read back: on the CPU. A GPU canvas queues the read-back
+ * behind the GPU work of the running game and the Desk, and is 3 to 5 times slower even on an idle GPU.
  */
 const ON_CPU: CanvasRenderingContext2DSettings = { willReadFrequently: true };
 
