@@ -4,12 +4,12 @@
  * from star to star, arrows nudge, Enter picks up and drops. A hidden bone list mirrors the bone tree
  * for screen readers (and shows itself when it has focus).
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from 'react';
-import { drawRigged, jointList, moveBone, type BoundRig, type Joint, type Point } from '../../cores/rig';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from 'react';
+import { drawRigged, moveBone, type BoundRig, type Point } from '../../cores/rig';
 import type { BonesController, BonesView } from '../../bones/bonesController';
 import { bodyCentre, boneHeight } from '../../bones/edits';
 import { fitArt, toArt, type Fit } from '../../bones/geometry';
-import { boneName, guessReasons } from '../../bones/words';
+import { boneName, guessReasons, starsOf, type Star } from '../../bones/words';
 import { t } from '../../i18n';
 import { announce, showToast } from '../../state/app';
 import { Keycap } from '../../ui/components';
@@ -48,19 +48,19 @@ function useSize(ref: RefObject<HTMLElement | null>): { w: number; h: number } {
  * The Tab order of the stars: reading order (top to bottom, then left to right) when the set of stars
  * changes, and then kept while they move, so a star never jumps in the order (or loses focus) mid-drag.
  */
-function useStableOrder(joints: Joint[]): Joint[] {
+function useStableOrder(stars: Star[]): Star[] {
   const order = useRef<string[]>([]);
-  const ids = joints.map((j) => j.id).sort().join('|');
+  const ids = stars.map((s) => s.sid).sort().join('|');
   const known = useRef('');
   if (ids !== known.current) {
     known.current = ids;
     const rowH = 18;
-    order.current = [...joints]
-      .sort((a, b) => Math.round(a.y / rowH) - Math.round(b.y / rowH) || a.x - b.x)
-      .map((j) => j.id);
+    order.current = [...stars]
+      .sort((a, b) => Math.round(a.joint.y / rowH) - Math.round(b.joint.y / rowH) || a.joint.x - b.joint.x)
+      .map((s) => s.sid);
   }
-  const byId = new Map(joints.map((j) => [j.id, j]));
-  return order.current.map((id) => byId.get(id)).filter((j): j is Joint => !!j);
+  const bySid = new Map(stars.map((s) => [s.sid, s]));
+  return order.current.map((sid) => bySid.get(sid)).filter((s): s is Star => !!s);
 }
 
 /** A few faint background stars (fixed, so the sky never flickers between renders). */
@@ -104,18 +104,20 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
   const image = view.image;
   const rig = view.rig;
   const fit = useMemo(() => fitArt(size.w, size.h, image?.w ?? 1, image?.h ?? 1), [size.w, size.h, image?.w, image?.h]);
-  const joints = useStableOrder(useMemo(() => (rig ? jointList(rig) : []), [rig]));
+  const stars = useStableOrder(useMemo(() => (rig ? starsOf(rig) : []), [rig]));
   const [selected, setSelected] = useState<string | null>(null);
   const [card, setCard] = useState<{ index: number; anchor: DOMRect } | null>(null);
   const [wigglyLine, setWigglyLine] = useState<[Point, Point] | null>(null);
   const [guessHidden, setGuessHidden] = useState(false);
+  const [focusStar, setFocusStar] = useState<string | null>(null);
+  const focused = useCallback(() => setFocusStar(null), []);
   const boneDrag = useRef<BoneDrag | null>(null);
   const busy = !!view.busy;
 
   // a joint that no longer exists (undo, a new kind) can't stay selected
   useEffect(() => {
-    if (selected && !joints.some((j) => j.id === selected)) setSelected(null);
-  }, [joints, selected]);
+    if (selected && !stars.some((s) => s.sid === selected)) setSelected(null);
+  }, [stars, selected]);
 
   useEffect(() => {
     if (!wiggly) setWigglyLine(null);
@@ -174,6 +176,7 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
       }
       return;
     }
+    setSelected(null);
     setCard({ index: d.index, anchor: new DOMRect(e.clientX - 6, e.clientY - 6, 12, 12) });
   };
 
@@ -188,6 +191,7 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
     onWigglyDone();
     if (tip) {
       setSelected(tip);
+      setFocusStar(tip);
       announce(t('bones.wigglyAdded'));
       playUiSound('put');
     }
@@ -228,7 +232,7 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
       ref={sky}
       className={cx('bones-sky', wiggly && 'bones-sky--wiggly', busy && 'bones-sky--busy')}
       role="application"
-      aria-label={t('bones.skyLabel', { name: view.name, n: joints.length })}
+      aria-label={t('bones.skyLabel', { name: view.name, n: stars.length })}
       aria-describedby="bones-keys"
       aria-busy={busy || undefined}
       onPointerDown={onSkyDown}
@@ -262,7 +266,7 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
             <JointLayer
               ctl={ctl}
               rig={rig}
-              joints={joints}
+              stars={stars}
               fit={fit}
               sky={size}
               skyEl={sky}
@@ -272,6 +276,8 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
               wiggly={wiggly}
               onWigglyLine={setWigglyLine}
               onWigglyDone={finishWiggly}
+              focusStar={focusStar}
+              onFocused={focused}
             />
           )}
           {reasons && !guessHidden && !busy && <GuessNote reasons={reasons} fit={fit} sky={size} onClose={() => setGuessHidden(true)} />}
@@ -280,7 +286,10 @@ export function Constellation({ ctl, view, wiggly, onWigglyDone, pieces }: Const
       <div className="bones-sky__foot">
         {wiggly ? (
           <p className="bones-sky__wiggly-hint" id="bones-keys">
-            <span aria-hidden="true" className="bones-sky__wiggly-icon">∿</span> {t('bones.wigglyHint')} <span className="bones-sky__wiggly-keys">{t('bones.wigglyKeys')}</span>
+            <span aria-hidden="true" className="bones-sky__wiggly-icon">
+              ∿
+            </span>{' '}
+            {t('bones.wigglyHint')} <span className="bones-sky__wiggly-keys">{t('bones.wigglyKeys')}</span>
           </p>
         ) : (
           <p className="bones-sky__keys" id="bones-keys">

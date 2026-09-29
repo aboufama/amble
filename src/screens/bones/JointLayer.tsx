@@ -5,10 +5,10 @@
  * puts it back). In wiggly mode, dragging out of a star (or Enter on it) grows a wiggly bit.
  */
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
-import { moveJoint, type Joint, type Point, type RigData } from '../../cores/rig';
+import { moveJoint, type Point, type RigData } from '../../cores/rig';
 import type { BonesController } from '../../bones/bonesController';
 import { clampTo, isArrowKey, nudge, roundPoint, starBounds, toArt, toSky, type Fit } from '../../bones/geometry';
-import { jointName } from '../../bones/words';
+import type { Star } from '../../bones/words';
 import { useEscape } from '../../app/keys';
 import { t } from '../../i18n';
 import { announce } from '../../state/app';
@@ -19,7 +19,7 @@ export interface JointLayerProps {
   ctl: BonesController;
   rig: RigData;
   /** In a stable Tab order. */
-  joints: Joint[];
+  stars: Star[];
   fit: Fit;
   sky: { w: number; h: number };
   skyEl: RefObject<HTMLDivElement | null>;
@@ -31,11 +31,14 @@ export interface JointLayerProps {
   onWigglyLine(line: [Point, Point] | null): void;
   /** A wiggly bit was added (its end star's id) or the mode was left. */
   onWigglyDone(tip: string | null): void;
+  /** A star that should take focus (a new wiggly bit's end), then `onFocused`. */
+  focusStar: string | null;
+  onFocused(): void;
 }
 
 interface Drag {
   id: string;
-  side: Joint['side'];
+  side: Star['joint']['side'];
   pointer: number;
   x0: number;
   y0: number;
@@ -50,7 +53,7 @@ interface Drag {
 const BUBBLE_W = 236;
 const BUBBLE_H = 104;
 
-export function JointLayer({ ctl, rig, joints, fit, sky, skyEl, selected, onSelect, busy, wiggly, onWigglyLine, onWigglyDone }: JointLayerProps) {
+export function JointLayer({ ctl, rig, stars, fit, sky, skyEl, selected, onSelect, busy, wiggly, onWigglyLine, onWigglyDone, focusStar, onFocused }: JointLayerProps) {
   const drag = useRef<Drag | null>(null);
   const frame = useRef(0);
   const pending = useRef<{ x: number; y: number } | null>(null);
@@ -65,7 +68,7 @@ export function JointLayer({ ctl, rig, joints, fit, sky, skyEl, selected, onSele
   }, []);
 
   const bounds = starBounds(fit, sky.w, sky.h);
-  const byId = new Map(joints.map((j) => [j.id, j]));
+  const byId = new Map(stars.map((s) => [s.sid, s]));
 
   const sayLater = (text: string) => {
     clearTimeout(sayTimer.current);
@@ -77,9 +80,9 @@ export function JointLayer({ ctl, rig, joints, fit, sky, skyEl, selected, onSele
     () => {
       if (!picked) return false;
       ctl.cancelPreview();
-      const j = byId.get(picked);
+      const star = byId.get(picked);
       setPicked(null);
-      if (j) announce(t('bones.jointBack', { label: jointName(rig, j).toLocaleLowerCase() }));
+      if (star) announce(t('bones.jointBack', { label: star.name.toLocaleLowerCase() }));
       return true;
     },
     picked !== null,
@@ -103,18 +106,18 @@ export function JointLayer({ ctl, rig, joints, fit, sky, skyEl, selected, onSele
     else onWigglyLine([toSky(fit, d.from[0], d.from[1]), toSky(fit, at[0], at[1])]);
   };
 
-  const onDown = (e: PointerEvent<HTMLButtonElement>, j: Joint) => {
+  const onDown = (e: PointerEvent<HTMLButtonElement>, star: Star) => {
     if (busy || (e.pointerType === 'mouse' && e.button !== 0)) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    const wasSelected = selected === j.id;
+    const wasSelected = selected === star.sid;
     e.currentTarget.focus({ preventScroll: true });
-    if (picked && picked !== j.id) {
+    if (picked && picked !== star.sid) {
       ctl.endPreview();
       setPicked(null);
     }
     drag.current = {
-      id: j.id, side: j.side, pointer: e.pointerId, x0: e.clientX, y0: e.clientY, base: rig, from: [j.x, j.y],
+      id: star.sid, side: star.joint.side, pointer: e.pointerId, x0: e.clientX, y0: e.clientY, base: rig, from: [star.joint.x, star.joint.y],
       moved: false, wasSelected, mode: wiggly ? 'wiggly' : 'move', last: null,
     };
   };
@@ -156,10 +159,10 @@ export function JointLayer({ ctl, rig, joints, fit, sky, skyEl, selected, onSele
     setDragging(null);
     ctl.endPreview(d.side);
     playUiSound('put');
-    const joint = byId.get(d.id);
-    if (joint && d.last) {
+    const star = byId.get(d.id);
+    if (star && d.last) {
       const [x, y] = roundPoint(d.last[0], d.last[1]);
-      announce(t('bones.jointDropped', { label: jointName(rig, joint).toLocaleLowerCase(), x, y }));
+      announce(t('bones.jointDropped', { label: star.name.toLocaleLowerCase(), x, y }));
     }
   };
 
@@ -174,24 +177,25 @@ export function JointLayer({ ctl, rig, joints, fit, sky, skyEl, selected, onSele
     else ctl.cancelPreview();
   };
 
-  const onKey = (e: KeyboardEvent<HTMLButtonElement>, j: Joint) => {
+  const onKey = (e: KeyboardEvent<HTMLButtonElement>, star: Star) => {
     if (busy) return;
+    const j = star.joint;
     if (isArrowKey(e.key)) {
       e.preventDefault();
       const [x, y] = nudge([j.x, j.y], e.key, e.shiftKey, bounds);
-      if (picked === j.id) ctl.preview(moveJoint(rig, j.id, x, y));
-      else ctl.edit(moveJoint(rig, j.id, x, y), { coalesce: `nudge:${j.id}`, side: j.side });
+      if (picked === star.sid) ctl.preview(moveJoint(rig, star.sid, x, y));
+      else ctl.edit(moveJoint(rig, star.sid, x, y), { coalesce: `nudge:${star.sid}`, side: j.side });
       sayLater(t('bones.jointAt', { x, y }));
       return;
     }
     if (e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
-    const label = jointName(rig, j).toLocaleLowerCase();
+    const label = star.name.toLocaleLowerCase();
     if (wiggly) {
-      onWigglyDone(ctl.addWigglyFrom(j.id));
+      onWigglyDone(ctl.addWigglyFrom(star.sid));
       return;
     }
-    if (picked === j.id) {
+    if (picked === star.sid) {
       ctl.endPreview(j.side);
       setPicked(null);
       playUiSound('put');
@@ -200,81 +204,84 @@ export function JointLayer({ ctl, rig, joints, fit, sky, skyEl, selected, onSele
     } else {
       if (picked) ctl.endPreview();
       ctl.settle();
-      setPicked(j.id);
-      onSelect(j.id);
+      setPicked(star.sid);
+      onSelect(star.sid);
       playUiSound('pick');
       announce(t('bones.jointPicked', { label }));
     }
   };
 
-  const onBlur = (j: Joint) => {
+  const onBlur = (star: Star) => {
     // Tab away while holding a star drops it where it is
-    if (picked === j.id) {
-      ctl.endPreview(j.side);
+    if (picked === star.sid) {
+      ctl.endPreview(star.joint.side);
       setPicked(null);
     }
     ctl.settle();
   };
 
   // a new wiggly bit's end star takes focus, so arrows can shape it at once
-  const focusJoint = (id: string) => buttons.current.get(id)?.focus({ preventScroll: true });
   useEffect(() => {
-    if (selected && document.activeElement?.closest('.bones-sky') && !buttons.current.get(selected)?.contains(document.activeElement)) {
-      focusJoint(selected);
-    }
-  }, [selected]);
+    if (!focusStar) return;
+    const button = buttons.current.get(focusStar);
+    if (!button) return;
+    button.focus({ preventScroll: true });
+    onFocused();
+  }, [focusStar, stars, onFocused]);
 
   const bubble = selected && !dragging ? byId.get(selected) : undefined;
 
   return (
     <div className={cx('joints', busy && 'joints--busy', wiggly && 'joints--wiggly')}>
-      {joints.map((j) => {
+      {stars.map((star) => {
+        const j = star.joint;
         const [sx, sy] = toSky(fit, j.x, j.y);
         const [x, y] = roundPoint(j.x, j.y);
-        const name = jointName(rig, j);
         const tip = j.ends.every((end) => end.end === 1);
         return (
           <button
-            key={j.id}
+            key={star.sid}
             ref={(el) => {
-              if (el) buttons.current.set(j.id, el);
-              else buttons.current.delete(j.id);
+              if (el) buttons.current.set(star.sid, el);
+              else buttons.current.delete(star.sid);
             }}
             type="button"
             className={cx(
               'joint',
               `joint--${j.side}`,
               tip && 'joint--tip',
-              selected === j.id && 'joint--selected',
-              picked === j.id && 'joint--picked',
-              dragging === j.id && 'joint--dragging',
+              selected === star.sid && 'joint--selected',
+              picked === star.sid && 'joint--picked',
+              dragging === star.sid && 'joint--dragging',
             )}
             style={{ left: sx, top: sy }}
-            data-joint={j.id}
-            aria-label={t('bones.jointLabel', { label: name, x, y })}
+            data-joint={star.sid}
+            aria-label={t('bones.jointLabel', { label: star.name, x, y })}
             aria-disabled={busy || undefined}
-            onPointerDown={(e) => onDown(e, j)}
+            onPointerDown={(e) => onDown(e, star)}
             onPointerMove={onMove}
             onPointerUp={onUp}
             onPointerCancel={onCancel}
-            onKeyDown={(e) => onKey(e, j)}
-            onFocus={() => onSelect(j.id)}
-            onBlur={() => onBlur(j)}
+            onKeyDown={(e) => onKey(e, star)}
+            onFocus={() => onSelect(star.sid)}
+            onBlur={() => onBlur(star)}
           >
             <span className="joint__dot" aria-hidden="true">
               {j.side !== 'C' ? j.side : null}
             </span>
-            {picked === j.id && <span className="joint__cross" aria-hidden="true" />}
+            {picked === star.sid && <span className="joint__cross" aria-hidden="true" />}
           </button>
         );
       })}
-      {bubble && <NameBubble joint={bubble} name={jointName(rig, bubble)} fit={fit} sky={sky} />}
+      {bubble && <NameBubble star={bubble} fit={fit} sky={sky} />}
     </div>
   );
 }
 
 /** The star's name and how to move it, beside the star and never over it (§2.11, WCAG 2.4.11). */
-function NameBubble({ joint, name, fit, sky }: { joint: Joint; name: string; fit: Fit; sky: { w: number; h: number } }) {
+function NameBubble({ star, fit, sky }: { star: Star; fit: Fit; sky: { w: number; h: number } }) {
+  const joint = star.joint;
+  const name = star.name;
   const [sx, sy] = toSky(fit, joint.x, joint.y);
   const gap = 28;
   let side: 'left' | 'right' = joint.side === 'L' ? 'left' : 'right';

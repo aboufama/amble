@@ -58,7 +58,6 @@ function attachPoint(p: Seg, x: number, y: number): Point {
 
 export function BoneLines({ rig, fit, w, h, dim, selectedBone, wigglyLine, onBoneDown, onBoneMove, onBoneUp, onBoneCancel }: BoneLinesProps) {
   const uid = useId().replace(/:/g, '');
-  const glow = `bones-glow-${uid}`;
   const stripes = `bones-stripes-${uid}`;
   const dots = `bones-dots-${uid}`;
   const segs: Seg[] = rig.bones.map((b, i) => {
@@ -84,9 +83,6 @@ export function BoneLines({ rig, fit, w, h, dim, selectedBone, wigglyLine, onBon
   return (
     <svg className={cx('bone-lines', dim && 'bone-lines--dim')} width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true" focusable="false">
       <defs>
-        <filter id={glow} x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="3.5" />
-        </filter>
         <pattern id={stripes} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <rect className="bone-pat bone-pat--L" width="5" height="5" />
           <rect className="bone-pat__mark" width="1.8" height="5" />
@@ -97,11 +93,14 @@ export function BoneLines({ rig, fit, w, h, dim, selectedBone, wigglyLine, onBon
         </pattern>
       </defs>
       <line className="bone-ground" x1={ax - groundHalf} y1={ay} x2={ax + groundHalf} y2={ay} />
-      <g className="bone-glow" filter={`url(#${glow})`}>
-        {order.map((s) => (
-          <line key={s.i} className={cx('bone-glow__line', `bone-glow__line--${s.side}`, selectedBone === s.i && 'bone-glow__line--on')} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />
-        ))}
-      </g>
+      {/* the glow: two soft, wide strokes instead of a blur filter, which costs a frame per repaint on weak GPUs */}
+      {(['far', 'near'] as const).map((ring) => (
+        <g key={ring} className={`bone-glow bone-glow--${ring}`}>
+          {order.map((s) => (
+            <line key={s.i} className={cx('bone-glow__line', `bone-glow__line--${s.side}`, selectedBone === s.i && 'bone-glow__line--on')} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />
+          ))}
+        </g>
+      ))}
       <g className="bone-links">
         {links.map((l) => (
           <line key={l.key} x1={l.from[0]} y1={l.from[1]} x2={l.to[0]} y2={l.to[1]} />

@@ -65,7 +65,8 @@ export function MovesPanel({ ctl, view, route }: MovesPanelProps) {
       <button type="button" className="draw-move" onClick={() => navigate(drawRoute)}>
         <Icon name="frame" size={22} />
         <span className="draw-move__text">
-          <b>{t('bones.drawMove')}</b> {t('bones.drawMoveHint', { move: moveWord(move) })}
+          <b>{t('bones.drawMove')}</b>
+          <span>{t('bones.drawMoveHint', { move: moveWord(move) })}</span>
         </span>
       </button>
       <p className={cx('bones-local', view.aiHelped && 'bones-local--ai')}>

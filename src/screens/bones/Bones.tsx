@@ -79,7 +79,7 @@ interface FrameProps {
 function BonesFrame({ route, view, status, actions, children, aside, onBack }: FrameProps) {
   const name = view?.name ?? '';
   return (
-    <div className="screen bones-screen" data-testid="screen-bones">
+    <div className={aside ? 'screen bones-screen' : 'screen bones-screen bones-screen--solo'} data-testid="screen-bones">
       <header className="topbar bones-top">
         <div className="topbar__start bones-top__start">
           <Link

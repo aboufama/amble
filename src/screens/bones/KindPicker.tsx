@@ -49,7 +49,6 @@ export function KindPicker({ value, facing, onChange, compact = false, open, onO
   const titleId = useId();
   const lookId = useId();
 
-  const label = unset ? t('bones.kindAsk') : compact ? kindPhrase(value) : t('bones.kindPill', { kind: kindPhrase(value), facing: facingPhrase(facing) });
   const aria = unset ? t('bones.kindAsk') : t('bones.kindPillLabel', { kind: kindPhrase(value), facing: facingPhrase(facing) });
 
   const onKindKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
@@ -83,7 +82,7 @@ export function KindPicker({ value, facing, onChange, compact = false, open, onO
         <span className="kind-pill__pic" aria-hidden="true">
           {unset ? <Icon name="bones" size={compact ? 18 : 22} /> : <KindIcon kind={value} size={compact ? 18 : 22} />}
         </span>
-        <span className="kind-pill__text">{label}</span>
+        <PillWords kind={value} facing={facing} compact={compact} unset={unset} />
         <svg className="kind-pill__caret" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -150,5 +149,28 @@ export function KindPicker({ value, facing, onChange, compact = false, open, onO
         </div>
       </Popover>
     </>
+  );
+}
+
+/**
+ * "A person, facing you" in three pieces (the kind, the joiner, the facing), so a narrow toolbar can
+ * stack the kind over the facing without the comma. The words come whole from the string table.
+ */
+function PillWords({ kind, facing, compact, unset }: { kind: CharacterKind; facing: Facing; compact: boolean; unset: boolean }) {
+  if (unset) return <span className="kind-pill__text">{t('bones.kindAsk')}</span>;
+  const kindText = kindPhrase(kind);
+  if (compact) return <span className="kind-pill__text">{kindText}</span>;
+  const facingText = facingPhrase(facing);
+  const full = t('bones.kindPill', { kind: kindText, facing: facingText });
+  const at = full.lastIndexOf(facingText);
+  if (at <= 0) return <span className="kind-pill__text">{full}</span>;
+  const head = full.slice(0, at);
+  const word = head.replace(/[\s,;:·-]+$/, '');
+  return (
+    <span className="kind-pill__text">
+      <span className="kind-pill__kind">{word}</span>
+      <span className="kind-pill__join">{head.slice(word.length)}</span>
+      <span className="kind-pill__facing">{full.slice(at)}</span>
+    </span>
   );
 }

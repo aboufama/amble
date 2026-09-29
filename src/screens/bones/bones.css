@@ -15,6 +15,17 @@
   margin: 0 -16px;
 }
 
+.screen.bones-screen--solo {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'top'
+    'main';
+}
+
+.bones-screen--solo .bones-main {
+  padding-top: 16px;
+}
+
 .bones-top__start {
   gap: var(--s3);
 }
@@ -56,6 +67,10 @@
 }
 
 /* ---------- the tools row (y 66) ---------- */
+.bones-main {
+  container: bones-main / inline-size;
+}
+
 .bones-tools {
   display: flex;
   align-items: center;
@@ -63,17 +78,29 @@
   min-width: 0;
 }
 
-.bones-tools__kind {
+.bones-tools .kind-pill {
   flex: 0 1 auto;
+  min-width: 150px;
+  font: var(--type-chip);
+  font-size: 0.9375rem;
 }
 
 .bones-tools .btn {
   flex: none;
+  gap: 6px;
+  padding: 0 13px 0 11px;
+  font: var(--type-chip);
+  font-size: 0.9375rem;
+}
+
+.bones-tools .btn .icon {
+  width: 18px;
+  height: 18px;
 }
 
 .bones-tools__pieces {
   flex: none;
-  gap: 8px;
+  column-gap: 8px;
   margin-left: auto;
   padding: 0 12px 0 10px;
   min-height: var(--control);
@@ -82,8 +109,80 @@
 }
 
 .bones-tools__pieces .toggle__label {
-  font: var(--type-label);
+  font: var(--type-chip);
+  font-size: 0.9375rem;
   white-space: nowrap;
+}
+
+/* the kind sits over the facing, so long kinds ("An animal on 4 legs") still fit the row */
+.bones-tools .kind-pill__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05rem;
+}
+
+.bones-tools .kind-pill__kind,
+.bones-tools .kind-pill__facing {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bones-tools .kind-pill__join {
+  display: none;
+}
+
+.bones-tools .kind-pill__facing {
+  font: var(--type-meta);
+  font-size: 0.8125rem;
+  line-height: 0.95rem;
+  color: var(--ink-2);
+}
+
+/* a narrower sky (1280 wide): the tools keep their words and drop their icons */
+@container bones-main (max-width: 860px) {
+  .bones-tools .btn .icon {
+    display: none;
+  }
+
+  .bones-tools .btn {
+    padding: 0 12px;
+  }
+
+  .bones-sky__legend {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+.bones-tools__pieces .toggle__switch {
+  width: 38px;
+  height: 22px;
+  margin: 0;
+}
+
+.bones-tools__pieces .toggle__switch::before {
+  content: '';
+  position: absolute;
+  inset: -11px -8px;
+}
+
+.bones-tools__pieces .toggle__knob {
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+}
+
+.bones-tools__pieces .toggle__switch--on .toggle__knob {
+  transform: translateX(16px);
+}
+
+.bones-tools__pieces .toggle__label {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  cursor: pointer;
 }
 
 /* ---------- the sky ---------- */
@@ -181,12 +280,18 @@
 }
 
 .bone-glow {
-  opacity: 0.85;
+  --glow-w: 7px;
+  opacity: 0.3;
+}
+
+.bone-glow--far {
+  --glow-w: 13px;
+  opacity: 0.13;
 }
 
 .bone-glow__line {
   fill: none;
-  stroke-width: 7;
+  stroke-width: var(--glow-w);
   stroke-linecap: round;
 }
 
@@ -205,8 +310,7 @@
 
 .bone-glow__line--on {
   stroke: var(--accent);
-  stroke-width: 12;
-  opacity: 1;
+  stroke-width: calc(var(--glow-w) + 6px);
 }
 
 .bone-links line {
@@ -560,7 +664,8 @@
 }
 
 .bones-sky__wiggly-hint {
-  gap: 8px;
+  display: block;
+  max-width: 460px;
   padding: 8px 14px;
   border-radius: var(--r-chip);
   color: var(--text);
@@ -685,7 +790,7 @@
 
 /* a bone's card */
 .popover.bone-card {
-  width: 250px;
+  width: 300px;
 }
 
 .bone-card__title {
@@ -773,17 +878,17 @@
   grid-area: aside;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   min-height: 0;
   margin-top: 6px;
   overflow: auto;
-  padding: 16px 18px;
+  padding: 14px 18px;
 }
 
 .bones-side__section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .bones-side__head {
@@ -810,7 +915,7 @@
 }
 
 .move-stage {
-  --stage-h: clamp(150px, calc(100vh - 538px), 230px);
+  --stage-h: clamp(120px, calc(100vh - 538px), 230px);
   position: relative;
   height: var(--stage-h);
   overflow: hidden;
@@ -902,10 +1007,13 @@
   box-shadow: none;
 }
 
-.move-stage__play {
+.move-stage-wrap > .tooltip-anchor {
   position: absolute;
   top: 8px;
   left: 8px;
+}
+
+.move-stage__play {
   background: color-mix(in srgb, var(--bg-deep) 60%, transparent);
 }
 
@@ -917,7 +1025,13 @@
 }
 
 .moves--nine {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.moves--nine .move-btn {
+  padding: 0 2px;
+  font: var(--type-chip);
 }
 
 .move-btn {
@@ -948,15 +1062,19 @@
 
 /* feel */
 .feel {
-  gap: 4px;
+  gap: 0;
+}
+
+.feel .bones-side__head {
+  margin-bottom: 2px;
 }
 
 .feel-row {
   display: grid;
-  grid-template-columns: 74px minmax(0, 1fr) 66px;
+  grid-template-columns: 70px minmax(0, 1fr) 64px;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
+  min-height: 36px;
 }
 
 .feel-row__label {
@@ -973,7 +1091,7 @@
 .feel-row__range {
   --fill: 50%;
   width: 100%;
-  height: 28px;
+  height: 24px;
   margin: 0;
   background: transparent;
   appearance: none;
@@ -1031,8 +1149,10 @@
 .feel-row__ends {
   display: flex;
   justify-content: space-between;
-  margin-top: -3px;
+  margin-top: -5px;
   font: var(--type-meta);
+  font-size: 0.8125rem;
+  line-height: 1rem;
   color: var(--text-2);
 }
 
@@ -1045,10 +1165,11 @@
 /* draw this move yourself */
 .draw-move {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 10px 12px;
+  min-height: var(--control);
+  padding: 6px 12px;
   border: 0;
   border-radius: 14px;
   font: var(--type-meta);
@@ -1064,6 +1185,11 @@
   color: var(--ai);
 }
 
+.draw-move__text {
+  display: flex;
+  flex-direction: column;
+}
+
 .draw-move b {
   color: var(--text);
   font-weight: 600;
@@ -1076,10 +1202,11 @@
 /* made on this Chromebook */
 .bones-local {
   display: flex;
+  flex: none;
   align-items: flex-start;
-  gap: 10px;
+  gap: 9px;
   margin: auto 0 0;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: 14px;
   font: var(--type-meta);
   color: var(--text-2);

@@ -3,8 +3,8 @@
  * joint names ("Left elbow"), bone names ("left upper arm"), why Amble guessed, the moves and the kinds.
  */
 import { t, type MessageKey } from '../i18n';
-import type { CharacterKind, FitIssue, Joint, RigData, Side } from '../cores/rig';
-import { sideOf } from '../cores/rig';
+import type { CharacterKind, FitIssue, Joint, JointEnd, RigBone, RigData, Side } from '../cores/rig';
+import { jointList, sideOf } from '../cores/rig';
 
 const JOINT_PARTS: Record<string, MessageKey> = {
   hips: 'bones.jpHips',
@@ -63,6 +63,59 @@ export function jointName(rig: RigData, j: Joint): string {
   const side: Side = own ? 'C' : j.side;
   const text = side === 'L' ? t('bones.sideLeft', { part }) : side === 'R' ? t('bones.sideRight', { part }) : t('bones.sideNone', { part });
   return capitalize(text);
+}
+
+/** A star as the Bones view shows it: the joint, an id that stays put, and its name. */
+export interface Star {
+  joint: Joint;
+  /**
+   * Stable while the student edits: the first body bone end at the star (`head.tip`), so a wiggly bit
+   * added at the head top leaves the head top's id (and its focus) alone. The rig core accepts it
+   * wherever it takes a joint id.
+   */
+  sid: string;
+  /** "Head top", "Left elbow", "Wiggly bit 1 tip". */
+  name: string;
+}
+
+const endName = (rig: RigData, e: JointEnd) => `${rig.bones[e.bone].name}${e.end ? '.tip' : ''}`;
+
+/** The rig without its extras (wiggly bits, held things), parents renumbered. Null when it has none. */
+function bodyOnly(rig: RigData): RigData | null {
+  if (!rig.bones.some((b) => b.role === 'extra')) return null;
+  const index = new Map<number, number>();
+  const bones: RigBone[] = [];
+  rig.bones.forEach((b, i) => {
+    if (b.role === 'extra') return;
+    index.set(i, bones.length);
+    bones.push({ ...b });
+  });
+  for (const b of bones) b.parent = b.parent >= 0 ? index.get(b.parent) ?? -1 : -1;
+  return { ...rig, bones };
+}
+
+const starCache = new WeakMap<RigData, Star[]>();
+
+/**
+ * The stars of a rig with stable ids and names. The rig core names a joint after the first bone that
+ * starts there, so hair grown from the head top would rename it "Wiggly bit 1": a star with a body
+ * bone keeps its body name.
+ */
+export function starsOf(rig: RigData): Star[] {
+  const hit = starCache.get(rig);
+  if (hit) return hit;
+  const body = bodyOnly(rig);
+  const bodyStars = new Map<string, Joint>();
+  if (body) for (const j of jointList(body)) for (const e of j.ends) bodyStars.set(endName(body, e), j);
+  const stars = jointList(rig).map((joint): Star => {
+    const own = joint.ends.find((e) => rig.bones[e.bone].role !== 'extra');
+    const sid = own ? endName(rig, own) : joint.id;
+    const bodyJoint = own && body ? bodyStars.get(sid) : undefined;
+    const name = bodyJoint && body ? jointName(body, bodyJoint) : jointName(rig, joint);
+    return { joint: bodyJoint ? { ...joint, key: bodyJoint.key, side: bodyJoint.side } : joint, sid, name };
+  });
+  starCache.set(rig, stars);
+  return stars;
 }
 
 /** "left upper arm", "wiggly bit 2": a bone in words (lower case, for sentences). */
