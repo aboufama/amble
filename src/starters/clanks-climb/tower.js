@@ -71,5 +71,5 @@ function blastOff(scene) {
   scene.cameras.main.stopFollow();
   scene.tweens.add({ targets: r, y: r.y - 900, duration: 2200, ease: 'Quad.easeIn' });
   scene.tweens.add({ targets: scene.cameras.main, scrollY: scene.cameras.main.scrollY - 500, duration: 2200, ease: 'Quad.easeIn' });
-  scene.after(1600, () => scene.win('CLANK REACHED THE STARS!'));
+  scene.after(1600, () => scene.win('TO THE STARS!'));
 }

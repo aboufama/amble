@@ -49,7 +49,7 @@ describe('StarterCatalog.open', () => {
         } else expect(slot.art, m.key).toBeNull();
       }
       // Every blob a drawing refers to came along (content addresses match).
-      const refs = new Set(await Promise.all(blobs.map((b) => blobRefOf(b))));
+      const refs = new Set<string>(await Promise.all(blobs.map((b) => blobRefOf(b))));
       for (const rec of art) {
         const exp = rec.export;
         const needed = [rec.doc, ...rec.cels, exp?.flat, exp?.sticker, exp?.thumb, exp?.inkMask, ...Object.values(exp?.parts ?? {}).map((p) => p.blob)].filter(Boolean);

@@ -116,6 +116,8 @@ class Game extends Amble.Scene {
       this.gravityWas = this.dials.gravity;
     }
     if (this.hasArt('sky') !== this.drawnSky) this.makeSky();
+    // Star power: every shot flies out twice as big.
+    if (this.power > 1) for (const s of this.all('heroShots')) if (s.displayWidth < 30) s.setScale(s.scaleX * 2, s.scaleY * 2);
     if (!b.alive) return;
     if (!this.furious && b.hp <= (b.maxHp * this.dials.angry) / 100) this.enrage();
     if (this.slamming) return;

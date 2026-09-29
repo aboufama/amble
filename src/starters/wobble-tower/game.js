@@ -45,7 +45,8 @@ class Game extends Amble.Scene {
     this.impacts();
     this.meter = this.ui.text(480, 24, 'TOWER 0.0 m', { size: 24 });
     showGoal(this);
-    this.ui.hint('SPACE drops a crate  ·  CLICK boom  ·  DRAG things  ·  R rain  ·  G gravity  ·  S slow-mo  ·  B bomb', 9000);
+    this.ui.hint('SPACE drops a crate  ·  CLICK makes a boom  ·  DRAG anything', 6000);
+    this.after(6800, () => this.ui.hint('Now try  R ball rain  ·  G gravity  ·  S slow-mo  ·  B mega bomb', 8000));
     this.music.play('chill');
 
     // Click empty sky to blast; click something to drag it.

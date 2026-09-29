@@ -48,7 +48,7 @@ function measureTower(scene) {
   scene.goals.shift();
   scene.fx.confetti(60);
   scene.sfx('win');
-  if (!scene.goals.length) return scene.win('TALLEST TOWER IN TOWN!');
+  if (!scene.goals.length) return scene.win('TALLEST TOWER EVER!');
   scene.ui.big('GOAL!', { sub: 'The wind gets stronger...', color: '#86f3cb' });
   showGoal(scene);
 }

@@ -26,9 +26,9 @@ class Game extends Amble.Scene {
     this.walkers = keys.filter((k) => k !== sky);
     if (!this.walkers.length) this.walkers = ['hero'];
     // The lit path glows, and the lantern's light flickers in the middle of it.
-    this.add.particles(0, 478, 'amble-fx', { frame: 'dot', x: { min: 0, max: 960 }, y: { min: -8, max: 8 }, lifespan: 2400, scale: { start: 1.4, end: 0.2 }, alpha: { start: 0.22, end: 0 }, tint: 0xffc15e, blendMode: 'ADD', frequency: 30 });
-    this.add.particles(480, 420, 'amble-fx', { frame: 'dot', lifespan: 900, scale: { start: 6, end: 9 }, alpha: { start: 0.12, end: 0 }, tint: 0xffe7a8, blendMode: 'ADD', frequency: 120 });
-    this.weather('embers', { amount: 0.4 });
+    this.add.particles(0, 478, 'amble-fx', { frame: 'dot', x: { min: 0, max: 960 }, y: { min: -8, max: 8 }, lifespan: 2000, scale: { start: 1.3, end: 0.2 }, alpha: { start: 0.24, end: 0 }, tint: 0xffc15e, blendMode: 'ADD', frequency: 70 });
+    this.add.particles(480, 420, 'amble-fx', { frame: 'dot', lifespan: 1200, scale: { start: 5, end: 7 }, alpha: { start: 0.14, end: 0 }, tint: 0xffe7a8, blendMode: 'ADD', frequency: 300 });
+    this.weather('embers', { amount: 0.3 });
     this.next = 0;
     this.every(2400, () => this.walkOn());
     this.walkOn();

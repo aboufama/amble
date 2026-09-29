@@ -49,8 +49,9 @@ class Game extends Amble.Scene {
     this.ui.hint('ARROWS walk  ·  find every lantern  ·  a lantern scares the ghosts: pop them!');
   }
 
+  // Lanterns shine through the dark (they sit above it), so you can see where to go.
   addLantern(x, y) {
-    const l = this.spawnItem(x, y, 'lantern', { points: 50, float: 4, onPickup: () => this.lightUp() });
+    const l = this.spawnItem(x, y, 'lantern', { points: 50, float: 4, onPickup: () => this.lightUp() }).setDepth(710);
     this.fx.halo(l, 0xffc15e, 3);
   }
 
@@ -86,7 +87,7 @@ class Game extends Amble.Scene {
     this.sfx('powerup');
     if (this.all('items').length > 1) return;
     // The last lantern: the key appears in the ghosts' home.
-    const key = this.spawnItem(this.home.x, this.home.y, 'key', { float: 6, points: 200, onPickup: () => this.openGate() });
+    const key = this.spawnItem(this.home.x, this.home.y, 'key', { float: 6, points: 200, onPickup: () => this.openGate() }).setDepth(710);
     this.fx.halo(key, 0xffd23f, 3);
     this.ui.big('THE KEY!', { sub: 'It is in the ghosts\' home...', color: '#ffd23f' });
   }
@@ -109,7 +110,7 @@ class Game extends Amble.Scene {
     }
     if (p.alive && p.x > 925) {
       p.alive = false;
-      this.win('YOU FOUND THE WAY OUT!');
+      this.win('OUT OF THE MAZE!');
     }
   }
 }

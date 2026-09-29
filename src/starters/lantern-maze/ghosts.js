@@ -69,17 +69,11 @@ function popGhost(scene, g) {
   g.homeUntil = scene.clock + 3000;
 }
 
-/** The darkness around Biscuit: a dark sheet with a round hole of light that moves with the dog. */
+/** The darkness: a dark sheet twice the size of the screen with a soft round hole of light, which follows Biscuit. */
 function darkness(scene) {
-  if (!scene.textures.exists('darkness')) {
-    const tex = scene.textures.createCanvas('darkness', 2200, 1300);
-    const ctx = tex.context;
-    const glow = ctx.createRadialGradient(1100, 650, 70, 1100, 650, 230);
-    glow.addColorStop(0, 'rgba(8, 10, 30, 0)');
-    glow.addColorStop(1, 'rgba(8, 10, 30, 1)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, 2200, 1300);
-    tex.refresh();
-  }
-  return scene.add.image(0, 0, 'darkness').setDepth(700).setAlpha(0.82);
+  const sheet = scene.add.renderTexture(0, 0, 1920, 1080).setOrigin(0.5).setDepth(700).setAlpha(0.82);
+  const light = scene.make.image({ key: 'amble-fx', frame: 'dot', add: false }).setScale(15);
+  sheet.fill(0x080a1e).erase(light, 960, 540);
+  light.destroy();
+  return sheet;
 }

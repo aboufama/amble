@@ -66,7 +66,7 @@ function dropStar(scene) {
   scene.fx.halo(star, 0xffd23f, 2.6);
 }
 
-/** Star power: three shots at a time, twice as strong, for 8 seconds. */
+/** Star power: three big shots at a time, each three times as strong, for 8 seconds. */
 function superShots(scene) {
   scene.power = 3;
   scene.ui.big('SUPER SHOTS!', { color: '#ffd23f', ms: 900 });
