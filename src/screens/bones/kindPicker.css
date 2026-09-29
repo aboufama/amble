@@ -1,0 +1,181 @@
+/*
+ * "What is it?" (§2.11): a paper pill with the kind's pictogram, and its card with six kind tiles and
+ * three ways to look. Tokens only. Kept with the picker, so screens that import it get its look.
+ */
+.kind-pill {
+  --focus-ring: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--control);
+  padding: 0 14px 0 7px;
+  border: 0;
+  border-radius: var(--r-btn);
+  font: var(--type-label);
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow:
+    inset 0 0 0 1.5px var(--paper-line),
+    0 3px 0 color-mix(in srgb, var(--ink) 18%, transparent);
+  cursor: pointer;
+  transition: background-color var(--t-micro) var(--ease-soft);
+}
+
+.kind-pill:hover:not(:disabled) {
+  background: var(--paper-2);
+}
+
+.kind-pill:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.kind-pill__pic {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  color: var(--ink);
+  background: var(--paper-3);
+}
+
+.kind-pill__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kind-pill__caret {
+  flex: none;
+  color: var(--ink-2);
+}
+
+.kind-pill[aria-expanded='true'] .kind-pill__caret {
+  rotate: 180deg;
+}
+
+.kind-pill--compact {
+  min-height: var(--control-sm);
+  gap: 8px;
+  padding: 0 12px 0 5px;
+  font: var(--type-chip);
+}
+
+.kind-pill--compact .kind-pill__pic {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.kind-pill--unset {
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    var(--glow-lantern);
+}
+
+/* ---------- the card ---------- */
+.popover.kind-card {
+  width: min(420px, calc(100vw - 16px));
+  max-width: min(420px, calc(100vw - 16px));
+  padding: 16px;
+}
+
+.kind-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+
+.kind-card__title {
+  margin: 0;
+  font: var(--type-heading);
+}
+
+.kind-card__hint,
+.kind-card__sub {
+  font: var(--type-meta);
+  color: var(--text-2);
+}
+
+.kind-card__kinds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s2);
+}
+
+.kind-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 70px;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: var(--r-btn);
+  font: var(--type-chip);
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  cursor: pointer;
+}
+
+.kind-tile:hover {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
+
+.kind-tile--on {
+  color: var(--on-accent);
+  background: var(--accent);
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent-border),
+    var(--glow-lantern);
+}
+
+.kind-tile--on:hover {
+  background: var(--accent);
+}
+
+.kind-card__sub {
+  margin: var(--s4) 0 var(--s2);
+}
+
+.kind-card__looks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s2);
+}
+
+.look-btn {
+  min-height: var(--control);
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-btn);
+  font: var(--type-chip);
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--line-control);
+  cursor: pointer;
+}
+
+.look-btn:hover {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
+
+.look-btn--on {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.kind-card__foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--s3);
+}
