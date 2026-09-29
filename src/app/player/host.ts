@@ -21,6 +21,7 @@ import {
   type ToPlayer,
   type WorldObject,
 } from '../../cores/play';
+import { withBake, withBakes } from './bake';
 
 export type SlotId = 'world' | 'desk-preview' | 'code' | 'gallery' | 'handin';
 
@@ -119,6 +120,11 @@ export class PlayerHostImpl implements PlayerHost {
   private nextCheck = 0;
   private lastRect = '';
   private fullscreenEl: HTMLElement | null = null;
+  /** Bumped by each load: a load still waiting for its bakes when a newer one starts is superseded. */
+  private loads = 0;
+  /** The newest swap per art key (a swap waiting for its bake is dropped when a newer swap, a clear or a load comes). */
+  private readonly swaps = new Map<string, number>();
+  private swapSeq = 0;
 
   constructor(private readonly o: PlayerHostOptions = {}) {}
 
@@ -268,7 +274,13 @@ export class PlayerHostImpl implements PlayerHost {
   // ---------------------------------------------------------------- running games
 
   async load(init: InitMessage): Promise<GameManifest> {
-    const player = await this.ensure();
+    const load = ++this.loads;
+    // Swaps from before this load are already in its drawings (they were saved first).
+    this.swaps.clear();
+    // Drawings with bones go to the game bound (the rig worker binds while the player gets ready).
+    const [player, art] = await Promise.all([this.ensure(), withBakes(init.art)]);
+    if (load !== this.loads) throw new DOMException('A newer game replaced this one.', 'AbortError');
+    init = { ...init, art };
     this.prefs(init.prefs);
     this.userPaused = false;
     this.autoPaused = false;
@@ -294,7 +306,9 @@ export class PlayerHostImpl implements PlayerHost {
   }
 
   async robot(init: InitMessage): Promise<{ raw: RobotRaw; verdict: RobotVerdict }> {
-    const player = await this.ensure();
+    const [player, art] = await Promise.all([this.ensure(), withBakes(init.art)]);
+    // Kept with its bakes: promoting it shows the same game without binding again.
+    init = { ...init, art };
     this.lastRobot = init;
     const report = await player.robotTest(bundleOf(init), { gameMs: init.robot?.gameMs ?? 6000, seed: init.robot?.seed ?? 1, bot: init.robot?.bot ?? 'auto' });
     return verdictOf(report);
@@ -312,10 +326,19 @@ export class PlayerHostImpl implements PlayerHost {
   }
 
   swapArt(art: DrawnArt): void {
-    this.player?.swapArt(art);
+    const ticket = ++this.swapSeq;
+    this.swaps.set(art.key, ticket);
+    const send = (ready: DrawnArt) => {
+      if (this.swaps.get(art.key) !== ticket) return;
+      this.swaps.delete(art.key);
+      this.player?.swapArt(ready);
+    };
+    if (art.rig === undefined || art.rig === null || art.bake) send(art);
+    else void withBake(art).then(send);
   }
 
   clearArt(key: string): void {
+    this.swaps.delete(key);
     this.player?.clearArt(key);
   }
 

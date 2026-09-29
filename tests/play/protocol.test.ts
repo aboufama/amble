@@ -122,6 +122,19 @@ describe('parseToPlayer', () => {
     expect(parseToPlayer({ type: 'art', art: { key: 'hero', image: 'https://evil.example/x.png' } })).toBeNull();
   });
 
+  it("carries a drawing's bake with its bones, and nothing else as one", () => {
+    const blob = new Blob(['png'], { type: 'image/png' });
+    const bake = new ArrayBuffer(64);
+    expect(parseToPlayer({ type: 'art', art: { key: 'hero', image: blob, rig: { v: 1 }, bake } })).toEqual({ type: 'art', art: { key: 'hero', image: blob, rig: { v: 1 }, bake } });
+    const init = parseToPlayer({ type: 'init', files: [], art: [{ key: 'hero', image: blob, rig: { v: 1 }, bake }] });
+    expect(init?.type === 'init' && init.art[0].bake).toBe(bake);
+    // no bones, no bake; a bake must be a buffer, and not a huge one
+    expect(parseToPlayer({ type: 'art', art: { key: 'hero', image: blob, bake } })).toEqual({ type: 'art', art: { key: 'hero', image: blob } });
+    expect(parseToPlayer({ type: 'art', art: { key: 'hero', image: blob, rig: { v: 1 }, bake: 'x' } })).toEqual({ type: 'art', art: { key: 'hero', image: blob, rig: { v: 1 } } });
+    expect(parseToPlayer({ type: 'art', art: { key: 'hero', image: blob, rig: { v: 1 }, bake: new Uint8Array(8) } })).toEqual({ type: 'art', art: { key: 'hero', image: blob, rig: { v: 1 } } });
+    expect(parseToPlayer({ type: 'art', art: { key: 'hero', image: blob, rig: { v: 1 }, bake: new ArrayBuffer(33 * 1024 * 1024) } })).toEqual({ type: 'art', art: { key: 'hero', image: blob, rig: { v: 1 } } });
+  });
+
   it('validates small messages', () => {
     expect(parseToPlayer({ type: 'dial', key: 'jump', value: 900 })).toEqual({ type: 'dial', key: 'jump', value: 900 });
     expect(parseToPlayer({ type: 'dial', key: 'jump', value: Infinity })).toBeNull();

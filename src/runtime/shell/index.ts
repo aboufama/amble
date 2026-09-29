@@ -5,7 +5,21 @@
  * flashes, WebGL contexts) and measured (stats, the robot test).
  */
 import Phaser from 'phaser';
-import { DEFAULT_PREFS, PROTOCOL_VERSION, type Action, type DrawnArt, type FromPlayer, type GameState, type InitMessage, type PlayerPrefs, type RobotOptions, type RuntimeStats, type ToPlayer } from '../../play/protocol';
+import {
+  DEFAULT_PREFS,
+  PROTOCOL_VERSION,
+  STANDALONE_DATA_ID,
+  STANDALONE_START,
+  type Action,
+  type DrawnArt,
+  type FromPlayer,
+  type GameState,
+  type InitMessage,
+  type PlayerPrefs,
+  type RobotOptions,
+  type RuntimeStats,
+  type ToPlayer,
+} from '../../play/protocol';
 import { registryFor } from '../kit/art';
 import { configureGame, gameTexturesReady, restartLevel, scheduleManifest } from '../kit/boot';
 import { DialRegistry } from '../kit/dials';
@@ -38,13 +52,13 @@ import { editorHandler, type EditorShell } from './editor';
 import '../editor';
 import { currentGame, patchPhaser, renderOnly, retire, stepFrame } from './patches';
 import { runRobot, type RobotRecorder } from './robot';
-import { readStandalone, showPlayCard } from './standalone';
 import { createStorage, installStorage } from './storage';
 import { installTestHook } from './testHook';
 import { TouchOverlay } from './touch';
 
-const embedded = readStandalone();
-const link = createLink(!!embedded);
+// An exported page carries its game; the standalone script that follows this runtime starts it.
+const embedded = !!document.getElementById(STANDALONE_DATA_ID);
+const link = createLink(embedded);
 
 // ---------------------------------------------------------------- state of this realm
 
@@ -112,7 +126,7 @@ function plainGameTouch(): void {
 
 const env: KitEnv = {
   mode: 'play',
-  standalone: !!embedded,
+  standalone: embedded,
   autostart: false,
   prefs: { ...DEFAULT_PREFS },
   now,
@@ -519,10 +533,12 @@ installTestHook({
 // ---------------------------------------------------------------- go
 
 if (embedded) {
-  showPlayCard(embedded.title, () => {
+  // Called by the standalone script's ▶ Play card, inside the click (so sound can start).
+  const start = (init: InitMessage) => {
     audio.unlock();
-    link.inject(embedded.init);
-  });
+    link.inject(init);
+  };
+  Object.defineProperty(window, STANDALONE_START, { value: start });
 } else {
   post({ type: 'hello', protocol: PROTOCOL_VERSION, phaser: Phaser.VERSION });
 }

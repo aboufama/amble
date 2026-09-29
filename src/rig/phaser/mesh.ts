@@ -10,15 +10,46 @@
  *
  * Phaser is never imported: everything is made through the scene's own factories, so the adapter
  * works with whichever Phaser build the game runs.
+ *
+ * Binding (cutting the drawing into parts, meshing, weighting) is not in the player's runtime: the
+ * editor binds in its rig worker and sends the bake with the drawing (`DrawnArt.bake`, registered here
+ * with `registerRigBake`), so the game only unpacks it. A page that must bind by itself (a shared web
+ * page, a harness) loads the binder script, which registers `bindRig` (`registerRigBinder`, or the
+ * `BINDER_GLOBAL` it sets before or after this runtime runs).
  */
 import { isBake, unbakeBound } from '../bake';
-import { bindRig } from '../bind';
-import { artSizeOf } from '../editing';
-import { cloneRig, parseRig } from '../format';
+import { scaleRigTo } from '../editing';
+import { parseRig } from '../format';
 import { hashRig } from '../hash';
 import { RigPuppet } from '../runtime/puppet';
-import type { BoundRig, LayerPixels, Pixels, RigData } from '../types';
-import type { RigBinding, RiggedCharacter, RiggedFactory } from './contract';
+import type { BoundRig, LayerPixels, Pixels, RigData, RigInput } from '../types';
+import { BINDER_GLOBAL, type RigBinding, type RiggedCharacter, type RiggedFactory } from './contract';
+
+export { scaleRigTo, BINDER_GLOBAL };
+
+/** Binds a drawing to its bones where it runs (the rig core's `bindRig`). */
+export type RigBinder = (input: RigInput, rig: RigData) => BoundRig;
+
+let binder: RigBinder | null = null;
+
+/** Lets drawings without a bake be bound here (standalone pages, harnesses). */
+export function registerRigBinder(b: RigBinder | null): void {
+  binder = b;
+}
+
+function currentBinder(): RigBinder | null {
+  if (binder) return binder;
+  const g = (globalThis as unknown as Record<string, unknown>)[BINDER_GLOBAL];
+  return typeof g === 'function' ? (g as RigBinder) : null;
+}
+
+/** Bakes that arrived with drawings, by the decoded image they were made for. */
+const bakes = new WeakMap<object, ArrayBuffer>();
+
+/** The editor's bake for a drawing (`DrawnArt.bake`): used when that image is bound to the same bones. */
+export function registerRigBake(image: object, bake: unknown): void {
+  if (isBake(bake)) bakes.set(image, bake);
+}
 
 type Source = HTMLCanvasElement | ImageBitmap | HTMLImageElement;
 type Body = Parameters<RiggedCharacter['follow']>[0];
@@ -67,27 +98,31 @@ function readBinding(b: RigBinding): { rig: RigData | null; bake: ArrayBuffer | 
   return { rig: parseRig(v), bake: null };
 }
 
-/** A rig fitted to the same drawing at another size (a 2x export, a downscaled texture). */
-export function scaleRigTo(rig: RigData, w: number, h: number): RigData {
-  const size = artSizeOf(rig);
-  if (!size || (size[0] === w && size[1] === h)) return rig;
-  const kx = w / size[0], ky = h / size[1];
-  const r = cloneRig(rig);
-  for (const b of r.bones) {
-    b.x *= kx;
-    b.y *= ky;
-    b.x2 *= kx;
-    b.y2 *= ky;
-  }
-  r.anchor = [r.anchor[0] * kx, r.anchor[1] * ky];
-  if (r.skin?.cell) r.skin = { ...r.skin, cell: r.skin.cell * Math.sqrt(kx * ky) };
-  return r;
-}
-
 /** Binds per image object and bones: every instance of one drawing shares one bind. */
 const binds = new WeakMap<object, Map<string, BoundRig>>();
 
-/** The bound rig for a binding (cached), binding in place when no bake came with it. */
+/** The registered bake for this image, if it was made for these bones. */
+function bakedFor(img: object, fitted: RigData): BoundRig | null {
+  const bake = bakes.get(img);
+  if (!bake) return null;
+  const bound = unbakeBound(bake);
+  return hashRig(bound.rig) === hashRig(fitted) ? bound : null;
+}
+
+function bindHere(binding: RigBinding, fitted: RigData): BoundRig {
+  const bind = currentBinder();
+  if (!bind) throw new Error('its bones were not prepared for the game');
+  const img = binding.image;
+  const image = readPixels(img);
+  let layers: Record<string, LayerPixels> | undefined;
+  if (binding.layers) {
+    layers = {};
+    for (const [k, v] of Object.entries(binding.layers)) layers[k] = readPixels(v, img.width, img.height);
+  }
+  return bind({ image, layers }, fitted);
+}
+
+/** The bound rig for a binding (cached): its own bake, the drawing's registered bake, or a bind here. */
 export function boundFor(binding: RigBinding): BoundRig {
   const { rig, bake } = readBinding(binding);
   if (bake) {
@@ -102,13 +137,7 @@ export function boundFor(binding: RigBinding): BoundRig {
   const key = `${hashRig(fitted)}|${layerIds}`;
   let bound = m.get(key);
   if (!bound) {
-    const image = readPixels(img);
-    let layers: Record<string, LayerPixels> | undefined;
-    if (binding.layers) {
-      layers = {};
-      for (const [k, v] of Object.entries(binding.layers)) layers[k] = readPixels(v, img.width, img.height);
-    }
-    bound = bindRig({ image, layers }, fitted);
+    bound = bakedFor(img, fitted) ?? bindHere(binding, fitted);
     m.set(key, bound);
   }
   // facing, anchor and move tweaks don't change the bind; take them from this binding
