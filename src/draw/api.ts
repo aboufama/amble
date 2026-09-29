@@ -67,7 +67,9 @@ export async function bringToLife(input: BringToLifeInput): Promise<BringToLifeR
   let notes: string[] = [];
   const kind = characterKind(input.rig);
   if (input.kind === 'character' && kind) {
-    const result = await rigWorker.autoRig({ image: await decodePixels(exported.flat.png) }, { kind, hints: input.guideHints ?? undefined });
+    // The worker decodes the PNGs itself; the lines-only mask makes the ink exact.
+    const source = { image: exported.flat.png, ...(exported.linesMask ? { layers: { lines: exported.linesMask.png } } : {}) };
+    const result = await rigWorker.autoRig(source, { kind, hints: input.guideHints ?? undefined, lane: `rig:${input.artId ?? 'new'}` });
     rigData = result.rig;
     confidence = result.confidence;
     notes = result.notes;

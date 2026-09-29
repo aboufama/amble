@@ -7,8 +7,7 @@
 import { SOUND_EFFECTS } from '../audio/effects';
 import { ACTIONS, ART_KINDS, ART_SHAPES, RIG_KINDS, ROLES } from '../cores/play';
 import type { ArtNeed, DialSpec, GameManifest, PlayerError } from '../cores/play';
-import { CHARACTER_KINDS } from '../cores/rig';
-import type { RigBone, RigData } from '../cores/rig';
+import type { CharacterKind, RigBone, RigData } from '../cores/rig';
 import type { SynthRecipe, SynthSegment } from '../audio/synth';
 import type { SoundEffect } from '../audio/effects';
 import { isBlobRef, isCastKey } from './ids';
@@ -110,6 +109,13 @@ export const isArtShape = oneOf<M.ArtShape>(ART_SHAPES);
 export const isFacing = oneOf<M.Facing>(['viewer', 'right', 'left']);
 export const isPronoun = oneOf<M.Pronoun>(['him', 'her', 'them', 'it']);
 export const isAction = oneOf<M.Action>(ACTIONS);
+/**
+ * The rig core's character kinds, listed here so the model (in the first chunk) never loads the rig core.
+ * `CharacterKindsComplete` stops compiling if the rig core adds a kind this list lacks.
+ */
+const CHARACTER_KINDS = ['biped', 'quadruped', 'flyer', 'swimmer', 'blob', 'object'] as const satisfies readonly CharacterKind[];
+type AssertNever<T extends never> = T;
+export type CharacterKindsComplete = AssertNever<Exclude<CharacterKind, (typeof CHARACTER_KINDS)[number]>>;
 export const isCharacterKind = oneOf<M.CharacterKind>(CHARACTER_KINDS);
 export const isSoundEffect = oneOf<SoundEffect>(SOUND_EFFECTS.map((e) => e.id));
 
