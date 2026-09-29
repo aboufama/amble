@@ -356,7 +356,11 @@ export class Ui {
           b.icons.forEach((icon, i) => {
             const full = i < o.hp;
             if (!full && icon.alpha === 1) this.s.tweens.add({ targets: icon, scale: 2, alpha: 0.2, duration: 300, onComplete: () => icon.setScale(0.9) });
-            else if (full) icon.setAlpha(1).setScale(1.15);
+            else if (full) {
+              // A heal right after a hit: stop the fading first, or it finishes over the full heart and dims it.
+              this.s.tweens.killTweensOf(icon);
+              icon.setAlpha(1).setScale(1.15);
+            }
           });
           b.last = o.hp;
           env().post({ type: 'event', event: { kind: 'lives', value: Math.max(0, o.hp), max: o.maxHp } });
