@@ -44,8 +44,8 @@ export function confirmUser(o: { title: string; body?: string; ok?: string; canc
   });
 }
 
-/** Resolves with the typed text, or null when cancelled. */
-export function askUser(o: { title: string; body?: string; label: string; value?: string; placeholder?: string; maxLength?: number; ok?: string; cancel?: string }): Promise<string | null> {
+/** Resolves with the typed text, or null when cancelled. `danger` draws the OK button as destructive. */
+export function askUser(o: { title: string; body?: string; label: string; value?: string; placeholder?: string; maxLength?: number; ok?: string; cancel?: string; danger?: boolean }): Promise<string | null> {
   return new Promise((resolve) => {
     const id = nextId();
     pushDialog({
@@ -59,6 +59,7 @@ export function askUser(o: { title: string; body?: string; label: string; value?
       maxLength: o.maxLength ?? 200,
       ok: o.ok ?? t('common.ok'),
       cancel: o.cancel ?? t('common.cancel'),
+      danger: o.danger ?? false,
       resolve: (value: string | null) => {
         removeDialog(id);
         resolve(value);

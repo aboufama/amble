@@ -84,7 +84,7 @@
 }
 
 .checklist__item--pass .checklist__box {
-  color: var(--on-accent);
+  color: var(--on-alive);
   background: var(--alive);
   box-shadow: none;
 }
@@ -244,7 +244,7 @@
 }
 
 .handin-step--done .handin-step__n {
-  color: var(--on-accent);
+  color: var(--on-alive);
   background: var(--alive);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--alive) 16%, transparent);
 }

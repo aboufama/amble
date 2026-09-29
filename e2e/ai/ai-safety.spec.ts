@@ -19,6 +19,10 @@ test('crisis words: the crisis card, nothing sent, only "refused: support" recor
   await expect(card).toBeVisible();
   await expect(card).toContainText('You deserve support. Please talk to a teacher, a counselor, or another adult you trust.');
   await expect(card).toContainText('In New Hampshire you can call or text 988, or call 1-833-710-6477 (NH Rapid Response, free, any time).');
+  // The number never breaks at a hyphen ("1-" on one line, "833-710-6477" on the next).
+  const number = card.locator('.ai-crisis__number');
+  await expect(number).toHaveText('1-833-710-6477');
+  await expect(number).toHaveCSS('white-space', 'nowrap');
   await expect(page.getByTestId('ai-field')).toHaveValue('');
   await card.getByRole('button', { name: 'Back to my world' }).click();
   await expect(card).toBeHidden();

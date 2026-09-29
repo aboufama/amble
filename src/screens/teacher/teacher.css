@@ -390,6 +390,7 @@
 }
 
 .ready__row--done .ready__box {
+  color: var(--on-alive);
   background: var(--alive);
   box-shadow: none;
 }
@@ -416,6 +417,8 @@
 .cl__out {
   display: grid;
   gap: var(--s4);
+  /* Room for the link card's tape: the page scrolls, so anything above the card's top edge is cut. */
+  padding-top: 8px;
 }
 
 .linkcard {
@@ -443,6 +446,11 @@
   margin-top: -6px;
   font: var(--display-m);
   font-size: 1.75rem;
+}
+
+/* No class name yet: the example stays an example (quieter than a real name). */
+.linkcard__cls--example {
+  color: var(--ink-2);
 }
 
 .linkcard__row {
@@ -792,6 +800,7 @@
 }
 
 .tcheck__box--on {
+  color: var(--on-alive);
   background: var(--alive);
   box-shadow: none;
 }
@@ -1217,7 +1226,7 @@
 }
 
 .gchip--done {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .gchip--ai .icon {
@@ -1340,6 +1349,7 @@
   color: var(--warn);
 }
 
+/* The key hints wrap at a larger text size instead of running under the panel's edge with the sound button. */
 .gdetail__keys {
   display: flex;
   flex-wrap: wrap;
@@ -1348,11 +1358,6 @@
   font: var(--type-meta);
   font-weight: 600;
   color: var(--text-2);
-}
-
-.gdetail__keys {
-  flex-wrap: nowrap;
-  gap: var(--s3);
 }
 
 .gdetail__keys > span {
@@ -1372,7 +1377,10 @@
   margin-left: auto;
 }
 
+/* position: relative makes the scroller the containing block of the screen-reader-only words inside it, so
+ * they scroll and clip with it instead of stretching the whole page (at 130 % text they reached below it). */
 .gdetail__scroll {
+  position: relative;
   display: grid;
   flex: 1;
   align-content: start;
@@ -1429,7 +1437,7 @@
 }
 
 .gchecks__row--pass .gchecks__box {
-  color: var(--on-accent);
+  color: var(--on-alive);
   background: var(--alive);
   box-shadow: none;
 }
@@ -1590,8 +1598,21 @@
   overflow: hidden;
 }
 
+/*
+ * The world is as big as the room above the controls allows, at 16:9 (a guess in rem left about 150 px of a
+ * 768 px projector empty at the 150 % scale). The stage is a size container: the view measures it.
+ */
+.present__stage {
+  display: grid;
+  flex: 1 1 0;
+  place-items: center;
+  width: 100%;
+  min-height: 0;
+  container-type: size;
+}
+
 .present__view {
-  width: min(100%, calc((100vh - 13rem) * 16 / 9));
+  width: min(100cqw, 100cqh * 16 / 9);
 }
 
 .present__foot {

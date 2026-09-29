@@ -44,7 +44,9 @@
   box-shadow: 0 0 0 3px var(--bg-deep);
 }
 
-.seed-card--checked {
+/* The picked card keeps its ring while the pointer is still on it (the hover rule would drop it). */
+.seed-card--checked,
+.seed-card--checked:hover:not(:disabled) {
   box-shadow:
     0 0 0 3px var(--bg),
     0 0 0 6px var(--accent),
@@ -153,10 +155,12 @@
     var(--lift);
 }
 
+/* With a long district name the status drops under the title instead of breaking the title in two. */
 .idea-box__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 4px 10px;
   min-width: 0;
 }
 
@@ -235,6 +239,12 @@
 
 .idea-box__field--area {
   min-height: 52px;
+}
+
+/* Inside the sheet the box sits on the sheet's own surface: no lift (the sheet's scroller would cut the
+ * shadow into a hard-edged band), just its dusk-blue edge. */
+.idea-box--sheet {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ai) 42%, transparent);
 }
 
 .idea-box--sheet .idea-box__row {

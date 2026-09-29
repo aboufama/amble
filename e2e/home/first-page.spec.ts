@@ -80,10 +80,10 @@ test('a first doodle comes alive, gets a kind and a name, and walks into Boss fi
 
   // The kind chip: it's a person (the card stays open for the facing too; Esc closes it).
   const kindChip = page.getByTestId('kind-chip');
-  await expect(kindChip).toContainText('A blob');
+  await expect(kindChip).toContainText("It's a blob");
   await kindChip.getByRole('button').click();
   await page.getByRole('radio', { name: /person/i }).click();
-  await expect(kindChip).toContainText('A person');
+  await expect(kindChip).toContainText("It's a person");
   await expect.poll(async () => (await character())?.rig, { timeout: 30_000 }).toBe('biped');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('radio', { name: /person/i })).toBeHidden();

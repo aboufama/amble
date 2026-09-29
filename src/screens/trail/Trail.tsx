@@ -161,6 +161,9 @@ function TrailScene({ still, lit }: SceneProps) {
 
   const starterList = useMemo(() => starters.list(), [starters]);
   const hasCharacters = characters.length > 0;
+  // A student with worlds on the Trail is back, even without a free drawing yet: "Welcome back." with
+  // **+ New world**, never the first visit's "Play a world first" (the lamppost still waits for a character).
+  const returning = hasCharacters || worlds.some((w) => w.putAwayAt === null);
   const latest = latestCharacter(characters);
   const resting = useMemo(() => restingCharacters(characters, worlds), [characters, worlds]);
   const assignment = pendingAssignment(classAsg, worlds);
@@ -185,7 +188,7 @@ function TrailScene({ still, lit }: SceneProps) {
       ro.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, [hasCharacters]);
+  }, [returning]);
 
   // ◂ ▸ know when the trail has more to show.
   useEffect(() => {
@@ -348,54 +351,54 @@ function TrailScene({ still, lit }: SceneProps) {
   let signIndex = -1;
   return (
     <main id="main" tabIndex={-1} className={cx('trail__main', loaded && 'trail__main--loaded')}>
-      <div className="trail__banner">
+      <div className="trail__top">
         <StorageBanner />
-      </div>
-      <div ref={copy} className={cx('trail-copy', hasCharacters && 'trail-copy--back')}>
-        {hasCharacters ? (
-          <div className="trail-copy__back">
-            <h1 className="trail-copy__welcome">{t('home.welcomeBack')}</h1>
-            <Link to={{ name: 'new', hero: null, idea: false }} className="btn btn--lantern btn--h44" data-testid="new-world">
-              <Icon name="plus" size={20} />
-              <span className="btn__label">{t('home.newWorld')}</span>
-            </Link>
-            <Link to={{ name: 'drawFree', artId: 'new' }} className="btn btn--ghost btn--h44" data-testid="draw-character">
-              <Icon name="draw" size={20} />
-              <span className="btn__label">{t('home.drawCharacter')}</span>
-            </Link>
-          </div>
-        ) : (
-          <>
-            <p className="trail-copy__eyebrow">{t('home.eyebrow')}</p>
-            <h1 className="trail-copy__headline">
-              <span>{t('home.headlineOne')}</span>
-              <span className="trail-copy__alive">{t('home.headlineTwo')}</span>
-            </h1>
-            <p className="trail-copy__lede">
-              {t('home.lede')} <b>{t('home.ledeBold')}</b>
-            </p>
-            <div className="trail-copy__ctas">
-              <Link to={{ name: 'first' }} className="btn btn--lantern btn--h58" data-testid="draw-character">
-                <Icon name="draw" size={24} />
+        <div ref={copy} className={cx('trail-copy', returning && 'trail-copy--back')}>
+          {returning ? (
+            <div className="trail-copy__back">
+              <h1 className="trail-copy__welcome">{t('home.welcomeBack')}</h1>
+              <Link to={{ name: 'new', hero: null, idea: false }} className="btn btn--lantern btn--h44" data-testid="new-world">
+                <Icon name="plus" size={20} />
+                <span className="btn__label">{t('home.newWorld')}</span>
+              </Link>
+              <Link to={{ name: 'drawFree', artId: 'new' }} className="btn btn--ghost btn--h44" data-testid="draw-character">
+                <Icon name="draw" size={20} />
                 <span className="btn__label">{t('home.drawCharacter')}</span>
               </Link>
-              <Button variant="ghost" size={58} icon="play" onClick={playFirst} data-testid="play-first">
-                {t('home.playWorldFirst')}
-              </Button>
             </div>
+          ) : (
+            <>
+              <p className="trail-copy__eyebrow">{t('home.eyebrow')}</p>
+              <h1 className="trail-copy__headline">
+                <span>{t('home.headlineOne')}</span>
+                <span className="trail-copy__alive">{t('home.headlineTwo')}</span>
+              </h1>
+              <p className="trail-copy__lede">
+                {t('home.lede')} <b>{t('home.ledeBold')}</b>
+              </p>
+              <div className="trail-copy__ctas">
+                <Link to={{ name: 'first' }} className="btn btn--lantern btn--h58" data-testid="draw-character">
+                  <Icon name="draw" size={24} />
+                  <span className="btn__label">{t('home.drawCharacter')}</span>
+                </Link>
+                <Button variant="ghost" size={58} icon="play" onClick={playFirst} data-testid="play-first">
+                  {t('home.playWorldFirst')}
+                </Button>
+              </div>
+              <p className="trail-copy__trust">
+                <Icon name="lock" size={18} />
+                <span>{shared ? t('home.trustShared') : t('home.trustTrail')}</span>
+              </p>
+            </>
+          )}
+          {returning && shared && (
             <p className="trail-copy__trust">
               <Icon name="lock" size={18} />
-              <span>{shared ? t('home.trustShared') : t('home.trustTrail')}</span>
+              <span>{t('home.trustShared')}</span>
             </p>
-          </>
-        )}
-        {hasCharacters && shared && (
-          <p className="trail-copy__trust">
-            <Icon name="lock" size={18} />
-            <span>{t('home.trustShared')}</span>
-          </p>
-        )}
-        {legacy && <LegacyCard legacy={legacy} onDone={() => setLegacy(null)} />}
+          )}
+          {legacy && <LegacyCard legacy={legacy} onDone={() => setLegacy(null)} />}
+        </div>
       </div>
 
       <ParallaxHills scroller={scroller} still={still} />

@@ -11,6 +11,7 @@ import { announce } from '../../state/app';
 import { refreshLibrary } from '../../state/library';
 import { useStore } from '../../state/store';
 import { Button } from '../../ui/components';
+import { Icon } from '../../ui/icons';
 import { Link } from '../../app/Link';
 
 /** `days` counts the day it is on (30 right after Put away, 1 on its last day). */
@@ -52,6 +53,7 @@ export function LostAndFound() {
           <p className="trail-list__lede">{t('home.lostLede')}</p>
         </div>
         <Link to={{ name: 'trail', view: 'trail' }} className="btn btn--ghost btn--h44">
+          <Icon name="trail" size={20} />
           <span className="btn__label">{t('home.backToTrail')}</span>
         </Link>
       </div>

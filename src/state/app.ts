@@ -36,6 +36,7 @@ export type DialogEntry =
       maxLength: number;
       ok: string;
       cancel: string;
+      danger: boolean;
       resolve(value: string | null): void;
     });
 

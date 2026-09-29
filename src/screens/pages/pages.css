@@ -272,6 +272,11 @@
   padding: 0 !important;
 }
 
+/* A card spans the page like its Clear row above (the line-length cap for list items would stop it short). */
+.page .sent {
+  max-width: none;
+}
+
 .sent {
   display: grid;
   gap: 6px;
@@ -473,13 +478,26 @@
 
 /* ---------- print: black on white, no app chrome ---------- */
 @media print {
-  :root {
+  /* Night and High contrast declare a dark colour scheme, which makes Canvas near-black and CanvasText
+   * white: pages printed white on black, and on white paper with Chrome's default settings (no background
+   * graphics) they came out blank. Paper is light. */
+  :root,
+  :root[data-theme] {
+    color-scheme: light !important;
+  }
+
+  /* html:root[data-theme] outranks the themes' own blocks (High contrast sets white ink on black paper). */
+  :root,
+  html:root[data-theme] {
     --text: CanvasText;
     --text-2: CanvasText;
     --ink: CanvasText;
     --ink-2: CanvasText;
     --paper: Canvas;
     --paper-2: Canvas;
+    --paper-3: Canvas;
+    --note: Canvas;
+    --paper-line: CanvasText;
     --surface: Canvas;
     --well: Canvas;
     --bg: Canvas;
@@ -517,6 +535,13 @@
   .poster,
   .page__kid {
     box-shadow: none;
+  }
+
+  /* The letter and the poster are sheets of their own: the app's page heading ("Letter for families",
+   * version and date) stays on screen, so the letter doesn't print its date twice. */
+  [data-page='parents'] .page__head,
+  [data-page='poster'] .page__head {
+    display: none;
   }
 
   .page a {

@@ -27,7 +27,7 @@ export function TrailNav({ mine, starters, paused, canLeft, canRight, onLeft, on
       <Button variant="ghost" size={44} icon="list" onClick={onList} data-testid="trail-list">
         {t('home.list')}
       </Button>
-      <IconButton icon={paused ? 'play' : 'pause'} label={paused ? t('home.playTrail') : t('home.pauseTrail')} variant="quiet" size={44} pressed={paused} onClick={onPause} data-testid="trail-pause" />
+      <IconButton icon={paused ? 'play' : 'pause'} label={paused ? t('home.playTrail') : t('home.pauseTrail')} variant="ghost" size={44} pressed={paused} onClick={onPause} data-testid="trail-pause" />
     </nav>
   );
 }

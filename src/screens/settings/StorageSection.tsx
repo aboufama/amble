@@ -94,7 +94,7 @@ export function StorageSection() {
   };
 
   const wipe = async () => {
-    const typed = await askUser({ title: t('school.setDeleteTitle'), body: t('school.setDeleteBody'), label: t('school.setDeleteType'), ok: t('school.setDeleteOk'), maxLength: 20 });
+    const typed = await askUser({ title: t('school.setDeleteTitle'), body: t('school.setDeleteBody'), label: t('school.setDeleteType'), ok: t('school.setDeleteOk'), maxLength: 20, danger: true });
     if (typed === null) return;
     if (typed.trim().toUpperCase() !== 'DELETE') {
       showToast(t('school.setDeleteNot'));
@@ -131,7 +131,7 @@ export function StorageSection() {
           <p className="set-row__hint">{persisted ? t('school.setSafeYes') : asked === 'denied' ? t('school.setSafeNotYet') : t('school.setSafeNo')}</p>
           {!persisted && (
             <p>
-              <Button variant="ghost" icon="check" onClick={() => void keepSafe()}>
+              <Button variant="ghost" icon="lock" onClick={() => void keepSafe()}>
                 {t('school.setSafeButton')}
               </Button>
             </p>

@@ -94,7 +94,7 @@ export function SentLog() {
   }, [store]);
 
   const clear = async () => {
-    const ok = await confirmUser({ title: t('school.sentClearTitle'), body: t('school.sentClearBody'), ok: t('school.sentClear') });
+    const ok = await confirmUser({ title: t('school.sentClearTitle'), body: t('school.sentClearBody'), ok: t('school.sentClear'), danger: true });
     if (!ok) return;
     await store.ailog.clear();
     setEntries([]);

@@ -55,6 +55,8 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
   const fieldId = useId();
   const statusId = useId();
 
+  // In a sheet, the dialog focuses its [data-autofocus] element once it opens (showModal() would move focus
+  // to its first button after this runs); on a page this puts the caret in the field.
   useEffect(() => {
     if (autoFocus) field.current?.focus({ preventScroll: true });
   }, [autoFocus]);
@@ -181,6 +183,7 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
             onChange={(e) => setText(e.target.value)}
             enterKeyHint="go"
             autoComplete="off"
+            data-autofocus={autoFocus || undefined}
             data-testid="idea-field"
           />
         ) : (
@@ -194,6 +197,7 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
             placeholder={placeholder}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={onKey}
+            data-autofocus={autoFocus || undefined}
             data-testid="idea-field"
           />
         )}

@@ -13,6 +13,23 @@ export interface CrisisCardProps {
   onClose(): void;
 }
 
+/** The help line with each phone number kept on one line ("1-833-710-6477" never breaks at a hyphen). */
+function HelpLine({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(\d[\d-]{2,}\d)/).map((part, i) =>
+        i % 2 ? (
+          <span key={i} className="ai-crisis__number">
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
 export function CrisisCard({ open, onClose }: CrisisCardProps) {
   const lines = [t('ai.crisisTitle'), t('ai.crisisBody'), t('ai.crisisHelp')];
   const canRead = typeof speechSynthesis !== 'undefined';
@@ -39,7 +56,9 @@ export function CrisisCard({ open, onClose }: CrisisCardProps) {
     >
       <div className="ai-card__lines" data-testid="ai-crisis">
         <p>{t('ai.crisisBody')}</p>
-        <p className="ai-crisis__help">{t('ai.crisisHelp')}</p>
+        <p className="ai-crisis__help">
+          <HelpLine text={t('ai.crisisHelp')} />
+        </p>
       </div>
     </Dialog>
   );

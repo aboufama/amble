@@ -398,7 +398,7 @@ export function ClassLinkTab() {
       <aside className="cl__out" aria-label={t('school.staff_clOutLabel')}>
         <PaperCard tape="lemon" tilt={0} className="linkcard">
           <p className="linkcard__k">{t('school.staff_postThis')}</p>
-          <p className="linkcard__cls">{link.cls || t('school.staff_classNameExample')}</p>
+          <p className={cx('linkcard__cls', !link.cls && 'linkcard__cls--example')}>{link.cls || t('school.staff_classNameExample')}</p>
           {ready ? (
             <div className="linkcard__row">
               <div className="linkcard__qr">{scannable ? <QrCode text={href} label={t('school.staff_qrLabel', { cls: link.cls })} /> : <p className="linkcard__long">{t('school.staff_qrTooLong')}</p>}</div>

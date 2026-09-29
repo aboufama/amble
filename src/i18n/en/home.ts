@@ -43,6 +43,12 @@ export const home = {
   moreTools: 'More tools',
   penPicked: '{pen}, picked',
 
+  kindIsBiped: "It's a person",
+  kindIsQuadruped: "It's an animal on 4 legs",
+  kindIsFlyer: "It's a flying animal",
+  kindIsSwimmer: "It's a swimming animal",
+  kindIsBlob: "It's a blob",
+  kindIsObject: "It's a thing",
   kindChanging: 'Finding new bones…',
   kindNoLimbs: "I couldn't find arms and legs, so {name} will hop. You can fix the bones later.",
   kindChanged: 'New bones for {name}: {kind}.',
@@ -152,7 +158,7 @@ export const home = {
 
   lostTitle: 'Lost and found',
   lostLede: 'Worlds you put away wait here for 30 days. Then they are gone.',
-  lostEmpty: 'Nothing here. Worlds you put away wait here for 30 days.',
+  lostEmpty: 'Nothing here. All your worlds are on the Trail.',
   daysLeft: '{n} days left',
   lastDay: 'Last day',
 

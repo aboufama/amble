@@ -65,3 +65,30 @@ test('a Classroom folder becomes cards, checks and feedback', async ({ page, con
   // A title that starts like a formula is written as text.
   expect(csv).toContain("'=Robo vs Goo");
 });
+
+test.describe('at 130 % text on 1280x600', () => {
+  test.use({ viewport: { width: 1280, height: 600 } });
+
+  test('the detail keeps its keys and sound button on screen, and the page does not scroll', async ({ page }) => {
+    await fakePickers(page);
+    await openAmble(page, { clean: true, prefs: { textScale: 1.3 } });
+    await putClassFolder(page, [
+      { name: 'Moon Slime Rumble - J.R.amble', title: 'Moon Slime Rumble', madeBy: 'J.R.' },
+      { name: 'Robo vs Goo - A.M.amble', title: 'Robo vs Goo', madeBy: 'A.M.' },
+    ]);
+    await gotoRoute(page, '#/teacher/gallery');
+    await page.getByTestId('teacher-gallery').getByTestId('open-folder').click();
+    const detail = page.getByTestId('gallery-detail');
+    await expect(detail.locator('.gchecks__row').first()).toBeVisible();
+    const panel = (await detail.boundingBox())!;
+    for (const [what, el] of [
+      ['the sound button', detail.getByRole('button', { name: /Turn the sound/ })],
+      ['"Esc stop"', detail.locator('.gdetail__keys > span').last()],
+    ] as const) {
+      const box = (await el.boundingBox())!;
+      expect(box.x + box.width, `${what} stays inside the panel`).toBeLessThanOrEqual(panel.x + panel.width);
+    }
+    const size = await page.evaluate(() => ({ h: document.scrollingElement!.scrollHeight, ih: innerHeight }));
+    expect(size.h, 'the page itself never scrolls').toBeLessThanOrEqual(size.ih);
+  });
+});

@@ -426,6 +426,11 @@
   box-shadow: inset 0 0 0 1px var(--paper-line);
 }
 
+.ai-crisis__number {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* ---------- the steer toast ---------- */
 .ai-steer {
   display: flex;
