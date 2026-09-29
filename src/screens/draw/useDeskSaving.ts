@@ -80,7 +80,7 @@ export function useDeskSaving(ctrl: DeskController | null, setup: DeskSetup, sto
     async (c: DeskController): Promise<void> => {
       if (!changed.current) return;
       const s = c.getSnapshot();
-      if (!s.ready || (s.inked === 0 && !record.current)) return;
+      if (!s.ready || (!c.hasInk() && !record.current)) return;
       changed.current = false;
       setStatus('saving');
       const r = c.request;
@@ -126,7 +126,7 @@ export function useDeskSaving(ctrl: DeskController | null, setup: DeskSetup, sto
   const draft = useCallback(
     async (c: DeskController) => {
       const s = c.getSnapshot();
-      if (!s.ready || (s.inked === 0 && !record.current)) return;
+      if (!s.ready || (!c.hasInk() && !record.current)) return;
       try {
         await writeDraft(store, await c.surface.doc(), context(), s.tool);
       } catch (err) {
@@ -192,7 +192,7 @@ export function useDeskSaving(ctrl: DeskController | null, setup: DeskSetup, sto
  */
 export function saveOnClose(ctrl: DeskController, saving: DeskSaving, setup: DeskSetup, store: Store, name: string): void {
   const s = ctrl.getSnapshot();
-  if (!s.ready || !s.dirty || (s.inked === 0 && !saving.record())) return;
+  if (!s.ready || !ctrl.surface.isDirty() || (!ctrl.hasInk() && !saving.record())) return;
   const r = ctrl.request;
   const doc = ctrl.surface.doc();
   track(

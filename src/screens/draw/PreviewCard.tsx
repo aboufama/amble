@@ -281,14 +281,15 @@ export function PreviewCard({ ctrl, s, setup, player, store, brought }: PreviewC
   const r = ctrl.request;
   const inWorld = !!setup.world && !!r.key;
   const rigged = r.kind === 'character' && r.rig !== 'none';
-  const [view, setView] = useState<View>(() => (s.mode === 'bones' || !inWorld ? 'moves' : 'world'));
+  // The card follows the drawing (moves on the bones, the world in Freehand) until the student picks.
+  const [picked, setPicked] = useState<View | null>(null);
   const { art, rigged: bones } = useRigged(ctrl, s);
   const both = inWorld && rigged;
-  const shown: View = inWorld ? view : 'moves';
+  const shown: View = !inWorld ? 'moves' : !rigged ? 'world' : (picked ?? (s.mode === 'bones' ? 'moves' : 'world'));
 
   const total = s.steps.reduce((n, st) => n + st.parts.length, 0);
   const title = shown === 'world' ? t('draw.inYourWorld') : rigged ? t('draw.itMoves') : t('draw.previewMoves');
-  const meta = shown === 'moves' && s.mode === 'bones' ? t('draw.partsDrawn', { n: s.drawn.length, max: total }) : t('draw.updatesWhenLift');
+  const meta = shown === 'moves' && s.mode === 'bones' ? t('draw.partsDrawn', { n: s.drawn.length, max: total }) : shown === 'world' ? t('draw.updatesWhenLift') : '';
 
   return (
     <section className="preview" aria-labelledby="desk-preview">
@@ -297,18 +298,21 @@ export function PreviewCard({ ctrl, s, setup, player, store, brought }: PreviewC
           <Icon name={shown === 'world' ? 'sparkle' : 'play'} size={16} />
           {title}
         </h2>
-        <span className="side__meta">{meta}</span>
+        {meta && <span className="side__meta">{meta}</span>}
       </div>
-      {shown === 'world' ? (
-        <WorldView ctrl={ctrl} setup={setup} player={player} store={store} art={art} rigged={bones} brought={brought} />
-      ) : (
-        <MovesView ctrl={ctrl} art={art} rigged={bones} bones={s.mode === 'bones'} still={!rigged} />
-      )}
-      {both && (
-        <button type="button" className="preview__switch" onClick={() => setView(shown === 'world' ? 'moves' : 'world')}>
-          {shown === 'world' ? t('draw.previewMoves') : t('draw.previewWorld')}
-        </button>
-      )}
+      <div className="preview__body">
+        {shown === 'world' ? (
+          <WorldView ctrl={ctrl} setup={setup} player={player} store={store} art={art} rigged={bones} brought={brought} />
+        ) : (
+          <MovesView ctrl={ctrl} art={art} rigged={bones} bones={s.mode === 'bones'} still={!rigged} />
+        )}
+        {both && (
+          <button type="button" className="preview__switch" onClick={() => setPicked(shown === 'world' ? 'moves' : 'world')}>
+            <Icon name={shown === 'world' ? 'bones' : 'sparkle'} size={14} />
+            <span>{shown === 'world' ? t('draw.previewMoves') : t('draw.previewWorld')}</span>
+          </button>
+        )}
+      </div>
     </section>
   );
 }

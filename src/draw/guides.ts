@@ -136,7 +136,7 @@ function drawGhost(ctx: Ctx, rig: RigData, skip: ReadonlySet<string>, style: 'fi
       m.fill();
     }
     // A soft sky fill, then a dashed-looking rim: the mask drawn as rings of dots along its edge.
-    ctx.globalAlpha = 0.1;
+    ctx.globalAlpha = 0.05;
     ctx.drawImage(tint(mask, GHOST), 0, 0);
     ctx.globalAlpha = 0.75;
     ctx.drawImage(dashedEdge(mask, GHOST, 2.2 * u, 7 * u), 0, 0);
@@ -206,17 +206,17 @@ function drawScaleGhost(ctx: Ctx, i: GuideInput, u: number): void {
     if (r.kind !== 'character' || r.role !== 'hero') return;
     // The hero itself: a door for size (about 1.25 times as tall as the hero).
     const dh = Math.min(board.h * 0.84, r.h * board.perGamePx * 1.25);
-    const dw = dh * 0.45;
-    const x = board.w * 0.05;
+    const dw = dh * 0.4;
+    const x = board.w * 0.03;
     ctx.save();
-    ctx.strokeStyle = 'rgba(107, 103, 128, 0.42)';
-    ctx.lineWidth = 3 * u;
+    ctx.strokeStyle = 'rgba(107, 103, 128, 0.3)';
+    ctx.lineWidth = 2.4 * u;
     ctx.setLineDash([9 * u, 7 * u]);
     ctx.strokeRect(x, ground - dh, dw, dh);
     ctx.setLineDash([]);
     ctx.beginPath();
     ctx.arc(x + dw * 0.8, ground - dh * 0.48, 4 * u, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(107, 103, 128, 0.42)';
+    ctx.fillStyle = 'rgba(107, 103, 128, 0.3)';
     ctx.fill();
     ctx.restore();
     label(ctx, i.labels.door, x, ground - dh - 24 * u, 14 * u, PENCIL);
@@ -376,6 +376,8 @@ function drawCallout(ctx: Ctx, text: string, at: { x: number; y: number }, board
   const w = tw + padX * 2;
   // Beside the bone's tip, kept on the paper.
   let x = at.x + 26 * u;
+  // Kept on the paper: slid in from the right edge, else on the tip's left.
+  if (x + w > board.w - 8 * u) x = Math.max(at.x + 8 * u, board.w - 8 * u - w);
   if (x + w > board.w - 8 * u) x = at.x - 26 * u - w;
   const y = Math.min(board.h - h - 8 * u, Math.max(8 * u, at.y - h / 2));
   ctx.strokeStyle = CALLOUT_BG;
@@ -453,7 +455,8 @@ export function renderGuides(i: GuideInput, rig: RigData | null): GuideImages {
       ctx.fill();
     }
     ctx.restore();
-    if (i.labels.starNote) drawStarNote(ctx, i.labels.starNote, rig, i.board, u);
+    // "Arms a little out": only figures with arms.
+    if (i.labels.starNote && rig.kind === 'biped') drawStarNote(ctx, i.labels.starNote, rig, i.board, u);
   }
   return { below, above };
 }

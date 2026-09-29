@@ -85,12 +85,16 @@ export function LayersPanel({ ctrl, s }: { ctrl: DeskController; s: DeskState })
 
   const rows: Row[] = [];
   if (bones) {
+    // The steps drawn so far and the one being drawn, the newest on top (like the parts' layers).
+    const empty = new Set(s.layers.filter((l) => l.empty).map((l) => l.id));
     s.steps.forEach((st, i) => {
       if (!st.parts.length) return;
       const ids = st.parts.flatMap((p) => (s.parts[p] ? [s.parts[p].colors, s.parts[p].lines] : []));
       const layers = s.layers.filter((l) => ids.includes(l.id));
       const drawn = st.parts.some((p) => s.drawn.includes(p));
       const on = i === s.step;
+      if (!on && !drawn) return;
+      const first = s.parts[st.parts.find((p) => s.drawn.includes(p)) ?? st.parts[0]];
       rows.push({
         id: `step:${st.step}`,
         name: stepLabel(st.step),
@@ -98,8 +102,8 @@ export function LayersPanel({ ctrl, s }: { ctrl: DeskController; s: DeskState })
         visible: layers.some((l) => l.visible),
         locked: false,
         ids,
-        thumb: s.parts[st.parts.find((p) => s.drawn.includes(p)) ?? st.parts[0]]?.colors ?? '',
-        status: on ? 'now' : drawn ? 'done' : 'empty',
+        thumb: first ? (empty.has(first.colors) ? first.lines : first.colors) : '',
+        status: on ? 'now' : 'done',
         select: () => ctrl.setStep(i),
       });
     });
@@ -153,7 +157,6 @@ export function LayersPanel({ ctrl, s }: { ctrl: DeskController; s: DeskState })
         <h2 id="desk-layers" className="desk-caps">
           {bones ? t('draw.parts') : t('draw.layers')}
         </h2>
-        {bones && <span className="side__meta">{t('draw.partsHint')}</span>}
         <div className="side__actions">
           <Menu
             label={t('draw.newLayer')}
@@ -168,6 +171,7 @@ export function LayersPanel({ ctrl, s }: { ctrl: DeskController; s: DeskState })
           {activeLayer && <Menu label={t('draw.layerMenu', { layer: layerName(activeLayer) })} icon="more" size={38} items={menu} />}
         </div>
       </div>
+      {bones && <p className="layers__hint">{t('draw.partsHint')}</p>}
       <ul ref={listRef} className="layers__list" role="listbox" aria-label={bones ? t('draw.parts') : t('draw.layers')} onKeyDown={onKey}>
         {rows.map((r, i) => {
           const on = i === selected;

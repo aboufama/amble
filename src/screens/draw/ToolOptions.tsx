@@ -8,6 +8,7 @@ import type { DeskController, DeskState } from '../../draw/deskController';
 import { luminance } from '../../draw/colorNames';
 import { t } from '../../i18n';
 import { Menu, Segmented, Toggle } from '../../ui/components';
+import { cx } from '../../ui/cx';
 import { Icon } from '../../ui/icons';
 import { partLabel } from './GuideStrip';
 import { toolLabel } from './ToolRail';
@@ -21,7 +22,7 @@ export function hasOptions(tool: DeskState['tool']): boolean {
   return tool !== 'airbrush';
 }
 
-export function ToolOptions({ ctrl, s, heading = true }: { ctrl: DeskController; s: DeskState; heading?: boolean }) {
+export function ToolOptions({ ctrl, s }: { ctrl: DeskController; s: DeskState }) {
   const tool = s.tool;
   const sel = s.selection;
   const body = (() => {
@@ -148,8 +149,7 @@ export function ToolOptions({ ctrl, s, heading = true }: { ctrl: DeskController;
     }
   })();
   return (
-    <section className="opts" aria-label={t('draw.toolOptions', { tool: toolLabel(tool) })}>
-      {heading && <h2 className="desk-caps opts__title">{t('draw.toolOptions', { tool: toolLabel(tool) })}</h2>}
+    <section className={cx('opts', `opts--${tool}`)} aria-label={t('draw.toolOptions', { tool: toolLabel(tool) })}>
       <div className="opts__body">{body}</div>
     </section>
   );

@@ -105,6 +105,16 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
 
   useEffect(() => setDraw({ tool: s?.tool ?? 'ink', mode: s?.mode ?? setup.mode }), [s?.tool, s?.mode, setup.mode]);
 
+  // The Desk's test hook (§10.2), in dev builds only: the open drawing's controller.
+  useEffect(() => {
+    if (!import.meta.env.DEV || !ctrl) return;
+    const w = window as unknown as { __ambleDesk?: DeskController | null };
+    w.__ambleDesk = ctrl;
+    return () => {
+      if (w.__ambleDesk === ctrl) w.__ambleDesk = null;
+    };
+  }, [ctrl]);
+
   // The paper's words: a toast above the view bar; tool and colour changes are announced.
   useDeskEvent(ctrl, (e) => {
     if (e.type === 'toast') setToast(e.text);
@@ -206,7 +216,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
     if (!ctrl || bringing) return;
     const st = ctrl.getSnapshot();
     if (!st.ready) return;
-    if (st.inked === 0) {
+    if (!ctrl.hasInk()) {
       setToast(t('draw.drawFirst'));
       return;
     }
@@ -335,7 +345,7 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
     </>
   );
 
-  const options = ctrl && s && hasOptions(s.tool) ? <ToolOptions ctrl={ctrl} s={s} heading={false} /> : null;
+  const options = ctrl && s && hasOptions(s.tool) ? <ToolOptions ctrl={ctrl} s={s} /> : null;
 
   return (
     <div className={cx('screen desk', prefs.leftHanded && 'desk--left', touch && 'desk--touch', !showStrip && 'desk--nostrip')} data-testid="screen-draw">

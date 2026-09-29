@@ -267,6 +267,11 @@ export class DeskController {
     this.emit({ type: 'pen', down });
   }
 
+  /** Whether any layer has pixels (counted at once, unlike `inked`, which follows a moment later). */
+  hasInk(): boolean {
+    return this.state.ready && this.surface.layers().some((l) => !l.empty);
+  }
+
   /** Whether the pen (finger, mouse) is down on the paper. */
   penDown(): boolean {
     return this.pen;
@@ -329,6 +334,12 @@ export class DeskController {
     );
     s.setColor(this.state.color);
     this.unit = Math.max(this.board.w, this.board.h) / 620;
+    // The brushes' sizes are for a 1024 board: a bigger board gets bigger brushes, a smaller one smaller.
+    const k = Math.max(this.board.w, this.board.h) / 1024;
+    if (!this.board.pixelArt && Math.abs(k - 1) > 0.05) {
+      const brushes = s.toolState().brushes;
+      for (const id of ['ink', 'pencil', 'marker', 'crayon', 'airbrush', 'eraser'] as const) s.setBrush({ size: Math.max(1, Math.round(brushes[id].size * k * 10) / 10) }, id);
+    }
     const layers = s.layers();
     this.set({ ready: true, layers, active: s.activeLayer(), frames: s.frames(), frame: s.activeFrame(), zoom: Math.round(s.view().zoom * 100), drawn: this.drawnParts(layers), inked: s.inked(), canUndo: s.canUndo(), canRedo: s.canRedo() });
     if (this.state.mode === 'free') this.ensureFreehandLayers();
