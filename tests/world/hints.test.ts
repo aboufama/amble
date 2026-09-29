@@ -1,6 +1,8 @@
 /** The controls row's key hints and the request tag's words (§2.6). */
 import { describe, expect, it } from 'vitest';
-import { actionsFromCode, hintActions, keyHints, keyLabel, plural, requestCopy, withArticle } from '../../src/world/hints';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { actionsFromCode, actionWords, hintActions, keyHints, keyLabel, plural, requestCopy, withArticle } from '../../src/world/hints';
 import { FIXTURE_GAME } from '../../src/starters/fixtureGame';
 
 const code = [{ source: FIXTURE_GAME }];
@@ -26,6 +28,18 @@ describe('key hints', () => {
     const runner = [{ source: "this.player = this.spawnHero(160, 400, 'hero').runner({ speed: () => this.dials.speed, jumps: 2 });" }];
     expect(actionsFromCode(runner)).toEqual(['jump']);
     expect(keyHints(hintActions(['jump'], runner), {}).map((h) => h.word)).toEqual(['world.actionJump']);
+  });
+
+  it("uses a game's own word for an action it renames (Wobble Tower's Space drops a crate)", () => {
+    const read = (id: string) => [{ source: readFileSync(join(__dirname, '../../src/starters', id, 'game.js'), 'utf8') }];
+    const tower = read('wobble-tower');
+    expect(actionWords(tower)).toEqual({ jump: 'drop' });
+    expect(keyHints(hintActions(['jump'], tower), {}, actionWords(tower)).map((h) => [h.keys, h.label ?? h.word])).toEqual([['Space', 'drop']]);
+    // Words that are just the action's name change nothing: Moon King still says "shoot" for X.
+    const moon = read('moon-king');
+    expect(actionWords(moon)).toEqual({});
+    expect(keyHints(hintActions(['jump', 'fire'], moon), {}, actionWords(moon)).every((h) => h.label === undefined)).toBe(true);
+    expect(actionWords([{ source: 'static config = { controls: { dash: "Zoom!", left: "GO" } }' }])).toEqual({ dash: 'zoom!' });
   });
 
   it('names picked keys briefly', () => {
