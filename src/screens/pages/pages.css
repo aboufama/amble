@@ -272,6 +272,11 @@
   padding: 0 !important;
 }
 
+/* A card spans the page like its Clear row above (the line-length cap for list items would stop it short). */
+.page .sent {
+  max-width: none;
+}
+
 .sent {
   display: grid;
   gap: 6px;

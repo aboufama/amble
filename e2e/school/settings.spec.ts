@@ -35,6 +35,10 @@ test('a grown-up’s AI address: test, save, and every request in What Amble sen
   const entry = page.getByTestId('sent-entry');
   await expect(entry).toHaveCount(1);
   await expect(entry).toContainText('ai.test');
+  // The entry lines up with the Clear row above it.
+  const clear = (await page.getByRole('button', { name: 'Clear' }).boundingBox())!;
+  const card = (await entry.boundingBox())!;
+  expect(Math.abs(card.x + card.width - (clear.x + clear.width))).toBeLessThanOrEqual(1);
   await page.getByRole('button', { name: 'Clear' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Clear' }).click();
   await expect(entry).toHaveCount(0);
