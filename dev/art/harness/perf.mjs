@@ -45,7 +45,8 @@ async function phase(name, fn) {
   await fn();
   await settle(page);
   const st = await S('stats');
-  out.phases[name] = { latency: st.latency, work: st.work, commit: st.commit, ...(await drain()), ...(st.fills.length ? { fills: st.fills } : {}) };
+  const parts = Object.fromEntries(Object.entries(st.parts).map(([k, v]) => [k, `${v.p50}/${v.p95}`]));
+  out.phases[name] = { latency: st.latency, work: st.work, parts, commit: st.commit, ...(await drain()), ...(st.fills.length ? { fills: st.fills.map((f) => ({ ms: Math.round(f.ms), analyzeMs: Math.round(f.analyzeMs), gap: f.gap, background: f.background })) } : {}) };
   console.log(name, JSON.stringify(out.phases[name]));
 }
 

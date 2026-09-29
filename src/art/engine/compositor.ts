@@ -191,7 +191,7 @@ export class Compositor {
     ctx.save();
     fn(ctx);
     ctx.restore();
-    if (layer !== this.active) this.rebuildCaches(r);
+    if (layer !== this.active) this.rebuildCaches(r, this.cacheOf(layer));
     this.invalidateDoc(r);
   }
 
@@ -227,8 +227,8 @@ export class Compositor {
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  /** Rebuilds the below/above caches (in rect r, or all). */
-  rebuildCaches(r: Rect | null): void {
+  /** Rebuilds the below/above caches (in rect r, or all; `only` one of them when the other is unaffected). */
+  rebuildCaches(r: Rect | null, only: 'below' | 'above' | null = null): void {
     const { W, H } = this.board;
     const S = r ? toPixels(r, W, H) : { x0: 0, y0: 0, x1: W, y1: H };
     if (isEmpty(S)) return;
@@ -236,6 +236,18 @@ export class Compositor {
     const sh = S.y1 - S.y0;
     const layers = this.board.layers;
     const ai = Math.max(0, this.board.layerIndex(this.active));
+    if (only !== 'above') this.rebuildBelow(S, ai);
+    if (only === 'below') return;
+    const a = this.above.ctx;
+    a.clearRect(S.x0, S.y0, sw, sh);
+    this.aboveSimple = layers.slice(ai + 1).every((l) => l.blend === 'normal');
+    if (this.aboveSimple) for (let i = ai + 1; i < layers.length; i++) this.drawLayer(a, layers[i].id, S);
+  }
+
+  private rebuildBelow(S: Rect, ai: number): void {
+    const sw = S.x1 - S.x0;
+    const sh = S.y1 - S.y0;
+    const layers = this.board.layers;
     const b = this.below.ctx;
     b.globalAlpha = 1;
     b.globalCompositeOperation = 'source-over';
@@ -244,16 +256,17 @@ export class Compositor {
     if (this.onionOn && this.onion) b.drawImage(this.onion.canvas, S.x0, S.y0, sw, sh, S.x0, S.y0, sw, sh);
     if (this.guideLayer && !this.guide?.onTop) b.drawImage(this.guideLayer.canvas, S.x0, S.y0, sw, sh, S.x0, S.y0, sw, sh);
     for (let i = 0; i < ai; i++) this.drawLayer(b, layers[i].id, S);
-    const a = this.above.ctx;
-    a.clearRect(S.x0, S.y0, sw, sh);
-    this.aboveSimple = layers.slice(ai + 1).every((l) => l.blend === 'normal');
-    if (this.aboveSimple) for (let i = ai + 1; i < layers.length; i++) this.drawLayer(a, layers[i].id, S);
+  }
+
+  /** Which cache a non-active layer lives in. */
+  cacheOf(layer: string): 'below' | 'above' {
+    return this.board.layerIndex(layer) < this.board.layerIndex(this.active) ? 'below' : 'above';
   }
 
   /** A non-active layer changed in r: refresh its canvas and the cache it lives in. */
   layerChanged(layer: string, r: Rect): void {
     this.upload(layer, r);
-    if (layer !== this.active) this.rebuildCaches(r);
+    if (layer !== this.active) this.rebuildCaches(r, this.cacheOf(layer));
     this.invalidateDoc(r);
   }
 

@@ -146,6 +146,8 @@ export interface PerfStats {
   work: { n: number; p50: number; p95: number; max: number };
   /** Pen-up commit, ms. */
   commit: { n: number; p50: number; p95: number; max: number };
+  /** Work per render split: stroke rasterizing, blending the preview, uploading it, compositing the view. */
+  parts: Record<'raster' | 'blend' | 'upload' | 'composite', { n: number; p50: number; p95: number; max: number }>;
   fills: Array<{ ms: number; analyzeMs: number; gap: number; background: boolean; split: boolean; area: number; mode: string }>;
   history: { steps: number; bytes: number };
   /** Resident layer pixels, bytes. */

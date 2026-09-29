@@ -102,7 +102,16 @@ class Surface implements ArtSurface {
   private resizeObs: ResizeObserver | null = null;
   private destroyed = false;
   private readonly reducedMotion: boolean;
-  private readonly st = { latency: new Rolling(), work: new Rolling(), commit: new Rolling(), fills: [] as PerfStats['fills'] };
+  private readonly st = {
+    latency: new Rolling(),
+    work: new Rolling(),
+    commit: new Rolling(),
+    raster: new Rolling(),
+    blend: new Rolling(),
+    upload: new Rolling(),
+    composite: new Rolling(),
+    fills: [] as PerfStats['fills'],
+  };
   private layerSig = '';
 
   constructor(host: HTMLElement, doc: ArtDoc | null, o: ArtSurfaceOptions) {
@@ -455,10 +464,14 @@ class Surface implements ArtSurface {
     const t0 = performance.now();
     if (this.stroke) {
       const st = this.stroke;
-      this.showStroke(st.session, st.session.update());
+      const r = st.session.update();
+      this.st.raster.push(performance.now() - t0);
+      this.showStroke(st.session, r);
     } else if (this.sel.active) this.sel.render();
+    const t1 = performance.now();
     this.comp.flush();
     const now = performance.now();
+    this.st.composite.push(now - t1);
     this.st.work.push(now - t0);
     for (const t of this.input.pendingStamps) this.st.latency.push(now - t);
     this.input.pendingStamps.length = 0;
@@ -467,8 +480,12 @@ class Surface implements ArtSurface {
   /** Shows the layer with the live stroke in rect r (the preview is exactly what commit will write). */
   private showStroke(session: StrokeSession, r: Rect): void {
     if (isEmpty(r)) return;
+    const t0 = performance.now();
     session.preview(this.previewBuf, r);
+    const t1 = performance.now();
     this.comp.showPreview(session.spec.layer, this.previewImg, r);
+    this.st.blend.push(t1 - t0);
+    this.st.upload.push(performance.now() - t1);
     this.comp.invalidateDoc(r);
   }
 
@@ -1452,6 +1469,7 @@ class Surface implements ArtSurface {
       latency: this.st.latency.summary(),
       work: this.st.work.summary(),
       commit: this.st.commit.summary(),
+      parts: { raster: this.st.raster.summary(), blend: this.st.blend.summary(), upload: this.st.upload.summary(), composite: this.st.composite.summary() },
       fills: this.st.fills.slice(),
       history: { steps: this.hist.undoStack.length, bytes: this.hist.bytes },
       pixels: this.board.residentBytes(),
@@ -1464,9 +1482,7 @@ class Surface implements ArtSurface {
 
   /** Clears the perf samples (tests measure one scenario at a time). */
   resetStats(): void {
-    this.st.latency.clear();
-    this.st.work.clear();
-    this.st.commit.clear();
+    for (const r of [this.st.latency, this.st.work, this.st.commit, this.st.raster, this.st.blend, this.st.upload, this.st.composite]) r.clear();
     this.st.fills = [];
   }
 
