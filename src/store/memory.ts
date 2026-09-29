@@ -5,7 +5,10 @@
 import { blobRefOf } from '../model/ids';
 import { KEEP } from '../model/limits';
 import type { AiLogEntry, ArtId, ArtRecord, BlobRef, DeskDraft, SettingsKey, SettingsMap, StepId, StepSnapshot, World, WorldId, WorldMeta } from '../model/types';
-import type { Commit, Store, StoreChange } from './api';
+import type { Commit, GcReport, Store, StoreChange, StoreHealth, StoreUpkeep } from './api';
+import { BlobUrls } from './blobs';
+import { draftInfo } from './drafts';
+import { GC_GRACE_MS, markArt, markDeep, markDraft, markMeta, markSet, markStep, markWorld } from './gc';
 import { deriveMeta, sortMetas } from './meta';
 
 function clone<T>(v: T): T {
@@ -16,12 +19,12 @@ function clone<T>(v: T): T {
   }
 }
 
-export class MemoryStore implements Store {
+export class MemoryStore implements Store, StoreUpkeep {
   readonly mode = 'memory' as const;
   private readonly metaMap = new Map<WorldId, WorldMeta>();
   private readonly worldMap = new Map<WorldId, World>();
   private readonly artMap = new Map<ArtId, ArtRecord>();
-  private readonly blobMap = new Map<BlobRef, Blob>();
+  private readonly blobMap = new Map<BlobRef, { blob: Blob; at: number }>();
   private readonly stepMap = new Map<StepId, StepSnapshot>();
   private readonly draftMap = new Map<ArtId, DeskDraft>();
   private readonly strokeMap = new Map<ArtId, Uint8Array[]>();
@@ -29,14 +32,21 @@ export class MemoryStore implements Store {
   private readonly settingsMap = new Map<SettingsKey, unknown>();
   private readonly handleMap = new Map<WorldId, FileSystemFileHandle>();
   private log: AiLogEntry[] = [];
-  private readonly urls = new Map<BlobRef, string>();
+  private readonly urls = new BlobUrls();
   private readonly listeners = new Set<(e: StoreChange) => void>();
+  private readonly healthListeners = new Set<(h: StoreHealth, err: unknown) => void>();
 
   /** Reported to Settings → Storage (the whole store lives in this tab). */
   constructor(private readonly quota = 0) {}
 
   private emit(e: StoreChange): void {
-    for (const fn of this.listeners) fn(e);
+    for (const fn of this.listeners) {
+      try {
+        fn(e);
+      } catch (err) {
+        console.error(err);
+      }
+    }
   }
 
   private setPutAway(id: WorldId, at: number | null): Promise<void> {
@@ -45,6 +55,8 @@ export class MemoryStore implements Store {
     this.emit({ worlds: [id] });
     return Promise.resolve();
   }
+
+  private getBlob = async (r: BlobRef): Promise<Blob | null> => this.blobMap.get(r)?.blob ?? null;
 
   worlds: Store['worlds'] = {
     list: async () => sortMetas([...this.metaMap.values()].map(clone)),
@@ -72,19 +84,11 @@ export class MemoryStore implements Store {
   blobs: Store['blobs'] = {
     put: async (b) => {
       const ref = await blobRefOf(b);
-      if (!this.blobMap.has(ref)) this.blobMap.set(ref, b);
+      if (!this.blobMap.has(ref)) this.blobMap.set(ref, { blob: b, at: Date.now() });
       return ref;
     },
-    get: async (r) => this.blobMap.get(r) ?? null,
-    url: async (r) => {
-      const known = this.urls.get(r);
-      if (known) return known;
-      const blob = this.blobMap.get(r);
-      if (!blob) throw new Error(`Missing picture ${r}`);
-      const url = URL.createObjectURL(blob);
-      this.urls.set(r, url);
-      return url;
-    },
+    get: this.getBlob,
+    url: (r) => this.urls.url(r, this.getBlob),
   };
 
   steps: Store['steps'] = {
@@ -100,6 +104,7 @@ export class MemoryStore implements Store {
     clear: async (artId) => {
       this.draftMap.delete(artId);
     },
+    list: async () => [...this.draftMap.values()].map(draftInfo).sort((a, b) => b.at - a.at),
   };
 
   strokes: Store['strokes'] = {
@@ -136,6 +141,10 @@ export class MemoryStore implements Store {
     put: async (worldId, h) => {
       this.handleMap.set(worldId, h);
     },
+    remove: async (worldId) => {
+      this.handleMap.delete(worldId);
+    },
+    all: async () => [...this.handleMap].map(([worldId, handle]) => ({ worldId, handle })),
   };
 
   ailog: Store['ailog'] = {
@@ -157,10 +166,12 @@ export class MemoryStore implements Store {
     const blobs = await Promise.all((c.blobs ?? []).map(async (blob) => [await blobRefOf(blob), blob] as const));
     const art = new Map((c.art ?? []).map((a) => [a.id, clone(a)]));
     const worlds = (c.worlds ?? []).map(clone);
+    const steps = (c.steps ?? []).map(clone);
     const metas = worlds.map((w) => deriveMeta(w, this.metaMap.get(w.id) ?? null, { snapshot: c.snapshots?.[w.id], art: (id) => art.get(id) ?? this.artMap.get(id) }));
-    for (const [ref, blob] of blobs) if (!this.blobMap.has(ref)) this.blobMap.set(ref, blob);
+    const now = Date.now();
+    for (const [ref, blob] of blobs) if (!this.blobMap.has(ref)) this.blobMap.set(ref, { blob, at: now });
     for (const a of art.values()) this.artMap.set(a.id, a);
-    for (const s of c.steps ?? []) this.stepMap.set(s.id, clone(s));
+    for (const s of steps) this.stepMap.set(s.id, s);
     worlds.forEach((w, i) => {
       this.worldMap.set(w.id, w);
       this.metaMap.set(w.id, metas[i]);
@@ -175,9 +186,55 @@ export class MemoryStore implements Store {
     if (changed.length || art.size) this.emit({ ...(changed.length ? { worlds: changed } : {}), ...(art.size ? { art: [...art.keys()] } : {}) });
   }
 
+  async collectGarbage(o: { now?: number; graceMs?: number } = {}): Promise<GcReport> {
+    const now = o.now ?? Date.now();
+    const grace = o.graceMs ?? GC_GRACE_MS;
+    const { refs, mark } = markSet();
+    for (const m of this.metaMap.values()) markMeta(m, mark);
+    for (const w of this.worldMap.values()) markWorld(w, mark);
+    for (const a of this.artMap.values()) markArt(a, mark);
+    for (const s of this.stepMap.values()) markStep(s, mark);
+    for (const d of this.draftMap.values()) markDraft(d, mark);
+    for (const v of this.cacheMap.values()) markDeep(v, mark);
+    let kept = 0;
+    let removed = 0;
+    let bytes = 0;
+    for (const [ref, rec] of this.blobMap) {
+      if (refs.has(ref) || !(rec.at <= now - grace)) kept++;
+      else {
+        removed++;
+        bytes += rec.blob.size;
+        this.blobMap.delete(ref);
+      }
+    }
+    return { kept, removed, bytes };
+  }
+
+  async blobBytes(refs: Iterable<BlobRef>): Promise<number> {
+    let total = 0;
+    for (const r of new Set(refs)) total += this.blobMap.get(r)?.blob.size ?? 0;
+    return total;
+  }
+
+  async wipe(): Promise<void> {
+    for (const m of [this.metaMap, this.worldMap, this.artMap, this.blobMap, this.stepMap, this.draftMap, this.strokeMap, this.cacheMap, this.settingsMap, this.handleMap]) m.clear();
+    this.log = [];
+    this.urls.revokeAll();
+    this.emit({ worlds: [], art: [] });
+  }
+
+  health(): StoreHealth {
+    return 'ok';
+  }
+
+  onHealth(fn: (h: StoreHealth, err: unknown) => void): () => void {
+    this.healthListeners.add(fn);
+    return () => this.healthListeners.delete(fn);
+  }
+
   async estimate(): Promise<{ usage: number; quota: number; persisted: boolean }> {
     let usage = 0;
-    for (const b of this.blobMap.values()) usage += b.size;
+    for (const b of this.blobMap.values()) usage += b.blob.size;
     return { usage, quota: this.quota, persisted: false };
   }
 
