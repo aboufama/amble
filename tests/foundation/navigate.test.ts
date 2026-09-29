@@ -41,11 +41,17 @@ function slowBrowser(): Seen {
     startViewTransition(update: () => unknown) {
       seen.started++;
       seen.update = update;
+      let reject: (e: Error) => void = () => undefined;
+      const ready = new Promise<void>((_resolve, no) => {
+        reject = no;
+      });
       return {
         finished: new Promise(() => undefined),
-        ready: new Promise(() => undefined),
+        ready,
+        // As in a browser: a transition skipped before its picture is taken rejects `ready`.
         skipTransition: () => {
           seen.skipped++;
+          reject(new DOMException('Transition was skipped. skipTransition() called', 'AbortError'));
         },
       };
     },

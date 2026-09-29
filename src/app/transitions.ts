@@ -122,6 +122,8 @@ export function withViewTransition(update: () => void): void {
       return names.length ? screenLoaded(PARTNER_WAIT_MS) : undefined;
     });
     transition.finished.then(done, done);
+    // A skipped transition (below, or by a newer one) rejects `ready`: the screen still changes.
+    transition.ready.catch(() => undefined);
     // The picture of the old screen is late (a busy frame): skip the animation and change now.
     setTimeout(() => {
       if (ran) return;
