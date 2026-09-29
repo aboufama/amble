@@ -23,6 +23,7 @@
   --accent-border: transparent;
   --on-accent: #221b2e;
   --alive: #86f3cb;
+  --on-alive: #221b2e; /* words and marks on an --alive fill (Day turns --alive dark, so this turns light) */
   --ai: #9cc3ff;
   --warn: #ff7a8e;
   --change: #c79bff;

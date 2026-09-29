@@ -378,20 +378,20 @@
 }
 
 .strip__step--done .strip__num {
-  color: var(--on-accent);
+  color: var(--on-alive);
   background: var(--alive);
 }
 
 .strip__step--on {
-  --focus-ring: var(--ink);
-  color: var(--ink);
+  --focus-ring: var(--on-alive);
+  color: var(--on-alive);
   background: var(--alive);
   box-shadow: 0 0 16px color-mix(in srgb, var(--alive) 45%, transparent);
 }
 
 .strip__step--on .strip__num {
   color: var(--alive);
-  background: var(--ink);
+  background: var(--on-alive);
 }
 
 .strip__end {
@@ -1255,7 +1255,7 @@ body:has(.screen.desk) .toast-region {
 }
 
 .flip__onion--on {
-  color: var(--on-accent);
+  color: var(--on-alive);
   background: var(--alive);
 }
 
@@ -1374,7 +1374,7 @@ body:has(.screen.desk) .toast-region {
   border: 0;
   border-radius: 10px;
   font: 700 0.8125rem/1 var(--font-ui);
-  color: var(--on-accent);
+  color: var(--on-alive);
   background: var(--alive);
   cursor: pointer;
 }

@@ -76,6 +76,7 @@ const PAIRS: Array<[string, string[], number]> = [
   ['--text', [...SURFACES, '--bg-deep'], 4.5],
   ['--text-2', SURFACES, 4.5],
   ['--on-accent', ['--accent'], 4.5],
+  ['--on-alive', ['--alive'], 4.5],
   ['--ai', ['--bg', '--surface-top', '--surface-bottom', '--surface-raised'], 4.5],
   ['--warn', ['--bg', '--surface-top', '--surface-bottom', '--well'], 4.5],
   ['--alive', ['--bg', '--surface-top', '--surface-bottom', '--surface-raised'], 4.5],

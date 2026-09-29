@@ -23,6 +23,7 @@ export interface ThemeColors {
   accentBorder: string | null;
   onAccent: string;
   alive: string;
+  onAlive: string;
   ai: string;
   warn: string;
   change: string;
@@ -47,6 +48,7 @@ export const THEMES: Record<ThemeName, ThemeColors> = {
     accentBorder: null,
     onAccent: '#221b2e',
     alive: '#86f3cb',
+    onAlive: '#221b2e',
     ai: '#9cc3ff',
     warn: '#ff7a8e',
     change: '#c79bff',
@@ -69,6 +71,7 @@ export const THEMES: Record<ThemeName, ThemeColors> = {
     accentBorder: '#8a6a00',
     onAccent: '#221b2e',
     alive: '#17744a',
+    onAlive: '#ffffff',
     ai: '#2c5fb8',
     warn: '#b3263e',
     change: '#6f3fc0',
@@ -91,6 +94,7 @@ export const THEMES: Record<ThemeName, ThemeColors> = {
     accentBorder: '#ffffff',
     onAccent: '#000000',
     alive: '#86f3cb',
+    onAlive: '#000000',
     ai: '#9cc3ff',
     warn: '#ff7a8e',
     change: '#c79bff',
