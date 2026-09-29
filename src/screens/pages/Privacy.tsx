@@ -10,14 +10,22 @@ import { useStore } from '../../state/store';
 import { hostOf } from '../../school/testConnection';
 import { PageShell, pagesMeta } from './PageShell';
 import { Prose } from './Prose';
+import { SentList } from './SentList';
 
 const REPO = 'https://github.com/aboufama/amble';
+/** GitHub's private vulnerability reporting for the repository. */
+export const SECURITY_REPORT_URL = `${REPO}/security/advisories/new`;
 
-const INVENTORY: Array<[MessageKey, MessageKey, MessageKey, MessageKey]> = [
-  ['school.privInvWorlds', 'school.privWhereDevice', 'school.privKeepUntilDeleted', 'school.privLeavesWorlds'],
+/** Everything Amble keeps: what, where, how long, and whether it leaves the Chromebook. */
+export const INVENTORY: Array<[MessageKey, MessageKey, MessageKey, MessageKey]> = [
+  ['school.privInvWorlds', 'school.privWhereDevice', 'school.privKeepWorlds', 'school.privLeavesWorlds'],
+  ['school.privInvDrafts', 'school.privWhereDevice', 'school.privKeepDrafts', 'school.privLeavesNever'],
   ['school.privInvStrokes', 'school.privWhereDevice', 'school.privKeepWithDrawing', 'school.privLeavesNever'],
   ['school.privInvFiles', 'school.privWhereFiles', 'school.privKeepSchool', 'school.privLeavesStudent'],
-  ['school.privInvSettings', 'school.privWhereSettings', 'school.privKeepSettings', 'school.privLeavesCode'],
+  ['school.privInvSettings', 'school.privWhereSettings', 'school.privKeepEverything', 'school.privLeavesNever'],
+  ['school.privInvClass', 'school.privWhereSettings', 'school.privKeepSettings', 'school.privLeavesCode'],
+  ['school.privInvHomeAi', 'school.privWhereKey', 'school.privKeepHomeAi', 'school.privLeavesKey'],
+  ['school.privInvSafetyId', 'school.privWhereLocal','school.privKeepEverything', 'school.privLeavesSafetyId'],
   ['school.privInvLog', 'school.privWhereDevice', 'school.privKeepLog', 'school.privLeavesNever'],
   ['school.privInvTeacher', 'school.privWhereTeacher', 'school.privKeepUntilDeleted', 'school.privLeavesTeacher'],
   ['school.privInvCache', 'school.privWhereCache', 'school.privKeepCache', 'school.privLeavesNever'],
@@ -56,6 +64,12 @@ export function Privacy() {
         {t('school.privContact')}{' '}
         <a href={`${REPO}/issues`} rel="noreferrer" target="_blank">
           github.com/aboufama/amble/issues
+        </a>
+      </p>
+      <p>
+        {t('school.privProblem')}{' '}
+        <a href={SECURITY_REPORT_URL} rel="noreferrer" target="_blank">
+          {t('school.securityReport')}
         </a>
       </p>
 
@@ -125,7 +139,9 @@ export function Privacy() {
       <Prose text={t('school.page_privacyNever')} />
 
       <h3 className="page__h">{t('school.privAiTitle')}</h3>
-      <Prose text={t('school.page_privacyAi')} />
+      <Prose text={t('school.page_privacyAiIntro')} />
+      <SentList />
+      <Prose text={t('school.page_privacyAiRest')} />
       <p>{ai?.requestsMayBeReviewed ? t('school.privAiReviewed') : t('school.privAiAskSchool')}</p>
       <p className="page__links">
         <Link to={{ name: 'page', page: 'sent' }}>{t('common.routeSent')}</Link>
@@ -144,6 +160,9 @@ export function Privacy() {
       <h3 className="page__h">{t('school.privSecurityTitle')}</h3>
       <Prose text={t('school.page_privacySecurity')} />
       <p className="page__links">
+        <a href={SECURITY_REPORT_URL} rel="noreferrer" target="_blank">
+          {t('school.securityReport')}
+        </a>
         <Link to={{ name: 'page', page: 'it' }}>{t('common.routeIt')}</Link>
         <a href={REPO} rel="noreferrer" target="_blank">
           github.com/aboufama/amble

@@ -70,7 +70,7 @@ test('Help & letters opens every page, and Present hides names', async ({ page }
   const help = page.getByTestId('teacher-help');
   await help.getByRole('link', { name: /Letter for families/ }).click();
   await expect(page.locator('[data-page="parents"]')).toBeVisible();
-  await expect(page.locator('[data-page="parents"]')).toContainText('Every picture in your child');
+  await expect(page.locator('[data-page="parents"]')).toContainText('Amble never makes art for your child.');
   await page.goBack();
   await expect(help).toBeVisible();
   await help.getByText("Can Amble see my students' work?").click();
