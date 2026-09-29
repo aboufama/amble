@@ -1,6 +1,9 @@
-/** The frozen-game watchdog: a truly frozen game is stopped; a slow machine, a robot test or a stale spare is not. */
+/**
+ * The player's watchdogs: a truly frozen game is stopped; a slow machine, a robot test or a stale spare is
+ * not. The robot test's run is judged by its progress, not by a flat wall-clock limit.
+ */
 import { describe, expect, it } from 'vitest';
-import { FrozenWatch } from '../../src/play/watchdog';
+import { FrozenWatch, RobotWatch } from '../../src/play/watchdog';
 
 const LIMIT = 10_000;
 const TICK = 1000;
@@ -90,5 +93,52 @@ describe('the frozen-game watchdog', () => {
     const boot = (t: number) => (t < 15_000 ? Math.min(t, 1000) : heartbeat(15_000)(t));
     expect(run(watch, 0, 40_000, boot, (t) => t < 15_000)).toBeNull();
     expect(watch.limit(false)).toBe(LIMIT);
+  });
+});
+
+describe("the robot test's watchdog", () => {
+  const LIMITS = { startMs: 20_000, stallMs: 4000, ceilingMs: 60_000 };
+
+  it('lets a slow but healthy run take its time (frames keep finishing)', () => {
+    const watch = new RobotWatch(0, LIMITS);
+    // 6 s of game (360 frames) at a tenth of real time: 36 s, reported every 500 ms.
+    for (let t = 1000; t <= 37_000; t += 500) {
+      watch.progress(Math.min(360, Math.floor(((t - 1000) / 36_000) * 360)), t);
+      expect(watch.check(t), `at ${t} ms`).toBeNull();
+    }
+    expect(watch.played(37_000)).toEqual({ frames: 360, wallMs: 36_000 });
+  });
+
+  it('stops a run within seconds once its frames stop finishing (a loop that never ends)', () => {
+    const watch = new RobotWatch(0, LIMITS);
+    watch.progress(0, 800);
+    watch.progress(30, 1300);
+    // The game's update never returns: no report ever comes again.
+    expect(watch.check(5200)).toBeNull();
+    expect(watch.check(5300)).toBe('stall');
+    expect(watch.played(5300)).toEqual({ frames: 30, wallMs: 4500 });
+  });
+
+  it('counts only frames that finish: repeated reports of the same frame are no progress', () => {
+    const watch = new RobotWatch(0, LIMITS);
+    watch.progress(10, 500);
+    for (let t = 1000; t <= 4000; t += 500) watch.progress(10, t);
+    expect(watch.check(4500)).toBe('stall');
+  });
+
+  it('gives the game time to start playing, then stops one that never does', () => {
+    const watch = new RobotWatch(0, LIMITS);
+    expect(watch.check(19_000)).toBeNull();
+    expect(watch.check(20_000)).toBe('start');
+    expect(watch.played(20_000)).toEqual({ frames: 0, wallMs: 20_000 });
+  });
+
+  it('ends a run that is still going at the ceiling', () => {
+    const watch = new RobotWatch(0, LIMITS);
+    for (let t = 500; t < 60_000; t += 500) {
+      watch.progress(t / 500, t);
+      expect(watch.check(t)).toBeNull();
+    }
+    expect(watch.check(60_000)).toBe('ceiling');
   });
 });

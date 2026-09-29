@@ -81,3 +81,65 @@ export class FrozenWatch {
     return now - Math.max(lastMessageAt, this.since) >= this.limit(loading);
   }
 }
+
+/**
+ * The robot test's watchdog, judged by progress rather than a flat wall-clock limit: a slow machine plays
+ * the 6 s of game time slowly, and that is fine as long as frames keep finishing. The runtime reports the
+ * frames it has stepped when the run starts and then twice a second (mid-frame-batch too), so:
+ * - `start`: the run has not begun this long after the game booted (its `create()` never ended);
+ * - `stall`: no frame has finished for `stallMs` (a loop that never ends, even unguarded);
+ * - `ceiling`: the run is still going after `ceilingMs` in all (generous: only a hopelessly slow game).
+ */
+export interface RobotLimits {
+  startMs: number;
+  stallMs: number;
+  ceilingMs: number;
+}
+
+export const ROBOT_LIMITS: RobotLimits = { startMs: 20_000, stallMs: 4000, ceilingMs: 60_000 };
+
+export type RobotStop = 'start' | 'stall' | 'ceiling';
+
+export class RobotWatch {
+  /** Frames at the first report, the newest frame count, and when it last grew. */
+  private startFrames = -1;
+  private frames = -1;
+  private firstAt = -1;
+  private lastAt: number;
+
+  constructor(
+    /** When the game booted (the watch starts then). */
+    private readonly bootedAt: number,
+    private readonly limits: RobotLimits = ROBOT_LIMITS,
+  ) {
+    this.lastAt = bootedAt;
+  }
+
+  /** A progress report: the frames the game has stepped so far. */
+  progress(frames: number, now: number): void {
+    if (this.firstAt < 0) {
+      this.firstAt = now;
+      this.startFrames = frames;
+      this.frames = frames;
+      this.lastAt = now;
+      return;
+    }
+    if (frames > this.frames) {
+      this.frames = frames;
+      this.lastAt = now;
+    }
+  }
+
+  /** Frames the robot stepped since its run began, and the wall time that took (for an honest speed). */
+  played(now: number): { frames: number; wallMs: number } {
+    if (this.firstAt < 0) return { frames: 0, wallMs: Math.max(0, now - this.bootedAt) };
+    return { frames: Math.max(0, this.frames - this.startFrames), wallMs: Math.max(0, now - this.firstAt) };
+  }
+
+  /** Why the run should stop now, or null while it is healthy. */
+  check(now: number): RobotStop | null {
+    if (now - this.bootedAt >= this.limits.ceilingMs) return 'ceiling';
+    if (this.firstAt < 0) return now - this.bootedAt >= this.limits.startMs ? 'start' : null;
+    return now - this.lastAt >= this.limits.stallMs ? 'stall' : null;
+  }
+}

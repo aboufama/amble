@@ -37,7 +37,15 @@ export interface RobotContext {
   recorder: RobotRecorder;
   stats(): RuntimeStats;
   state(): GameState;
+  /**
+   * Told the stats (with the frames stepped so far) when the run starts and then at most every
+   * `PROGRESS_MS` of wall time, mid-batch too: the editor's watchdog judges the run by its progress.
+   */
+  progress?(stats: RuntimeStats): void;
 }
+
+/** How often the run reports its progress (wall time). */
+const PROGRESS_MS = 500;
 
 function yieldTask(): Promise<void> {
   return new Promise((resolve) => {
@@ -116,6 +124,14 @@ export async function runRobot(ctx: RobotContext): Promise<RobotRaw> {
   let heroControlled = false;
   const sampleAt = Math.min(30, Math.max(1, Math.floor(options.gameMs / FRAME_MS / 4)));
   const total = Math.max(1, Math.round(options.gameMs / FRAME_MS));
+  let reportedAt = performance.now();
+  ctx.progress?.(ctx.stats());
+  const report = (): void => {
+    const now = performance.now();
+    if (!ctx.progress || now - reportedAt < PROGRESS_MS) return;
+    reportedAt = now;
+    ctx.progress(ctx.stats());
+  };
 
   const stepOne = (render: boolean): void => {
     t += FRAME_MS;
@@ -158,6 +174,7 @@ export async function runRobot(ctx: RobotContext): Promise<RobotRaw> {
       } catch (err) {
         ctx.errors.report(err, 'frame');
       }
+      report();
     }
     await yieldTask();
   }

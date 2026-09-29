@@ -21,8 +21,11 @@ export interface RobotOutcome {
 /** The runtime's loop guard (src/runtime/kit: `Amble.__loop`). */
 export const LOOP_GUARD = 'Amble.__loop()';
 export const ROBOT_GAME_MS = 6000;
-/** A robot run that takes longer than this in wall time is abandoned (the player core stops at 10 s). */
-const WALL_LIMIT_MS = 45_000;
+/**
+ * A last resort when the player never answers: the player core itself ends a run that has not booted in
+ * 20 s, whose frames stop finishing, or that is still going 60 s after booting.
+ */
+const WALL_LIMIT_MS = 90_000;
 
 export function instrumentFiles(init: InitMessage): InitMessage {
   return { ...init, files: init.files.map((f) => ({ name: f.name, source: instrument(f.source, { guard: LOOP_GUARD }).code })) };

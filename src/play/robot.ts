@@ -8,6 +8,7 @@ import { PlayerFrame } from './frame';
 import { DEFAULT_PREFS, type FromPlayer, type InitMessage, type PlayerError, type PlayerPrefs } from './protocol';
 import { judgeRobot, ROBOT_THRESHOLDS, type RobotReport, type RobotThresholds } from './robotJudge';
 import type { GameBundle } from './player';
+import { ROBOT_LIMITS, RobotWatch, type RobotLimits, type RobotStop } from './watchdog';
 
 export interface RobotTestOptions {
   runtimeUrl: string;
@@ -18,8 +19,13 @@ export interface RobotTestOptions {
   seed?: number;
   /** 'auto' (default) drives the hero; 'none' only watches. */
   bot?: 'auto' | 'none';
-  /** Wall-clock limit after the game booted; past it the game counts as frozen (default 10 s). */
+  /**
+   * Wall-clock ceiling after the game booted (default 60 s). Below it the run is judged by its progress: it
+   * counts as frozen only when no frame finishes for a few seconds (see `RobotWatch`), never for being slow.
+   */
   timeoutMs?: number;
+  /** The progress watchdog's other limits (tests): see `ROBOT_LIMITS`. */
+  limits?: Partial<Omit<RobotLimits, 'ceilingMs'>>;
   thresholds?: RobotThresholds;
   /** Where the hidden iframe lives (default: a hidden box on document.body). */
   host?: HTMLElement;
@@ -37,15 +43,26 @@ function hiddenHost(): HTMLElement {
   return el;
 }
 
-function frozenReport(message: string, expectedFrames: number, gameMs: number, thresholds: RobotThresholds, earlier: PlayerError[] = []): RobotReport {
+const FRAME_MS = 1000 / 60;
+
+/** A run the host stopped: what it had played so far (frames and wall time, so the speed is honest). */
+interface Played {
+  frames: number;
+  wallMs: number;
+}
+
+function frozenReport(message: string, expectedFrames: number, played: Played, thresholds: RobotThresholds, earlier: PlayerError[] = []): RobotReport {
   const error: PlayerError = { phase: 'frozen', message, count: 1, fatal: true };
   const empty = {
     fps: 0, frameMs: 0, frames: 0, objects: 0, particles: 0, arcadeBodies: 0, matterBodies: 0, shots: 0, tweens: 0, drawCalls: 0,
     textureMB: 0, heapMB: null, quality: 1 as const, timeScale: 1, state: 'crashed' as const, audio: 'none' as const, errors: 1,
   };
+  const gameMs = Math.round(played.frames * FRAME_MS);
+  const wallMs = Math.round(played.wallMs);
   return judgeRobot(
     {
-      gameMs, frames: 0, wallMs: 0, speed: 0, errors: [...earlier, error], warnings: [], events: [], artMissing: [], state: 'crashed',
+      gameMs, frames: played.frames, wallMs, speed: wallMs > 0 ? Math.round((gameMs / wallMs) * 100) / 100 : 0,
+      errors: [...earlier, error], warnings: [], events: [], artMissing: [], state: 'crashed',
       hero: { found: false, controlled: false, moved: 0, alive: false }, movers: 0, frameDiff: 0, lumaVariance: 0,
       start: empty, end: empty, peakObjects: 0, peakMatterBodies: 0,
     },
@@ -80,34 +97,45 @@ export function runRobotTest(options: RobotTestOptions): Promise<RobotReport> {
     robot: { gameMs, seed, bot: options.bot ?? 'auto' },
   };
 
+  const limits: RobotLimits = { ...ROBOT_LIMITS, ...options.limits, ceilingMs: options.timeoutMs ?? ROBOT_LIMITS.ceilingMs };
+  const why = (stop: RobotStop): string => {
+    const secs = (ms: number) => Math.round(ms / 1000);
+    if (stop === 'start') return 'The game froze before it started playing (a loop that never ends in create()?).';
+    if (stop === 'stall') return `The game froze: no frame finished for ${secs(limits.stallMs)} seconds (a loop that never ends?).`;
+    return `The game froze: ${secs(gameMs)} seconds of play took longer than ${secs(limits.ceilingMs)} seconds.`;
+  };
+
   return new Promise<RobotReport>((resolve) => {
     let bootTimer = 0;
-    let runTimer = 0;
+    let watchTimer = 0;
+    let watch: RobotWatch | null = null;
     const earlyErrors: PlayerError[] = [];
+    const played = (): Played => (watch ? watch.played(performance.now()) : { frames: 0, wallMs: 0 });
     const finish = (report: RobotReport): void => {
       window.clearTimeout(bootTimer);
-      window.clearTimeout(runTimer);
+      window.clearInterval(watchTimer);
       frame.destroy();
       ownHost?.remove();
       resolve(report);
     };
-    const armRunTimer = (): void => {
-      window.clearTimeout(runTimer);
-      runTimer = window.setTimeout(
-        () => {
-          const limit = Math.round((options.timeoutMs ?? 10_000) / 1000);
-          const message = `The game froze: ${Math.round(gameMs / 1000)} seconds of play took longer than ${limit} seconds.`;
-          finish(frozenReport(message, expectedFrames, gameMs, thresholds, earlyErrors));
-        },
-        options.timeoutMs ?? 10_000,
-      );
+    // After the boot the run is judged by its progress (the runtime reports the frames it has stepped), so a
+    // slow machine may take its time; a run whose frames stop finishing is frozen.
+    const startWatch = (): void => {
+      watch = new RobotWatch(performance.now(), limits);
+      window.clearInterval(watchTimer);
+      watchTimer = window.setInterval(() => {
+        const stop = watch?.check(performance.now());
+        if (stop) finish(frozenReport(why(stop), expectedFrames, played(), thresholds, earlyErrors));
+      }, 250);
     };
-    bootTimer = window.setTimeout(() => finish(frozenReport('The game did not start.', expectedFrames, gameMs, thresholds, earlyErrors)), BOOT_LIMIT_MS);
+    bootTimer = window.setTimeout(() => finish(frozenReport('The game did not start.', expectedFrames, played(), thresholds, earlyErrors)), BOOT_LIMIT_MS);
     frame.setEvents({
       message: (msg: FromPlayer) => {
         if (msg.type === 'booted') {
           window.clearTimeout(bootTimer);
-          armRunTimer();
+          startWatch();
+        } else if (msg.type === 'stats') {
+          watch?.progress(msg.stats.frames, performance.now());
         } else if (msg.type === 'error' && earlyErrors.length < 20) {
           earlyErrors.push(msg.error);
         } else if (msg.type === 'robotResult') {
@@ -116,8 +144,8 @@ export function runRobotTest(options: RobotTestOptions): Promise<RobotReport> {
           finish(judgeRobot(raw, expectedFrames, thresholds));
         }
       },
-      failed: (message) => finish(frozenReport(message, expectedFrames, gameMs, thresholds, earlyErrors)),
-      navigated: () => finish(frozenReport("The game tried to open a web page. Games can't do that.", expectedFrames, gameMs, thresholds)),
+      failed: (message) => finish(frozenReport(message, expectedFrames, played(), thresholds, earlyErrors)),
+      navigated: () => finish(frozenReport("The game tried to open a web page. Games can't do that.", expectedFrames, played(), thresholds)),
     });
     frame.send(init);
   });

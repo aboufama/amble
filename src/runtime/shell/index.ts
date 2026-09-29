@@ -253,7 +253,7 @@ window.setInterval(() => {
 // ---------------------------------------------------------------- the robot test
 
 async function startRobot(game: Phaser.Game, options: RobotOptions): Promise<void> {
-  const raw = await runRobot({ game, options, input, keys, errors, recorder, stats: collectStats, state: () => state });
+  const raw = await runRobot({ game, options, input, keys, errors, recorder, stats: collectStats, state: () => state, progress: (stats) => post({ type: 'stats', stats }) });
   post({ type: 'robotResult', raw });
 }
 
