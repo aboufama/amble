@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { useCommand } from '../../app/keys';
 import { usePlayerSlot } from '../../app/player/slots';
 import { navigate } from '../../app/router';
@@ -21,7 +22,7 @@ import { confirmUser } from '../../ui/dialogs';
 import { runAsk } from '../../world/ask';
 import { loadGame, patchSession, setComeAlive, setMode, updateWorld } from '../../state/session';
 import { getState, useStore } from '../../state/store';
-import { Sheet } from '../../ui/components';
+import { PlaceholderGlyph, Sheet } from '../../ui/components';
 import { useReducedMotion } from '../../ui/a11y';
 import { playUiSound } from '../../ui/sounds';
 import { flyComeAlive, liftCard } from '../../world/comeAlive';
@@ -53,6 +54,22 @@ function deskBox(): Box {
   const w = window.innerWidth;
   const h = window.innerHeight;
   return { x: Math.round(w * 0.08), y: 76, w: Math.round(w * 0.62), h: Math.max(200, h - 112) };
+}
+
+/**
+ * The member's picture for the lift card: its Cast tile's glyph or drawing when the tile is on the page,
+ * else its "just bones" glyph drawn afresh (the small layout keeps the Cast in a sheet). `done` lets go of
+ * the fresh one once the card is gone.
+ */
+function liftArt(member: CastMember): { node: Node; done(): void } {
+  const tile = document.querySelector(`[data-testid="cast-card-${CSS.escape(member.key)}"] .cast-card__pic`);
+  const pic = tile?.querySelector('img, svg');
+  if (pic) return { node: pic.cloneNode(true), done: () => undefined };
+  const host = document.createElement('span');
+  host.className = 'flight__art';
+  const root = createRoot(host, { identifierPrefix: 'lift-' });
+  flushSync(() => root.render(<PlaceholderGlyph rig={member.rig} role={member.role} shape={member.shape} size={96} />));
+  return { node: host, done: () => root.unmount() };
 }
 
 export function World({ route }: { route: RouteOf<'world'> }) {
@@ -95,8 +112,9 @@ export function World({ route }: { route: RouteOf<'world'> }) {
           : from instanceof DOMRect
             ? boxOf(from)
             : from;
+      const art = reduced ? null : liftArt(member);
       try {
-        const card = await liftCard({ from: start, to: deskBox(), reduced });
+        const card = await liftCard({ from: start, to: deskBox(), reduced, art: art?.node ?? null });
         const go = () => navigate({ name: 'draw', worldId: w.id, key: member.key }, { transition: false });
         withViewTransition(() => {
           card?.remove();
@@ -104,6 +122,7 @@ export function World({ route }: { route: RouteOf<'world'> }) {
         });
       } finally {
         lifting.current = false;
+        if (art) setTimeout(art.done, 2500);
       }
     },
     [reduced],

@@ -4,8 +4,9 @@
  *   the running world along an arc (0-450 ms, ease-amble), settles 1.06 → 1 while the game swaps it in
  *   (450-650 ms), then the game cheers and eight mint sparks drift up from its feet (650-900 ms). Reduced
  *   motion: a 200 ms crossfade and no sparks.
- * - **Lift** (320 ms): a paper card grows from a "just bones" member's box toward the Desk sheet, named
- *   `desk-sheet` for the View Transition into the Desk (the Desk names its sheet the same).
+ * - **Lift** (320 ms): a white sheet with the member's picture on it grows from its box toward the Desk
+ *   sheet, named `desk-sheet` for the View Transition into the Desk (the Desk names its sheet the same).
+ * Both move only by translating, scaling and fading: nothing tilts.
  *
  * Both draw in a fixed layer above the game, so nothing ever happens inside the sandboxed frame.
  */
@@ -119,9 +120,9 @@ export async function flyComeAlive(o: ComeAliveOptions): Promise<void> {
     const y0 = plan.from.y + plan.from.h / 2 - (plan.to.y + plan.to.h / 2);
     const fly = img.animate(
       [
-        { transform: `translate(${x0}px, ${y0}px) scale(${s0}) rotate(-4deg)`, offset: 0 },
-        { transform: `translate(${x0 * 0.45}px, ${y0 * 0.45 - plan.lift}px) scale(${(s0 + 1.06) / 2}) rotate(3deg)`, offset: 0.5 },
-        { transform: 'translate(0, 0) scale(1.06) rotate(0deg)', offset: 1 },
+        { transform: `translate(${x0}px, ${y0}px) scale(${s0})`, offset: 0 },
+        { transform: `translate(${x0 * 0.45}px, ${y0 * 0.45 - plan.lift}px) scale(${(s0 + 1.06) / 2})`, offset: 0.5 },
+        { transform: 'translate(0, 0) scale(1.06)', offset: 1 },
       ],
       { duration: FLY_MS, easing: EASE_AMBLE, fill: 'forwards' },
     );
@@ -172,15 +173,15 @@ export interface LiftOptions {
 }
 
 /**
- * Grows a paper card from the member to the Desk sheet; resolves with the card once it has grown (null
- * under reduced motion). The caller removes the card inside the View Transition that changes the route,
- * so the card's `desk-sheet` name passes to the Desk's sheet.
+ * Grows a sheet from the member to the Desk sheet, with the member's picture on it; resolves with the card
+ * once it has grown (null under reduced motion). The caller removes the card inside the View Transition
+ * that changes the route, so the card's `desk-sheet` name passes to the Desk's sheet.
  */
 export async function liftCard(o: LiftOptions): Promise<HTMLElement | null> {
   if (o.reduced) return null;
   const root = layer();
   const card = document.createElement('div');
-  card.className = 'flight__lift paper';
+  card.className = 'flight__lift';
   if (o.art) card.append(o.art);
   Object.assign(card.style, { left: `${o.to.x}px`, top: `${o.to.y}px`, width: `${o.to.w}px`, height: `${o.to.h}px` });
   card.style.setProperty('view-transition-name', DESK_SHEET_TRANSITION);
