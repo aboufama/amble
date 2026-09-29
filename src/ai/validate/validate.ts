@@ -11,7 +11,7 @@ import { byteLength, ENTRY_FILE, isSafeGamePath } from '../gameFiles';
 import { keyName, lineOf, memberPath, parseScript, src, thisIsScene } from './ast';
 import { FileContext, type GameFacts } from './context';
 import { checkManifestStatics, checkDialReads, declaredDials } from './art';
-import { checkDials } from './dials';
+import { checkDials, restartDials } from './dials';
 import { checkGlobals, collectDeclared } from './globals';
 import { normalizeManifest, type Api } from './manifest';
 import { kidMessage } from './messages';
@@ -194,7 +194,10 @@ function runPass(files: readonly GameFile[], api: Api, entry: string, fix: boole
     issues.push({ rule: 'no-game-class', severity: 'error', file: entry, line: 0, column: 0, message: `The game needs ${entry} with \`class Game extends Amble.Scene\`.`, kid: kidMessage('no-game-class', { line: 0 }) });
   }
 
-  const facts: GameFacts = { api, own: new Set(), declared: new Set(), artDeclared: new Set(), artUsed: new Set() };
+  const entryParsed = parsed.find((p) => p.file.path === entry);
+  const entryGame = entryParsed ? findGameClass(entryParsed.ast) : null;
+  const asts = parsed.map((p) => p.ast);
+  const facts: GameFacts = { api, own: new Set(), declared: new Set(), artDeclared: new Set(), artUsed: new Set(), restartDials: restartDials(entryGame, asts) };
   const scenes = new Map<Parsed, Set<AnyNode>>();
   for (const p of parsed) {
     collectDeclared(p.ast, facts.declared);
@@ -203,8 +206,7 @@ function runPass(files: readonly GameFile[], api: Api, entry: string, fix: boole
     collectOwn(p, s, facts.own);
   }
 
-  const entryParsed = parsed.find((p) => p.file.path === entry);
-  const dialNames = declaredDials(entryParsed ? findGameClass(entryParsed.ast) : null, parsed.map((p) => p.ast));
+  const dialNames = declaredDials(entryGame, asts);
   const renamed: ValidationResult['renamed'] = [];
   let statics: Record<string, JsonValue> = {};
   const staticLines: Record<string, number> = {};

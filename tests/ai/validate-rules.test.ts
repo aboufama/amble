@@ -4,6 +4,8 @@ import { instrument } from '../../src/ai/validate/instrument';
 import { peekStaticLiteral } from '../../src/ai/validate/statics';
 import type { KitManifest, ValidationResult } from '../../src/ai/validate/types';
 import { validateCode, validateGame } from '../../src/ai/validate/validate';
+import { KIT_API } from '../../src/play';
+import { FIXTURES } from '../../src/runtime/fixtures';
 import { PROBE_MANIFEST } from './fixtures/probeManifest';
 
 const KIT: KitManifest = { ...PROBE_MANIFEST, sceneMethods: [...PROBE_MANIFEST.sceneMethods, 'tune'] };
@@ -149,6 +151,74 @@ describe('dials stay live', () => {
   it('never double-wraps: a second run changes nothing', () => {
     const once = fixCode("    this.spawnHero(1, 2, 'hero').platformer({ speed: this.dials.speed });");
     expect(validateCode(once, { manifest: KIT }).fixes).toEqual([]);
+  });
+
+  describe('dials declared live: false (a change restarts the level, so one read is right)', () => {
+    const statics = [
+      '  static dials = {',
+      "    jump: { label: 'Jump', value: 700, min: 400, max: 1100, live: false },",
+      "    rate: { label: 'Rate', value: 900, min: 200, max: 2000, live: false },",
+      "    speed: { label: 'Speed', value: 300, min: 100, max: 600 },",
+      '  };',
+      '',
+    ].join('\n');
+    const body = [
+      "    this.player = this.spawnHero(1, 2, 'hero').platformer({ jump: this.dials.jump, speed: this.dials.speed });",
+      '    this.every(this.dials.rate, () => this.spawnGrumble());',
+      "    this.spawnEnemy(1, 2, 'grumble').patrol(this.tune('walk', 80, { min: 20, max: 200, live: false }));",
+      "    this.spawnEnemy(1, 2, 'grumble').chase(this.player, this.dials.rate + this.dials.speed);",
+      "    this.spawnEnemy(700, 200, 'boss', { hp: () => this.dials.jump });",
+    ].join('\n');
+
+    it('never wraps them, as options or as arguments', () => {
+      const warned = validateCode(game(body, statics), { manifest: KIT, fix: false });
+      expect(warned.warnings.filter((w) => w.rule === 'dial-thunk').map((w) => [w.line, w.message])).toEqual([
+        [8, '`speed: this.dials.speed` reads the dial once; write `speed: () => this.dials.speed` so it stays live.'],
+        [11, '`chase(this.dials.rate + this.dials.speed, ...)` reads the dial once; write `chase(() => this.dials.rate + this.dials.speed, ...)` so it stays live.'],
+        [12, '`hp` needs a number, not a function: write `hp: this.dials.jump`.'],
+      ]);
+      const out = validateCode(game(body, statics), { manifest: KIT }).files[0].content;
+      expect(out).toContain('.platformer({ jump: this.dials.jump, speed: () => this.dials.speed });');
+      expect(out).toContain('this.every(this.dials.rate, () => this.spawnGrumble());');
+      expect(out).toContain(".patrol(this.tune('walk', 80, { min: 20, max: 200, live: false }));");
+      // A live dial in the sum keeps it live, and a thunk where the kit wants a number is still unwrapped.
+      expect(out).toContain('.chase(this.player, () => this.dials.rate + this.dials.speed);');
+      expect(out).toContain("{ hp: this.dials.jump }");
+    });
+
+    it('reads live: false from static tune too, but not from a dial that is only live: true', () => {
+      const tune = "  static tune = { jump: { value: 700, min: 400, max: 1100, live: false }, speed: { value: 300, min: 100, max: 600, live: true } };\n";
+      const r = validateCode(game("    this.spawnHero(1, 2, 'hero').platformer({ jump: this.tune.jump, speed: this.tune.speed });", tune), { manifest: KIT, fix: false });
+      expect(r.warnings.filter((w) => w.rule === 'dial-thunk').map((w) => w.message)).toEqual(['`speed: this.tune.speed` reads the dial once; write `speed: () => this.tune.speed` so it stays live.']);
+    });
+
+    it('applies to reads in every file of the game', () => {
+      const helper = { path: 'moves.js', content: "class Hopper extends Amble.Scene {\n  create() { this.spawnHero(1, 2, 'hero').platformer({ jump: this.dials.jump }); }\n}\n" };
+      const thunks = (dials: string) => validateGame([helper, { path: 'game.js', content: game('', dials) }], { manifest: KIT, fix: false }).warnings.filter((w) => w.rule === 'dial-thunk');
+      expect(thunks(statics)).toEqual([]);
+      expect(thunks(statics.replace("max: 1100, live: false", 'max: 1100')).map((w) => [w.file, w.line])).toEqual([['moves.js', 2]]);
+    });
+  });
+});
+
+describe('the Moon King (the player core demo boss game) with the real kit', () => {
+  const problems = (code: string) => {
+    const r = validateCode(code, { manifest: KIT_API, fix: false });
+    return [...r.errors, ...r.warnings].map((i) => `${i.line} ${i.rule}: ${i.message}`);
+  };
+
+  it('validates with 0 errors and 0 warnings, its live: false boss health read once', () => {
+    expect(FIXTURES.boss).toContain('{ boss: true, hp: this.dials.bossHealth }');
+    expect(problems(FIXTURES.boss)).toEqual([]);
+  });
+
+  it('stays clean when a live: false dial is read once in an option the kit reads live', () => {
+    const once = FIXTURES.boss
+      .replace("words: 'hop bounce float', for: 'hero' }", "words: 'hop bounce float', live: false, for: 'hero' }")
+      .replace('jump: () => this.dials.jump,', 'jump: this.dials.jump,');
+    expect(once).toContain('.platformer({ speed: 330, jump: this.dials.jump, jumps: 2, dash: true })');
+    expect(problems(once)).toEqual([]);
+    expect(problems(once.replace('live: false, for: \'hero\'', "for: 'hero'"))).toEqual([expect.stringMatching(/^37 dial-thunk: `jump: this\.dials\.jump` reads the dial once/)]);
   });
 });
 

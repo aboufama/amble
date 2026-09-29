@@ -15,6 +15,8 @@ export interface GameFacts {
   declared: Set<string>;
   artDeclared: Set<string>;
   artUsed: Set<string>;
+  /** Dials declared `live: false`: a change restarts the level, so a single read of one is right. */
+  restartDials: ReadonlySet<string>;
 }
 
 export class FileContext {

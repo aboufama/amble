@@ -11,12 +11,16 @@
  *
  * Dial reads: `this.dials.x`, `this.dial.x`, `dials.x`, `this.tune.x`, `this.tune('x', ...)`, and pure
  * arithmetic on them (`this.dials.speed * 1.5`).
+ *
+ * A dial declared `live: false` restarts the level when it changes, so reading it once is right: it is
+ * never wrapped (the Moon King's `hp: this.dials.bossHealth`).
  */
-import type { AnyNode, ArrowFunctionExpression, CallExpression, Expression, ObjectExpression, SpreadElement } from 'acorn';
+import type { AnyNode, ArrowFunctionExpression, CallExpression, Class, Expression, ObjectExpression, Property, SpreadElement } from 'acorn';
 import { ancestor } from 'acorn-walk';
-import { memberPath, propertyName, src, thisIsScene } from './ast';
+import { keyName, memberPath, propertyName, src, thisIsScene } from './ast';
 import type { FileContext } from './context';
 import { isKitCallee } from './rules';
+import { staticFields } from './statics';
 
 const DIAL_OBJECTS = new Set(['this.dials', 'this.dial', 'dials', 'dial', 'this.tune']);
 const MATH = /^Math\.\w+$/;
@@ -45,18 +49,56 @@ const LIVE_NESTED: Readonly<Record<string, ReadonlySet<string>>> = { dash: new S
 /** Positional arguments the kit reads live: method name -> argument index. */
 const LIVE_ARGS: Readonly<Record<string, number>> = { every: 0, patrol: 0, chase: 1, orbit: 2, jump: 0 };
 
+const NONE: ReadonlySet<string> = new Set();
+
 function isDialRead(n: AnyNode): boolean {
   if (n.type === 'MemberExpression') return DIAL_OBJECTS.has(memberPath(n.object)) && propertyName(n) !== '';
   if (n.type === 'CallExpression') return memberPath(n.callee) === 'this.tune' && n.arguments[0]?.type === 'Literal' && typeof n.arguments[0].value === 'string';
   return false;
 }
 
-/** A dial read, or side-effect-free arithmetic that contains one. */
-function isLiveValue(n: AnyNode): boolean {
+/** The dial a read names: `this.dials.x` and `this.tune('x', ...)` both read `x`. */
+function dialName(n: AnyNode): string {
+  if (n.type !== 'CallExpression') return propertyName(n);
+  const first = n.arguments[0];
+  return first?.type === 'Literal' && typeof first.value === 'string' ? first.value : '';
+}
+
+function isFalse(p: Property | undefined): boolean {
+  return p?.value.type === 'Literal' && p.value.value === false;
+}
+
+function liveField(obj: ObjectExpression): Property | undefined {
+  return obj.properties.find((p): p is Property => p.type === 'Property' && keyName(p.key, p.computed) === 'live');
+}
+
+/** Dials declared `live: false` in `static dials`, `static tune` or `this.tune('x', v, { live: false })`. */
+export function restartDials(game: Class | null, asts: ReadonlyArray<AnyNode>): Set<string> {
+  const out = new Set<string>();
+  for (const [name, field] of game ? staticFields(game) : []) {
+    if ((name !== 'dials' && name !== 'tune') || field.value?.type !== 'ObjectExpression') continue;
+    for (const p of field.value.properties) {
+      if (p.type === 'Property' && p.value.type === 'ObjectExpression' && isFalse(liveField(p.value))) out.add(keyName(p.key, p.computed));
+    }
+  }
+  for (const ast of asts) {
+    ancestor(ast, {
+      CallExpression(n) {
+        const opts = n.arguments[2];
+        if (isDialRead(n) && opts?.type === 'ObjectExpression' && isFalse(liveField(opts))) out.add(dialName(n));
+      },
+    });
+  }
+  out.delete('');
+  return out;
+}
+
+/** A dial read, or side-effect-free arithmetic that contains one; reads of the `skip` dials don't count. */
+function isLiveValue(n: AnyNode, skip: ReadonlySet<string> = NONE): boolean {
   let hasDial = false;
   const pure = (x: AnyNode): boolean => {
     if (isDialRead(x)) {
-      hasDial = true;
+      if (!skip.has(dialName(x))) hasDial = true;
       return true;
     }
     switch (x.type) {
@@ -132,7 +174,7 @@ function visitOptions(ctx: FileContext, obj: ObjectExpression, live: ReadonlySet
     }
     const thunkBody = dialThunkBody(value);
     if (live.has(key)) {
-      if (!thunkBody && isLiveValue(value)) wrap(ctx, key, value);
+      if (!thunkBody && isLiveValue(value, ctx.facts.restartDials)) wrap(ctx, key, value);
     } else if (thunkBody) unwrap(ctx, key, value, thunkBody);
   }
 }
@@ -145,7 +187,7 @@ export function checkDials(ctx: FileContext): void {
       const live = LIVE_OPTIONS[method] ?? new Set<string>();
       n.arguments.forEach((arg: Expression | SpreadElement, i) => {
         if (arg.type === 'ObjectExpression') visitOptions(ctx, arg, live);
-        else if (arg.type !== 'SpreadElement' && LIVE_ARGS[method] === i && isLiveValue(arg)) wrapArgument(ctx, method, arg);
+        else if (arg.type !== 'SpreadElement' && LIVE_ARGS[method] === i && isLiveValue(arg, ctx.facts.restartDials)) wrapArgument(ctx, method, arg);
       });
     },
   });
