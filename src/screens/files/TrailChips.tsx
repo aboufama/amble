@@ -23,7 +23,7 @@ export function UpdatedChip() {
   const updated = useStore((s) => s.library.updated);
   if (!updated) return null;
   return (
-    <Chip icon="sparkle" className="files-chip files-chip--news" onClick={() => navigate({ name: 'page', page: 'whatsnew' })}>
+    <Chip icon="info" className="files-chip files-chip--news" onClick={() => navigate({ name: 'page', page: 'whatsnew' })}>
       {t('files.updated')}
     </Chip>
   );

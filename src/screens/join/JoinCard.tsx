@@ -45,7 +45,7 @@ function JoinHost({ link }: { link: Pick<ClassLinkV1, 'ai' | 'mode'> }) {
 export function JoinCardBody({ link }: { link: Pick<ClassLinkV1, 'cls' | 'ai' | 'mode'> }) {
   return (
     <div className="join-preview" inert>
-      <p className="join-preview__title">{t('school.joinTitle', { cls: link.cls || t('school.staff_classNameExample') })}</p>
+      <p className="join-preview__title">{t('school.joinTitle', { cls: link.cls || t('school.staff_classNameNone') })}</p>
       <p className="join-preview__text">{joinBody(link)}</p>
       <JoinHost link={link} />
       <div className="join-preview__actions">

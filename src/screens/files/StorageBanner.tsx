@@ -42,12 +42,12 @@ export function StorageBanner() {
   if (storage === 'ok') return null;
   if (storage === 'full') {
     return (
-      <div className="paper on-paper files-banner" role="note" data-testid="storage-banner" data-storage="full">
+      <div className="files-banner" role="note" data-testid="storage-banner" data-storage="full">
         <Icon name="warning" size={22} />
         <p className="files-banner__text">{t('files.storageFull')}</p>
         <div className="files-banner__actions">
-          <SaveAllButton variant="paper" size={38} />
-          <Button variant="paper" size={38} onClick={() => navigate({ name: 'settings', section: 'storage' })}>
+          <SaveAllButton variant="ghost" size={38} />
+          <Button variant="ghost" size={38} onClick={() => navigate({ name: 'settings', section: 'storage' })}>
             {t('files.tidyUp')}
           </Button>
         </div>
@@ -55,11 +55,11 @@ export function StorageBanner() {
     );
   }
   return (
-    <div className="paper on-paper files-banner" role="note" data-testid="storage-banner" data-storage="blocked">
+    <div className="files-banner" role="note" data-testid="storage-banner" data-storage="blocked">
       <Icon name="lock" size={22} />
       <p className="files-banner__text">{t('files.storageBlocked')}</p>
       <div className="files-banner__actions">
-        <Button variant="paper" size={38} icon="info" onClick={() => setWhy(true)}>
+        <Button variant="ghost" size={38} icon="info" onClick={() => setWhy(true)}>
           {t('files.why')}
         </Button>
       </div>
