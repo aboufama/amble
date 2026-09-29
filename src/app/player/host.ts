@@ -9,7 +9,6 @@ import {
   EMPTY_MANIFEST,
   PLAYER_CORE,
   Player,
-  RUNTIME_URL,
   type DrawnArt,
   type FromPlayer,
   type GameBundle,
@@ -28,7 +27,8 @@ export type SlotId = 'world' | 'desk-preview' | 'code' | 'gallery' | 'handin';
 export interface PlayerHost {
   /** Positions the visible iframe over `el`; returns detach. The last attached slot wins. */
   attach(slot: SlotId, el: HTMLElement): () => void;
-  /** A fresh realm from the spare; resolves on firstFrame with the game's manifest. */
+  /** A fresh realm from the spare; resolves on firstFrame with the game's manifest. Rejects with an
+   * AbortError when a newer load replaces it (`isSupersededLoad`), and on an early crash. */
   load(init: InitMessage): Promise<GameManifest>;
   /** In the spare, on a manual clock (the visible game is untouched). */
   robot(init: InitMessage): Promise<{ raw: RobotRaw; verdict: RobotVerdict }>;
@@ -63,6 +63,11 @@ export interface PlayerHost {
 }
 
 type AnyListener = (m: FromPlayer) => void;
+
+/** True for the rejection of a `load` that a newer `load` replaced (callers ignore it). */
+export function isSupersededLoad(err: unknown): boolean {
+  return err instanceof DOMException && err.name === 'AbortError';
+}
 
 const SNAPSHOT_TIMEOUT_MS = 800;
 const MANIFEST_WAIT_MS = 2000;
@@ -105,6 +110,7 @@ export class PlayerHostImpl implements PlayerHost {
   private prefsNow: PlayerPrefs = { ...DEFAULT_PLAYER_PREFS };
   private lastRobot: InitMessage | null = null;
   private title = 'Game';
+  private firstFrames = 0;
   private userPaused = false;
   private autoPaused = false;
   private observer: ResizeObserver | null = null;
@@ -203,10 +209,12 @@ export class PlayerHostImpl implements PlayerHost {
   private async ensure(): Promise<Player> {
     if (this.player) return this.player;
     const container = await this.waitForLayer();
+    // The runtime's URL needs the page to resolve (virtual:amble-runtime), so it loads here, lazily.
+    const runtimeUrl = this.o.runtimeUrl ?? (await import('../../cores/playRuntime')).RUNTIME_URL;
     if (this.player) return this.player;
     const player = new Player({
       container,
-      runtimeUrl: this.o.runtimeUrl ?? RUNTIME_URL,
+      runtimeUrl,
       title: this.title,
       prefs: this.prefsNow,
       prewarm: this.o.prewarm ?? deviceMemory() >= 4,
@@ -219,7 +227,8 @@ export class PlayerHostImpl implements PlayerHost {
   private emit(m: FromPlayer): void {
     const layer = this.layer;
     if (layer && m.type === 'state') layer.dataset.state = m.state;
-    if (layer && m.type === 'firstFrame') layer.dataset.firstFrame = String(Date.now());
+    // Tests wait on these: `data-first-frame` counts first frames (1 for the first game loaded).
+    if (layer && m.type === 'firstFrame') layer.dataset.firstFrame = String(++this.firstFrames);
     for (const fn of this.listeners.get(m.type) ?? []) {
       try {
         fn(m);
@@ -247,14 +256,9 @@ export class PlayerHostImpl implements PlayerHost {
     p.on('audio', (state) => this.emit({ type: 'audio', state }));
     p.on('csp', (info) => this.emit({ type: 'csp', ...info }));
     p.on('escape', () => this.emit({ type: 'escape' }));
-    // The step-5 replies arrive once M2 adds them to the core's events.
-    const on = p.on as unknown as (name: string, fn: (value: unknown) => void) => () => void;
-    try {
-      on.call(p, 'objects', (items) => this.emit({ type: 'objects', items: items as Extract<FromPlayer, { type: 'objects' }>['items'] }));
-      on.call(p, 'snapshot', (png) => this.emit({ type: 'snapshot', png: png as Blob }));
-    } catch {
-      // Not there yet: setMode/select/snapshot stay no-ops.
-    }
+    // Change mode's replies (step 5): sent by the runtime handler M2 registers; silent until then.
+    p.on('objects', (items) => this.emit({ type: 'objects', items }));
+    p.on('snapshot', (png) => this.emit({ type: 'snapshot', png }));
   }
 
   private send(msg: ToPlayer): void {
@@ -274,7 +278,13 @@ export class PlayerHostImpl implements PlayerHost {
       offManifest = player.on('manifest', resolve);
     });
     try {
-      await player.load(bundleOf(init));
+      try {
+        await player.load(bundleOf(init));
+      } catch (err) {
+        // A newer load replaced this one: not a failure (the newer game is what shows).
+        if (err instanceof Error && /newer load/i.test(err.message)) throw new DOMException('A newer game replaced this one.', 'AbortError');
+        throw err;
+      }
       if (player.manifest) return player.manifest;
       return await Promise.race([manifest, new Promise<GameManifest>((resolve) => setTimeout(() => resolve(EMPTY_MANIFEST), MANIFEST_WAIT_MS))]);
     } finally {

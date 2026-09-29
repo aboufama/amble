@@ -147,14 +147,89 @@ test.describe('app shell', () => {
 
   test('a starter world reaches its first frame at the world slot', async ({ page }) => {
     await openAmble(page);
-    const cores = await page.evaluate(() => (window as unknown as { __amble: { cores: Record<string, string> } }).__amble.cores);
-    test.skip(cores.play === 'stub', 'The player core has not merged yet.');
     await openStarterWorld(page);
     const layer = page.getByTestId('player-layer');
-    await expect(layer).toHaveAttribute('data-first-frame', 'true', { timeout: 30_000 });
+    await expect(layer).toHaveAttribute('data-first-frame', /^[1-9]\d*$/, { timeout: 45_000 });
+    await expect(layer).toHaveAttribute('data-slot', 'world');
     const [slot, box] = await Promise.all([page.getByTestId('world-slot').boundingBox(), layer.boundingBox()]);
     expect(slot && box).toBeTruthy();
     expect(Math.abs(slot!.x - box!.x)).toBeLessThan(2);
     expect(Math.abs(slot!.width - box!.width)).toBeLessThan(2);
+    const game = await gameFrame(page);
+    const info = await game.evaluate(() => {
+      const g = (window as unknown as GameWin).__ambleGame;
+      return { state: g.state, errors: g.errors.length, hero: !!g.find('hero') };
+    });
+    expect(info.errors).toBe(0);
+    expect(['title', 'running']).toContain(info.state);
+    expect(info.hero).toBe(true);
+  });
+
+  test('a drawn character with bones plays through the rig mesh', async ({ page }) => {
+    await openAmble(page);
+    await openStarterWorld(page);
+    await expect(page.getByTestId('player-layer')).toHaveAttribute('data-first-frame', /^[1-9]\d*$/, { timeout: 45_000 });
+    // A stick figure drawn on a canvas, rigged by the rig worker, swapped into the running game.
+    const rigged = await page.evaluate(async () => {
+      const c = new OffscreenCanvas(160, 240);
+      const g = c.getContext('2d')!;
+      g.lineWidth = 10;
+      g.lineCap = 'round';
+      g.strokeStyle = '#2b1d16';
+      g.fillStyle = '#7cc7ef';
+      g.beginPath();
+      g.arc(80, 40, 26, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      const line = (x0: number, y0: number, x1: number, y1: number) => {
+        g.beginPath();
+        g.moveTo(x0, y0);
+        g.lineTo(x1, y1);
+        g.stroke();
+      };
+      line(80, 66, 80, 150);
+      line(80, 90, 30, 130);
+      line(80, 90, 130, 130);
+      line(80, 150, 50, 230);
+      line(80, 150, 110, 230);
+      const png = await c.convertToBlob({ type: 'image/png' });
+      const { rigWorker } = await import(/* @vite-ignore */ `${location.origin}/src/cores/rig.ts`);
+      const reply = await rigWorker.autoRig({ image: png }, { kind: 'biped' });
+      const host = (window as unknown as { __amble: { services: { player: { swapArt(a: unknown): void; on(t: string, fn: (m: unknown) => void): () => void } } } }).__amble.services.player;
+      const swapped = new Promise((resolve) => host.on('swapped', resolve));
+      host.swapArt({ key: 'hero', image: png, rig: reply.rig });
+      await swapped;
+      return { bones: reply.rig.bones.length, confidence: reply.confidence };
+    });
+    expect(rigged.bones).toBeGreaterThan(5);
+    const game = await gameFrame(page);
+    const visual = await game.evaluate(() => {
+      const g = (window as unknown as GameWin).__ambleGame;
+      const hero = g.find('hero') as { visual?: { constructor: { name: string }; object: { type: string } } } | null;
+      return { kind: hero?.visual?.constructor.name ?? null, object: hero?.visual?.object.type ?? null, errors: g.errors.length, swaps: g.swaps };
+    });
+    expect(visual.errors).toBe(0);
+    expect(visual.swaps).toBeGreaterThan(0);
+    // The rig's Phaser mesh (MeshCharacter under WebGL, CutoutCharacter under Canvas), not the kit's sprite puppet.
+    expect(['MeshCharacter', 'CutoutCharacter']).toContain(visual.kind);
   });
 });
+
+/** What the runtime exposes for tests inside the game frame (window.__ambleGame). */
+interface GameHook {
+  state: string;
+  errors: unknown[];
+  swaps: number;
+  game: unknown;
+  find(key: string): unknown;
+}
+type GameWin = Window & { __ambleGame: GameHook };
+
+/** The visible game's frame, once its runtime is up. */
+async function gameFrame(page: import('@playwright/test').Page): Promise<import('@playwright/test').Frame> {
+  const handle = await page.evaluateHandle(() => (window as unknown as { __amble: { services: { player: { player: { iframe: HTMLIFrameElement | null } | null } } } }).__amble.services.player.player?.iframe ?? null);
+  const frame = await handle.asElement()?.contentFrame();
+  if (!frame) throw new Error('No game frame.');
+  await frame.waitForFunction(() => !!(window as unknown as GameWin).__ambleGame?.game);
+  return frame;
+}

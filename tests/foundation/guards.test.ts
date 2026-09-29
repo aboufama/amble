@@ -90,7 +90,8 @@ describe('source guards', () => {
   });
 
   it('reaches the cores only through src/cores/*.ts', () => {
-    const cores = ['src/ai', 'src/rig', 'src/play', 'src/art/engine'];
+    // src/runtime is the in-iframe half of the player core (it imports src/play/protocol and the rig's mesh).
+    const cores = ['src/ai', 'src/rig', 'src/play', 'src/art/engine', 'src/runtime'];
     const bad: string[] = [];
     for (const f of FILES) {
       if (under(f.path, 'src/cores') || cores.some((c) => under(f.path, c))) continue;
