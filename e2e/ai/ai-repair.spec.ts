@@ -35,7 +35,7 @@ test('a runtime error found by the robot test is repaired once', async ({ page }
   expect(fixes[0].userText).toMatch(/^Task: fix\n/);
   expect(fixes[0].userText).toContain(`- ${file}:${line}:`);
   expect(fixes[0].userText).toMatch(/>\s*3 \| {3}const power = boss\.stompPower\.amount;/);
-  expect(fixes[0].body.max_completion_tokens).toBe(6000);
+  expect(fixes[0].body.max_completion_tokens).toBe(12000);
 
   const outcome = await page.evaluate(() => (window as unknown as { __amble: { getState(): { ai: { lastOutcome: { repairs: number; tested: boolean } } } } }).__amble.getState().ai.lastOutcome);
   expect(outcome).toMatchObject({ repairs: 1, tested: true });

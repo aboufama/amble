@@ -192,7 +192,7 @@ for (const theme of ['original', 'contrast'] as const) {
     // What Amble sends (grown-ups; reached from How wishes work and Settings).
     await page.evaluate(async () => {
       const a = (window as unknown as AmbleWindow).__amble;
-      const body = JSON.stringify({ model: 'test-model', store: false, stream: true, max_completion_tokens: 8000, messages: [{ role: 'system', content: '# ROLE…' }, { role: 'user', content: 'Task: change\nContent level: middle\n…' }] });
+      const body = JSON.stringify({ model: 'test-model', store: false, stream: true, max_completion_tokens: 16000, messages: [{ role: 'system', content: '# ROLE…' }, { role: 'user', content: 'Task: change\nContent level: middle\n…' }] });
       await a.services.store.ailog.add({ id: 'g_shot000001', at: Date.now(), kind: 'change', host: 'ai.test', model: 'test-model', bytesSent: body.length, bytesReceived: 1830, included: ['your words', 'game.js (106 lines)', 'the list of drawings (no pictures)', 'the dial settings'], body, status: 'ok', replySummary: 'Changed game.js' });
     });
     await mountHarness(page, 'sent');

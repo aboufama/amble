@@ -108,7 +108,8 @@ export default defineConfig(({ mode }) => {
     cacheDir: '.vite',
     // A checkout may link node_modules from elsewhere (parallel worktrees share one install), so the
     // dev server must also serve files from wherever node_modules really lives, fonts included.
-    server: { fs: { allow: [searchForWorkspaceRoot(root), realpathSync(path.join(root, 'node_modules'))] } },
+    // Local agent worktrees live under .claude/: watching every copy of the repo runs out of file watchers.
+    server: { fs: { allow: [searchForWorkspaceRoot(root), realpathSync(path.join(root, 'node_modules'))] }, watch: { ignored: ['**/.claude/**'] } },
     plugins: [
       react(),
       // The game runtime plugin: it bundles the Phaser player for the sandboxed game iframe, serves it
