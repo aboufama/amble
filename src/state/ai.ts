@@ -382,6 +382,19 @@ export function startBuild(world: World, plan: PlanReply): Promise<AiOutcome> {
   return run(world, 'build', plan.pitch || plan.title, (c) => getServices().ai.build(world, plan, jobOptions(world, c)));
 }
 
+const resumed = new Set<WorldId>();
+
+/**
+ * A plan's world opened in its Warm-up with no build running (the tab closed or the Chromebook slept
+ * mid-build, and a build is never picked up again): build it again, once per page. When the AI helper
+ * can't, it ends on the ladder, so the world always becomes playable.
+ */
+export function resumeBuild(world: World): void {
+  if (!world.plan || world.origin.kind !== 'plan' || isWorking(world.id) || resumed.has(world.id)) return;
+  resumed.add(world.id);
+  void startBuild(world, world.plan).catch((err: unknown) => console.warn('The build stopped:', err));
+}
+
 /**
  * An Ask from the student: the AI explainer first when this device has never seen it (§2.16), else the
  * change. Returns null while the explainer is open.

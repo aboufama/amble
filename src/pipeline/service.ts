@@ -384,7 +384,12 @@ export function createAiService(env: AiEnv, core: AiCore = createAiCore(env)): A
 
     async build(world, plan, o) {
       const r = ready();
-      if ('kind' in r) return r;
+      if ('kind' in r) {
+        // The AI helper can't build now (off, offline, the class link ended): the ladder still gives a
+        // playable world from the plan's starter with the plan written in (§5.9), and sends nothing.
+        const base = await starterFiles(plan.starter).catch(() => [] as CodeFile[]);
+        return base.length ? ladder(world, plan, base, o) : r;
+      }
       const level = levelFor(world);
       o.onProgress({ phase: 'queued', waitMs: 0 });
       if (!(await pause(buildJitter(env.random), o.signal))) return { kind: 'cancelled' };

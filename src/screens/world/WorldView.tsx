@@ -12,7 +12,6 @@ import { Button, Footprints } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
 import type { Box } from '../../world/objects';
-import { isWarmup } from '../../world/controller';
 import { SteerToastHost } from '../ai/SteerToast';
 import { ChangeLayer } from './ChangeLayer';
 import { NewVersionCard } from './NewVersionCard';
@@ -72,9 +71,10 @@ function Notices() {
 /** The AI progress pill (top right, only while the AI helper works on this world). */
 function AiPill({ world }: { world: World }) {
   const job = useStore((s) => (s.ai.job?.worldId === world.id ? s.ai.job : null));
-  const warmup = isWarmup(world.code);
-  if (!job && !warmup) return null;
-  const text = job?.task === 'build' || (!job && warmup) ? t('world.pillBuilding', { title: world.title }) : t('world.pillWorking');
+  // Only while a job really runs: a Warm-up whose build was stopped is not "Building…" (it builds again
+  // the next time the world opens).
+  if (!job) return null;
+  const text = job.task === 'build' ? t('world.pillBuilding', { title: world.title }) : t('world.pillWorking');
   return (
     <p className="ai-pill" role="status" data-testid="ai-pill">
       <Footprints label={text} />

@@ -4,7 +4,7 @@
  * instead of showing a loading picture forever.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { setServices, type Services } from '../../src/app/services';
+import { getServices, setServices, type Services } from '../../src/app/services';
 import { EMPTY_MANIFEST } from '../../src/cores/play';
 import { createHistory } from '../../src/history/api';
 import { closeWorld } from '../../src/state/session';
@@ -12,7 +12,8 @@ import { resetState } from '../../src/state/store';
 import { createStarterCatalog } from '../../src/starters/api';
 import { MemoryStore } from '../../src/store/memory';
 import { WorldController } from '../../src/world/controller';
-import { sampleWorld } from '../foundation/samples';
+import { warmupCode } from '../../src/world/warmup';
+import { samplePlan, sampleWorld } from '../foundation/samples';
 
 const g = globalThis as { document?: unknown };
 let hadDocument = false;
@@ -40,6 +41,24 @@ describe('WorldController', () => {
     await c.start();
     c.stop();
     expect(onMissing).toHaveBeenCalledTimes(1);
+  });
+
+  it("builds a plan's world again when it opens in its Warm-up with no build running (the tab closed mid-build)", async () => {
+    const build = vi.fn(async () => ({ kind: 'cancelled' }) as const);
+    const services = getServices() as unknown as { ai: unknown; store: MemoryStore };
+    services.ai = { build };
+    const plan = samplePlan();
+    const w = sampleWorld({ id: 'w_warm000001', origin: { kind: 'plan', starter: 'moon-king', planTitle: plan.title }, code: warmupCode(plan), plan });
+    await services.store.commit({ worlds: [w] });
+    const c = new WorldController(w.id, { onLift: vi.fn(), onEscape: vi.fn() });
+    await c.start();
+    c.stop();
+    await vi.waitFor(() => expect(build).toHaveBeenCalledTimes(1));
+    // Once per world: opening it again while that one runs starts nothing more.
+    const again = new WorldController(w.id, { onLift: vi.fn(), onEscape: vi.fn() });
+    await again.start();
+    again.stop();
+    expect(build).toHaveBeenCalledTimes(1);
   });
 
   it('opens a world that is there', async () => {

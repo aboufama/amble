@@ -21,6 +21,7 @@ import {
   refreshCast,
   updateWorld,
 } from '../state/session';
+import { resumeBuild } from '../state/ai';
 import { getState } from '../state/store';
 import { sameObjects, type Box } from './objects';
 import { pickRequest, triggerOf, type TagTrigger } from './requestPolicy';
@@ -98,6 +99,7 @@ export class WorldController {
       this.hooks.onMissing?.();
       return;
     }
+    if (isWarmup(world.code)) resumeBuild(world);
     if (isLoaded(world)) {
       const { player } = getServices();
       patchSession({ ready: true, manifest: player.manifest() ?? getState().session.manifest });
