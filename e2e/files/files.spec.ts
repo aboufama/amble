@@ -228,6 +228,28 @@ test('dropping a file on the Trail opens it', async ({ page }) => {
   await expect(page.locator('#file-drop')).not.toHaveClass(/file-drop--on/);
 });
 
+test('Share as a web page makes one HTML file that needs no network', async ({ page, context }) => {
+  const id = await openStarter(page);
+  const html = await page.evaluate(async (wid) => {
+    const a = (window as unknown as { __amble: { services: { store: { worlds: { get(id: string): Promise<unknown> } }; files: { sharePage(w: unknown): Promise<Blob> } } } }).__amble;
+    const world = await a.services.store.worlds.get(wid);
+    return (await a.services.files.sharePage(world)).text();
+  }, id);
+  expect(html.startsWith('<!doctype html>')).toBe(true);
+  expect(html).toContain('<title>Moon King</title>');
+  expect(html).toMatch(/<meta http-equiv="Content-Security-Policy" content="default-src 'none'/);
+  const shared = await context.newPage();
+  const requests: string[] = [];
+  shared.on('request', (r) => {
+    if (!/^(data|blob|about):/.test(r.url())) requests.push(r.url());
+  });
+  await shared.setContent(html);
+  await expect(shared.locator('#amble-game')).toBeAttached();
+  await shared.waitForTimeout(1500);
+  expect(requests).toEqual([]);
+  await shared.close();
+});
+
 test('a file that is not a world says so, and nothing opens', async ({ page }) => {
   await gotoRoute(page, '#/trail');
   await page.evaluate(() => {

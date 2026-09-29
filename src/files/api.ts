@@ -55,6 +55,8 @@ export interface FilesApi {
   handleOf(file: File): FileSystemFileHandle | null;
   /** An addition: the open picker, with the handles. */
   pick(multiple: boolean): Promise<PickedFile[]>;
+  /** An addition: Share as a web page, saved through the picker or as a download ("Moon King (web page).html"). */
+  saveSharePage(world: World): Promise<{ name: string; method: SaveMethod } | null>;
 }
 
 export { createFiles } from './service';

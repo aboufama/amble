@@ -5,7 +5,10 @@
  * browser keeps Amble's data when the disk runs low.
  */
 import { LIMITS } from '../model/limits';
-import type { StoreHealth } from './api';
+import type { World } from '../model/types';
+import { upkeepOf, type Store, type StoreHealth } from './api';
+import { markArt, markSet, markWorld } from './gc';
+import { jsonBytes } from './meta';
 
 /** Quota errors come as DOMException 'QuotaExceededError', or (older Chrome, some IDB paths) as code 22. */
 export function isQuotaError(err: unknown): boolean {
@@ -71,4 +74,26 @@ export function formatBytes(bytes: number): string {
 /** Whole megabytes, as the file dialogs say them ("This world is 42 MB"). */
 export function megabytes(bytes: number): number {
   return Math.max(1, Math.round(bytes / (1024 * 1024)));
+}
+
+export interface WorldSize {
+  /** The world's JSON, its drawings' pixels and its recorded sounds (footsteps not counted). */
+  bytes: number;
+  /** Past 40 MB: say it is big. */
+  warn: boolean;
+  /** Past 60 MB: no new drawings ("This world is very big. Save it to Drive and start a new one."). */
+  refuse: boolean;
+}
+
+/** How big a world is against its budget (§4.8), for the Desk before a new drawing and for Tidy up. */
+export async function measureWorld(store: Store, world: World): Promise<WorldSize> {
+  const { refs, mark } = markSet();
+  markWorld(world, mark);
+  for (const id of new Set(Object.values(world.cast).flatMap((s) => (s.art ? [s.art] : [])))) {
+    const art = await store.art.get(id).catch(() => null);
+    if (art) markArt(art, mark);
+  }
+  const upkeep = upkeepOf(store);
+  const bytes = jsonBytes(world) + (upkeep ? await upkeep.blobBytes(refs) : 0);
+  return { bytes, warn: bytes >= LIMITS.worldBlobsWarnBytes, refuse: bytes >= LIMITS.worldBlobsRefuseBytes };
 }

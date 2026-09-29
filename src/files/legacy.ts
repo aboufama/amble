@@ -1,8 +1,7 @@
 /**
  * Old Amble projects (§4.7): a clean break for games (block programs cannot become kit code) and a
  * one-way rescue of the student's own drawings and sounds.
- * - `find`: at first boot, the old editor's autosave, unless `settings.legacy` says it was already
- *   brought in or dismissed.
+ * - `find` and "Not now" live in legacyCheck.ts (light: they run at every boot).
  * - `bring`: a Parade world titled "{title} (old)". Each drawing becomes an `ArtRecord` with one `paint`
  *   layer (SVGs rasterized at 2x), `madeBy: 'import'`, its pivot from the old rotation centre; costumes
  *   become characters (rig `blob`, which always hops), backdrops become backgrounds. Each sound becomes a
@@ -13,12 +12,13 @@ import { newArtDoc, serializeArtDoc } from '../cores/art';
 import { rigWorker, templateFor, type RigData } from '../cores/rig';
 import type { HistoryApi } from '../history/api';
 import { t } from '../i18n';
-import { legacyImportFrom, readLegacyAutosave, type LegacyDrawing, type LegacyImport, type LegacySound } from '../legacy/reader';
-import { blobRefOf, CAST_KEY_RE, hexOfRef, sha256Hex, uid } from '../model/ids';
+import type { LegacyDrawing, LegacyImport, LegacySound } from '../legacy/reader';
+import { blobRefOf, CAST_KEY_RE, hexOfRef, uid } from '../model/ids';
 import { LIMITS, TEXT_LIMITS } from '../model/limits';
 import type { ArtRecord, CastSlot, SoundPiece, World, WorldId } from '../model/types';
 import type { StarterCatalog } from '../starters/api';
 import type { Store } from '../store/api';
+import { legacyHash } from './legacyCheck';
 import { dataUrlBytes, type PictureMaker, type SoundMaker } from './media';
 
 export interface LegacyDeps {
@@ -30,27 +30,6 @@ export interface LegacyDeps {
   /** Replaces the old IndexedDB read (tests). */
   read?: (key: string) => Promise<unknown>;
   now?: () => number;
-}
-
-/** A stable fingerprint of an old project's drawings and sounds (what `settings.legacy.hash` keeps). */
-export async function legacyHash(l: LegacyImport): Promise<string> {
-  const text = JSON.stringify([l.title, l.drawings.map((d) => d.dataUrl), l.sounds.map((s) => s.dataUrl)]);
-  return sha256Hex(new TextEncoder().encode(text));
-}
-
-export async function findLegacy(deps: Pick<LegacyDeps, 'store' | 'read'>): Promise<LegacyImport | null> {
-  try {
-    if (await deps.store.settings.get('legacy')) return null;
-  } catch {
-    return null;
-  }
-  const found = await readLegacyAutosave(deps.read);
-  return found && (found.drawings.length || found.sounds.length) ? found : null;
-}
-
-export async function dismissLegacy(deps: Pick<LegacyDeps, 'store' | 'now'>, l: LegacyImport | null): Promise<void> {
-  const hash = l ? await legacyHash(l) : '';
-  await deps.store.settings.put('legacy', { hash, at: (deps.now ?? Date.now)(), choice: 'dismissed' });
 }
 
 /** A cast key from a name ("cat walk" → "catWalk"), unique in `taken`. */
@@ -246,13 +225,4 @@ export async function bringLegacy(deps: LegacyDeps, l: LegacyImport): Promise<Br
   }
   await deps.store.settings.put('legacy', { hash: await legacyHash(l), at: now, choice: 'brought' });
   return { worldId: world.id, title, drawings: art.length - opened.art.length, sounds: soundCount };
-}
-
-/** An old `.amble` JSON file (format 'amble', version 1) goes through the same rescue. */
-export function legacyFromFileText(text: string): LegacyImport | null {
-  try {
-    return legacyImportFrom(JSON.parse(text));
-  } catch {
-    return null;
-  }
 }

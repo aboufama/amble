@@ -15,22 +15,24 @@ import { getState } from '../state/store';
 import type { Store } from '../store/api';
 import { requestPersist } from '../store/quota';
 import { alertUser, confirmUser } from '../ui/dialogs';
-import { collectDrawing, collectWorld, packAmble, readAmble, withNewIds } from './amble';
 import { pickFiles, pickFolder, ReadOnlyFile, saveBlob, type PickerHost } from './fsAccess';
-import { bringLegacy, dismissLegacy, findLegacy } from './legacy';
-import { browserPictures, browserSounds, type PictureMaker, type SoundMaker } from './media';
+import { dismissLegacy, findLegacy } from './legacyCheck';
+import type { PictureMaker, SoundMaker } from './media';
 import { safeBaseName, withExtension, worldFileName } from './names';
 import { FileProblem } from './problem';
-import { packAllWorlds } from './saveAll';
 import { emitSavedToFile } from './saved';
-import { buildSharePage } from './share';
+
+// Loaded on first use, so the zip library, the validator, the old-Amble rescue and the share page builder
+// stay out of the app's first download.
+const amble = () => import('./amble');
 
 export interface FilesDeps {
   store(): Store;
   history(): HistoryApi | null;
   starters(): StarterCatalog;
-  pictures: PictureMaker;
-  sounds: SoundMaker;
+  /** Pictures and sounds for the old-Amble rescue (default: the browser's canvas and audio decoding). */
+  pictures?: PictureMaker;
+  sounds?: SoundMaker;
   pickers?: PickerHost;
   now(): number;
   /** Replaces the old editor's IndexedDB read (tests). */
@@ -52,8 +54,6 @@ function defaultDeps(): FilesDeps {
       }
     },
     starters: () => getServices().starters,
-    pictures: browserPictures,
-    sounds: browserSounds,
     now: () => Date.now(),
   };
 }
@@ -67,7 +67,10 @@ export function createFiles(over: Partial<FilesDeps> = {}): FilesApi {
   const deps: FilesDeps = { ...defaultDeps(), ...over };
   const handles = new WeakMap<File, FileSystemFileHandle>();
 
-  const write = async (world: World, kind: 'world' | 'assignment'): Promise<Blob> => packAmble(await collectWorld(deps.store(), world, kind, deps.now()));
+  const write = async (world: World, kind: 'world' | 'assignment'): Promise<Blob> => {
+    const { collectWorld, packAmble } = await amble();
+    return packAmble(await collectWorld(deps.store(), world, kind, deps.now()));
+  };
 
   const remember = async (worldId: WorldId, saved: SavedFile): Promise<void> => {
     await deps
@@ -102,7 +105,11 @@ export function createFiles(over: Partial<FilesDeps> = {}): FilesApi {
       const store = deps.store();
       const rec = await store.art.get(artId);
       if (!rec) throw new Error('That drawing is not here.');
-      await saveBlob(async () => packAmble(await collectDrawing(store, artId, deps.now())), withExtension(safeBaseName(rec.name, 'My drawing'), 'amble'), { kind: 'amble', host: deps.pickers });
+      const make = async () => {
+        const { collectDrawing, packAmble } = await amble();
+        return packAmble(await collectDrawing(store, artId, deps.now()));
+      };
+      await saveBlob(make, withExtension(safeBaseName(rec.name, 'My drawing'), 'amble'), { kind: 'amble', host: deps.pickers });
     },
 
     async savePicture(artId) {
@@ -129,13 +136,13 @@ export function createFiles(over: Partial<FilesDeps> = {}): FilesApi {
 
     openFolder: () => pickFolder(deps.pickers),
 
-    read: (file, o) => readAmble(file, o),
+    read: async (file, o) => (await amble()).readAmble(file, o),
 
     async importWorld(f, o) {
       if (!f.world) throw new FileProblem('not-amble', t('files.notAmble'));
       const store = deps.store();
       const now = deps.now();
-      const next = withNewIds(f, now);
+      const next = (await amble()).withNewIds(f, now);
       let world = next.world as World;
       if (o.asCopy) {
         world = { ...world, handIn: { fileName: null, savedAt: null, method: null, turnedInAt: null } };
@@ -164,7 +171,7 @@ export function createFiles(over: Partial<FilesDeps> = {}): FilesApi {
 
     async importDrawing(f) {
       if (!f.art.length) throw new FileProblem('not-amble', t('files.notAmble'));
-      const next = withNewIds({ world: null, art: f.art, steps: [] }, deps.now());
+      const next = (await amble()).withNewIds({ world: null, art: f.art, steps: [] }, deps.now());
       const art = next.art.map((a) => ({ ...a, shelf: a.kind === 'character' ? true : a.shelf }));
       await deps.store().commit({ blobs: [...f.blobs.values()], art });
       return art.map((a) => a.id);
@@ -172,9 +179,12 @@ export function createFiles(over: Partial<FilesDeps> = {}): FilesApi {
 
     write,
 
-    sharePage: (world) => buildSharePage(world, { captions: getState().prefs.captions }),
+    sharePage: async (world) => (await import('./share')).buildSharePage(world, { captions: getState().prefs.captions }),
+
+    saveSharePage: (world) => api.saveBlob(() => api.sharePage(world), withExtension(t('files.sharePageName', { title: safeBaseName(world.title) }), 'html'), 'html'),
 
     async saveAll() {
+      const { packAllWorlds } = await import('./saveAll');
       return (await packAllWorlds(deps.store(), deps.now())).zip;
     },
 
@@ -192,7 +202,12 @@ export function createFiles(over: Partial<FilesDeps> = {}): FilesApi {
 
     legacy: {
       find: () => findLegacy({ store: deps.store(), read: deps.legacyRead }),
-      bring: async (l) => (await bringLegacy({ store: deps.store(), starters: deps.starters(), history: deps.history(), pictures: deps.pictures, sounds: deps.sounds, now: deps.now }, l)).worldId,
+      bring: async (l) => {
+        const [{ bringLegacy }, media] = await Promise.all([import('./legacy'), deps.pictures && deps.sounds ? null : import('./media')]);
+        const pictures = deps.pictures ?? media!.browserPictures;
+        const sounds = deps.sounds ?? media!.browserSounds;
+        return (await bringLegacy({ store: deps.store(), starters: deps.starters(), history: deps.history(), pictures, sounds, now: deps.now }, l)).worldId;
+      },
       dismiss: (l) => dismissLegacy({ store: deps.store(), now: deps.now }, l ?? null),
     },
   };

@@ -6,7 +6,8 @@
 import 'fake-indexeddb/auto';
 import { get, set } from 'idb-keyval';
 import { describe, expect, it } from 'vitest';
-import { bringLegacy, castKeyFrom, dismissLegacy, findLegacy, legacyFromFileText } from '../../src/files/legacy';
+import { bringLegacy, castKeyFrom } from '../../src/files/legacy';
+import { dismissLegacy, findLegacy, legacyFromFileText } from '../../src/files/legacyCheck';
 import { dataUrlBytes, encodeWav, type PictureMaker, type SoundMaker } from '../../src/files/media';
 import { createHistoryStub } from '../../src/history/api';
 import { LEGACY_AUTOSAVE_KEY } from '../../src/legacy/reader';

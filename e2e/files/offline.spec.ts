@@ -34,6 +34,8 @@ test('the service worker installs, and an offline reload still opens a starter @
     });
     await expect(page).toHaveURL(/#\/w\/[A-Za-z0-9_-]+$/);
     await expect(page.getByTestId('screen-world')).toBeVisible();
+    // The player (runtime script and Phaser) comes from the cache too: the game draws its first frame.
+    await expect(page.getByTestId('player-layer')).toHaveAttribute('data-first-frame', /^[1-9]\d*$/, { timeout: 45_000 });
   } finally {
     await context.setOffline(false);
   }

@@ -18,9 +18,8 @@ import { getState } from '../state/store';
 import { megabytes } from '../store/quota';
 import { alertUser, confirmUser } from '../ui/dialogs';
 import type { FilesApi } from './api';
-import { tooBig } from './amble';
 import { writePermission } from './fsAccess';
-import { legacyFromFileText } from './legacy';
+import { legacyFromFileText } from './legacyCheck';
 import { FileProblem } from './problem';
 import { askReadOnly, warnBigFile } from './service';
 
@@ -89,7 +88,7 @@ async function openLegacyJson(files: FilesApi, file: File): Promise<WorldId | nu
 async function openOne(files: FilesApi, item: OpenItem, out: OpenOutcome): Promise<'world' | 'drawing' | 'failed' | 'skipped'> {
   const { file } = item;
   if (file.size > LIMITS.ambleFileBytes) {
-    await alertUser({ title: t('files.tooBigTitle'), body: tooBig(file.size).message });
+    await alertUser({ title: t('files.tooBigTitle'), body: t('files.tooBig', { mb: megabytes(file.size) }) });
     return 'failed';
   }
   if (await startsWithJson(file)) {

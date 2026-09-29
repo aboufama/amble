@@ -133,14 +133,6 @@ export function tagged<T>(tag: string, branches: Record<string, Cleaner<T>>): Cl
   };
 }
 
-/** Cleans with `c`, then checks the result (a guard from src/model/guards.ts as the last word). */
-export function checked<T>(c: Cleaner<T>, guard: (v: unknown) => boolean): Cleaner<T> {
-  return (v) => {
-    const out = c(v);
-    return out !== FAIL && guard(out) ? out : FAIL;
-  };
-}
-
 /** Falls back to `fallback` instead of failing (a damaged optional part must not sink the whole). */
 export function orElse<T>(c: Cleaner<T>, fallback: T): Cleaner<T> {
   return (v) => {

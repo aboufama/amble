@@ -43,6 +43,8 @@ export const files = {
   damagedSome: 'This file is damaged. Amble opened what it could.',
   newer: 'This world was made with a newer Amble. Reload Amble to get the update.',
   blocked: "Amble can't open files here. Your school may have turned that off.",
+  worldTooBig: 'This world is very big. Save it to Drive and start a new one.',
+  sharePageName: '{title} (web page)',
   opening: 'Opening {name}…',
   opened: 'Opened {title}.',
   openedMany: 'Opened {n} worlds.',
