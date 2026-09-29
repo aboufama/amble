@@ -10,7 +10,10 @@ import { clearSteer, steerToAi, undoSteer } from '../../state/ai';
 import { useStore } from '../../state/store';
 import { Button, IconButton } from '../../ui/components';
 import { Icon } from '../../ui/icons';
+import { steerText } from './words';
 import './ai.css';
+
+export { steerText };
 
 export interface SteerToastProps {
   steer: LocalSteer;
@@ -18,15 +21,6 @@ export interface SteerToastProps {
   onAskAi(): void;
   /** Hides the toast (the close button). */
   onDismiss?(): void;
-}
-
-/** The toast's words for a steer. */
-export function steerText(steer: LocalSteer): string {
-  if (steer.kind === 'twist') return t(steer.on ? 'ai.steerOn' : 'ai.steerOff', { name: steer.name });
-  const value = Number.isInteger(steer.to) ? String(steer.to) : String(Math.round(steer.to * 100) / 100);
-  if (steer.to > steer.from) return t('ai.steerUp', { label: steer.label, value });
-  if (steer.to < steer.from) return t('ai.steerDown', { label: steer.label, value });
-  return t('ai.steerSet', { label: steer.label, value });
 }
 
 export function SteerToast({ steer, onUndo, onAskAi, onDismiss }: SteerToastProps) {

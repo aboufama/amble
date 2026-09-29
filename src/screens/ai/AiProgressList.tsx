@@ -10,7 +10,7 @@ import type { AiJobView, AiPhase } from '../../model/types';
 import { progressPercent } from '../../pipeline/progress';
 import { useStore } from '../../state/store';
 import { useReducedMotion } from '../../ui/a11y';
-import { Button, Footprints, Sticker } from '../../ui/components';
+import { Button, PlaceholderGlyph, Sticker } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
 import { heroOf, useArtSticker, useCountdown } from './hooks';
@@ -42,6 +42,7 @@ export function AiProgressList({ job, onStop }: AiProgressListProps) {
   const reduced = useReducedMotion();
   const hero = heroOf(world, manifest);
   const sticker = useArtSticker(hero.art);
+  const heroRig = manifest?.art.find((a) => a.key === hero.key)?.rig ?? 'biped';
 
   // A fix round, once started, stays the active step until the job ends (its reply streams again).
   const fixRound = useRef<{ job: number; round: 0 | 1 | 2 }>({ job: job.startedAt, round: 0 });
@@ -88,7 +89,7 @@ export function AiProgressList({ job, onStop }: AiProgressListProps) {
           return (
             <li key={s.key} className={cx('ai-step', `ai-step--${state}`)} data-step={s.key} data-state={state}>
               <span className="ai-step__mark" aria-hidden="true">
-                {state === 'done' ? <Icon name="check" size={16} /> : state === 'active' ? <Footprints label="" className="ai-step__feet" /> : null}
+                {state === 'done' ? <Icon name="check" size={16} /> : state === 'active' ? <Icon name="footprint" size={14} /> : null}
               </span>
               <span className="ai-step__label">
                 {s.label}
@@ -102,13 +103,7 @@ export function AiProgressList({ job, onStop }: AiProgressListProps) {
         <span className="ai-walk__line" />
         <span className="ai-walk__done" style={{ width: `${pct}%` }} />
         <span className={cx('ai-walk__hero', !reduced && 'ai-walk__hero--walking')} style={{ left: `${Math.min(96, Math.max(4, pct))}%` }}>
-          {sticker ? (
-            <Sticker src={sticker} alt="" size={36} />
-          ) : (
-            <span className="ai-walk__glyph">
-              <Icon name="footprint" size={22} />
-            </span>
-          )}
+          {sticker ? <Sticker src={sticker} alt="" size={36} /> : <PlaceholderGlyph rig={heroRig} role="hero" size={36} />}
         </span>
       </div>
       <div className="ai-progress__foot">

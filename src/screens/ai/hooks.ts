@@ -6,6 +6,9 @@ import { t } from '../../i18n';
 import type { ArtId, CastKey, StarterId, World } from '../../model/types';
 import { asAmbleAi, type AmbleAi } from '../../pipeline/api';
 import { humanKey } from '../../pipeline/manifest';
+import { nameInSentence } from './words';
+
+export { nameInSentence };
 
 /** The app's AI helper with what the cards need (level, host, district, retry). */
 export function useAmbleAi(): AmbleAi | null {
@@ -44,14 +47,6 @@ export function useCountdown(until: number | null): number | null {
     return () => clearInterval(id);
   }, [until]);
   return until === null ? null : Math.max(0, Math.ceil((until - now) / 1000));
-}
-
-/** A cast member's name as a sentence uses it: "the Moon King" for names of more than one word. */
-export function nameInSentence(name: string): string {
-  const n = name.trim();
-  if (!n) return n;
-  if (/^the\s/i.test(n)) return `the ${n.slice(4)}`;
-  return /\s/.test(n) ? `the ${n}` : n;
 }
 
 /** A cast member's name from the running game's manifest, else its key in words. */

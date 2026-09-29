@@ -7,6 +7,7 @@ import { t } from '../../i18n';
 import type { SafetyVerdict } from '../../model/types';
 import { Button } from '../../ui/components';
 import { Icon } from '../../ui/icons';
+import { withoutSpans } from './words';
 import './ai.css';
 
 export interface PiiWarningProps {
@@ -20,27 +21,12 @@ export interface PiiWarningProps {
   id?: string;
 }
 
-/** The text without the flagged spans (and the spaces they leave behind). */
-export function withoutSpans(text: string, spans: ReadonlyArray<readonly [number, number]>): string {
-  let out = '';
-  let at = 0;
-  for (const [a, b] of [...spans].sort((x, y) => x[0] - y[0])) {
-    if (a < at) continue;
-    out += text.slice(at, a);
-    at = Math.max(at, b);
-  }
-  out += text.slice(at);
-  return out
-    .replace(/[ \t]{2,}/g, ' ')
-    .replace(/\s+([,.!?])/g, '$1')
-    .replace(/^[\s,]+|[\s,]+$/g, '');
-}
-
 export function PiiWarning({ text, verdict, onRemove, onSendAnyway, id }: PiiWarningProps) {
   return (
     <div className="ai-pii" data-testid="ai-pii" id={id}>
       <p className="ai-pii__text" role="status">
-        <Icon name="warning" size={16} /> {t('ai.piiWarning')}
+        <Icon name="warning" size={16} />
+        <span>{t('ai.piiWarning')}</span>
       </p>
       <div className="ai-pii__actions">
         <Button size={38} variant="paper" onClick={() => onRemove(withoutSpans(text, verdict.spans))}>

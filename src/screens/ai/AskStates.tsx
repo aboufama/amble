@@ -36,7 +36,7 @@ import { bossName, heroOf, memberName, nameInSentence, starterOf, useAmbleAi } f
 import { PiiWarning } from './PiiWarning';
 import { RefusalCard } from './RefusalCard';
 import { SafetyNote } from './SafetyNote';
-import { steerText } from './SteerToast';
+import { addedMemberText, steerText } from './words';
 import './ai.css';
 
 export interface AskStatesProps {
@@ -444,7 +444,7 @@ export function AskStates({ world, manifest, scope, onClearScope }: AskStatesPro
       )}
       <p className="ai-ask__info">
         <Icon name="info" size={16} />
-        <span>{t('ai.askInfo')}</span>
+        {t('ai.askInfo')}{' '}
         <Link className="ai-link" to={{ name: 'page', page: 'sent' }}>
           {t('ai.askWhatsSent')}
         </Link>
@@ -508,13 +508,7 @@ function DoneNotes({
     .map((k) => art.art.find((a) => a.key === k))
     .find((a) => a && a.required && !world.cast[a.key]?.art && !later.includes(a.key));
   const handFile = outcome.handEditsTouched ? (changed?.handFile ?? null) : null;
-  const addedText = fresh
-    ? /^the\s/i.test(fresh.name)
-      ? t('ai.addedMemberNamed', { name: fresh.name })
-      : /^[aeiou]/i.test(fresh.name)
-        ? t('ai.addedMemberAn', { name: fresh.name })
-        : t('ai.addedMember', { name: fresh.name })
-    : '';
+  const addedText = fresh ? addedMemberText(fresh.name) : '';
   return (
     <>
       <SafetyNote note={outcome.safety} />
