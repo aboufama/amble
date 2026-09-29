@@ -27,6 +27,7 @@ import { writeWorld } from '../store/worldWrites';
 import { keepStrokeLog } from './drafts';
 import type { PackedFlipbook } from './flipbook';
 import { rigFacing } from './parts';
+import { dropPreviewJobs } from './preview';
 import { makeSticker } from './sticker';
 
 export interface BringToLifeInput {
@@ -76,6 +77,8 @@ export interface BringDeps {
   rig(source: RigSource, req: AutoRigRequest & { lane?: string }): Promise<{ rig: RigData; confidence: number; notes: string[]; issues: string[] }>;
   sticker(flat: Blob): Promise<Blob>;
   export(doc: ArtDoc, maxSide: number, pairs: Array<{ name: string; layers: string[] }>): Promise<ArtExportResult | null>;
+  /** Drops the previews' rig jobs still waiting in the rig worker's queue, so the rig goes next. */
+  dropPreviews?(): void;
   /**
    * The world open in the session, when it is this one: its copy is the newest (the autosave may not have
    * written it yet), and the committed world goes back into it, or that copy would later be saved over it.
@@ -142,6 +145,7 @@ function defaultDeps(): BringDeps {
     history: s.history,
     player: s.player,
     rig: (source, req) => rigWorker.autoRig(source, req),
+    dropPreviews: () => void dropPreviewJobs(),
     sticker: (flat) => makeSticker(flat),
     session: sessionLink(),
     // The Desk usually hands in its own export (made in the worker); this one makes the same part composites.
@@ -175,6 +179,8 @@ async function rigDrawing(
     if (Object.keys(hints.tips).length) req.tipHints = toExportPx(e, hints.tips);
     req.unsnapped = 'keep';
   }
+  // The previews' waiting rig jobs would run first: the drawing comes alive now instead.
+  deps.dropPreviews?.();
   const r = await deps.rig(source, req);
   const limbless = (kind === 'biped' || kind === 'quadruped') && r.issues.includes('no-legs') && (kind === 'quadruped' || r.issues.includes('no-arms'));
   if (limbless && made !== 'parts') {

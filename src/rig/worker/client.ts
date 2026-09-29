@@ -2,6 +2,7 @@
  * The app's handle on the rig worker: promises for auto-rig, bind and filmstrips. Requests run in
  * order; a request in a named `lane` replaces the lane's waiting request (latest wins: a stream of
  * joint drags binds only the newest bones), and the replaced promise rejects with `superseded`.
+ * `drop(lanes)` takes waiting requests out of other lanes too (Bring to life goes before the previews).
  * Without a worker (tests, a CSP that blocks it) the same code runs inline.
  */
 import { unbakeBound } from '../bake';
@@ -39,6 +40,11 @@ export interface RigWorkerApi {
   strip(input: RigSource, rig: RigData, clip: string, opts?: { frames?: number; size?: number; face?: 1 | -1; packed?: boolean } & LaneOption): Promise<{ meta: StripMeta; frames: ImageBitmap[] }>;
   /** Forget cached analyses and bakes. */
   clear(): Promise<void>;
+  /**
+   * Drops the waiting requests (not the one running) whose lane `lanes` picks; their promises reject with
+   * `superseded`. Returns how many were dropped.
+   */
+  drop(lanes: (lane: string) => boolean): number;
   terminate(): void;
 }
 
@@ -195,6 +201,14 @@ class Client implements RigWorkerApi {
     await this.run<'clear'>({ op: 'clear' });
   }
 
+  drop(lanes: (lane: string) => boolean): number {
+    const dropped = this.queue.filter((j) => j.lane !== undefined && lanes(j.lane));
+    if (!dropped.length) return 0;
+    for (const j of dropped) this.queue.splice(this.queue.indexOf(j), 1);
+    for (const j of dropped) j.reject(new RigWorkerError('A request that goes first dropped this one', true));
+    return dropped.length;
+  }
+
   terminate(): void {
     this.worker?.terminate();
     this.worker = null;
@@ -227,6 +241,8 @@ export const rigWorker: RigWorkerApi = {
   magicBones: (...a) => getRigWorker().magicBones(...a),
   strip: (...a) => getRigWorker().strip(...a),
   clear: () => getRigWorker().clear(),
+  // Nothing is waiting in a worker that has not started.
+  drop: (lanes) => shared?.drop(lanes) ?? 0,
   terminate: () => {
     shared?.terminate();
     shared = null;

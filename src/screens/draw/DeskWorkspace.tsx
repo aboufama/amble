@@ -15,6 +15,7 @@ import type { Route } from '../../app/routes';
 import { useServices } from '../../app/services';
 import { bringToLife, pairsOf } from '../../draw/api';
 import { packFlipbook, type PackedFlipbook } from '../../draw/flipbook';
+import { dropPreviewJobs } from '../../draw/preview';
 import { DeskController } from '../../draw/deskController';
 import type { DeskSetup } from '../../draw/load';
 import { hasBones } from '../../draw/request';
@@ -236,6 +237,8 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
     }
     setBringing(true);
     announce(t('draw.bringing'));
+    // The previews' rig jobs waiting in the rig worker would go before the drawing's own: they go.
+    dropPreviewJobs();
     try {
       ctrl.stopFlipbook();
       if (st.selection?.floating) ctrl.commitSelection();

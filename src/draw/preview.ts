@@ -6,12 +6,27 @@
  * - In Freehand: the kind's auto-rig in the rig worker (over the star-pose guide's joints when drawn over
  *   it), latest wins.
  * - Things with no bones play as their picture.
+ * Bring to life drops the previews' waiting rig jobs (`dropPreviewJobs`): they would run before it in the rig
+ * worker's queue, and the drawing is about to fly into the world anyway.
  */
 import type { DrawnArt } from '../cores/play';
 import { rigWorker, type CharacterKind, type JointHints, type RigData } from '../cores/rig';
 import type { DeskArt } from './deskController';
 import { rigFacing } from './parts';
 import type { DeskRequest } from './request';
+
+/** The Freehand preview's auto-rig lane. */
+export const PREVIEW_LANE = 'desk-preview';
+
+/** The rig worker lanes of the Desk's previews: its Freehand auto-rig, and each rig preview's bind (`preview-<n>`). */
+export function isPreviewLane(lane: string): boolean {
+  return lane === PREVIEW_LANE || lane.startsWith('preview-');
+}
+
+/** Bring to life goes first: the previews' rig jobs still waiting in the queue are dropped (their previews keep their picture). */
+export function dropPreviewJobs(): number {
+  return rigWorker.drop(isPreviewLane);
+}
 
 /** A board-space rig moved into the pixels of an export (trimmed at `box`, scaled by `scale`). */
 export function rigOnExport(rig: RigData, box: readonly [number, number, number, number], scale: number): RigData {
@@ -58,7 +73,7 @@ export async function previewRig(art: DeskArt, request: Pick<DeskRequest, 'kind'
       { image: art.flat },
       {
         kind,
-        lane: 'desk-preview',
+        lane: PREVIEW_LANE,
         facing: rigFacing(request.facing),
         ...(guide ? { hints: hintsOnExport(guide, art.box, art.scale), unsnapped: 'keep' as const } : {}),
       },
