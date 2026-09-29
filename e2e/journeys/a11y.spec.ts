@@ -1,5 +1,6 @@
 /**
- * Accessibility (§3.9, §10.2 `a11y`): axe finds no WCAG 2.1 A/AA problem on any screen or dialog, and the
+ * Accessibility (§3.9, §10.2 `a11y`): axe finds no WCAG 2.1 A/AA problem on any screen or dialog, in the
+ * Original colours and in High contrast, and the
  * core flow works from the keyboard alone (the Trail → a starter → Change → the boss → a dial by arrows →
  * Bones → a joint by arrows → Done → Look inside → Run it → Hand in), with focus always visible and Esc
  * always a way out of the game.
@@ -10,8 +11,20 @@ import { classLinkPayload, expect, gotoRoute, openAmble, test, TEST_CLASS } from
 import { mockAi } from '../helpers/mockAi';
 import { gameFrame, openStarter, readGame, worldReady } from './journey';
 
+/**
+ * Waits until no finite animation is still running (a screen's fade in, a sheet sliding up): colours read
+ * mid-fade are part transparent, and a busy machine can start an entrance late. Endless loops (a
+ * spinner, a walking footprint) do not count.
+ */
+async function settled(page: Page): Promise<void> {
+  await page
+    .waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity), null, { timeout: 15_000 })
+    .catch(() => undefined);
+}
+
 /** axe's WCAG 2.1 A and AA problems on the page as it is (the game frames are canvases, left out). */
 async function axe(page: Page, where: string): Promise<string[]> {
+  await settled(page);
   const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).exclude('iframe').analyze();
   return r.violations.map((v) => `${where} → ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`);
 }
@@ -22,10 +35,11 @@ async function screen(page: Page, hash: string): Promise<void> {
   await page.waitForTimeout(400);
 }
 
-test('every screen and dialog passes axe', async ({ page }) => {
-  test.setTimeout(420_000);
+/** axe over every screen and dialog, in one of the two colour themes (Settings → Reading → Colours). */
+async function everyScreen(page: Page, theme: 'original' | 'contrast'): Promise<string[]> {
   const found: string[] = [];
-  await openAmble(page, { clean: true });
+  await openAmble(page, { clean: true, prefs: { theme } });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
   found.push(...(await axe(page, 'First page')));
 
   for (const hash of ['#/trail', '#/trail/list', '#/trail/lost', '#/new', '#/new?idea=1', '#/draw/new']) {
@@ -78,8 +92,19 @@ test('every screen and dialog passes axe', async ({ page }) => {
   // The Join card a class link opens.
   await page.goto(`./#class=${classLinkPayload(TEST_CLASS as unknown as Record<string, unknown>)}`);
   await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
   found.push(...(await axe(page, 'Join card')));
-  expect(found).toEqual([]);
+  return found;
+}
+
+test('every screen and dialog passes axe in the Original colours', async ({ page }) => {
+  test.setTimeout(420_000);
+  expect(await everyScreen(page, 'original')).toEqual([]);
+});
+
+test('every screen and dialog passes axe in High contrast', async ({ page }) => {
+  test.setTimeout(420_000);
+  expect(await everyScreen(page, 'contrast')).toEqual([]);
 });
 
 test('the AI cards pass axe: the explainer, the plan card and the crisis card', async ({ page }) => {
