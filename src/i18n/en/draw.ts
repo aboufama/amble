@@ -35,6 +35,9 @@ export const draw = {
   tool_eyedropper: 'Pick a colour',
   toolKey: '{tool} ({key})',
   toolOptions: '{tool} options',
+  moreTools: 'More tools',
+  moreToolsOn: 'More tools. {tool} is chosen.',
+  moreShort: 'More',
 
   // the guide strip
   guideStripLabel: 'How to draw',
