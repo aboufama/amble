@@ -1,7 +1,8 @@
 /// <reference types="vitest/config" />
-import { defineConfig, loadEnv, type Plugin, type Connect } from 'vite';
+import { defineConfig, loadEnv, searchForWorkspaceRoot, type Plugin, type Connect } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
+import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
 import { ambleRuntime, playerBootHashes } from './vite/ambleRuntime.ts';
@@ -102,6 +103,9 @@ export default defineConfig(({ mode }) => {
     base: './',
     // Each checkout keeps its own dependency cache, even when node_modules is shared.
     cacheDir: '.vite',
+    // A checkout may link node_modules from elsewhere (parallel worktrees share one install), so the
+    // dev server must also serve files from wherever node_modules really lives, fonts included.
+    server: { fs: { allow: [searchForWorkspaceRoot(root), realpathSync(path.join(root, 'node_modules'))] } },
     plugins: [
       react(),
       // The game runtime plugin: it bundles the Phaser player for the sandboxed game iframe, serves it
