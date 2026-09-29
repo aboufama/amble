@@ -75,7 +75,7 @@ describe('What Amble sends lists every request', () => {
     const entries = (await store.ailog.list()).reverse();
     expect(entries.map((e) => e.body)).toEqual(['{"first":true}', '{"second":true}']);
     expect(entries[1]).toMatchObject({ status: 'ok', replySummary: 'A plan' });
-    expect(entries[0]).toMatchObject({ status: 'failed', replySummary: "This one didn't go through, so Amble sent it again" });
+    expect(entries[0]).toMatchObject({ status: 'failed', replySummary: 'Amble had to try again after this one' });
     expect(entries[0].at).toBeLessThan(entries[1].at);
   });
 
