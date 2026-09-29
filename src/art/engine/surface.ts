@@ -1250,23 +1250,41 @@ class Surface implements ArtSurface {
       this.sel.cancel();
       return true;
     }
-    const e = await this.hist.undo();
-    if (!e) return false;
-    if (this.recording) this.ops.push({ op: 'undo' });
-    this.lastStroke = null;
-    this.afterHistory();
-    return true;
+    return this.stepHistory('undo');
   }
 
   async redo(): Promise<boolean> {
     if (this.busy) return new Promise((resolve) => this.queued.push(() => void this.redo().then(resolve)));
     if (!this.b || this.stroke) return false;
     this.finishPour();
-    const e = await this.hist.redo();
-    if (!e) return false;
-    if (this.recording) this.ops.push({ op: 'redo' });
-    this.afterHistory();
-    return true;
+    return this.stepHistory('redo');
+  }
+
+  /**
+   * One undo or redo, with input held meanwhile. The step can wait on the worker (old steps are packed there,
+   * tile by tile), and a stroke begun during that wait would be committed before the undo landed and then
+   * painted over by it. So, as during a fill, input is queued and replayed in order once the step is done and
+   * logged. A step that cannot run (the worker failed) changes nothing and is reported, never thrown.
+   */
+  private async stepHistory(which: 'undo' | 'redo'): Promise<boolean> {
+    this.busy = true;
+    try {
+      const e = await (which === 'undo' ? this.hist.undo() : this.hist.redo());
+      if (!e) return false;
+      if (this.recording) this.ops.push({ op: which });
+      if (which === 'undo') this.lastStroke = null;
+      this.afterHistory();
+      return true;
+    } catch (err) {
+      this.em.emit('error', { message: err instanceof Error ? err.message : String(err) });
+      return false;
+    } finally {
+      this.busy = false;
+      const q = this.queued;
+      this.queued = [];
+      for (const f of q) f();
+      this.checkSettled();
+    }
   }
 
   private afterHistory(): void {
