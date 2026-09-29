@@ -80,7 +80,9 @@ test.describe('app shell', () => {
     await expect(page.getByTestId('live-polite')).toHaveAttribute('aria-live', 'polite');
     await expect(page.getByTestId('live-assertive')).toHaveAttribute('aria-live', 'assertive');
     await expect(page.getByTestId('player-layer')).toHaveCount(1);
-    await expect(page.getByTestId('ai-chip')).toContainText('AI helper');
+    // The top bar is Scratch's menu bar, and never shows the AI's state.
+    await expect(page.getByTestId('ai-chip')).toHaveCount(0);
+    await expect(page.getByRole('banner')).not.toContainText('AI');
     await page.keyboard.press('Tab');
     const skip = page.getByRole('link', { name: 'Skip to main content' });
     await expect(skip).toBeFocused();
