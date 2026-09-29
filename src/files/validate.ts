@@ -14,6 +14,7 @@ import { ACTIONS, ART_KINDS, RIG_KINDS, ROLES } from '../cores/play';
 import { CHARACTER_KINDS, parseRig, type CharacterKind, type RigBone, type RigData } from '../cores/rig';
 import { isArtRecord, isRigData, isStepSnapshot, isWorld, STARTER_IDS, STEP_KINDS } from '../model/guards';
 import { BLOB_REF_RE, CAST_KEY_RE, CODE_PATH_RE } from '../model/ids';
+import { keepGameStorage } from '../model/gameStorage';
 import { KEEP, LIMITS, TEXT_LIMITS } from '../model/limits';
 import type * as M from '../model/types';
 import { arr, arrLoose, bool, FAIL, int, lit, nullable, num, obj, oneOf, opt, orElse, pattern, rec, str, tagged, tuple, type Cleaner } from './clean';
@@ -159,15 +160,7 @@ const twists = arrLoose(str(40, 1), 32);
 const controls = rec(arrLoose(str(32), 8), (k) => (ACTIONS as readonly string[]).includes(k));
 const gameStorage: Cleaner<Record<string, string>> = (v) => {
   const out = rec(str(KEEP.gameStorageBytes), (k) => k.length <= 200, 500)(v);
-  if (out === FAIL) return {};
-  let bytes = 0;
-  const kept: Record<string, string> = {};
-  for (const [k, x] of Object.entries(out)) {
-    bytes += k.length + x.length;
-    if (bytes > KEEP.gameStorageBytes) break;
-    kept[k] = x;
-  }
-  return kept;
+  return out === FAIL ? {} : keepGameStorage(out);
 };
 
 // ------------------------------------------------------------------ school and plans
