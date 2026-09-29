@@ -191,7 +191,7 @@ class Surface implements ArtSurface {
     this.host.style.overflow = 'hidden';
     this.host.style.background = this.o.workspace ?? '#e6e1d8';
     if (!this.host.hasAttribute('tabindex')) this.host.tabIndex = 0;
-    this.host.setAttribute('role', 'img');
+    this.host.setAttribute('role', this.o.a11y?.role ?? 'img');
     this.comp = new Compositor(this.host, board, this.frameId, this.layerId, { paper: this.o.paper ?? '#fffdf7', workspace: this.o.workspace ?? '#e6e1d8', desynchronized: this.o.desynchronized ?? !isSoftwareGL() });
     this.comp.forceRaster = !!this.o.perfProbe;
     this.sel = new SelectionTool({
@@ -325,7 +325,11 @@ class Surface implements ArtSurface {
 
   private describe(): void {
     const b = this.board;
-    this.host.setAttribute('aria-label', `${this.meta.name}, drawing, ${b.layers.length} layers, ${b.frames.length} ${b.frames.length === 1 ? 'page' : 'pages'}`);
+    const summary = `${this.meta.name}, drawing, ${b.layers.length} layers, ${b.frames.length} ${b.frames.length === 1 ? 'page' : 'pages'}`;
+    if (this.o.a11y) {
+      this.host.setAttribute('aria-label', this.o.a11y.label);
+      this.host.setAttribute('aria-description', summary);
+    } else this.host.setAttribute('aria-label', summary);
   }
 
   on<K extends keyof SurfaceEvents>(type: K, fn: (e: SurfaceEvents[K]) => void): () => void {

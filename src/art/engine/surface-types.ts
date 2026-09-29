@@ -148,6 +148,11 @@ export interface ArtSurfaceOptions {
   historyBytes?: number;
   /** Measurement only: force the canvas raster inside each render so timings include it (slow). */
   perfProbe?: boolean;
+  /**
+   * The host's accessible role and name (default: role `img`, named by the drawing's summary). With a
+   * label, the summary ("Moon King, drawing, 3 layers, 1 page") goes to `aria-description` instead.
+   */
+  a11y?: { role: string; label: string };
 }
 
 export interface PerfStats {

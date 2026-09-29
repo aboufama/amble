@@ -18,14 +18,35 @@ import {
   type SelectionInfo,
   type ToolId,
 } from '../cores/art';
-import type { RigData } from '../cores/rig';
+import { partSteps, templateHints, type CharacterKind, type JointHints, type RigData } from '../cores/rig';
 import { t, type MessageKey } from '../i18n';
-import type { PartLayers, Prefs } from '../model/types';
+import type { Facing, PartLayers, Prefs } from '../model/types';
 import type { BoardSpec } from './boards';
 import { renderGuides, templateOnBoard, type GuideLabels } from './guides';
 import { pushRecent, START_COLOR } from './palette';
-import { FREEHAND_PAIR, mirrorMatrix, nextExtra, otherSide, pairIds, partOfLayer, targetLayer, type BonesStep, type RoutedTool } from './parts';
+import { bonesLayout, FREEHAND_PAIR, mirrorMatrix, nextExtra, otherSide, pairIds, partOfLayer, rigFacing, targetLayer, type BonesStep, type RoutedTool } from './parts';
 import type { DeskRequest } from './request';
+
+/**
+ * The drawing as the previews see it: a small trimmed export (in the engine worker) made 400 ms after
+ * each change, never while the pen is down or a selection is lifted.
+ */
+export interface DeskArt {
+  flat: Blob;
+  w: number;
+  h: number;
+  /** Trim box on the board [x, y, w, h] and export px per board px. */
+  box: [number, number, number, number];
+  scale: number;
+  /** Where it stands, on the board. */
+  anchorBoard: [number, number];
+  /** Drawing on the bones: each drawn part (lines over colours), the same size and place as `flat`. */
+  parts: Array<{ name: string; png: Blob }>;
+  mode: DeskMode;
+}
+
+/** The previews' export size (long side, px). */
+const PREVIEW_MAX = 320;
 
 export type DeskTool = 'ink' | 'pencil' | 'marker' | 'crayon' | 'airbrush' | 'eraser' | 'fill' | 'select' | 'shapes' | 'pixel';
 export type ColorOrigin = 'recent' | 'picked' | 'world' | 'skin' | 'box' | 'mixed';
@@ -38,6 +59,9 @@ export const KEY_OF: Readonly<Partial<Record<DeskTool, string>>> = { ink: 'B', p
 
 export interface DeskState {
   ready: boolean;
+  /** The rig kind and facing being drawn (the request's, or the student's pick for a free drawing). */
+  kind: DeskRequest['rig'];
+  facing: Facing;
   tool: DeskTool;
   /** Alt held (or the eyedropper button): the next tap picks a colour. */
   picking: boolean;
@@ -53,6 +77,8 @@ export interface DeskState {
   tapToInk: boolean;
   mirror: boolean;
   guides: boolean;
+  /** Freehand: the star-pose guide to draw over (characters with bones). */
+  starPose: boolean;
   steady: boolean;
   /** CSS px per board px, as a percentage. */
   zoom: number;
@@ -75,6 +101,10 @@ export interface DeskState {
   selection: SelectionInfo | null;
   inked: number;
   dirty: boolean;
+  /** Where it stands (the pivot pin), on the board; null until there is ink. */
+  pin: [number, number] | null;
+  /** The student placed the pin (else it follows the drawing). */
+  pinPlaced: boolean;
 }
 
 export interface DeskOpen {
@@ -91,10 +121,19 @@ export interface DeskOpen {
   heroImage: ImageBitmap | null;
   /** The part bones of the kind (part name → bone names). */
   partBones: Record<string, string[]>;
+  /** The paper and the desk around it (the theme's tokens). */
+  colors?: { paper: string; workspace: string };
 }
 
 type Listener = () => void;
-export type DeskEvent = { type: 'penup'; layer: string | null; op: string } | { type: 'toast'; text: string } | { type: 'announce'; text: string };
+export type DeskEvent =
+  | { type: 'penup'; layer: string | null; op: string }
+  | { type: 'toast'; text: string }
+  | { type: 'announce'; text: string }
+  /** The pen (finger, mouse) went down on the paper, or came up. */
+  | { type: 'pen'; down: boolean }
+  /** A new preview export (null: nothing drawn). */
+  | { type: 'art'; art: DeskArt | null };
 
 const TOOL_ENGINE: Record<DeskTool, ToolId> = {
   ink: 'ink',
@@ -128,7 +167,8 @@ const STEADY_ON = 0.4;
 
 export class DeskController {
   readonly surface: ArtSurface;
-  readonly request: DeskRequest;
+  /** What is being drawn (a free drawing's kind and facing can change: "What is it?"). */
+  request: DeskRequest;
   readonly board: BoardSpec;
   private state: DeskState;
   private readonly listeners = new Set<Listener>();
@@ -139,9 +179,16 @@ export class DeskController {
   private guideTimer = 0;
   private stopPlay: (() => void) | null = null;
   private destroyed = false;
-  private readonly partBones: Record<string, string[]>;
+  private partBones: Record<string, string[]>;
   private readonly heroImage: ImageBitmap | null;
   private unit = 1;
+  private pen = false;
+  private artTimer = 0;
+  private artSeq = 1;
+  private artDone = 0;
+  private artBusy = false;
+  private artWanted = 0;
+  private lastArt: DeskArt | null = null;
 
   constructor(o: DeskOpen) {
     this.request = o.request;
@@ -153,12 +200,28 @@ export class DeskController {
       pressure: o.prefs.pressure,
       keyboard: false,
       reducedMotion: o.prefs.reducedMotion,
-      paper: '#fdf8ec',
-      workspace: '#1a1d4d',
+      paper: o.colors?.paper ?? '#fdf8ec',
+      workspace: o.colors?.workspace ?? '#151843',
+      a11y: { role: 'application', label: t('draw.sheetLabel') },
+    });
+    const down = (e: PointerEvent): void => {
+      if (e.button > 0 && e.pointerType === 'mouse') return;
+      this.setPen(true);
+    };
+    const up = (): void => this.setPen(false);
+    o.host.addEventListener('pointerdown', down, true);
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
+    this.off.push(() => {
+      o.host.removeEventListener('pointerdown', down, true);
+      window.removeEventListener('pointerup', up, true);
+      window.removeEventListener('pointercancel', up, true);
     });
     const firstStep = o.steps.findIndex((s) => s.parts.length > 0);
     this.state = {
       ready: false,
+      kind: o.request.rig,
+      facing: o.request.facing,
       tool: o.board.pixelArt ? 'pixel' : 'ink',
       picking: false,
       color: START_COLOR,
@@ -172,6 +235,7 @@ export class DeskController {
       tapToInk: false,
       mirror: false,
       guides: true,
+      starPose: true,
       steady: false,
       zoom: 100,
       layers: [],
@@ -191,8 +255,21 @@ export class DeskController {
       selection: null,
       inked: 0,
       dirty: false,
+      pin: null,
+      pinPlaced: o.doc.anchor !== null && o.doc.anchor !== undefined,
     };
     void this.surface.ready.then(() => this.onReady(), () => undefined);
+  }
+
+  private setPen(down: boolean): void {
+    if (down === this.pen) return;
+    this.pen = down;
+    this.emit({ type: 'pen', down });
+  }
+
+  /** Whether the pen (finger, mouse) is down on the paper. */
+  penDown(): boolean {
+    return this.pen;
   }
 
   // ------------------------------------------------------------------------------------------ the store API
@@ -225,8 +302,14 @@ export class DeskController {
     if (this.destroyed) return;
     const s = this.surface;
     this.off.push(
-      s.on('layers', (layers) => this.set({ layers, active: s.activeLayer(), drawn: this.drawnParts(layers) })),
-      s.on('history', (h) => this.set({ canUndo: h.canUndo, canRedo: h.canRedo })),
+      s.on('layers', (layers) => {
+        this.set({ layers, active: s.activeLayer(), drawn: this.drawnParts(layers) });
+        this.scheduleArt();
+      }),
+      s.on('history', (h) => {
+        this.set({ canUndo: h.canUndo, canRedo: h.canRedo });
+        this.scheduleArt();
+      }),
       s.on('view', (v) => this.set({ zoom: Math.round(v.zoom * 100) })),
       s.on('frames', (frames) => this.set({ frames, frame: s.activeFrame() })),
       s.on('selection', (selection) => this.set({ selection })),
@@ -251,11 +334,13 @@ export class DeskController {
     if (this.state.mode === 'free') this.ensureFreehandLayers();
     this.applyTool(this.state.tool);
     this.renderGuidesNow();
+    this.scheduleArt(0);
   }
 
   destroy(): void {
     this.destroyed = true;
     clearTimeout(this.guideTimer);
+    clearTimeout(this.artTimer);
     this.stopPlay?.();
     for (const f of this.off) f();
     this.listeners.clear();
@@ -487,10 +572,55 @@ export class DeskController {
   /** On the bones or Freehand (the parts drawn so far stay as layers either way). */
   setMode(mode: DeskMode): void {
     if (mode === this.state.mode) return;
+    if (mode === 'bones' && !this.ensureBonesLayers()) return;
     this.set({ mode, part: mode === 'bones' ? (this.state.part ?? this.state.steps[this.state.step]?.parts[0] ?? null) : null });
     if (mode === 'free') this.ensureFreehandLayers();
     this.applyTool(this.state.tool);
     this.renderGuidesNow();
+    this.scheduleArt(0);
+  }
+
+  /**
+   * Drawing on the bones needs a layer pair per part: a drawing begun in Freehand gets them under its own
+   * layers (what was drawn stays on top). False when they do not fit.
+   */
+  private ensureBonesLayers(): boolean {
+    if (Object.keys(this.state.parts).length) return true;
+    const kind = this.state.kind;
+    if (kind === 'none' || kind === 'object') return false;
+    const layout = bonesLayout(kind, rigFacing(this.state.facing));
+    const s = this.surface;
+    if (s.layers().length + layout.layers.length > 16) {
+      this.emit({ type: 'toast', text: t('draw.tooManyLayers') });
+      return false;
+    }
+    const colours = s.layers().findIndex((l) => l.id === FREEHAND_PAIR.colors || l.role === 'colors');
+    let at = colours >= 0 ? colours : s.layers().length;
+    const active = s.activeLayer();
+    for (const l of layout.layers) {
+      if (s.layers().some((x) => x.id === l.id)) continue;
+      if (s.addLayer(l.role, { id: l.id, index: at, name: l.name })) at++;
+    }
+    s.selectLayer(active);
+    const step = Math.max(0, this.state.steps.findIndex((st) => st.parts.length > 0));
+    this.set({ parts: layout.parts, layers: s.layers(), step, part: this.state.steps[step]?.parts[0] ?? null });
+    return true;
+  }
+
+  /** "What is it?" for a free drawing (in Freehand): its kind and facing, so its guide and bones fit. */
+  setKind(kind: CharacterKind, facing: Facing): void {
+    if (kind === this.state.kind && facing === this.state.facing) return;
+    this.request = { ...this.request, rig: kind, facing };
+    this.rig = templateOnBoard(this.board, this.request);
+    const ps = partSteps(kind, rigFacing(facing));
+    const partBones: Record<string, string[]> = {};
+    for (const st of ps) for (const p of st.parts) partBones[p.name] = p.bones;
+    this.partBones = partBones;
+    const keep = Object.keys(this.state.parts).length > 0;
+    const steps: BonesStep[] = keep ? this.state.steps : ps.map((st) => ({ step: st.step, parts: st.parts.map((p) => p.name) }));
+    this.set({ kind, facing, steps, step: keep ? this.state.step : 0 });
+    this.renderGuidesNow();
+    this.scheduleArt(0);
   }
 
   /** Freehand needs its Lines and Colours layers; a drawing begun on the bones gets them on top. */
@@ -622,6 +752,7 @@ export class DeskController {
     // A part got its first ink: its ghost shape goes away.
     if (drawn.join(',') !== drawnBefore) this.scheduleGuides();
     this.emit({ type: 'penup', layer: e.layer, op: e.op });
+    this.scheduleArt();
   }
 
   private onToast(e: { message: string; kind: string; shape?: string; gap?: number }): void {
@@ -636,6 +767,93 @@ export class DeskController {
     else if (e.kind === 'limit') text = /page/i.test(e.message) ? t('draw.pageLimit') : t('draw.tooManyLayers');
     else return;
     this.emit({ type: 'toast', text });
+  }
+
+  // ------------------------------------------------------------------------------------------ previews
+
+  /**
+   * Follows the preview export (the In-your-world card, It already moves!, the pivot pin): `fn` gets the
+   * latest now (when there is one) and each new one. Exports run only while someone follows them.
+   */
+  watchArt(fn: (art: DeskArt | null) => void): () => void {
+    const off = this.onEvent((e) => {
+      if (e.type === 'art') fn(e.art);
+    });
+    this.artWanted++;
+    if (this.artDone === this.artSeq) fn(this.lastArt);
+    else this.scheduleArt(0);
+    return () => {
+      off();
+      this.artWanted--;
+    };
+  }
+
+  /** The latest preview export (null when nothing is drawn, or none was made yet). */
+  art(): DeskArt | null {
+    return this.lastArt;
+  }
+
+  /** Something changed: a new preview export 400 ms from now (the spec's pen-up debounce). */
+  private scheduleArt(delay = 400): void {
+    if (this.destroyed) return;
+    if (delay > 0 || this.artDone === this.artSeq) this.artSeq++;
+    if (!this.artWanted || !this.state.ready) return;
+    clearTimeout(this.artTimer);
+    this.artTimer = window.setTimeout(() => void this.makeArt(), delay);
+  }
+
+  private async makeArt(): Promise<void> {
+    if (this.destroyed || !this.artWanted || this.artDone === this.artSeq) return;
+    // Never while drawing or while a selection is lifted (exporting would put it down).
+    if (this.artBusy || this.pen || this.state.selection) {
+      clearTimeout(this.artTimer);
+      this.artTimer = window.setTimeout(() => void this.makeArt(), 250);
+      return;
+    }
+    const seq = this.artSeq;
+    const mode = this.state.mode;
+    this.artBusy = true;
+    try {
+      const pairs = mode === 'bones' ? this.state.drawn.map((name) => ({ name, layers: [this.state.parts[name].colors, this.state.parts[name].lines] })) : [];
+      const e = await this.surface.export({ maxSize: PREVIEW_MAX, thumbSize: 16, flatOnly: true, ...(pairs.length ? { pairs } : {}) });
+      if (this.destroyed) return;
+      this.artDone = seq;
+      this.lastArt = e ? { flat: e.flat.png, w: e.flat.w, h: e.flat.h, box: e.box, scale: e.scale, anchorBoard: e.anchorBoard, parts: e.parts.map((p) => ({ name: p.name, png: p.png })), mode } : null;
+      this.set({ pin: e ? e.anchorBoard : null });
+      this.emit({ type: 'art', art: this.lastArt });
+    } catch (err) {
+      console.warn('The preview could not update:', err);
+      this.artDone = seq;
+    } finally {
+      this.artBusy = false;
+      if (!this.destroyed && this.artDone !== this.artSeq) this.scheduleArt(0);
+    }
+  }
+
+  /** Moves the pivot pin (board px), or lets it follow the drawing again (null). */
+  setPin(p: [number, number] | null): void {
+    const clamped: [number, number] | null = p ? [Math.round(Math.min(this.board.w, Math.max(0, p[0]))), Math.round(Math.min(this.board.h, Math.max(0, p[1])))] : null;
+    this.surface.setAnchor(clamped);
+    this.set({ pin: clamped ?? this.state.pin, pinPlaced: clamped !== null });
+    this.scheduleArt(clamped ? 400 : 0);
+  }
+
+  /** Freehand's star-pose guide on or off. */
+  setStarPose(on: boolean): void {
+    this.set({ starPose: on });
+    this.renderGuidesNow();
+  }
+
+  /**
+   * Where the joints are, for Bring to life (board px): on the bones, the template's joints and tips (the
+   * parts were drawn on them); in Freehand over the star-pose guide, its joints.
+   */
+  rigHints(): { partHints: { joints: JointHints; tips: JointHints } | null; guideHints: JointHints | null } {
+    if (!this.rig) return { partHints: null, guideHints: null };
+    const h = templateHints(this.rig);
+    if (this.state.mode === 'bones') return { partHints: h, guideHints: null };
+    const overGuide = this.state.guides && this.state.starPose && this.request.kind === 'character';
+    return { partHints: null, guideHints: overGuide ? h.joints : null };
   }
 
   // ------------------------------------------------------------------------------------------ guides
@@ -672,7 +890,7 @@ export class DeskController {
       callout: this.state.mode === 'bones' && part ? t(`draw.callout_${calloutOf(part)}` as MessageKey) : null,
       starNote: t('draw.starNote', { name: r.name }),
     };
-    const starPose = this.state.mode === 'free' && r.kind === 'character' && r.rig !== 'none' && r.rig !== 'object';
+    const starPose = this.state.starPose && this.state.mode === 'free' && r.kind === 'character' && r.rig !== 'none' && r.rig !== 'object';
     const images = renderGuides(
       { board: this.board, request: r, mode: this.state.mode, starPose, currentBones, drawnBones, heroImage: this.heroImage, labels, unit: this.unit },
       this.rig,

@@ -8,6 +8,8 @@ export const draw = {
   // the top bar
   drawingTitle: 'Drawing {name}',
   newDrawingName: 'My character',
+  nameIt: 'Give it a name',
+  namePrompt: 'What is their name?',
   undo: 'Undo',
   redo: 'Redo',
   bones: 'Bones',
@@ -15,6 +17,7 @@ export const draw = {
   bringing: 'Bringing it to life…',
   building: 'Building your world',
   buildingPercent: '{n}%',
+  buildReady: 'Your world is ready · tested',
   saved: 'Saved',
   saving: 'Saving…',
   more: 'More',
@@ -91,6 +94,7 @@ export const draw = {
   needs: 'The game needs',
   readToMe: 'Read to me',
   stopReading: 'Stop reading',
+  noVoice: 'This Chromebook has no reading voice yet.',
   fact_bigRound: 'Big and round',
   fact_bigTall: 'Big and tall',
   fact_small: 'Small',
@@ -198,6 +202,7 @@ export const draw = {
   unlockLayer: 'Unlock',
   renameLayer: 'Rename',
   renamePrompt: 'Name this layer',
+  hiddenWord: 'hidden',
   layerLocked: 'This layer is locked.',
   layerHidden: 'This layer is hidden. Show it to draw on it.',
   tooManyLayers: 'That is a lot of layers! Join some to add more.',
@@ -214,6 +219,7 @@ export const draw = {
   move_jump: 'Jump',
   move_hurt: 'Ouch',
   previewWorld: 'See it in your world',
+  previewLoading: 'Getting your world…',
   previewMoves: 'See it move',
 
   // flipbook
@@ -286,6 +292,7 @@ export const draw = {
   youDrew: 'You drew {name}',
   youRedrew: 'You drew {name} again',
   cameAlive: '{name} came alive!',
+  giveWorld: 'Give {name} a world.',
   bringFailed: 'Something went wrong. Your drawing is safe. Try again?',
 
   // states
