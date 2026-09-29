@@ -89,7 +89,8 @@
   border-radius: 6px;
   background: var(--well);
   box-shadow: inset 0 0 0 1px var(--line);
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  box-decoration-break: clone;
 }
 
 .page__code {
@@ -181,6 +182,12 @@
 
 .page__table tbody th {
   font-weight: 700;
+}
+
+/* Policy and host names read as one word: the table scrolls sideways on a phone instead of splitting them. */
+.page__table td:first-child > code:only-child {
+  overflow-wrap: normal;
+  white-space: nowrap;
 }
 
 .page__hosts {
@@ -320,6 +327,7 @@
   border-radius: var(--r-paper);
   font-size: 1.0625rem;
   line-height: 1.7;
+  color: var(--ink);
   background: var(--paper);
   box-shadow: var(--lift-paper);
 }

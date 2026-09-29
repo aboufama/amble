@@ -31,14 +31,15 @@ export interface GalleryPlayer {
 const ROBOT_SECONDS = 6;
 
 export function useGalleryPlayer(item: GalleryItem | null, slot: RefObject<HTMLElement | null>): GalleryPlayer {
-  const { files, player } = useServices();
+  const services = useServices();
+  const { player } = services;
   const [state, setState] = useState<PlayState>('idle');
   const [file, setFile] = useState<AmbleFile | null>(null);
   const [robot, setRobot] = useState<RobotRun | undefined>(undefined);
   const [muted, setMuted] = useState(true);
   const [run, setRun] = useState(0);
   const current = useRef<string | null>(null);
-  usePlayerSlot('gallery', slot, state === 'playing' || state === 'loading');
+  usePlayerSlot('gallery', slot, state === 'playing');
 
   const id = item?.id ?? null;
   const ready = item?.status === 'ready';
@@ -57,7 +58,7 @@ export function useGalleryPlayer(item: GalleryItem | null, slot: RefObject<HTMLE
     void (async () => {
       let full: AmbleFile;
       try {
-        full = await files.read(item.file);
+        full = await services.files.read(item.file);
       } catch {
         if (live) setState('failed');
         return;
@@ -87,7 +88,7 @@ export function useGalleryPlayer(item: GalleryItem | null, slot: RefObject<HTMLE
       live = false;
     };
     // `run` restarts it (Play after Stop).
-  }, [id, ready, run, files, player]); // item is read through id and ready
+  }, [id, ready, run, services, player]); // item is read through id and ready
 
   const toggleSound = useCallback(() => {
     setMuted((m) => {

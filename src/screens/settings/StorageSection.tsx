@@ -52,7 +52,8 @@ export async function deleteEverything(): Promise<void> {
 }
 
 export function StorageSection() {
-  const { store, files } = useServices();
+  const services = useServices();
+  const { store } = services;
   const [usage, setUsage] = useState<{ usage: number; quota: number; persisted: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   const [asked, setAsked] = useState<'granted' | 'denied' | null>(null);
@@ -80,7 +81,7 @@ export function StorageSection() {
   const saveAll = async () => {
     setSaving(true);
     try {
-      const zip = await files.saveAll();
+      const zip = await services.files.saveAll();
       const day = new Date().toISOString().slice(0, 10);
       const saved = await saveBlob(zip, t('school.setSaveAllName', { day }), { description: t('school.setZipType'), mime: 'application/zip', ext: '.zip' });
       if (saved) showToast(t('school.setSaveAllDone', { name: saved.name }), { kind: 'success' });

@@ -1,7 +1,7 @@
 /**
  * Long page text from the string tables, as elements (never innerHTML): blank lines split blocks; a block
- * starting "## " is a heading; lines starting "- " are a list, "1. " a numbered list; **bold** and `code`
- * work inside a line.
+ * starting "## " is a heading (the lines under it follow the same rules); lines starting "- " are a list,
+ * "1. " a numbered list; **bold** and `code` work inside a line.
  */
 import { Fragment, type ReactNode } from 'react';
 
@@ -20,41 +20,45 @@ function inline(text: string): ReactNode[] {
   return out;
 }
 
+function body(lines: string[]): ReactNode {
+  if (lines.every((l) => l.startsWith('- '))) {
+    return (
+      <ul>
+        {lines.map((l, j) => (
+          <li key={j}>{inline(l.slice(2))}</li>
+        ))}
+      </ul>
+    );
+  }
+  if (lines.every((l) => /^\d+\. /.test(l))) {
+    return (
+      <ol>
+        {lines.map((l, j) => (
+          <li key={j}>{inline(l.replace(/^\d+\. /, ''))}</li>
+        ))}
+      </ol>
+    );
+  }
+  return <p>{inline(lines.join(' '))}</p>;
+}
+
 export function Prose({ text, headingLevel = 3 }: { text: string; headingLevel?: 2 | 3 | 4 }) {
   const blocks = text.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
   const H = `h${headingLevel}` as 'h2' | 'h3' | 'h4';
   return (
     <>
       {blocks.map((block, i) => {
-        const lines = block.split('\n').map((l) => l.trim());
+        const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
         if (lines[0].startsWith('## ')) {
-          const rest = lines.slice(1).join(' ');
+          const rest = lines.slice(1);
           return (
             <Fragment key={i}>
               <H className="page__h">{inline(lines[0].slice(3))}</H>
-              {rest && <p>{inline(rest)}</p>}
+              {rest.length > 0 && body(rest)}
             </Fragment>
           );
         }
-        if (lines.every((l) => l.startsWith('- '))) {
-          return (
-            <ul key={i}>
-              {lines.map((l, j) => (
-                <li key={j}>{inline(l.slice(2))}</li>
-              ))}
-            </ul>
-          );
-        }
-        if (lines.every((l) => /^\d+\. /.test(l))) {
-          return (
-            <ol key={i}>
-              {lines.map((l, j) => (
-                <li key={j}>{inline(l.replace(/^\d+\. /, ''))}</li>
-              ))}
-            </ol>
-          );
-        }
-        return <p key={i}>{inline(lines.join(' '))}</p>;
+        return <Fragment key={i}>{body(lines)}</Fragment>;
       })}
     </>
   );

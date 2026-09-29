@@ -19,6 +19,35 @@ export interface CastInfo {
 
 const ROLES: readonly Role[] = ['hero', 'enemy', 'boss', 'npc', 'item', 'hazard', 'prop', 'terrain', 'projectile', 'enemyShot', 'decor', 'background'];
 
+/** The roles a teacher can ask students to draw, in the order the editor lists them. */
+export const DRAWABLE_ROLES: readonly Role[] = ['hero', 'boss', 'enemy', 'npc', 'item', 'hazard', 'prop', 'background'];
+
+/** The role a declaration without one plays, from its kind (and, for characters, its key). */
+function roleOf(spec: Record<string, unknown>, key: string): Role {
+  if (ROLES.includes(spec.role as Role)) return spec.role as Role;
+  switch (spec.kind) {
+    case 'character':
+      return /hero|player/i.test(key) ? 'hero' : /boss|king|queen/i.test(key) ? 'boss' : 'enemy';
+    case 'item':
+    case 'terrain':
+    case 'background':
+    case 'decor':
+    case 'projectile':
+      return spec.kind;
+    default:
+      return /hero|player/i.test(key) ? 'hero' : /boss/i.test(key) ? 'boss' : 'prop';
+  }
+}
+
+/** "moonKing" → "Moon King", "ground" → "Ground": how a key reads when the game gives no name. */
+export function nameFromKey(key: string): string {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
 /** The cast a game declares in `static art`, read without running it. */
 export function castFromCode(code: readonly CodeFile[]): CastInfo[] {
   let art: unknown;
@@ -31,10 +60,15 @@ export function castFromCode(code: readonly CodeFile[]): CastInfo[] {
   const out: CastInfo[] = [];
   for (const [key, raw] of Object.entries(art as Record<string, unknown>)) {
     const spec = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-    const role = ROLES.includes(spec.role as Role) ? (spec.role as Role) : 'prop';
-    out.push({ key, name: typeof spec.name === 'string' && spec.name ? spec.name : key, role, required: spec.required === true });
+    const name = typeof spec.name === 'string' && spec.name.trim() ? spec.name.trim().slice(0, 40) : nameFromKey(key);
+    out.push({ key, name, role: roleOf(spec, key), required: spec.required === true });
   }
   return out;
+}
+
+/** The members a teacher can require, hero first (terrain, shots and decoration are left out). */
+export function drawableCast(cast: readonly CastInfo[]): CastInfo[] {
+  return cast.filter((c) => DRAWABLE_ROLES.includes(c.role)).sort((a, b) => DRAWABLE_ROLES.indexOf(a.role) - DRAWABLE_ROLES.indexOf(b.role));
 }
 
 const castCache = new Map<string, Promise<CastInfo[]>>();

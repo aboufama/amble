@@ -39,7 +39,7 @@ export function ParentLetter() {
         )}
         <p>{t('school.letterArt')}</p>
         <p>{t('school.letterSee', { url: pageUrl('') })}</p>
-        <p>{t('school.letterNoAi')}</p>
+        {usesAi && <p>{t('school.letterNoAi')}</p>}
         <p>
           {t('school.letterMore')} <span className="letter__url">{pageUrl('privacy')}</span> · <span className="letter__url">{pageUrl('ai')}</span>
         </p>

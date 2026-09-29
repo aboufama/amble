@@ -3,7 +3,7 @@ import { useRef, type KeyboardEvent } from 'react';
 import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
 
-export function CappedChoice<T extends string>({ label, options, value, onChange, locked }: { label: string; options: Array<{ value: T; label: string }>; value: T; onChange(v: T): void; locked(v: T): boolean }) {
+export function CappedChoice<T extends string>({ label, options, value, onChange, locked }: { label: string; options: Array<{ value: T; label: string; aria?: string }>; value: T; onChange(v: T): void; locked(v: T): boolean }) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
   const open = options.filter((o) => !locked(o.value));
   const onKey = (e: KeyboardEvent) => {
@@ -29,6 +29,7 @@ export function CappedChoice<T extends string>({ label, options, value, onChange
             type="button"
             role="radio"
             aria-checked={on}
+            aria-label={o.aria}
             aria-disabled={isLocked || undefined}
             tabIndex={on ? 0 : -1}
             className={cx('segmented__option', on && 'segmented__option--on', isLocked && 'capped__locked')}

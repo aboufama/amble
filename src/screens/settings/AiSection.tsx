@@ -16,6 +16,7 @@ import { Button, Field, Toggle } from '../../ui/components';
 import { confirmUser } from '../../ui/dialogs';
 import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
+import { SchoolIcon } from '../teacher/SchoolIcon';
 import { Group } from './parts';
 
 const LEVEL_WORDS = { elementary: 'school.levelElementary', middle: 'school.levelMiddle', high: 'school.levelHigh' } as const;
@@ -84,6 +85,9 @@ function ManualSetup() {
       <summary className="set-manual__summary">
         <Icon name="settings" size={18} />
         {t('school.setManualTitle')}
+        <span className="set-manual__chev">
+          <SchoolIcon name="next" size={18} />
+        </span>
       </summary>
       <div className="set-manual__body">
         <p className="set-row__hint">{t('school.setManualLede')}</p>

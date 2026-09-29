@@ -15,6 +15,7 @@ import {
   autoGoalLabel,
   castFromCode,
   castOfStarter,
+  drawableCast,
   fitsInLink,
   makeAutoGoal,
   makeTeacherGoal,
@@ -32,7 +33,8 @@ import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
 import { putInLink } from './actions';
 import { CappedChoice } from './CappedChoice';
-import { LEVEL_WORDS } from './ClassLinkTab';
+import { Check } from './Check';
+import { LEVEL_SHORT, LEVEL_WORDS } from './ClassLinkTab';
 import { TButton } from './TButton';
 
 /** Which world an assignment starts from: a built-in starter, or one of the teacher's worlds ("own:<id>"). */
@@ -178,6 +180,7 @@ export function AssignmentEditor({ initial, onDone }: { initial: Assignment; onD
 
   const patch = (p: Partial<Assignment>) => setAsg((a) => ({ ...a, ...p }));
   const members = cast ?? [];
+  const drawable = useMemo(() => drawableCast(cast ?? []), [cast]);
   const chosenGoals = new Set(asg.goals.map((g) => menuIdOf(g, members)).filter((x): x is AutoGoalId => x !== null));
 
   const toggleGoal = (id: AutoGoalId) => {
@@ -210,7 +213,10 @@ export function AssignmentEditor({ initial, onDone }: { initial: Assignment; onD
     return next;
   };
 
-  const levelOptions: Array<{ value: Level | 'class'; label: string }> = [{ value: 'class', label: t('school.staff_levelClass') }, ...LEVELS.map((l) => ({ value: l as Level | 'class', label: t(`school.${LEVEL_WORDS[l]}`) }))];
+  const levelOptions: Array<{ value: Level | 'class'; label: string; aria?: string }> = [
+    { value: 'class', label: t('school.staff_levelClass') },
+    ...LEVELS.map((l) => ({ value: l as Level | 'class', label: t(`school.${LEVEL_SHORT[l]}`), aria: t(`school.${LEVEL_WORDS[l]}`) })),
+  ];
   const lockedCount = Object.values(asg.locked).reduce((n, r) => n + r.length, 0);
   const valid = asg.title.trim().length > 0 && (base.kind === 'starter' || base.id !== '');
 
@@ -225,46 +231,74 @@ export function AssignmentEditor({ initial, onDone }: { initial: Assignment; onD
       <div className="asg-edit__grid">
         <section className="tpanel asg-edit__main">
           <Field label={t('school.staff_asgFieldTitle')} value={asg.title} maxLength={60} counter onChange={(e) => patch({ title: e.target.value })} placeholder={t('school.staff_asgTitleExample')} />
-          <TextArea label={t('school.staff_asgFieldText')} hint={t('school.staff_asgFieldTextHint')} value={asg.text} maxLength={400} counter rows={4} onChange={(e) => patch({ text: e.target.value })} />
-          <div className="field">
-            <label className="field__label" htmlFor={ids.base}>
-              {t('school.staff_asgFieldStarter')}
-            </label>
-            <div className="tinput tinput--select">
-              <select
-                id={ids.base}
-                className="tinput__field"
-                value={baseKey(base)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setBase(v.startsWith('own:') ? { kind: 'own', id: v.slice(4) } : { kind: 'starter', id: v as StarterId });
-                  patch({ require: [], goals: asg.goals.filter((g) => g.kind === 'teacher'), locked: {} });
-                }}
-              >
-                <optgroup label={t('school.staff_asgStarters')}>
-                  {starters.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.title} · {s.genre}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label={t('school.staff_asgOwnWorlds')}>
-                  {ownWorlds.length === 0 && (
-                    <option value="own:" disabled>
-                      {t('school.staff_asgNoOwnWorlds')}
-                    </option>
-                  )}
-                  {ownWorlds.map((w) => (
-                    <option key={w.id} value={`own:${w.id}`}>
-                      {w.title}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
+          <TextArea label={t('school.staff_asgFieldText')} hint={t('school.staff_asgFieldTextHint')} value={asg.text} maxLength={400} counter rows={3} onChange={(e) => patch({ text: e.target.value })} />
+          <div className="asg-edit__pair">
+            <div className="field">
+              <label className="field__label" htmlFor={ids.base}>
+                {t('school.staff_asgFieldStarter')}
+              </label>
+              <div className="tinput tinput--select">
+                <select
+                  id={ids.base}
+                  className="tinput__field"
+                  value={baseKey(base)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setBase(v.startsWith('own:') ? { kind: 'own', id: v.slice(4) } : { kind: 'starter', id: v as StarterId });
+                    patch({ require: [], goals: asg.goals.filter((g) => g.kind === 'teacher'), locked: {} });
+                  }}
+                >
+                  <optgroup label={t('school.staff_asgStarters')}>
+                    {starters.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.title} · {s.genre}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label={t('school.staff_asgOwnWorlds')}>
+                    {ownWorlds.length === 0 && (
+                      <option value="own:" disabled>
+                        {t('school.staff_asgNoOwnWorlds')}
+                      </option>
+                    )}
+                    {ownWorlds.map((w) => (
+                      <option key={w.id} value={`own:${w.id}`}>
+                        {w.title}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
             </div>
-            {base.kind === 'own' && <p className="field__hint">{t('school.staff_asgOwnHint')}</p>}
+            <Field label={t('school.staff_asgFieldDue')} placeholder={t('school.staff_asgDueExample')} value={asg.due} maxLength={40} onChange={(e) => patch({ due: e.target.value })} />
           </div>
-          <Field label={t('school.staff_asgFieldDue')} hint={t('school.staff_asgFieldDueHint')} value={asg.due} maxLength={40} onChange={(e) => patch({ due: e.target.value })} />
+          {base.kind === 'own' && <p className="field__hint asg-edit__ownhint">{t('school.staff_asgOwnHint')}</p>}
+          <div className="asg-edit__opts">
+            <div className="asg-edit__row">
+              <span className="field__label">{t('school.staff_asgAiTitle')}</span>
+              <Segmented<AiMode>
+                label={t('school.staff_asgAiTitle')}
+                size={38}
+                options={[
+                  { value: 'on', label: t('school.staff_modeOn') },
+                  { value: 'explain', label: t('school.staff_modeExplain') },
+                  { value: 'off', label: t('school.staff_modeOff') },
+                ]}
+                value={asg.ai}
+                onChange={(ai) => patch({ ai })}
+              />
+            </div>
+            <div className="asg-edit__row">
+              <span className="field__label">{t('school.staff_asgLevel')}</span>
+              <CappedChoice label={t('school.staff_clLevel')} options={levelOptions} value={asg.level ?? 'class'} onChange={(v) => patch({ level: v === 'class' ? null : v })} locked={(v) => v !== 'class' && LEVELS.indexOf(v) > LEVELS.indexOf(levelMax)} />
+            </div>
+            <div className="asg-edit__row">
+              <span className="field__label">{t('school.staff_asgLocked')}</span>
+              <Button variant="ghost" size={38} icon="lock" onClick={() => setLocking(true)} disabled={code.length === 0}>
+                {lockedCount ? t('school.staff_asgLockedCount', { n: lockedCount }) : t('school.staff_asgLockLines')}
+              </Button>
+            </div>
+          </div>
         </section>
 
         <section className="tpanel asg-edit__side">
@@ -272,17 +306,14 @@ export function AssignmentEditor({ initial, onDone }: { initial: Assignment; onD
             <legend className="tpanel__h">{t('school.staff_asgRequired')}</legend>
             {cast === null ? (
               <p className="field__hint">{t('school.staff_loading')}</p>
-            ) : members.length === 0 ? (
+            ) : drawable.length === 0 ? (
               <p className="field__hint">{t('school.staff_asgNoCast')}</p>
             ) : (
               <div className="asg-edit__checks">
-                {members.map((m) => (
-                  <label key={m.key} className="tcheck">
-                    <input type="checkbox" checked={asg.require.includes(m.key)} onChange={() => toggleRequired(m.key)} />
-                    <span>
-                      {m.name} <small>{roleWord(m.role)}</small>
-                    </span>
-                  </label>
+                {drawable.map((m) => (
+                  <Check key={m.key} checked={asg.require.includes(m.key)} onChange={() => toggleRequired(m.key)}>
+                    {m.name} <small>{roleWord(m.role)}</small>
+                  </Check>
                 ))}
               </div>
             )}
@@ -292,12 +323,9 @@ export function AssignmentEditor({ initial, onDone }: { initial: Assignment; onD
             <legend className="tpanel__h">{t('school.staff_asgGoalsTitle')}</legend>
             <div className="asg-edit__checks">
               {AUTO_GOALS.filter((id) => autoGoalAvailable(id, members)).map((id) => (
-                <label key={id} className="tcheck">
-                  <input type="checkbox" checked={chosenGoals.has(id)} onChange={() => toggleGoal(id)} />
-                  <span>
-                    {autoGoalLabel(id)} <small>{t('school.staff_evAuto')}</small>
-                  </span>
-                </label>
+                <Check key={id} checked={chosenGoals.has(id)} onChange={() => toggleGoal(id)}>
+                  {autoGoalLabel(id)} <small>{t('school.staff_evAuto')}</small>
+                </Check>
               ))}
             </div>
             {asg.goals.filter((g) => g.kind === 'teacher').length > 0 && (
@@ -323,30 +351,6 @@ export function AssignmentEditor({ initial, onDone }: { initial: Assignment; onD
             </div>
           </fieldset>
 
-          <div className="asg-edit__row">
-            <span className="field__label">{t('school.staff_asgAiTitle')}</span>
-            <Segmented<AiMode>
-              label={t('school.staff_asgAiTitle')}
-              size={38}
-              options={[
-                { value: 'on', label: t('school.staff_modeOn') },
-                { value: 'explain', label: t('school.staff_modeExplain') },
-                { value: 'off', label: t('school.staff_modeOff') },
-              ]}
-              value={asg.ai}
-              onChange={(ai) => patch({ ai })}
-            />
-          </div>
-          <div className="asg-edit__row">
-            <span className="field__label">{t('school.staff_clLevel')}</span>
-            <CappedChoice label={t('school.staff_clLevel')} options={levelOptions} value={asg.level ?? 'class'} onChange={(v) => patch({ level: v === 'class' ? null : v })} locked={(v) => v !== 'class' && LEVELS.indexOf(v) > LEVELS.indexOf(levelMax)} />
-          </div>
-          <div className="asg-edit__row">
-            <span className="field__label">{t('school.staff_asgLocked')}</span>
-            <Button variant="ghost" size={38} icon="lock" onClick={() => setLocking(true)} disabled={code.length === 0}>
-              {lockedCount ? t('school.staff_asgLockedCount', { n: lockedCount }) : t('school.staff_asgLockLines')}
-            </Button>
-          </div>
         </section>
       </div>
 
@@ -355,6 +359,7 @@ export function AssignmentEditor({ initial, onDone }: { initial: Assignment; onD
           {t('school.staff_cancel')}
         </Button>
         <span className="asg-edit__spacer" />
+        {!valid && <p className="asg-edit__why">{asg.title.trim() ? t('school.staff_asgPickWorld') : t('school.staff_asgNeedTitle')}</p>}
         {base.kind === 'starter' && (
           <TButton
             variant="ghost"
@@ -392,7 +397,6 @@ export function AssignmentEditor({ initial, onDone }: { initial: Assignment; onD
           {t('school.staff_save')}
         </Button>
       </div>
-      {!valid && <p className="asg-edit__why">{asg.title.trim() ? t('school.staff_asgPickWorld') : t('school.staff_asgNeedTitle')}</p>}
 
       {locking && <LockLines code={code} locked={asg.locked} onChange={(locked) => patch({ locked })} onClose={() => setLocking(false)} />}
     </div>

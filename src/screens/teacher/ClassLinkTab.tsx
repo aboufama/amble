@@ -24,6 +24,7 @@ import { JoinCardBody } from '../join/JoinCard';
 import { QrCode } from './QrCode';
 import { blankLink } from './actions';
 import { CappedChoice } from './CappedChoice';
+import { Check } from './Check';
 import { SchoolIcon } from './SchoolIcon';
 import { TButton } from './TButton';
 
@@ -33,6 +34,12 @@ export const LEVEL_WORDS: Record<Level, 'staff_levelElementary' | 'staff_levelMi
   elementary: 'staff_levelElementary',
   middle: 'staff_levelMiddle',
   high: 'staff_levelHigh',
+};
+
+export const LEVEL_SHORT: Record<Level, 'staff_levelShortElementary' | 'staff_levelShortMiddle' | 'staff_levelShortHigh'> = {
+  elementary: 'staff_levelShortElementary',
+  middle: 'staff_levelShortMiddle',
+  high: 'staff_levelShortHigh',
 };
 
 const MODE_WORDS: Record<AiMode, 'staff_modeOn' | 'staff_modeExplain' | 'staff_modeOff'> = { on: 'staff_modeOn', explain: 'staff_modeExplain', off: 'staff_modeOff' };
@@ -46,10 +53,6 @@ function validAddress(url: string): boolean {
   }
 }
 
-function formatDay(iso: string): string {
-  const d = new Date(`${iso}T12:00:00`);
-  return Number.isNaN(d.getTime()) ? iso : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(d);
-}
 
 function ReadyRow({ item, done, children, action }: { item: ReadyItem; done: number | undefined; children: ReactNode; action: ReactNode }) {
   const time = done ? new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(done) : null;
@@ -287,19 +290,19 @@ export function ClassLinkTab() {
                 {CAPS.map((c) => {
                   const on = caps.split(',').includes(c);
                   return (
-                    <label key={c} className="cl__cap">
-                      <input
-                        type="checkbox"
-                        checked={on}
-                        onChange={() => {
-                          const set = new Set(caps.split(',').filter(Boolean));
-                          if (on) set.delete(c);
-                          else set.add(c);
-                          save({}, { caps: CAPS.filter((x) => set.has(x)).join(',') });
-                        }}
-                      />
+                    <Check
+                      key={c}
+                      checked={on}
+                      className="cl__cap"
+                      onChange={() => {
+                        const set = new Set(caps.split(',').filter(Boolean));
+                        if (on) set.delete(c);
+                        else set.add(c);
+                        save({}, { caps: CAPS.filter((x) => set.has(x)).join(',') });
+                      }}
+                    >
                       <code>{c}</code>
-                    </label>
+                    </Check>
                   );
                 })}
               </fieldset>
@@ -330,7 +333,7 @@ export function ClassLinkTab() {
           <div className="trow">
             <span className="trow__label">
               {t('school.staff_clLevel')}
-              {levelMax !== 'high' && <small>{t('school.staff_levelCap', { district: districtName ?? t('school.staff_yourDistrict'), level: t(`school.${LEVEL_WORDS[levelMax]}`) })}</small>}
+              {levelMax !== 'high' && <small>{t('school.staff_levelCap', { district: districtName ?? t('school.staff_yourDistrict'), level: t(`school.${LEVEL_SHORT[levelMax]}`) })}</small>}
             </span>
             <CappedChoice label={t('school.staff_clLevel')} options={levels} value={link.level} onChange={(level) => save({ level })} locked={(l) => LEVELS.indexOf(l) > LEVELS.indexOf(levelMax)} />
           </div>
@@ -356,14 +359,6 @@ export function ClassLinkTab() {
                 ))}
               </select>
               <span className="tinput__suffix tinput__suffix--quiet">{draft.asg ? t('school.staff_clAsgShows') : <Link to={{ name: 'teacher', tab: 'assignments' }}>{t('school.staff_clMakeAssignment')}</Link>}</span>
-            </div>
-          </div>
-          <div className="trow">
-            <label className="trow__label" htmlFor={ids.exp}>
-              {t('school.staff_clUntil')}
-            </label>
-            <div className="tinput tinput--date">
-              <input id={ids.exp} type="date" className="tinput__field" value={draft.exp ?? ''} onChange={(e) => save({ exp: e.target.value || null })} />
             </div>
           </div>
         </section>
@@ -406,7 +401,7 @@ export function ClassLinkTab() {
               <div className="linkcard__qr">{scannable ? <QrCode text={href} label={t('school.staff_qrLabel', { cls: link.cls })} /> : <p className="linkcard__long">{t('school.staff_qrTooLong')}</p>}</div>
               <div className="linkcard__col">
                 <p ref={linkBox} className="linkcard__url mono" title={href}>
-                  {shortHref(href, 48)}
+                  {shortHref(href)}
                 </p>
                 <div className="linkcard__btns">
                   <TButton variant="lantern" icon="copy" onClick={() => void copy()} testId="copy-link">
@@ -421,10 +416,14 @@ export function ClassLinkTab() {
           ) : (
             <p className="linkcard__wait">{nameMissing ? t('school.staff_needName') : addressBad ? t('school.staff_addressHttps') : t('school.staff_linkTooLong')}</p>
           )}
-          <p className="linkcard__exp">
+          <div className="linkcard__exp">
             <SchoolIcon name="clock" size={16} />
-            {link.exp ? t('school.staff_worksUntil', { date: formatDay(link.exp) }) : t('school.staff_worksAlways')}
-          </p>
+            <span>
+              <label htmlFor={ids.exp}>{t('school.staff_worksUntilLabel')}</label>{' '}
+              <input id={ids.exp} type="date" className="linkcard__date" aria-label={t('school.staff_clUntil')} value={draft.exp ?? ''} onChange={(e) => save({ exp: e.target.value || null })} />{' '}
+              {link.exp ? t('school.staff_changeCodeHint') : t('school.staff_worksAlways')}
+            </span>
+          </div>
         </PaperCard>
 
         <section className="tpanel preview" aria-labelledby={`${ids.cls}-see`}>

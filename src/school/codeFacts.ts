@@ -66,9 +66,12 @@ function shotKey(call: CallExpression, src: string): string {
   return first ? src.slice(first.start, first.end) : '';
 }
 
+/** `this.dials.jump` (and the kit's alias `this.dial.jump`). */
 function isThisDial(m: MemberExpression): boolean {
   const obj = m.object as Expression | Super;
-  return obj.type === 'MemberExpression' && obj.object.type === 'ThisExpression' && propName(obj) === 'dial';
+  if (obj.type !== 'MemberExpression' || obj.object.type !== 'ThisExpression') return false;
+  const name = propName(obj);
+  return name === 'dials' || name === 'dial';
 }
 
 export function codeFacts(code: readonly CodeFile[]): CodeFacts {

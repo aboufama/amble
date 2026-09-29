@@ -70,7 +70,7 @@ function csvFor(items: readonly GalleryItem[], notes: ReturnType<typeof useTeach
 }
 
 export function GalleryTab({ showNames = true }: { showNames?: boolean }) {
-  const { files } = useServices();
+  const services = useServices();
   const gallery = useGallery();
   const teacher = useTeacherData();
   const cls = useStore((s) => s.config.classLink?.cls ?? null);
@@ -116,7 +116,7 @@ export function GalleryTab({ showNames = true }: { showNames?: boolean }) {
   const open = async (kind: 'folder' | 'files') => {
     let list: File[];
     try {
-      list = kind === 'folder' ? await files.openFolder() : await files.openPicker({ multiple: true });
+      list = kind === 'folder' ? await services.files.openFolder() : await services.files.openPicker({ multiple: true });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       showToast(t('school.staff_galleryCantOpen'), { kind: 'error' });
@@ -129,7 +129,7 @@ export function GalleryTab({ showNames = true }: { showNames?: boolean }) {
       return;
     }
     announce(t('school.staff_galleryOpening', { n: amble.length }));
-    await openGallery(files, amble, kind);
+    await openGallery(services.files, amble, kind);
   };
 
   const exportCsv = () => {
@@ -184,10 +184,8 @@ export function GalleryTab({ showNames = true }: { showNames?: boolean }) {
     <div className="gallery" data-testid="teacher-gallery">
       <div className="gallery__main">
         <div className="gallery__head">
-          <h2 className="gallery__title">
-            {asg ?? t('school.staff_galleryTitle')}
-            {teacherClass && <span className="gallery__class">{teacherClass}</span>}
-          </h2>
+          <h2 className="gallery__title">{asg ?? t('school.staff_galleryTitle')}</h2>
+          {teacherClass && <span className="gallery__class">{teacherClass}</span>}
           <p className="gallery__source">
             <SchoolIcon name="folder" size={18} />
             {gallery.source === 'folder' ? t('school.staff_sourceFolder', { n: gallery.items.length }) : t('school.staff_sourceFiles', { n: gallery.items.length })}

@@ -194,6 +194,22 @@
   min-height: var(--target);
   font: var(--type-label);
   cursor: pointer;
+  list-style: none;
+}
+
+.set-manual__summary::-webkit-details-marker {
+  display: none;
+}
+
+.set-manual__chev {
+  display: inline-grid;
+  margin-left: auto;
+  color: var(--text-2);
+  transition: transform var(--t-ui) var(--ease-soft);
+}
+
+.set-manual[open] .set-manual__chev {
+  transform: rotate(90deg);
 }
 
 .set-manual__body {
@@ -308,6 +324,7 @@
 .set-licences li {
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   justify-content: space-between;
   gap: var(--s3);
   padding: 6px 0;

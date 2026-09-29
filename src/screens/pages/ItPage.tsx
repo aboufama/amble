@@ -36,6 +36,7 @@ export const MANAGED_EXAMPLE = {
 /** Build-time settings for a district's own copy (`VITE_AMBLE_*`; public values, never keys). */
 export const BUILD_VARS: Array<[string, string]> = [
   ['VITE_AMBLE_SCHOOL_MODE', 'true'],
+  ['VITE_AMBLE_AI_ENABLED', 'true | false'],
   ['VITE_AMBLE_AI_BASE_URL', 'https://amble-ai.sau99.org/v1'],
   ['VITE_AMBLE_AI_MODEL', 'amble-default'],
   ['VITE_AMBLE_AI_FAST_MODEL', 'amble-fast'],

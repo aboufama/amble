@@ -17,6 +17,7 @@ import { announce, showToast } from '../../state/app';
 import { Footprints, IconButton, Keycap, TextArea } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { cx } from '../../ui/cx';
+import { Check } from './Check';
 import { SchoolIcon } from './SchoolIcon';
 import { TButton } from './TButton';
 import { useGalleryPlayer } from './useGalleryPlayer';
@@ -125,10 +126,7 @@ export function GalleryDetail({ item, index, total, showNames, onMove, onBack }:
         <span>
           <Keycap>Esc</Keycap> {t('school.staff_keysStop')}
         </span>
-        <button type="button" className="btn btn--quiet btn--h38 gdetail__sound" aria-pressed={!game.muted} onClick={game.toggleSound} disabled={game.state !== 'playing'}>
-          <Icon name="sound" size={18} />
-          <span className="btn__label">{game.muted ? t('school.staff_soundOff') : t('school.staff_soundOn')}</span>
-        </button>
+        <IconButton icon="sound" label={game.muted ? t('school.staff_soundTurnOn') : t('school.staff_soundTurnOff')} pressed={!game.muted} size={38} variant="ghost" onClick={game.toggleSound} disabled={game.state !== 'playing'} className="gdetail__sound" />
       </div>
 
       <div className="gdetail__scroll">
@@ -143,18 +141,17 @@ export function GalleryDetail({ item, index, total, showNames, onMove, onBack }:
               if (o.pass === null) {
                 const on = Boolean(note.checks[o.goal.id]);
                 return (
-                  <li key={o.goal.id} className="gchecks__row">
-                    <label className="gchecks__teacher">
-                      <input type="checkbox" checked={on} onChange={() => editNote(item, (n) => ({ ...n, checks: { ...n.checks, [o.goal.id]: !on } }))} />
-                      <span>{o.goal.label}</span>
-                    </label>
+                  <li key={o.goal.id} className="gchecks__row gchecks__row--teacher">
+                    <Check checked={on} onChange={() => editNote(item, (n) => ({ ...n, checks: { ...n.checks, [o.goal.id]: !on } }))} className="gchecks__teacher">
+                      {o.goal.label}
+                    </Check>
                     <span className="gchecks__ev">{teacherEvidence(o.evidence)}</span>
                   </li>
                 );
               }
               const testing = o.evidence.kind === 'untested' && game.robot === undefined && game.state !== 'failed';
               return (
-                <li key={o.goal.id} className={cx('gchecks__row', o.pass ? 'gchecks__row--pass' : 'gchecks__row--fail')}>
+                <li key={o.goal.id} className={cx('gchecks__row', o.pass ? 'gchecks__row--pass' : testing ? 'gchecks__row--testing' : 'gchecks__row--fail')}>
                   <span className="gchecks__box" aria-hidden="true">
                     {o.pass ? <Icon name="check" size={14} /> : testing ? null : <Icon name="warning" size={12} />}
                   </span>

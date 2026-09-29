@@ -92,14 +92,22 @@ export function HandInSheet({ route }: { route: RouteOf<'handin'> }) {
 
   const close = () => navigate({ name: 'world', id: route.worldId });
 
-  // Fill the fields once per world.
+  // Fill the fields once per world; the honesty line follows the world's Footsteps.
   useEffect(() => {
     if (!world || loadedFor.current === world.id) return;
     loadedFor.current = world.id;
     setInitials(world.credits.madeBy);
     setFileName(world.handIn.fileName ?? suggestedFileName(world, world.credits.madeBy));
-    void storyOf(world).then(setStory);
   }, [world]);
+  const steps0 = world?.steps ?? null;
+  useEffect(() => {
+    if (!world) return;
+    let live = true;
+    void storyOf(world).then((s) => live && setStory(s));
+    return () => {
+      live = false;
+    };
+  }, [steps0]);
 
   const runTest = useCallback(
     async (w: World, base: HandinCheck) => {
@@ -114,8 +122,11 @@ export function HandInSheet({ route }: { route: RouteOf<'handin'> }) {
     [],
   );
 
-  // Check once the world is here: the quick checks at once, then the robot test.
+  // Check once the world is here (and again if its code or assignment changes): the quick checks at
+  // once, then the robot test. Saving (initials, the file) doesn't re-run them.
   const worldId = world?.id ?? null;
+  const assignment0 = world?.assignment ?? null;
+  const code0 = world?.code ?? null;
   useEffect(() => {
     if (!worldId) return;
     const w = world;
@@ -129,8 +140,7 @@ export function HandInSheet({ route }: { route: RouteOf<'handin'> }) {
     return () => {
       live = false;
     };
-    // Checks run when the sheet opens for a world; edits in the sheet (initials) don't re-run them.
-  }, [worldId]);
+  }, [worldId, assignment0, code0]);
 
   if (missing) {
     return (

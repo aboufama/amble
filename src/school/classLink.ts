@@ -50,11 +50,12 @@ export function classLinkHref(link: ClassLinkV1, appUrl: string = globalThis.loc
   return `${u.origin}${u.pathname}#class=${encodeClassLinkV1(link)}`;
 }
 
-/** The link for display: the host and path, then the start of the payload ("amble.sau99.org/#class=eyJ2Ijox…"). */
-export function shortHref(href: string, keep = 24): string {
+/** The link for display, at most `total` characters: the host and path, then the start of the payload ("amble.sau99.org/#class=eyJ2Ijox…"). */
+export function shortHref(href: string, total = 58): string {
   const u = new URL(href);
   const payload = u.hash.replace(/^#class=/, '');
   const head = `${u.host}${u.pathname.replace(/\/$/, '')}/#class=`;
+  const keep = Math.max(8, total - head.length - 1);
   return payload.length > keep ? `${head}${payload.slice(0, keep)}…` : `${head}${payload}`;
 }
 

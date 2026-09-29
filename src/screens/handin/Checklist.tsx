@@ -83,7 +83,7 @@ export function Checklist({ worldId, cast, outcomes, testing, onRetest }: Checkl
                 <span className="sr-only">{`: ${said}.`}</span>
               </span>
               <span className="checklist__evidence">
-                {evidence} <FixLink worldId={worldId} outcome={o} onRetest={onRetest} />
+                {evidence} {!running && <FixLink worldId={worldId} outcome={o} onRetest={onRetest} />}
               </span>
             </span>
           </li>

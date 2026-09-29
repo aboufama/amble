@@ -18,7 +18,7 @@ export interface Qr {
  * The smallest QR code that holds `text`. Medium error correction reads best from a phone across a room;
  * long links fall back to low so they still fit. Throws when the text is too long for any QR code.
  */
-export function makeQr(text: string, level: QrLevel = text.length > 900 ? 'L' : 'M'): Qr {
+export function makeQr(text: string, level: QrLevel = text.length > 500 ? 'L' : 'M'): Qr {
   const qr = qrcode(0, level);
   qr.addData(text, 'Byte');
   qr.make();
