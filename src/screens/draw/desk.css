@@ -307,11 +307,10 @@
   outline: none;
 }
 
-.desk--nostrip .desk__area {
-  row-gap: 0;
-}
-
+/* Each part keeps its own row, so a drawing with no guide strip (an item, a platform, a background) still
+   gives the sheet the tall middle row. */
 .desk__strip {
+  grid-row: 1;
   display: flex;
   align-items: center;
   gap: var(--s3);
@@ -326,6 +325,7 @@
 
 /* The workspace: Scratch's grey around the white sheet, in a flat frame. */
 .desk__stage {
+  grid-row: 2;
   position: relative;
   min-height: 0;
   overflow: hidden;
@@ -401,7 +401,9 @@
 }
 
 .desk__viewbar {
+  grid-row: 3;
   display: flex;
+  align-items: flex-start;
   justify-content: center;
   min-width: 0;
   padding-top: 8px;
