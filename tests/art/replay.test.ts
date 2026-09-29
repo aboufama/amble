@@ -4,6 +4,7 @@ import { artDocToBoard, deserializeArtDoc, readLog, serializeArtDoc } from '../.
 import { decodePng } from '../../src/art/engine/png';
 import { exportArt } from '../../src/art/engine/export';
 import type { ArtScript } from '../../src/art/engine/model';
+import { sameBytes } from './helpers';
 
 /** A little round creature: an ink body in two strokes, a fill under the lines, eyes, a crayon smile. */
 function creature(): ArtScript {
@@ -89,7 +90,7 @@ describe('replayArtScript', () => {
     for (let i = 0; i < a.cels.length; i++) {
       const pa = new Uint8Array(await a.cels[i].png.arrayBuffer());
       const pb = new Uint8Array(await b.cels[i].png.arrayBuffer());
-      expect(Buffer.from(pa).equals(Buffer.from(pb))).toBe(true);
+      expect(sameBytes(pa, pb)).toBe(true);
     }
     const log = await readLog(a);
     expect(log!.length).toBe(7);
@@ -98,7 +99,7 @@ describe('replayArtScript', () => {
     for (const id of ['colors', 'lines']) {
       const x = board.pixels('f1', id)!;
       const y = fromDoc.pixels('f1', id)!;
-      expect(Buffer.from(x.buffer).equals(Buffer.from(y.buffer))).toBe(true);
+      expect(sameBytes(x, y)).toBe(true);
     }
   });
 

@@ -34,8 +34,13 @@ export async function encodeCel(board: Board, frame: string, layer: string): Pro
   return { frame, layer, x: box.x0, y: box.y0, w, h, png: new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'image/png' }) };
 }
 
-/** Snapshot of the board as an ArtDoc. Unchanged cels come from `cache` when given. */
-export async function boardToArtDoc(board: Board, meta: DocMeta, log: readonly LogOp[] | null, cache?: CelCache): Promise<ArtDoc> {
+export type CelEncoder = (board: Board, frame: string, layer: string) => Promise<ArtCel | null>;
+
+/**
+ * Snapshot of the board as an ArtDoc. Unchanged cels come from `cache` when given; changed ones go through
+ * `encode` (the surface passes one that runs in the worker).
+ */
+export async function boardToArtDoc(board: Board, meta: DocMeta, log: readonly LogOp[] | null, cache?: CelCache, encode: CelEncoder = encodeCel): Promise<ArtDoc> {
   const cels: ArtCel[] = [];
   for (const f of board.frames)
     for (const l of board.layers) {
@@ -46,7 +51,7 @@ export async function boardToArtDoc(board: Board, meta: DocMeta, log: readonly L
       let cel: ArtCel | null;
       if (hit && hit.version === version) cel = hit.cel;
       else {
-        cel = await encodeCel(board, f.id, l.id);
+        cel = await encode(board, f.id, l.id);
         cache?.set(key, { version, cel });
       }
       if (cel) cels.push(cel);

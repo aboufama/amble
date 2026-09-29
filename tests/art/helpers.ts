@@ -52,3 +52,12 @@ export function maskAt(res: { box: { x0: number; y0: number; x1: number; y1: num
   if (x < box.x0 || y < box.y0 || x >= box.x1 || y >= box.y1) return 0;
   return res.mask[(y - box.y0) * (box.x1 - box.x0) + (x - box.x0)];
 }
+
+/** True when two byte views hold the same bytes. */
+export function sameBytes(a: ArrayBufferView, b: ArrayBufferView): boolean {
+  if (a.byteLength !== b.byteLength) return false;
+  const x = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
+  const y = new Uint8Array(b.buffer, b.byteOffset, b.byteLength);
+  for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
+  return true;
+}
