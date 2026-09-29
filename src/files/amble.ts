@@ -47,9 +47,21 @@ export interface FileContents {
   thumb: Blob | null;
 }
 
-async function getBlobs(store: Store, refs: Iterable<BlobRef>, into: Map<BlobRef, Blob>): Promise<boolean> {
+const REF_IN_JSON = /sha256:[0-9a-f]{64}/g;
+
+/**
+ * Fetches these blobs into `into`; false when one is missing. A drawing's doc JSON is read too, so every
+ * cel it points at comes along even if its record's `cels` list missed one (the reader checks them all).
+ */
+async function getBlobs(store: Store, refs: Iterable<BlobRef>, into: Map<BlobRef, Blob>, docs: Iterable<BlobRef> = []): Promise<boolean> {
+  const wanted = new Set(refs);
+  for (const doc of docs) {
+    const blob = into.get(doc) ?? (await store.blobs.get(doc));
+    if (!blob) return false;
+    for (const m of (await blob.text()).matchAll(REF_IN_JSON)) wanted.add(m[0] as BlobRef);
+  }
   let all = true;
-  for (const ref of refs) {
+  for (const ref of wanted) {
     if (into.has(ref)) continue;
     const blob = await store.blobs.get(ref);
     if (blob) into.set(ref, blob);
@@ -57,6 +69,8 @@ async function getBlobs(store: Store, refs: Iterable<BlobRef>, into: Map<BlobRef
   }
   return all;
 }
+
+const docsOfStep = (s: StepSnapshot): BlobRef[] => Object.values(s.art).map((a) => a.doc);
 
 function manifestFor(kind: AmbleManifest['kind'], title: string, madeBy: string, assignmentId: string | null, now: number): AmbleManifest {
   return { format: 'amble-file', version: 2, kind, app: `Amble ${BUILD.version}`, title: title.slice(0, 40), savedAt: new Date(now).toISOString(), madeBy: madeBy.slice(0, 20), assignmentId, thumb: 'thumb.png' };
@@ -77,7 +91,7 @@ export async function collectWorld(store: Store, world: World, kind: 'world' | '
   const kept = new Set<ArtId>();
   for (const id of artIds) {
     const rec = await store.art.get(id);
-    if (rec && (await getBlobs(store, artRefs(rec), blobs))) {
+    if (rec && (await getBlobs(store, artRefs(rec), blobs, [rec.doc]))) {
       art.push(rec);
       kept.add(id);
     }
@@ -98,7 +112,7 @@ export async function collectWorld(store: Store, world: World, kind: 'world' | '
     for (const sid of ids.slice(-KEEP.stepsInFile * 2).reverse()) {
       if (steps.length >= KEEP.stepsInFile) break;
       const snap = await store.steps.get(sid);
-      if (snap && snap.worldId === world.id && (await getBlobs(store, stepRefs(snap), blobs))) steps.unshift(snap);
+      if (snap && snap.worldId === world.id && (await getBlobs(store, stepRefs(snap), blobs, docsOfStep(snap)))) steps.unshift(snap);
     }
   }
 
@@ -119,7 +133,7 @@ export async function collectDrawing(store: Store, artId: ArtId, now = Date.now(
   const rec = await store.art.get(artId);
   if (!rec) throw new Error('That drawing is not here.');
   const blobs = new Map<BlobRef, Blob>();
-  if (!(await getBlobs(store, artRefs(rec), blobs))) throw new Error('Some of that drawing is missing.');
+  if (!(await getBlobs(store, artRefs(rec), blobs, [rec.doc]))) throw new Error('Some of that drawing is missing.');
   const thumb = rec.export ? await store.blobs.get(rec.export.thumb) : null;
   return { manifest: manifestFor('drawing', rec.name, '', null, now), world: null, art: [rec], steps: [], blobs, thumb };
 }
@@ -297,7 +311,8 @@ export async function readAmble(file: Blob, o: { manifestOnly?: boolean } = {}):
     const e = entryName(name);
     if (e.kind !== 'step' || !world) continue;
     const snap = cleanStep(parseJson(data));
-    if (!snap || snap.id !== e.id || !stepRefs(snap).every(has)) {
+    const docsOk = snap ? Object.values(snap.art).every((a) => docCelRefs(rawBlobs.get(a.doc))?.every(has) === true) : false;
+    if (!snap || !docsOk || snap.id !== e.id || !stepRefs(snap).every(has)) {
       lostOther = true;
       continue;
     }
