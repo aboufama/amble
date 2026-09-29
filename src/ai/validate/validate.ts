@@ -16,6 +16,7 @@ import { checkGlobals, collectDeclared } from './globals';
 import { normalizeManifest, type Api } from './manifest';
 import { kidMessage } from './messages';
 import { runRules } from './rules';
+import { checkSfxSegments } from './sounds';
 import { readStatics, staticFields } from './statics';
 import { visibleStrings } from './strings';
 import type { GameFile, Issue, ValidateOptions, ValidationResult, WorldFacts } from './types';
@@ -315,6 +316,7 @@ function runPass(files: readonly GameFile[], api: Api, entry: string, fix: boole
     checkGlobals(ctx);
     checkGraphicsArt(ctx);
     checkDialReads(ctx, dialNames);
+    checkSfxSegments(ctx);
     if (game) {
       checkManifestStatics(ctx, game);
       checkWorldArt(ctx, game, world, renamed);

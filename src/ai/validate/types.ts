@@ -62,6 +62,7 @@ export type RuleId =
   | 'bad-path'
   | 'art-manifest'
   | 'dials-manifest'
+  | 'sounds-manifest'
   | 'unknown-dial'
   | 'patch-directive-in-code'
   | 'graphics-art'
