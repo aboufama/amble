@@ -9,6 +9,7 @@ import { flushSync } from 'react-dom';
 import { PAGES, SETTINGS_SECTIONS, TEACHER_TABS, type PageName, type Route, type SettingsSection, type TeacherTab } from './routes';
 import { isCastKey, isCodePath } from '../model/ids';
 import { isStarterId } from '../model/guards';
+import { hasClassLink } from '../cores/ai';
 import { setJoinIntake, setRoute } from '../state/app';
 import type { Services } from './services';
 import { withViewTransition } from './transitions';
@@ -209,7 +210,7 @@ export function hrefOf(route: Route): string {
  */
 export function initRouter(services: Pick<Services, 'school'>, o: { lastRoute?: string | null } = {}): () => void {
   const hash = locationHash();
-  if (/(^#|[&?#])class=/.test(hash)) {
+  if (hasClassLink(hash)) {
     let intake = null;
     try {
       intake = services.school.readClassLink(hash);

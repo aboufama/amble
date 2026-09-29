@@ -1,123 +1,270 @@
 /**
  * The AI core as the app sees it (§8.2): transport (`chatJson`, `chatText`), typed errors, district
- * configuration and class links, the game validator and manifest reader, the AMBLE PATCH parser and
- * applier, and the local safety floor.
+ * configuration and class links, the game validator, the AMBLE PATCH parser and applier, and the safety
+ * floor. Modules import these only from here. The core's names are re-exported as they are; the spec's
+ * names that differ are one-line adapters below (`createPatchParser`, `checkText`, `extractManifest`,
+ * `parseClassLink`).
  *
- * FOUNDATION-STUB: the AI core (`src/ai`) has not merged yet. The transport and config types mirror the
- * core's working copy; the validator, patch and moderation types are the contract M5 codes against (the
- * barrel adapts the core to them when it merges). Until then the transport rejects with `no-config`, the
- * config resolves to "off", the safety floor allows everything, and the parser and applier throw.
+ * vite.config.ts imports `assertNoKeyInEnv` from src/ai/config/secrets.ts directly: this barrel (like the
+ * core's index) reads `import.meta.env` and browser APIs.
  */
-import { NotBuiltYet } from '../model/notBuilt';
-import type { AiMode, Assignment, ClassLinkV1, Level, PlanReply, SafetyVerdict } from '../model/types';
-import type { GameFile } from './play';
+import {
+  checkStudentText,
+  findPii,
+  looksLikeProviderKey,
+  mergeLayers,
+  PatchParser,
+  readClassLink,
+  validateGame,
+  type AiErrorKind,
+  type ClassLink,
+  type GameFile,
+  type KitManifest,
+} from '../ai';
+import type { AiMode, AiStatus, Assignment, ClassLinkV1, CodeFile, Level, SafetyVerdict } from '../model/types';
+import { KIT_API, type KitApi } from './play';
 
-/** 'stub' until the AI core merges. */
-export const AI_CORE: 'stub' | 'real' = 'stub';
+/** 'real': the AI core has merged. */
+export const AI_CORE: 'stub' | 'real' = 'real';
 
-// ------------------------------------------------------------------ configuration
+export {
+  AiError,
+  aiError,
+  isAiError,
+  kidMessage,
+  chatJson,
+  chatText,
+  listModels,
+  pingModel,
+  DEFAULT_RETRIES,
+  DEFAULT_STALL_MS,
+  DEFAULT_TIMEOUT_MS,
+  s,
+  checkJson,
+  clampJson,
+  wireSchema,
+  parseJsonReply,
+  resolveAiConfig,
+  transportFor,
+  aiAvailable,
+  describeAiSource,
+  modelFor,
+  mergeLayers,
+  pendingClassLink,
+  readClassLink,
+  validateClassLink,
+  encodeClassLink,
+  classLinkUrl,
+  saveClassLink,
+  loadClassLink,
+  clearClassLink,
+  isClassLinkExpired,
+  stripClassLinkFromUrl,
+  loadAiSettings,
+  saveAiSettings,
+  clearAiSettings,
+  DEFAULT_AI_SETTINGS,
+  OPENAI_BASE_URL,
+  assertNoKeyInEnv,
+  findSecretsInEnv,
+  looksLikeProviderKey,
+  looksLikeSecret,
+  safetyIdentifier,
+  validateGame,
+  validateCode,
+  instrument,
+  peekStaticLiteral,
+  literalValue,
+  formatIssue,
+  formatIssuesForModel,
+  codeFrame,
+  ENTRY_FILE,
+  isSafeGamePath,
+  PatchParser,
+  parsePatch,
+  applyPatch,
+  applyEdits,
+  opsFromReply,
+  checkStudentText,
+  checkOutputText,
+  screenRequest,
+  screenOutput,
+  moderate,
+  verdictFromCategories,
+  findPii,
+  scrubPii,
+  CRISIS_CARD,
+  PII_MESSAGE,
+  PII_BLOCK_MESSAGE,
+  refusal,
+  toneDownNote,
+  toneHint,
+  devServerInfo,
+  fetchCodexStatus,
+  startCodexLogin,
+  cancelCodexLogin,
+} from '../ai';
 
-export type AgeBand = 'elementary' | 'middle' | 'high';
-export type AiSource = 'managed' | 'build' | 'class-link' | 'manual' | 'dev' | 'none';
-export type ModerationMode = 'endpoint' | 'provider' | 'local-only';
-export type LockKey = 'ai' | 'content' | 'vision';
+export type {
+  AiErrorInit,
+  AiErrorKind,
+  AuthKind,
+  Capabilities,
+  ChatJsonRequest,
+  ChatJsonResult,
+  ChatMessage,
+  ChatRequestBase,
+  ChatStatus,
+  ChatTextRequest,
+  ChatTextResult,
+  ContentPart,
+  FallbackFeature,
+  ReasoningEffort,
+  Transport,
+  Usage,
+  Infer,
+  JsonSchema,
+  JsonType,
+  JsonValue,
+  Schema,
+  AgeBand,
+  AiAuth,
+  AiConfig,
+  AiSettings,
+  AiSource,
+  ConfigLayer,
+  DistrictInfo,
+  LockKey,
+  ModerationMode,
+  ResolveOptions,
+  AiSourceDescription,
+  ModelRole,
+  ClassLink,
+  ClassLinkRead,
+  ClassPolicy,
+  AppliedFix,
+  Issue,
+  KitManifest,
+  RuleId,
+  Severity,
+  ValidateOptions,
+  ValidationResult,
+  VisibleString,
+  Edit,
+  FileAction,
+  FileOp,
+  Patch,
+  PatchEvent,
+  SafetyStatus,
+  ApplyFailure,
+  ApplyResult,
+  CrisisCard,
+  RefuseCategory,
+  ToneHint,
+  ToneTopic,
+  PiiMatch,
+  PiiKind,
+  OutputCheck,
+  FlaggedText,
+  ScreenOptions,
+  ModerationResult,
+  DevServerInfo,
+} from '../ai';
 
-export type AiAuth =
-  | { type: 'none' }
-  | { type: 'bearer'; key: string }
-  | { type: 'class-code'; header: string; code: string };
+/** The core's own safety verdict (richer than the app's `SafetyVerdict` of §4.2; see `checkText`). */
+export type { SafetyVerdict as CoreSafetyVerdict } from '../ai';
 
-export interface DistrictInfo {
-  name: string;
-  privacyUrl: string;
-  contact: string;
+/** The validator's and applier's file shape (`{ path, content }`); the player's is `GameFile` in ./play. */
+export type SourceFile = GameFile;
+
+// ------------------------------------------------------------------ spec-named adapters
+
+/** `createPatchParser()`: the core's incremental AMBLE PATCH parser (`feed`, `snapshot`, `end`). */
+export function createPatchParser(): PatchParser {
+  return new PatchParser();
 }
 
-/** What an endpoint supports; `undefined` = unknown (tried, and dropped if rejected). */
-export interface Capabilities {
-  jsonSchema?: boolean;
-  stream?: boolean;
-  reasoning?: boolean;
-  images?: boolean;
-  moderation?: boolean;
+/** The local floor filter (offline, instant) as the app's `SafetyVerdict` (§4.2). */
+export function checkText(text: string, level: Level): SafetyVerdict {
+  const v = checkStudentText(text, level);
+  switch (v.kind) {
+    case 'allow':
+      return { kind: 'allow' };
+    case 'pii':
+      return { kind: 'pii', spans: v.pii.map((m) => [m.index, m.index + m.text.length] as [number, number]), block: v.block };
+    case 'refuse':
+      return { kind: 'refuse', category: v.category, message: v.message, alternatives: v.alternatives };
+    case 'crisis':
+      return { kind: 'crisis' };
+  }
 }
 
-/** The configuration the app runs with: one resolved answer for "is there AI, where, and how". */
-export interface AiConfig {
-  source: AiSource;
-  enabled: boolean;
-  offReason: 'not-configured' | 'turned-off' | 'expired' | 'grade-band' | 'needs-class-link' | 'needs-key' | null;
-  offBy: AiSource | null;
-  baseUrl: string;
-  via: 'endpoint' | 'dev-server' | 'codex';
-  auth: AiAuth;
-  model: string;
-  fastModel: string;
-  visionModel: string;
-  visionAllowed: boolean;
-  caps: Capabilities;
-  moderation: ModerationMode;
-  ageBand: AgeBand;
-  ageBandMax: AgeBand;
-  safetyIdentifier: boolean;
-  district: DistrictInfo | null;
-  classLabel: string | null;
-  expires: string | null;
-  expired: boolean;
-  locked: LockKey[];
-  schoolMode: boolean;
-  sharedDevice: boolean;
-  requestsMayBeReviewed: boolean;
-  manualAllowed: boolean;
-  problems: string[];
+/** A world's code files for the validator and the applier. */
+export function sourceFilesOf(code: readonly CodeFile[]): SourceFile[] {
+  return code.map((f) => ({ path: f.path, content: f.source }));
 }
 
-/** The configuration when nothing is set up. */
-export const AI_OFF: AiConfig = {
-  source: 'none',
-  enabled: false,
-  offReason: 'not-configured',
-  offBy: null,
-  baseUrl: '',
-  via: 'endpoint',
-  auth: { type: 'none' },
-  model: '',
-  fastModel: '',
-  visionModel: '',
-  visionAllowed: false,
-  caps: {},
-  moderation: 'local-only',
-  ageBand: 'middle',
-  ageBandMax: 'high',
-  safetyIdentifier: false,
-  district: null,
-  classLabel: null,
-  expires: null,
-  expired: false,
-  locked: [],
-  schoolMode: false,
-  sharedDevice: false,
-  requestsMayBeReviewed: false,
-  manualAllowed: true,
-  problems: [],
+/** What the Game class declares, read without running it: its literal statics and its art keys. */
+export interface StaticManifest {
+  /** `config`, `art`, `dials`, `sounds`... as literal values (`DialSpec.for` included). */
+  statics: Record<string, unknown>;
+  art: { declared: string[]; used: string[]; missing: string[] };
+}
+
+/** `extractManifest`: the `statics` and `art` parts of `validateGame` (no auto-fixes). */
+export function extractManifest(files: readonly SourceFile[], manifest: KitManifest = kitManifest()): StaticManifest {
+  const r = validateGame([...files], { manifest, fix: false });
+  return { statics: r.statics, art: r.art };
+}
+
+/**
+ * The kit's API as the validator's manifest: from the player core's `KIT_API` when it has one, else the
+ * v1 surface of §5.16 (so validation works before the player core lands).
+ */
+export function kitManifest(api: KitApi = KIT_API): KitManifest {
+  if (api.namespaces.length) {
+    const scene = api.namespaces.find((n) => n.name === '')?.members.map((m) => m.name) ?? [];
+    const namespaces: Record<string, string[]> = {};
+    for (const ns of api.namespaces) if (ns.name) namespaces[ns.name] = ns.members.map((m) => m.name);
+    return { globals: ['Amble', 'Phaser'], sceneMethods: scene, namespaces };
+  }
+  return FALLBACK_KIT_MANIFEST;
+}
+
+const words = (s: string): string[] => s.split(/\s+/).filter(Boolean);
+
+/** §5.16's scene and namespaces (FOUNDATION-STUB until the player core's KIT_API lands). */
+const FALLBACK_KIT_MANIFEST: KitManifest = {
+  globals: ['Amble', 'Phaser', 'localStorage', 'sessionStorage'],
+  sceneMethods: words(
+    'tune art hasArt spawn spawnHero spawnEnemy all group shoot collide overlap every after wait cooldown brain phases waves follow worldSize ' +
+      'parallax weather level platform chunks flipGravity portal win lose restart addScore highScore setHighScore sfx rand pick chance dist angleTo ' +
+      'blast box ball stack pyramid wreckingBall ragdoll grab impacts stats hero score clock timeScale gravityFlipped dial twists init preload create update',
+  ),
+  namespaces: {
+    fx: words('shake hitstop slowmo flash punch chroma burst explode shockwave dust squash trail ghost hurtFlash halo lightning confetti vignette desaturate motion'),
+    ui: words('text big pop hint score setScore hearts bossBar bar say dialogue button timer panel'),
+    pattern: words('ring spread aimed spiral rain wall laser'),
+    music: words('play intensity stop'),
+    combo: words('count best window mult hit reset'),
+    controls: words('x y left right up down jump fire dash action held pressed released pointer bind virtual'),
+    twists: words('isOn list'),
+  },
 };
 
-export interface ResolveOptions {
-  env?: Record<string, unknown>;
-  managed?: Record<string, unknown> | null;
-  dev?: boolean;
-  now?: Date;
+// ------------------------------------------------------------------ class links
+
+/** `class=<value>` in a hash: `#class=…`, or after a route (`#/trail?class=…`). */
+const CLASS_PARAM = /(?:^#?|[#&?/])class=([A-Za-z0-9_-]+)/;
+
+/** Whether a location hash carries a class link. */
+export function hasClassLink(hash: string): boolean {
+  return CLASS_PARAM.test(hash);
 }
 
-/** District config precedence: managed config > VITE_AMBLE_* > the class link > manual settings. */
-export function resolveAiConfig(_o: ResolveOptions = {}): Promise<AiConfig> {
-  return Promise.resolve(AI_OFF);
-}
-
-/** A class link fragment read: null when the fragment has no `class=`. */
+/** A class link read: null when the fragment has no `class=`. */
 export type ClassLinkParse = { ok: true; link: ClassLinkV1 } | { ok: false; reason: 'expired' | 'unsafe' | 'damaged' };
 
-const PROVIDER_KEY = /\b(sk-[A-Za-z0-9_-]{8,}|AIza[0-9A-Za-z_-]{20,}|eyJ[A-Za-z0-9_-]{10,}\.)/;
 const AI_MODES: readonly AiMode[] = ['on', 'explain', 'off'];
 const LEVELS: readonly Level[] = ['elementary', 'middle', 'high'];
 
@@ -137,12 +284,107 @@ function safeBaseUrl(v: string): boolean {
   }
 }
 
+/** Has an expiry passed? A bare date means "through the end of that day" (as the core reads it). */
+export function isExpiredOn(expires: string | null | undefined, now: Date = new Date()): boolean {
+  if (!expires) return false;
+  const end = /^\d{4}-\d{2}-\d{2}$/.test(expires) ? Date.parse(`${expires}T23:59:59.999`) : Date.parse(expires);
+  return Number.isFinite(end) && now.getTime() > end;
+}
+
+function anyKeyLike(v: unknown): boolean {
+  if (typeof v === 'string') return looksLikeProviderKey(v);
+  if (Array.isArray(v)) return v.some(anyKeyLike);
+  if (typeof v === 'object' && v !== null) return Object.values(v).some(anyKeyLike);
+  return false;
+}
+
+/** The spec's payload (§4.2 `ClassLinkV1`: `{ v: 1, cls, district, ai, mode, level, exp, asg }`). */
+function readSpecPayload(v: Record<string, unknown>, now: Date): ClassLinkParse {
+  if (anyKeyLike(v)) return { ok: false, reason: 'unsafe' };
+  if (typeof v.cls !== 'string') return { ok: false, reason: 'damaged' };
+  let ai: ClassLinkV1['ai'] = null;
+  if (v.ai !== null && v.ai !== undefined) {
+    const a = v.ai as Record<string, unknown>;
+    if (typeof a.baseUrl !== 'string' || typeof a.model !== 'string') return { ok: false, reason: 'damaged' };
+    if (!safeBaseUrl(a.baseUrl)) return { ok: false, reason: 'unsafe' };
+    const auth = a.auth as Record<string, unknown> | undefined;
+    ai = {
+      baseUrl: a.baseUrl.replace(/\/+$/, ''),
+      model: a.model.slice(0, 80),
+      ...(typeof a.fastModel === 'string' ? { fastModel: a.fastModel.slice(0, 80) } : {}),
+      ...(typeof a.visionModel === 'string' ? { visionModel: a.visionModel.slice(0, 80) } : {}),
+      ...(typeof a.caps === 'string' ? { caps: a.caps.slice(0, 120) } : {}),
+      auth:
+        auth && auth.type === 'class-code' && typeof auth.code === 'string'
+          ? { type: 'class-code', header: typeof auth.header === 'string' ? auth.header : 'X-Amble-Class', code: auth.code.slice(0, 80) }
+          : { type: 'none' },
+    };
+  }
+  const exp = typeof v.exp === 'string' ? v.exp : null;
+  if (isExpiredOn(exp, now)) return { ok: false, reason: 'expired' };
+  return {
+    ok: true,
+    link: {
+      v: 1,
+      cls: v.cls.slice(0, 40),
+      district: typeof v.district === 'string' ? v.district.slice(0, 60) : null,
+      ai,
+      mode: AI_MODES.includes(v.mode as AiMode) ? (v.mode as AiMode) : 'on',
+      level: LEVELS.includes(v.level as Level) ? (v.level as Level) : 'middle',
+      exp,
+      asg: typeof v.asg === 'object' && v.asg !== null ? (v.asg as Assignment) : null,
+    },
+  };
+}
+
+/** The core's class link as the app's `ClassLinkV1`. */
+export function classLinkFromCore(link: ClassLink): ClassLinkV1 {
+  const p = link.policy;
+  return {
+    v: 1,
+    cls: (link.name ?? link.district ?? '').slice(0, 40),
+    district: link.district ?? null,
+    ai: {
+      baseUrl: link.baseUrl,
+      model: link.model ?? '',
+      ...(link.fastModel ? { fastModel: link.fastModel } : {}),
+      ...(link.visionModel ? { visionModel: link.visionModel } : {}),
+      ...(p?.caps?.length ? { caps: p.caps.join(',') } : {}),
+      auth: link.code ? { type: 'class-code', header: link.header ?? 'X-Amble-Class', code: link.code } : { type: 'none' },
+    },
+    mode: p?.enabled === false ? 'off' : 'on',
+    level: p?.ageBand ?? 'middle',
+    exp: p?.expires ?? null,
+    asg: null,
+  };
+}
+
+/** The app's class link in the core's format (what `resolveAiConfig` reads back from `saveClassLink`). */
+export function classLinkToCore(link: ClassLinkV1): ClassLink | null {
+  if (!link.ai) return null;
+  const caps = link.ai.caps
+    ?.split(',')
+    .map((c) => c.trim())
+    .filter(Boolean);
+  return {
+    v: 1,
+    baseUrl: link.ai.baseUrl,
+    model: link.ai.model || undefined,
+    fastModel: link.ai.fastModel,
+    visionModel: link.ai.visionModel,
+    ...(link.ai.auth.type === 'class-code' ? { code: link.ai.auth.code, header: link.ai.auth.header } : {}),
+    name: link.cls,
+    district: link.district ?? undefined,
+    policy: { enabled: link.mode !== 'off', ageBand: link.level, ...(caps?.length ? { caps } : {}), ...(link.exp ? { expires: link.exp } : {}) },
+  };
+}
+
 /**
- * Reads `class=<base64url(JSON)>` from a location hash (§4.2 `ClassLinkV1`, ≤ 2 KB). FOUNDATION-STUB: a
- * basic reader until the AI core's class link reader is extended to the full payload (M7).
+ * `parseClassLink`: reads `class=<base64url(JSON)>` from a location hash, in the spec's `ClassLinkV1`
+ * format or the core's format (`readClassLink`). M7 extends the core's reader to the full payload.
  */
 export function parseClassLink(fragment: string, now: Date = new Date()): ClassLinkParse | null {
-  const m = /(?:^#?|[&?])class=([A-Za-z0-9_-]+)/.exec(fragment);
+  const m = CLASS_PARAM.exec(fragment);
   if (!m) return null;
   if (m[1].length > 2800) return { ok: false, reason: 'damaged' };
   let raw: unknown;
@@ -151,385 +393,44 @@ export function parseClassLink(fragment: string, now: Date = new Date()): ClassL
   } catch {
     return { ok: false, reason: 'damaged' };
   }
-  if (typeof raw !== 'object' || raw === null) return { ok: false, reason: 'damaged' };
-  if (PROVIDER_KEY.test(JSON.stringify(raw))) return { ok: false, reason: 'unsafe' };
-  const v = raw as Record<string, unknown>;
-  if (v.v !== 1 || typeof v.cls !== 'string') return { ok: false, reason: 'damaged' };
-  let ai: ClassLinkV1['ai'] = null;
-  if (v.ai !== null && v.ai !== undefined) {
-    const a = v.ai as Record<string, unknown>;
-    if (typeof a.baseUrl !== 'string' || typeof a.model !== 'string') return { ok: false, reason: 'damaged' };
-    if (!safeBaseUrl(a.baseUrl)) return { ok: false, reason: 'unsafe' };
-    const auth = a.auth as Record<string, unknown> | undefined;
-    const authOut: NonNullable<ClassLinkV1['ai']>['auth'] =
-      auth && auth.type === 'class-code' && typeof auth.code === 'string'
-        ? { type: 'class-code', header: typeof auth.header === 'string' ? auth.header : 'X-Amble-Class', code: auth.code.slice(0, 80) }
-        : { type: 'none' };
-    ai = {
-      baseUrl: a.baseUrl.replace(/\/+$/, ''),
-      model: a.model.slice(0, 80),
-      ...(typeof a.fastModel === 'string' ? { fastModel: a.fastModel.slice(0, 80) } : {}),
-      ...(typeof a.visionModel === 'string' ? { visionModel: a.visionModel.slice(0, 80) } : {}),
-      ...(typeof a.caps === 'string' ? { caps: a.caps.slice(0, 120) } : {}),
-      auth: authOut,
-    };
-  }
-  const exp = typeof v.exp === 'string' ? v.exp : null;
-  if (exp && !Number.isNaN(Date.parse(exp)) && Date.parse(exp) < now.getTime()) return { ok: false, reason: 'expired' };
-  const link: ClassLinkV1 = {
-    v: 1,
-    cls: v.cls.slice(0, 40),
-    district: typeof v.district === 'string' ? v.district.slice(0, 60) : null,
-    ai,
-    mode: AI_MODES.includes(v.mode as AiMode) ? (v.mode as AiMode) : 'on',
-    level: LEVELS.includes(v.level as Level) ? (v.level as Level) : 'middle',
-    exp,
-    asg: typeof v.asg === 'object' && v.asg !== null ? (v.asg as Assignment) : null,
-  };
+  if (typeof raw !== 'object' || raw === null || (raw as { v?: unknown }).v !== 1) return { ok: false, reason: 'damaged' };
+  if ('cls' in raw) return readSpecPayload(raw as Record<string, unknown>, now);
+  const core = readClassLink(`#class=${m[1]}`);
+  if (!core) return { ok: false, reason: 'damaged' };
+  if (!core.ok) return { ok: false, reason: /key|secret|token|https|safe/i.test(core.error) ? 'unsafe' : 'damaged' };
+  const link = classLinkFromCore(core.link);
+  if (isExpiredOn(link.exp, now)) return { ok: false, reason: 'expired' };
   return { ok: true, link };
 }
 
-/** Fails a build whose `VITE_*` variables look like keys (every VITE_ value is published in the app). */
-export function assertNoKeyInEnv(env: Record<string, unknown>): void {
-  const found = Object.entries(env)
-    .filter(([name, value]) => name.startsWith('VITE_') && typeof value === 'string' && (/(KEY|TOKEN|SECRET|PASSWORD)/.test(name) || PROVIDER_KEY.test(value)))
-    .map(([name]) => name);
-  if (found.length) throw new Error(`These build variables look like API keys or tokens: ${found.join(', ')}. Keys must stay on the district AI proxy.`);
-}
+// ------------------------------------------------------------------ status
 
-// ------------------------------------------------------------------ transport
-
-export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
-
-export type ContentPart =
-  | { type: 'text'; text: string }
-  | { type: 'image_url'; image_url: { url: string; detail?: 'low' | 'high' | 'auto' } };
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string | ContentPart[];
-}
-
-export type AuthKind = 'none' | 'key' | 'class-code' | 'dev';
-
-/** Where AI requests go and how. Built from the resolved config by `transportFor`. */
-export interface Transport {
-  baseUrl: string;
-  headers: Readonly<Record<string, string>>;
-  via: 'endpoint' | 'dev-server' | 'codex';
-  auth: AuthKind;
-  caps: Capabilities;
-  host: string;
-  safetyIdentifier?: () => Promise<string | null>;
-  fetch?: typeof fetch;
-  isOnline?: () => boolean;
-}
-
-export interface Usage {
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-  reasoningTokens: number;
-  cachedTokens: number;
-  requests: number;
-}
-
-export type FallbackFeature = 'stream' | 'stream_options' | 'json_schema' | 'json_object' | 'reasoning_effort' | 'max_completion_tokens' | 'max_tokens' | 'store' | 'safety_identifier' | 'images';
-
-export type ChatStatus =
-  | { phase: 'waiting' }
-  | { phase: 'writing'; chars: number }
-  | { phase: 'thinking' | 'working' }
-  | { phase: 'retrying'; attempt: number; delayMs: number; reason: 'rate-limited' | 'server' | 'network' }
-  | { phase: 'fallback'; dropped: FallbackFeature }
-  | { phase: 'repairing'; problems: string[] };
-
-export interface ChatRequestBase {
-  model: string;
-  system: string;
-  user: string | ContentPart[];
-  messages?: ChatMessage[];
-  maxTokens?: number;
-  reasoningEffort?: ReasoningEffort;
-  signal?: AbortSignal;
-  /** Total time for the call, retries included. */
-  timeoutMs?: number;
-  /** Off by default: slow district models may queue. */
-  firstByteMs?: number;
-  /** Longest silence once the reply is being written. */
-  stallMs?: number;
-  retries?: number;
-  onStatus?(status: ChatStatus): void;
-}
-
-export interface ChatTextRequest extends ChatRequestBase {
-  onDelta?(delta: string, text: string): void;
-  onDone?(result: ChatTextResult): void;
-}
-
-export interface ChatTextResult {
-  text: string;
-  finishReason: string | null;
-  truncated: boolean;
-  usage: Usage | null;
-  imagesDropped: boolean;
-}
-
-export type JsonType = 'object' | 'array' | 'string' | 'number' | 'integer' | 'boolean' | 'null';
-export type JsonPrimitive = string | number | boolean | null;
-
-export interface JsonSchema {
-  type?: JsonType | JsonType[];
-  description?: string;
-  properties?: Record<string, JsonSchema>;
-  required?: string[];
-  additionalProperties?: boolean;
-  items?: JsonSchema;
-  enum?: JsonPrimitive[];
-  const?: JsonPrimitive;
-  anyOf?: JsonSchema[];
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  minimum?: number;
-  maximum?: number;
-  minItems?: number;
-  maxItems?: number;
-}
-
-declare const schemaType: unique symbol;
-
-/** A JSON Schema that carries the TypeScript type of the values it accepts. */
-export interface Schema<T> {
-  readonly json: JsonSchema;
-  readonly [schemaType]?: T;
-}
-
-export interface ChatJsonRequest<T> extends ChatRequestBase {
-  schema: Schema<T>;
-  /** A stable name, e.g. `amble_plan`. */
-  schemaName: string;
-  repairs?: number;
-  clamp?: boolean;
-  onDelta?(delta: string, text: string): void;
-}
-
-export interface ChatJsonResult<T> {
-  value: T;
-  usage: Usage | null;
-  format: 'json_schema' | 'json_object' | 'prompt';
-  imagesDropped: boolean;
-  repaired: boolean;
-}
-
-export type AiErrorKind =
-  | 'no-config'
-  | 'auth'
-  | 'quota'
-  | 'rate-limited'
-  | 'blocked-by-filter'
-  | 'offline'
-  | 'timeout'
-  | 'too-long'
-  | 'refused'
-  | 'bad-reply'
-  | 'setup'
-  | 'server'
-  | 'cancelled';
-
-export interface AiErrorInit {
-  detail?: string;
-  status?: number;
-  code?: string;
-  host?: string;
-  retryAfterMs?: number;
-}
-
-/** Every transport failure; `kind` is what the UI switches on, `message` is readable by a student. */
-export class AiError extends Error {
-  readonly kind: AiErrorKind;
-  readonly detail: string;
-  readonly status?: number;
-  readonly code?: string;
-  readonly host?: string;
-  readonly retryAfterMs?: number;
-
-  constructor(kind: AiErrorKind, message: string, init: AiErrorInit = {}) {
-    super(message);
-    this.name = 'AiError';
-    this.kind = kind;
-    this.detail = init.detail ?? '';
-    this.status = init.status;
-    this.code = init.code;
-    this.host = init.host;
-    this.retryAfterMs = init.retryAfterMs;
+/** The AI chip's status after a failed call (null: the helper is still fine, e.g. a timeout). */
+export function aiStatusOf(kind: AiErrorKind, auth: 'none' | 'key' | 'class-code' | 'dev' = 'none'): AiStatus | null {
+  switch (kind) {
+    case 'no-config':
+      return 'off';
+    case 'offline':
+      return 'offline';
+    case 'blocked-by-filter':
+      return 'blocked';
+    case 'quota':
+      return 'quota';
+    case 'rate-limited':
+      return 'busy';
+    case 'auth':
+      return auth === 'class-code' ? 'expired' : 'rejected';
+    default:
+      return null;
   }
 }
 
-export function isAiError(err: unknown): err is AiError {
-  return err instanceof AiError;
+/** The configuration when nothing is set up (every source empty). */
+export function aiConfigOff() {
+  return mergeLayers([]);
 }
 
-/** The transport for a config, or null when AI is off. */
-export function transportFor(config: AiConfig): Transport | null {
-  if (!config.enabled || !config.baseUrl) return null;
-  let host = config.baseUrl;
-  try {
-    host = new URL(config.baseUrl, 'http://localhost').host;
-  } catch {
-    // keep the raw text
-  }
-  const headers: Record<string, string> = {};
-  if (config.auth.type === 'bearer') headers.Authorization = `Bearer ${config.auth.key}`;
-  if (config.auth.type === 'class-code') headers[config.auth.header] = config.auth.code;
-  return { baseUrl: config.baseUrl, headers, via: config.via, auth: config.auth.type === 'bearer' ? 'key' : config.auth.type === 'class-code' ? 'class-code' : 'none', caps: config.caps, host };
-}
-
-const NOT_SET_UP = "The AI helper isn't turned on here. You can still draw, tune your game and change its code.";
-
-/** Streams a text reply (AMBLE PATCH). */
-export function chatText(_t: Transport, _req: ChatTextRequest): Promise<ChatTextResult> {
-  return Promise.reject(new AiError('no-config', NOT_SET_UP));
-}
-
-/** A strict-schema JSON call with fallbacks and shape checks. */
-export function chatJson<T>(_t: Transport, _req: ChatJsonRequest<T>): Promise<ChatJsonResult<T>> {
-  return Promise.reject(new AiError('no-config', NOT_SET_UP));
-}
-
-// ------------------------------------------------------------------ the game validator
-
-export type ProblemLevel = 'error' | 'warning' | 'info';
-
-export interface GameProblem {
-  /** 'syntax', 'unknown-api', 'art-manifest'... */
-  rule: string;
-  level: ProblemLevel;
-  /** Kid-readable ("`this.spawnPlayer()` doesn't exist. Did you mean `this.spawnHero()`?"). */
-  message: string;
-  file: string;
-  /** 1-based. */
-  line: number;
-  column: number;
-  endLine?: number;
-  endColumn?: number;
-  /** Set when an automatic fix exists (the code view's **Fix**). */
-  fix?: { label: string };
-}
-
-/** What `static config`, `static art` and `static dials` say, read without running the game. */
-export interface StaticManifest {
-  title: string;
-  subtitle: string;
-  physics: 'arcade' | 'matter' | 'none';
-  /** Keys in declaration order; values as written (unknown fields dropped). */
-  art: Array<{ key: string; spec: Record<string, string | number | boolean> }>;
-  dials: Array<{ key: string; spec: Record<string, string | number | boolean> }>;
-  sounds: string[];
-}
-
-export interface ValidateOptions {
-  /** Plan keys that must stay declared (`plan-keys`). */
-  plan?: PlanReply | null;
-  /** 'ai': apply auto-fixes; 'student': report only (the code view). */
-  mode?: 'ai' | 'student';
-}
-
-export interface ValidateResult {
-  /** No errors left. Warnings never block. */
-  ok: boolean;
-  /** The files after auto-fixes (unchanged in 'student' mode). */
-  files: GameFile[];
-  problems: GameProblem[];
-  /** Rules whose auto-fix was applied. */
-  fixed: string[];
-  manifest: StaticManifest | null;
-}
-
-/** The validator (rules, auto-fixes, forbidden APIs). FOUNDATION-STUB: reports nothing. */
-export function validateGame(files: GameFile[], _o: ValidateOptions = {}): ValidateResult {
-  return { ok: true, files, problems: [], fixed: [], manifest: null };
-}
-
-/** The static manifest reader. FOUNDATION-STUB: null (the running game's manifest is the source). */
-export function extractManifest(_files: GameFile[]): StaticManifest | null {
-  return null;
-}
-
-// ------------------------------------------------------------------ AMBLE PATCH
-
-export type PatchAction = 'create' | 'replace' | 'edit' | 'delete';
-
-export type PatchSafety = { kind: 'ok' } | { kind: 'toned-down'; note: string } | { kind: 'refused'; note: string } | { kind: 'crisis' };
-
-export interface PatchEdit {
-  find: string;
-  replace: string;
-}
-
-export interface PatchFileOp {
-  path: string;
-  action: PatchAction;
-  /** create / replace. */
-  body?: string;
-  /** edit. */
-  edits?: PatchEdit[];
-}
-
-export interface ParsedPatch {
-  summary: string;
-  play: string;
-  next: string[];
-  safety: PatchSafety;
-  files: PatchFileOp[];
-  /** `@@end` arrived. */
-  complete: boolean;
-  /** The file the reply stopped inside, when it was cut short. */
-  truncatedIn: string | null;
-  warnings: string[];
-}
-
-/** Events for the UI while a reply streams ("Writing boss.js +34 lines"). */
-export type PatchEvent =
-  | { type: 'header'; name: 'summary' | 'play' | 'next' | 'safety'; value: string }
-  | { type: 'file'; path: string; action: PatchAction }
-  | { type: 'lines'; path: string; n: number }
-  | { type: 'artManifest'; keys: string[] }
-  | { type: 'warning'; message: string }
-  | { type: 'end' };
-
-export interface PatchParser {
-  /** Feeds streamed text; returns the events it produced. */
-  feed(chunk: string): PatchEvent[];
-  /** The reply ended: returns what was parsed (complete blocks only when truncated). */
-  end(): ParsedPatch;
-}
-
-export function createPatchParser(): PatchParser {
-  throw new NotBuiltYet('createPatchParser (AI core)');
-}
-
-export interface PatchApplyResult {
-  files: GameFile[];
-  applied: string[];
-  /** Edits whose find text did not match (one resend each). */
-  mismatches: Array<{ path: string; find: string }>;
-  refused: string[];
-}
-
-/** The tolerant applier: a candidate file set, never written to the world until it passes. */
-export function applyPatch(_files: GameFile[], _patch: ParsedPatch): PatchApplyResult {
-  throw new NotBuiltYet('applyPatch (AI core)');
-}
-
-// ------------------------------------------------------------------ safety
-
-/** The local floor filter (offline, instant). FOUNDATION-STUB: allows everything. */
-export function checkText(_text: string, _level: Level): SafetyVerdict {
-  return { kind: 'allow' };
-}
-
-/** Optional `/moderations` on the district endpoint. FOUNDATION-STUB: allows everything. */
-export function moderate(_text: string, _o: { transport: Transport; level: Level; signal?: AbortSignal }): Promise<SafetyVerdict> {
-  return Promise.resolve({ kind: 'allow' });
+/** PII spans for highlighting ("Remove it"). */
+export function piiSpans(text: string): Array<[number, number]> {
+  return findPii(text).map((m) => [m.index, m.index + m.text.length]);
 }

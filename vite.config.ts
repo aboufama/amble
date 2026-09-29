@@ -4,6 +4,9 @@ import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
+import { aiConnectSources, csp } from './vite/csp.ts';
+import { envGuard } from './vite/envGuard.ts';
+import { swPlugin } from './vite/swPlugin.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -76,6 +79,8 @@ function openaiProxy(env: Record<string, string>): Plugin {
 
   return {
     name: 'amble-openai-proxy',
+    // Dev and preview servers only: production builds never request /api/*.
+    apply: 'serve',
     configureServer(server) {
       const allowed = allowedHostsOf(server.config.server);
       server.middlewares.use(handler(allowed));
@@ -100,6 +105,9 @@ export default defineConfig(({ mode }) => {
       react(),
       // The game runtime plugin goes here: it bundles the Phaser player for the sandboxed game
       // iframe, serves it from the dev server and emits it into the build.
+      envGuard(env),
+      csp({ connect: aiConnectSources(env), bootHashes: () => [] }),
+      swPlugin(),
       openaiProxy(env),
     ],
     build: {
