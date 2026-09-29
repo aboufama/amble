@@ -87,9 +87,7 @@ export class FrozenWatch {
  * the 6 s of game time slowly, and that is fine as long as frames keep finishing. The runtime reports the
  * frames it has stepped when the run starts and then about three times a second (mid-frame-batch too), so:
  * - `start`: the run has not begun this long after the game booted (its `create()` never ended);
- * - `stall`: no frame has finished for `stallMs` (a loop that never ends, even unguarded), or for
- *   `SLOW_GAPS` of the longest wait between two reports that did show progress, when that is longer: on a
- *   busy machine the hidden frame can wait seconds between its batches of frames for a turn to run;
+ * - `stall`: no frame has finished for `stallMs` (a loop that never ends, even unguarded);
  * - `ceiling`: the run is still going after `ceilingMs` in all (generous: only a hopelessly slow game).
  */
 export interface RobotLimits {
@@ -108,8 +106,6 @@ export class RobotWatch {
   private frames = -1;
   private firstAt = -1;
   private lastAt: number;
-  /** The longest wait between two reports that showed progress. */
-  private slowest = 0;
 
   constructor(
     /** When the game booted (the watch starts then). */
@@ -129,15 +125,9 @@ export class RobotWatch {
       return;
     }
     if (frames > this.frames) {
-      this.slowest = Math.max(this.slowest, now - this.lastAt);
       this.frames = frames;
       this.lastAt = now;
     }
-  }
-
-  /** How long the run may go without a finished frame right now. */
-  stallLimit(): number {
-    return Math.max(this.limits.stallMs, this.slowest * SLOW_GAPS);
   }
 
   /** Frames the robot stepped since its run began, and the wall time that took (for an honest speed). */
@@ -150,6 +140,6 @@ export class RobotWatch {
   check(now: number): RobotStop | null {
     if (now - this.bootedAt >= this.limits.ceilingMs) return 'ceiling';
     if (this.firstAt < 0) return now - this.bootedAt >= this.limits.startMs ? 'start' : null;
-    return now - this.lastAt >= this.stallLimit() ? 'stall' : null;
+    return now - this.lastAt >= this.limits.stallMs ? 'stall' : null;
   }
 }

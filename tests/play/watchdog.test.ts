@@ -119,20 +119,6 @@ describe("the robot test's watchdog", () => {
     expect(watch.played(5300)).toEqual({ frames: 30, wallMs: 4500 });
   });
 
-  it('gives a run whose progress already comes in long waits three of its longest wait (a busy machine)', () => {
-    const watch = new RobotWatch(0, LIMITS);
-    // A busy machine: the hidden frame waits seconds for a turn to run, so progress shows every 1 to 2.5 s.
-    watch.progress(0, 1000);
-    watch.progress(11, 3500);
-    watch.progress(30, 4500);
-    watch.progress(91, 7000);
-    expect(watch.stallLimit()).toBe(7500);
-    // Four quiet seconds would stop a run that had kept pace; this one has 7.5 s.
-    expect(watch.check(11_000)).toBeNull();
-    expect(watch.check(14_400)).toBeNull();
-    expect(watch.check(14_500)).toBe('stall');
-  });
-
   it('counts only frames that finish: repeated reports of the same frame are no progress', () => {
     const watch = new RobotWatch(0, LIMITS);
     watch.progress(10, 500);
