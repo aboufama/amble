@@ -21,7 +21,7 @@ const members = (t: Table): KitMember[] => t.map(([name, sig, doc]) => ({ name, 
 
 const SCENE: Table = [
   ['fx', 'fx: Fx', 'Juice: shake, hitstop, slowmo, flash, burst, explode, squash, trail...'],
-  ['ui', 'ui: Ui', 'The HUD: big titles, hints, score, hearts, boss bars, speech bubbles, dialogue.'],
+  ['ui', 'ui: Ui', 'The HUD: big titles, hints, score, hearts, boss bars, meters, speech bubbles, dialogue.'],
   ['controls', 'controls: Controls', 'Keyboard, touch buttons and gamepad as actions: controls.x, held(), pressed().'],
   ['music', 'music: Music', 'Synthesized music: music.play(style).'],
   ['combo', 'combo: Combo', 'Combo counter that multiplies the score.'],
@@ -157,6 +157,7 @@ const UI: Table = [
   ['hearts', 'hearts(obj)', 'Hearts for hit points (top left).'],
   ['bossBar', "bossBar(obj, name = 'BOSS', { color })", 'A wide boss health bar.'],
   ['bar', 'bar(obj, { width, color })', 'A small health bar over something.'],
+  ['meter', "meter(label, value, max = 100, { color }): Meter", 'A labelled gauge for any number (fuel, ammo, heat), top left; call again with the same label to update.'],
   ['say', 'say(obj, str, ms)', 'A speech bubble.'],
   ['dialogue', 'dialogue([{ who, text }]): Promise', 'A conversation (Space or tap moves on).'],
   ['button', 'button(x, y, label, onClick)', 'A clickable button.'],

@@ -90,6 +90,8 @@ export function kidMessage(rule: RuleId, c: KidContext): string {
       return `${l}the list of pictures (static art) has a problem with ${name}.${done}`;
     case 'dials-manifest':
       return `${l}the dial ${name} has a problem: check its lowest, highest and starting numbers.${done}`;
+    case 'sounds-manifest':
+      return `${l}the sound ${name} has a problem: check its numbers.${done}`;
     case 'unknown-dial':
       return `${l}there is no dial called ${name}.${c.suggestion ? ` Did you mean "${c.suggestion}"?` : ''}${done}`;
     case 'patch-directive-in-code':

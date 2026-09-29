@@ -9,6 +9,7 @@ import { ancestor } from 'acorn-walk';
 import { keyName, memberPath, propertyName, src } from './ast';
 import type { FileContext } from './context';
 import { closest } from './manifest';
+import { checkSoundsStatic } from './sounds';
 import { staticFields } from './statics';
 
 export const ART_KINDS = ['character', 'item', 'projectile', 'prop', 'terrain', 'background', 'decor'] as const;
@@ -316,7 +317,7 @@ export function declaredDials(game: Class | null, asts: ReadonlyArray<AnyNode>):
   return out;
 }
 
-/** `static art` and `static dials` of the entry file's Game class. */
+/** `static art`, `static dials` and `static sounds` of the entry file's Game class. */
 export function checkManifestStatics(ctx: FileContext, game: Class): void {
   const art = objectStatic(game, 'art');
   const artKeys = new Set<string>();
@@ -332,6 +333,7 @@ export function checkManifestStatics(ctx: FileContext, game: Class): void {
     if (entries.length > ART_LIMITS.dials) ctx.add('error', 'dials-manifest', dials.field, `static dials has ${entries.length} dials; keep the ${ART_LIMITS.dials} a player cares about most.`, { name: `${entries.length} dials` });
     for (const e of entries) checkDialEntry(ctx, e, artKeys);
   }
+  checkSoundsStatic(ctx, game);
 }
 
 /** `this.dials.x` / `this.dial.x` where no dial `x` is declared (a typo reads undefined, and NaN follows). */
