@@ -42,6 +42,22 @@ export function hash(str: string): number {
   return h >>> 0;
 }
 
+/** The longest pause one hit-stop may ask for (ms): an impact pause, never a freeze. */
+export const HITSTOP_MAX_MS = 1000;
+
+/**
+ * When the hit-stop running until `until` ends once game code asks for `ms` more at `now`. The ms come from
+ * game code, so they are made safe: something that is not a number (NaN, undefined) gets the default pause,
+ * and the pause is kept to 0..HITSTOP_MAX_MS. Otherwise `hitstop(Infinity)` would freeze the game for good,
+ * and `hitstop(NaN)` would leave NaN behind and switch hit-stop off for the rest of the run.
+ */
+export function hitstopEnd(until: number, now: number, ms: unknown, fallback = 60): number {
+  const n = typeof ms === 'number' ? ms : Number(ms);
+  const pause = Number.isNaN(n) ? fallback : Math.min(HITSTOP_MAX_MS, Math.max(0, n));
+  const running = Number.isFinite(until) ? until : now;
+  return Math.max(running, now + pause);
+}
+
 export function isPoint(v: unknown): v is Point {
   return typeof v === 'object' && v !== null && typeof (v as Point).x === 'number' && typeof (v as Point).y === 'number';
 }

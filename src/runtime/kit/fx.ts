@@ -9,7 +9,7 @@ import { colorInt, shade } from './color';
 import { env } from './env';
 import { quality, type Kit } from './state';
 import type { Point } from './types';
-import { util } from './util';
+import { hitstopEnd, util } from './util';
 
 const CHROMA_FRAG = `
 precision mediump float;
@@ -246,9 +246,9 @@ export class Fx {
     }
   }
 
-  /** Freezes the world for `ms` of real time (the impact pause). */
-  hitstop(ms = 60): void {
-    this.k.hitstopUntil = Math.max(this.k.hitstopUntil, this.k.now() + ms);
+  /** Freezes the world for `ms` of real time (the impact pause), at most HITSTOP_MAX_MS. */
+  hitstop(ms: unknown = 60): void {
+    this.k.hitstopUntil = hitstopEnd(this.k.hitstopUntil, this.k.now(), ms);
   }
 
   /** Slows the game to `scale` for `ms` of real time, then eases back. */
