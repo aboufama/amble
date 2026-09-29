@@ -227,12 +227,19 @@
   width: var(--wv-w);
   height: var(--wv-h);
   border-radius: var(--r-world);
-  /* The First page's paper and the Trail's world signs morph into it (§2.2, §2.3). */
-  view-transition-name: world-view;
   box-shadow:
     0 0 0 7px color-mix(in srgb, var(--accent) 7%, transparent),
     0 0 60px color-mix(in srgb, var(--accent) 16%, transparent),
     0 24px 50px color-mix(in srgb, var(--bg-deep) 70%, transparent);
+}
+
+/*
+ * The First page's paper and the Trail's world signs morph into the world view (§2.2, §2.3). It carries the
+ * name only while that morph runs: a named element is a stacking context, which would put the overlays above
+ * the game (the Ask pill, the tags of Change mode...) under the game's layer.
+ */
+:root[data-morph~='world-view'] .world-view {
+  view-transition-name: world-view;
 }
 
 .world-view__slot {

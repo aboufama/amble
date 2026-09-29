@@ -103,6 +103,17 @@ test('a world sign morphs into the world view on the first visit', async ({ page
   const [morph] = (await transitions(page)).slice(before);
   expect(morph.error).toBeNull();
   expect(morph.pseudo).toEqual(expect.arrayContaining(MORPH));
+  // Once the morph is over the world view gives the name back: named, it would be a stacking context and
+  // everything the editor draws over the game (Change mode's tags here) would sit under the game's layer.
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('.world-view')!).viewTransitionName)).toBe('none');
+  await page.getByRole('radio', { name: 'Change' }).click();
+  const tag = page.getByTestId('tag-hero');
+  await expect(tag).toBeVisible();
+  const onTop = await tag.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+  });
+  expect(onTop, 'the tag is on top of the game').toBe(true);
 });
 
 test("the First page's paper morphs into the world view of the chosen seed", async ({ page }) => {

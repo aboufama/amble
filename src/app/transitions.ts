@@ -12,8 +12,10 @@ type StartViewTransition = (update: () => void | Promise<void>) => { finished: P
  */
 const PARTNER_WAIT_MS = 800;
 
-/** Whether `transitionName` named an element since the last transition (its partner is on the next screen). */
-let partners = false;
+/** Names given with `transitionName` since the last transition: their partners are on the next screen. */
+let partners: string[] = [];
+/** The transition that set `data-morph` last (an older one finishing must not clear a newer one's names). */
+let morphs = 0;
 
 function reducedMotion(): boolean {
   return typeof document !== 'undefined' && document.documentElement.dataset.motion === 'reduced';
@@ -40,22 +42,34 @@ function screenLoaded(ms: number): Promise<void> {
   });
 }
 
-/** Runs a DOM update inside a View Transition when possible; otherwise just runs it. */
+/**
+ * Runs a DOM update inside a View Transition when possible; otherwise just runs it. While a transition
+ * morphs named elements, `data-morph` on the root lists their names, so their partners on the new screen
+ * can take the same names only then (`:root[data-morph~='world-view'] .world-view`): a named element is a
+ * stacking context, which changes how a screen layers.
+ */
 export function withViewTransition(update: () => void): void {
-  const waitForPartners = partners;
-  partners = false;
+  const names = partners;
+  partners = [];
   if (!canTransition()) {
     update();
     return;
   }
   const start = (document as Document & { startViewTransition: StartViewTransition }).startViewTransition.bind(document);
+  const root = document.documentElement;
+  const token = names.length ? ++morphs : 0;
+  const done = () => {
+    if (token && token === morphs) delete root.dataset.morph;
+  };
   try {
+    if (names.length) root.dataset.morph = names.join(' ');
     // The wait stays far inside the time the browser gives an update (4 s in Chrome, from this callback).
     start(() => {
       update();
-      return waitForPartners ? screenLoaded(PARTNER_WAIT_MS) : undefined;
-    }).finished.catch(() => undefined);
+      return names.length ? screenLoaded(PARTNER_WAIT_MS) : undefined;
+    }).finished.then(done, done);
   } catch {
+    done();
     update();
   }
 }
@@ -63,5 +77,5 @@ export function withViewTransition(update: () => void): void {
 /** Gives an element a View Transition name while it is on screen (null clears it). */
 export function transitionName(el: HTMLElement | null, name: string | null): void {
   if (el) el.style.setProperty('view-transition-name', name ?? 'none');
-  if (el && name) partners = true;
+  if (el && name && !partners.includes(name)) partners.push(name);
 }
