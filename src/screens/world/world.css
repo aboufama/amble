@@ -435,7 +435,10 @@
   animation: tag-in var(--t-move) var(--ease-amble);
 }
 
-.coach-mark::after {
+/* The arrow, only when the mark sits beside the member it points at (centred, it points at nothing and
+   would otherwise sit at its static position, over the first letter of the text). */
+.coach-mark--left::after,
+.coach-mark--right::after {
   content: '';
   position: absolute;
   top: 40px;
