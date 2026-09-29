@@ -522,12 +522,17 @@
   stroke-width: 5.5px;
 }
 
+/* Still dashes that march while the "goes here" sign is pointed at or focused: a march never stops
+   repainting, and the Trail must cost nothing while it waits. */
 .lamp__ph-body {
   fill: color-mix(in srgb, var(--dash) 7%, transparent);
   stroke: var(--dash);
   stroke-width: 2.4px;
   stroke-dasharray: 7 6;
   stroke-linecap: round;
+}
+
+.trail:not(.trail--still) .lamp:has(.lamp__garden:is(:hover, :focus-visible)) .lamp__ph-body {
   animation: dash-march 1.3s linear infinite;
 }
 
