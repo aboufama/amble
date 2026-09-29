@@ -6,6 +6,26 @@
 import { expect, openAmble, test } from '../helpers/app';
 import { boardSize, circle, deskState, drawOnBoard, inkedLayers, openDesk, openStarterWorld, settle, tapOnBoard } from './desk';
 
+test('the chosen side of On the bones | Freehand stays readable under the pointer', async ({ page }) => {
+  await openAmble(page);
+  const world = await openStarterWorld(page);
+  await openDesk(page, `#/w/${world}/draw/grumble`);
+  const free = page.getByRole('radio', { name: 'Freehand' });
+  await free.click();
+  await expect(free).toHaveAttribute('aria-checked', 'true');
+  // The pointer is still over it: its words keep the paper face's ink colour, not the night text colour.
+  await free.hover();
+  const [text, ink] = await free.evaluate((el) => {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--ink)';
+    el.append(probe);
+    const inkColour = getComputedStyle(probe).color;
+    probe.remove();
+    return [getComputedStyle(el).color, inkColour];
+  });
+  expect(text).toBe(ink);
+});
+
 test('steps are picked by tapping, strokes land on the part, the preview moves, and the rig is made from the parts', async ({ page }) => {
   test.setTimeout(90_000);
   await openAmble(page);

@@ -311,7 +311,8 @@
   padding: 0 12px;
 }
 
-.segmented__option:hover {
+/* Not on the chosen option: its paper face keeps ink under the pointer (light text on paper is 1.1:1). */
+.segmented__option:hover:not(.segmented__option--on) {
   color: var(--text);
 }
 
