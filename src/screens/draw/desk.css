@@ -432,6 +432,63 @@
   pointer-events: auto;
 }
 
+.note__fold {
+  --focus-ring: var(--ink);
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: color-mix(in srgb, var(--ink) 60%, var(--note));
+  background: transparent;
+  cursor: pointer;
+}
+
+.note__fold::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.note__fold:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+
+.note--folded {
+  width: auto;
+}
+
+.note__tab {
+  --focus-ring: var(--ink);
+  display: grid;
+  justify-items: start;
+  gap: 1px;
+  min-height: 44px;
+  padding: 6px 14px 7px;
+  border: 0;
+  border-radius: var(--r-cut);
+  color: var(--ink);
+  background: var(--note);
+  box-shadow: var(--lift-paper);
+  rotate: -2.5deg;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.note__tab .note__caps {
+  margin: 0;
+}
+
+.note__tab-name {
+  font: var(--weight-display) 1rem/1.2 var(--font-display);
+}
+
 .note__caps {
   margin: 0 0 2px;
   font: var(--type-caps);

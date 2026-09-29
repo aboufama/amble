@@ -99,6 +99,7 @@ export const draw = {
   readToMe: 'Read to me',
   stopReading: 'Stop reading',
   noVoice: 'This Chromebook has no reading voice yet.',
+  foldNote: 'Fold the note away',
   fact_bigRound: 'Big and round',
   fact_bigTall: 'Big and tall',
   fact_small: 'Small',
