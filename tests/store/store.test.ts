@@ -80,6 +80,23 @@ describe.each(IMPLS)('%s store', (_name, make) => {
     expect(await store.steps.forWorld(world.id)).toEqual([]);
   });
 
+  it('removes footstep snapshots by id, leaving the world, other steps and the blobs', async () => {
+    const store = await make();
+    const world = sampleWorld();
+    const blob = new Blob([bytes(4, 5, 6)], { type: 'image/png' });
+    const ids = ['s_step00000a', 's_step00000b', 's_step00000c'];
+    await store.commit({ blobs: [blob], worlds: [world], steps: ids.map((id) => sampleStep(world, { id })) });
+    const ref = await store.blobs.put(blob);
+    await store.steps.remove([ids[0], ids[2], 's_notthere01', ids[0]]);
+    expect(await store.steps.forWorld(world.id)).toEqual([ids[1]]);
+    expect(await store.steps.get(ids[0])).toBeNull();
+    expect(await store.steps.get(ids[1])).toEqual(sampleStep(world, { id: ids[1] }));
+    expect(await store.worlds.get(world.id)).toEqual(world);
+    expect((await store.blobs.get(ref))?.size).toBe(3);
+    await store.steps.remove([]);
+    expect(await store.steps.forWorld(world.id)).toEqual([ids[1]]);
+  });
+
   it('updates a world snapshot without rewriting the world', async () => {
     const store = await make();
     const world = sampleWorld();

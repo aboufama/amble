@@ -47,6 +47,11 @@ export interface Store {
   steps: {
     get(id: StepId): Promise<StepSnapshot | null>;
     forWorld(id: WorldId): Promise<StepId[]>;
+    /**
+     * An addition to the spec's interface: deletes these snapshots in one transaction (footsteps pruning;
+     * the summaries stay in `World.steps`, and blobs are left to the GC). Unknown ids are skipped.
+     */
+    remove(ids: StepId[]): Promise<void>;
   };
   drafts: {
     get(artId: ArtId): Promise<DeskDraft | null>;

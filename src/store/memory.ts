@@ -94,6 +94,9 @@ export class MemoryStore implements Store, StoreUpkeep {
   steps: Store['steps'] = {
     get: async (id) => clone(this.stepMap.get(id) ?? null),
     forWorld: async (id) => [...this.stepMap.values()].filter((s) => s.worldId === id).map((s) => s.id),
+    remove: async (ids) => {
+      for (const id of ids) this.stepMap.delete(id);
+    },
   };
 
   drafts: Store['drafts'] = {

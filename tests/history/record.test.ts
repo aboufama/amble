@@ -90,6 +90,24 @@ describe('record', () => {
     expect(four.steps).toHaveLength(4);
   });
 
+  it('deletes the snapshot of a step that folds past 60 steps, and keeps its summary', async () => {
+    let w = await open();
+    const start = w.head;
+    for (let i = 0; i < 60; i++) {
+      clock += 1_000;
+      w = await history.record({ ...w, twists: i % 2 ? [] : ['moonGravity'] }, { kind: 'twists', by: 'student', text: 'You switched a twist.' });
+    }
+    // 61 steps: the oldest is the only old step of its day, so it keeps its snapshot.
+    expect(await store.steps.get(start)).not.toBeNull();
+    clock += 1_000;
+    w = await history.record(w, { kind: 'twists', by: 'student', text: 'You switched a twist.' });
+    expect(w.steps).toHaveLength(62);
+    expect(w.steps[0]).toMatchObject({ id: start, kind: 'start' });
+    expect(await store.steps.get(start)).toBeNull();
+    expect(await store.steps.forWorld(w.id)).toHaveLength(61);
+    expect(canGoBack(w, start)).toBe(false);
+  });
+
   it('counts the lines a code step wrote', async () => {
     const world = await open();
     const code = [{ ...world.code[0], source: `${world.code[0].source}\n// one\n// two` }];
