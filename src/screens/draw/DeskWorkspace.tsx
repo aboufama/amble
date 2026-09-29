@@ -97,7 +97,8 @@ export function DeskWorkspace({ setup }: { setup: DeskSetup }) {
       prefs: { pressure: prefs.pressure, reducedMotion: reduced },
       heroImage: setup.heroImage,
       partBones: setup.partBones,
-      colors: { paper: PAPER.paper, workspace: THEMES[prefs.theme].bg },
+      // The white sheet on Scratch's grey workspace (the stage behind it is the same grey).
+      colors: { paper: PAPER.paper, workspace: THEMES[prefs.theme]?.well ?? PAPER.paper2 },
       flip: { move: flipIntent ?? setup.record?.export?.frames?.move ?? null, fps: setup.record?.export?.frames?.fps ?? 8 },
     });
     setCtrl(c);

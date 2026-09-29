@@ -22,7 +22,8 @@ import { partSteps, templateHints, type CharacterKind, type JointHints, type Rig
 import { midSentence, t, type MessageKey } from '../i18n';
 import type { Facing, PartLayers, Prefs } from '../model/types';
 import type { BoardSpec } from './boards';
-import { renderGuides, templateOnBoard, type GuideLabels } from './guides';
+import { PAPER } from '../ui/tokens';
+import { guideColorsOf, renderGuides, templateOnBoard, type GuideLabels } from './guides';
 import { pushRecent, START_COLOR } from './palette';
 import { bonesLayout, FREEHAND_PAIR, mirrorMatrix, nextExtra, otherSide, pairIds, partOfLayer, rigFacing, targetLayer, type BonesStep, type RoutedTool } from './parts';
 import type { DeskRequest } from './request';
@@ -185,6 +186,8 @@ export class DeskController {
   private destroyed = false;
   private partBones: Record<string, string[]>;
   private readonly heroImage: ImageBitmap | null;
+  /** The sheet's element (its stylesheet gives the guides their colours). */
+  private readonly host: HTMLElement;
   private unit = 1;
   private pen = false;
   private sizeTimer = 0;
@@ -200,13 +203,15 @@ export class DeskController {
     this.board = o.board;
     this.partBones = o.partBones;
     this.heroImage = o.heroImage;
+    this.host = o.host;
     this.rig = templateOnBoard(o.board, o.request);
     this.surface = createArtSurface(o.host, o.doc, {
       pressure: o.prefs.pressure,
       keyboard: false,
       reducedMotion: o.prefs.reducedMotion,
-      paper: o.colors?.paper ?? '#fdf8ec',
-      workspace: o.colors?.workspace ?? '#151843',
+      // The sheet is white in every theme, on Scratch's grey workspace.
+      paper: o.colors?.paper ?? PAPER.paper,
+      workspace: o.colors?.workspace ?? PAPER.paper2,
       a11y: { role: 'application', label: t('draw.sheetLabel') },
     });
     const down = (e: PointerEvent): void => {
@@ -935,7 +940,7 @@ export class DeskController {
     };
     const starPose = this.state.starPose && this.state.mode === 'free' && r.kind === 'character' && r.rig !== 'none' && r.rig !== 'object';
     const images = renderGuides(
-      { board: this.board, request: r, mode: this.state.mode, starPose, currentBones, drawnBones, heroImage: this.heroImage, labels, unit: this.unit },
+      { board: this.board, request: r, mode: this.state.mode, starPose, currentBones, drawnBones, heroImage: this.heroImage, labels, unit: this.unit, colors: guideColorsOf(this.host) },
       this.rig,
     );
     const box = { x: 0, y: 0, w: this.board.w, h: this.board.h };

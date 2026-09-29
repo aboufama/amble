@@ -128,7 +128,7 @@ export function ColorPanel({ ctrl, s, worldColors }: { ctrl: DeskController; s: 
   return (
     <section className="side__section colour" aria-labelledby="desk-colour">
       <div className="side__head">
-        <h2 id="desk-colour" className="desk-caps">
+        <h2 id="desk-colour" className="side__title">
           {t('draw.colour')}
         </h2>
         <span className="side__meta">{t('draw.brushNow', { tool: toolLabel(s.tool), size: Math.round(s.brush.size) })}</span>
@@ -141,7 +141,7 @@ export function ColorPanel({ ctrl, s, worldColors }: { ctrl: DeskController; s: 
         </div>
         <button
           type="button"
-          className={cx('btn btn--icon btn--quiet btn--h44 colour__picker', s.picking && 'colour__picker--on')}
+          className={cx('colour__picker', s.picking && 'colour__picker--on')}
           aria-label={t('draw.pickColour')}
           aria-pressed={s.picking}
           aria-keyshortcuts="I"

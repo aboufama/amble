@@ -16,6 +16,7 @@ import type { DrawnArt } from '../../cores/play';
 import { createRigPreview, type RigPreview } from '../../cores/rig';
 import type { DeskArt, DeskController, DeskState } from '../../draw/deskController';
 import type { DeskSetup } from '../../draw/load';
+import { GUIDE_COLORS } from '../../draw/guides';
 import { drawnArtOf, previewRig, type PreviewRig } from '../../draw/preview';
 import { t } from '../../i18n';
 import type { CodeFile } from '../../model/types';
@@ -87,7 +88,15 @@ function MovesView({ ctrl, art, rigged, bones, still, hold }: { ctrl: DeskContro
   useEffect(() => {
     const c = canvas.current;
     if (!c || still) return;
-    const p = createRigPreview(c, { ground: 0.84, height: c.height * 0.62, background: null, bones: bones ? { look: 'stars', width: 2, joint: 3, glow: 6 } : false, autoplay: !reduced });
+    // The bones in their own green on the white stage, flat (no glow).
+    const bone = getComputedStyle(c).getPropertyValue('--bones').trim() || GUIDE_COLORS.bone;
+    const p = createRigPreview(c, {
+      ground: 0.84,
+      height: c.height * 0.62,
+      background: null,
+      bones: bones ? { look: 'stars', width: 2, joint: 3, glow: 0, left: bone, right: bone, centre: bone } : false,
+      autoplay: !reduced,
+    });
     preview.current = p;
     return () => {
       p.destroy();

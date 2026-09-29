@@ -32,7 +32,7 @@ export function FlipbookPanel({ ctrl, s, focus }: { ctrl: DeskController; s: Des
   return (
     <section ref={section} className="side__section flip" aria-labelledby="desk-flip">
       <div className="side__head">
-        <h2 id="desk-flip" className="desk-caps">
+        <h2 id="desk-flip" className="side__title">
           {t('draw.flipbook')}
         </h2>
         <span className="side__meta">{one ? t('draw.optional') : t('draw.flipbookPages', { n: pages.length })}</span>

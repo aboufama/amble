@@ -1,20 +1,12 @@
 /**
  * The view bar under the sheet (§2.10): **− 62 % +**, **Fit**, and the **Mirror**, **Guides** and
- * **Steady** switches. Pan and zoom always have buttons here (WCAG 2.5.7), besides pinch and Ctrl+wheel.
+ * **Steady** switches, in one flat bar like the zoom buttons under Scratch's paint editor. Pan and zoom
+ * always have buttons here (WCAG 2.5.7), besides pinch and Ctrl+wheel.
  */
 import type { DeskController, DeskState } from '../../draw/deskController';
 import { t } from '../../i18n';
-import { cx } from '../../ui/cx';
+import { Toggle } from '../../ui/components';
 import { Icon } from '../../ui/icons';
-
-function Switch({ label, on, onChange }: { label: string; on: boolean; onChange(on: boolean): void }) {
-  return (
-    <button type="button" role="switch" aria-checked={on} className={cx('viewbar__switch', on && 'viewbar__switch--on')} onClick={() => onChange(!on)}>
-      <span className="viewbar__knob" aria-hidden="true" />
-      <span>{label}</span>
-    </button>
-  );
-}
 
 export function ViewBar({ ctrl, s }: { ctrl: DeskController; s: DeskState }) {
   return (
@@ -33,9 +25,10 @@ export function ViewBar({ ctrl, s }: { ctrl: DeskController; s: DeskState }) {
       <button type="button" className="viewbar__btn" onClick={() => ctrl.fit()} aria-keyshortcuts="F">
         {t('draw.fit')}
       </button>
-      <Switch label={t('draw.mirror')} on={s.mirror} onChange={(on) => ctrl.setMirror(on)} />
-      <Switch label={t('draw.guides')} on={s.guides} onChange={(on) => ctrl.setGuides(on)} />
-      <Switch label={t('draw.steady')} on={s.steady} onChange={(on) => ctrl.toggleSteady(on)} />
+      <span className="viewbar__sep" aria-hidden="true" />
+      <Toggle className="viewbar__switch" label={t('draw.mirror')} checked={s.mirror} onChange={(on) => ctrl.setMirror(on)} />
+      <Toggle className="viewbar__switch" label={t('draw.guides')} checked={s.guides} onChange={(on) => ctrl.setGuides(on)} />
+      <Toggle className="viewbar__switch" label={t('draw.steady')} checked={s.steady} onChange={(on) => ctrl.toggleSteady(on)} />
     </div>
   );
 }
