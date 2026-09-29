@@ -1,4 +1,7 @@
-/* The in-app pages (§2.15): plain, readable articles in the app shell; printable. Tokens only. */
+/*
+ * The in-app pages (§2.15): plain, readable articles in the app shell, in Scratch's look (white cards and
+ * inset areas with a 1 px outline and 8 px corners on the light page), and printable. Tokens only.
+ */
 .page-screen .screen__main {
   padding: var(--s6) var(--s5) var(--s10);
 }
@@ -68,11 +71,15 @@
 }
 
 .page li::marker {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .page strong {
   font-weight: 700;
+}
+
+.page a {
+  color: var(--accent-text);
 }
 
 .page code,
@@ -86,7 +93,7 @@
 .page td code,
 .page th code {
   padding: 1px 6px;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   background: var(--well);
   box-shadow: inset 0 0 0 1px var(--line);
   overflow-wrap: anywhere;
@@ -97,18 +104,19 @@
   margin: 0;
   padding: 14px 16px;
   overflow: auto;
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   white-space: pre-wrap;
   word-break: break-word;
   background: var(--well);
-  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .page__note {
   padding: 10px 14px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--ai) 10%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ai) 35%, transparent);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent-text);
+  border-radius: var(--r-md);
+  background: var(--bg-lift);
 }
 
 .page__links {
@@ -124,30 +132,31 @@
   font: var(--type-label);
 }
 
+/* The short version for students: a white card. */
 .page__kid {
   display: grid;
   gap: var(--s2);
   padding: 20px 24px;
-  border-radius: var(--r-paper);
-  background: var(--paper);
-  box-shadow: var(--lift-paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
+  background: var(--surface-raised);
 }
 
 .page__kid .page__h2 {
   margin-top: 0;
-  color: var(--ink);
 }
 
 .page__kid ul,
 .page__kid p {
-  color: var(--ink);
   font-size: 1.0625rem;
 }
 
 .page__table-wrap {
   overflow-x: auto;
-  border-radius: 14px;
-  box-shadow: inset 0 0 0 1px var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
 }
 
 .page__table {
@@ -175,7 +184,6 @@
 .page__table thead th {
   font: var(--type-caps);
   letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
   color: var(--text-2);
   border-top: 0;
 }
@@ -201,9 +209,9 @@
   align-items: center;
   gap: var(--s2) var(--s3);
   padding: 10px 14px;
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
 }
 
 .page__hosts code {
@@ -219,10 +227,15 @@
   justify-items: center;
   gap: var(--s3);
   padding: var(--s8) var(--s5);
+  border: 1px solid var(--line);
   border-radius: var(--r-card);
   color: var(--text-2);
   text-align: center;
-  background: var(--surface);
+  background: var(--surface-raised);
+}
+
+.page__empty > .icon {
+  color: var(--accent-text);
 }
 
 /* ---------- the AI instructions ---------- */
@@ -230,9 +243,9 @@
   display: grid;
   gap: var(--s2);
   padding: 14px 16px;
+  border: 1px solid var(--line);
   border-radius: var(--r-card);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent);
+  background: var(--surface-raised);
 }
 
 .prompt__head {
@@ -253,7 +266,8 @@
   margin: 0;
   padding: 14px 16px;
   overflow: auto;
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   font: var(--type-code-diff);
   white-space: pre-wrap;
   background: var(--well);
@@ -281,9 +295,9 @@
   display: grid;
   gap: 6px;
   padding: 14px 16px;
+  border: 1px solid var(--line);
   border-radius: var(--r-card);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent);
+  background: var(--surface-raised);
 }
 
 .sent__head {
@@ -308,7 +322,6 @@
 .sent__label {
   font: var(--type-caps);
   letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
   color: var(--text-2);
 }
 
@@ -324,21 +337,21 @@
   justify-self: start;
 }
 
-/* ---------- the letter and the poster ---------- */
+/* ---------- the letter and the poster: white sheets ---------- */
 .letter {
   display: grid;
   gap: var(--s3);
   padding: 40px 48px;
+  border: 1px solid var(--line);
   border-radius: var(--r-paper);
   font-size: 1.0625rem;
   line-height: 1.7;
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: var(--lift-paper);
+  color: var(--text);
+  background: var(--surface-raised);
 }
 
 .letter__date {
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 .letter__url {
@@ -352,20 +365,21 @@
 }
 
 .letter__blank {
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 .letter__contact {
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 .poster {
   display: grid;
   gap: var(--s5);
   padding: 36px 40px;
+  border: 1px solid var(--line);
   border-radius: var(--r-paper);
-  background: var(--paper);
-  box-shadow: var(--lift-paper);
+  color: var(--text);
+  background: var(--surface-raised);
 }
 
 .poster__top {
@@ -376,23 +390,17 @@
 }
 
 .poster__mark {
-  display: grid;
-  place-items: center;
-  width: 72px;
-  height: 72px;
-  border-radius: 20px;
-  background: var(--bg-deep);
+  flex: none;
 }
 
 .poster__title {
   font: var(--display-l);
-  color: var(--ink);
 }
 
 .poster__cls {
   margin-left: auto;
   font: var(--type-title);
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 .poster__steps {
@@ -409,25 +417,25 @@
   gap: var(--s4);
   max-width: none !important;
   padding: 14px 18px;
-  border-radius: 16px;
-  background: var(--paper-2);
-  box-shadow: inset 0 0 0 1.5px var(--paper-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--well);
 }
 
+/* Step numbers are round, in brand blue with white numbers. */
 .poster__n {
   display: grid;
   place-items: center;
   width: 52px;
   height: 52px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   font: var(--display-m);
   color: var(--on-accent);
   background: var(--accent);
-  box-shadow: inset 0 0 0 1.5px var(--accent-border);
 }
 
 .poster__icon {
-  color: var(--ink);
+  color: var(--accent-text);
 }
 
 .poster__words {
@@ -438,14 +446,13 @@
 .poster__step-title {
   font: var(--display-m);
   font-size: 1.75rem;
-  color: var(--ink);
 }
 
 .poster__step-text {
   font: var(--type-body);
   font-size: 1.1875rem;
   line-height: 1.6rem;
-  color: var(--ink-2);
+  color: var(--text-2);
 }
 
 .poster__qr {
@@ -456,7 +463,7 @@
 .poster__foot {
   font: var(--type-label);
   font-size: 1.0625rem;
-  color: var(--ink-2);
+  color: var(--text-2);
   text-align: center;
 }
 
@@ -478,29 +485,38 @@
 
 /* ---------- print: black on white, no app chrome ---------- */
 @media print {
-  /* Night and High contrast declare a dark colour scheme, which makes Canvas near-black and CanvasText
-   * white: pages printed white on black, and on white paper with Chrome's default settings (no background
-   * graphics) they came out blank. Paper is light. */
+  /* High contrast declares a dark colour scheme, which makes Canvas near-black and CanvasText white: pages
+   * printed white on black, and on white paper with Chrome's default settings (no background graphics)
+   * they came out blank. Paper is light. */
   :root,
   :root[data-theme] {
     color-scheme: light !important;
   }
 
-  /* html:root[data-theme] outranks the themes' own blocks (High contrast sets white ink on black paper). */
+  /* html:root[data-theme] outranks the themes' own blocks (High contrast sets white ink on black paper).
+   * Every surface and word colour the pages use prints as the paper and its ink. */
   :root,
   html:root[data-theme] {
     --text: CanvasText;
     --text-2: CanvasText;
     --ink: CanvasText;
     --ink-2: CanvasText;
+    --accent-text: CanvasText;
     --paper: Canvas;
     --paper-2: Canvas;
     --paper-3: Canvas;
     --note: Canvas;
     --paper-line: CanvasText;
+    --line: CanvasText;
+    --line-control: CanvasText;
     --surface: Canvas;
+    --surface-raised: Canvas;
+    --surface-top: Canvas;
+    --surface-bottom: Canvas;
     --well: Canvas;
     --bg: Canvas;
+    --bg-lift: Canvas;
+    --bg-deep: Canvas;
   }
 
   html,
@@ -531,17 +547,26 @@
     color: CanvasText;
   }
 
-  .letter,
-  .poster,
-  .page__kid {
-    box-shadow: none;
-  }
-
   /* The letter and the poster are sheets of their own: the app's page heading ("Letter for families",
    * version and date) stays on screen, so the letter doesn't print its date twice. */
   [data-page='parents'] .page__head,
   [data-page='poster'] .page__head {
     display: none;
+  }
+
+  /* The sheets print without their on-screen outline; the poster's steps keep a thin rule. */
+  .letter,
+  .poster {
+    border: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Printers skip backgrounds by default: the step numbers print as rings with dark numbers. */
+  .poster__n {
+    color: CanvasText;
+    background: none;
+    border: 3px solid CanvasText;
   }
 
   .page a {

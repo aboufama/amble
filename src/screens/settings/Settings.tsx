@@ -9,6 +9,7 @@ import { TopBar } from '../../app/frame/TopBar';
 import { t, type MessageKey } from '../../i18n';
 import { Icon, type IconName } from '../../ui/icons';
 import { cx } from '../../ui/cx';
+import { SchoolIcon } from '../teacher/SchoolIcon';
 import { AboutSection } from './AboutSection';
 import { AiSection } from './AiSection';
 import { DrawingSection } from './DrawingSection';
@@ -18,8 +19,9 @@ import { SoundSection } from './SoundSection';
 import { StorageSection } from './StorageSection';
 import './settings.css';
 
-export const SECTIONS: Array<{ id: SettingsSection; label: MessageKey; icon: IconName }> = [
-  { id: 'ai', label: 'school.setAi', icon: 'sparkle' },
+/** The AI helper's section shows the school's online service (the server), never a sparkle. */
+export const SECTIONS: Array<{ id: SettingsSection; label: MessageKey; icon: IconName | 'server' }> = [
+  { id: 'ai', label: 'school.setAi', icon: 'server' },
   { id: 'sound', label: 'school.setSound', icon: 'sound' },
   { id: 'reading', label: 'school.setReading', icon: 'eye' },
   { id: 'drawing', label: 'school.setDrawing', icon: 'draw' },
@@ -58,7 +60,7 @@ export function Settings({ route }: { route: RouteOf<'settings'> }) {
             {SECTIONS.map((s) => (
               <li key={s.id}>
                 <Link to={{ name: 'settings', section: s.id }} replace className={cx('settings__link', s.id === section && 'settings__link--on')} aria-current={s.id === section ? 'page' : undefined}>
-                  <Icon name={s.icon} size={20} />
+                  {s.icon === 'server' ? <SchoolIcon name="server" size={20} /> : <Icon name={s.icon} size={20} />}
                   <span>{t(s.label)}</span>
                 </Link>
               </li>

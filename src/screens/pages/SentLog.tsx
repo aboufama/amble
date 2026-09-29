@@ -66,7 +66,13 @@ function Entry({ e }: { e: AiLogEntry }) {
         </div>
       )}
       {e.replySummary && <p className="sent__reply">{t('school.sentReply', { reply: e.replySummary })}</p>}
-      <button type="button" className="btn btn--quiet btn--h38" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+      <button
+        type="button"
+        className="btn btn--quiet btn--h38"
+        aria-expanded={open}
+        aria-label={t(open ? 'school.sentHideNamed' : 'school.sentShowNamed', { kind: t(KIND_WORDS[e.kind]), when })}
+        onClick={() => setOpen((v) => !v)}
+      >
         <Icon name={open ? 'eyeOff' : 'eye'} size={18} />
         <span className="btn__label">{open ? t('school.sentHide') : t('school.sentShow')}</span>
       </button>

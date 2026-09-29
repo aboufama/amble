@@ -7,7 +7,8 @@ import { useServices } from '../../app/services';
 import { t, type MessageKey } from '../../i18n';
 import { classLinkHref } from '../../school/classLink';
 import { loadTeacherData, useTeacherData } from '../../school/teacherData';
-import { Icon, Lamppost, type IconName } from '../../ui/icons';
+import { Wordmark } from '../../ui/components';
+import { Icon, type IconName } from '../../ui/icons';
 import { QrCode } from '../teacher/QrCode';
 import { PageShell } from './PageShell';
 
@@ -37,9 +38,7 @@ export function Poster() {
     <PageShell page="poster" title={t('school.posterTitle')} lede={<p className="no-print">{t('school.posterLede')}</p>}>
       <div className="poster on-paper">
         <div className="poster__top">
-          <span className="poster__mark" aria-hidden="true">
-            <Lamppost height={56} />
-          </span>
+          <Wordmark size={52} className="poster__mark" />
           <p className="poster__title">{t('school.posterHeading')}</p>
           {link && <p className="poster__cls">{link.cls}</p>}
         </div>

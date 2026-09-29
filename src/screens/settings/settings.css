@@ -1,4 +1,8 @@
-/* Settings (§2.15): the section list and one section at a time; reflows to one column at 320 px. Tokens only. */
+/*
+ * Settings (§2.15): the section list and one section at a time, in Scratch's look (white panels with a 1 px
+ * outline and 8 px corners; the current section wears the purple selection edge); reflows to one column at
+ * 320 px. Tokens only.
+ */
 .settings {
   display: grid;
   grid-template-columns: 240px minmax(0, 760px);
@@ -15,9 +19,9 @@
   gap: 4px;
   margin: 0;
   padding: 8px;
+  border: 1px solid var(--line);
   border-radius: var(--r-card);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent), var(--lift-sm);
+  background: var(--surface-raised);
   list-style: none;
 }
 
@@ -27,25 +31,30 @@
   gap: 10px;
   min-height: var(--target);
   padding: 0 12px;
-  border-radius: 12px;
+  border: 2px solid transparent;
+  border-radius: var(--r-md);
   font: var(--type-label);
-  color: var(--text-2);
+  color: var(--text);
   text-decoration: none;
 }
 
-.settings__link:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--text) 6%, transparent);
+.settings__link .icon {
+  color: var(--text-2);
 }
 
-.settings__link--on {
-  color: var(--text);
+.settings__link:hover {
+  background: var(--bg-lift);
+}
+
+.settings__link--on,
+.settings__link--on:hover {
+  border-color: var(--change-bright);
+  color: var(--change);
   background: var(--surface-raised);
-  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .settings__link--on .icon {
-  color: var(--accent);
+  color: var(--change);
 }
 
 .settings__panel {
@@ -64,9 +73,10 @@
   display: grid;
   gap: var(--s3);
   padding: 16px 18px;
+  border: 1px solid var(--line);
   border-radius: var(--r-card);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-control-panel) 45%, transparent), var(--lift-sm);
+  color: var(--text);
+  background: var(--surface-raised);
 }
 
 .set-ai,
@@ -160,7 +170,7 @@
 
 .set-status--on .set-status__dot {
   background: var(--alive);
-  box-shadow: 0 0 10px var(--alive);
+  box-shadow: none;
 }
 
 .set-status__words {
@@ -180,7 +190,7 @@
 }
 
 .set-class > .icon {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .set-class__name {
@@ -250,13 +260,14 @@
   color: var(--warn);
 }
 
+/* A strip of drawing paper: white in every theme, with a dark pen (its colour is the canvas's ink). */
 .set-pressure {
   width: 100%;
   height: 96px;
-  border-radius: var(--r-paper);
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: var(--lift-paper);
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-md);
+  color: color-mix(in srgb, var(--sheet) 25%, black);
+  background: var(--sheet);
   touch-action: none;
   cursor: crosshair;
 }
@@ -332,6 +343,11 @@
   font: var(--type-body);
 }
 
+.set-links a,
+.set-licences a {
+  color: var(--accent-text);
+}
+
 .set-licences li:first-child {
   border-top: 0;
 }
@@ -355,7 +371,7 @@
   }
 
   .settings__link--on {
-    box-shadow: inset 0 -3px 0 var(--accent);
+    box-shadow: none;
   }
 }
 

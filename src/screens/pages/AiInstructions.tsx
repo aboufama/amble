@@ -52,16 +52,31 @@ function PromptBlock({ id, title, when, text }: { id: string; title: string; whe
         </div>
         {text && (
           <div className="prompt__tools">
-            <button type="button" className="btn btn--quiet btn--h38" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+            {/* Each button names its instructions ("Copy Planning a new world"), so four Copy buttons read apart. */}
+            <button
+              type="button"
+              className="btn btn--quiet btn--h38"
+              aria-expanded={open}
+              aria-label={open ? t('school.aiHideNamed', { title }) : t('school.aiShowNamed', { title })}
+              onClick={() => setOpen((v) => !v)}
+            >
               <span className="btn__label">{open ? t('school.aiHide') : t('school.aiShow')}</span>
             </button>
-            <TButton variant="ghost" size={38} icon="copy" onClick={() => void copy()}>
+            <TButton variant="ghost" size={38} icon="copy" aria-label={t('school.aiCopyNamed', { title })} onClick={() => void copy()}>
               {t('school.aiCopy')}
             </TButton>
           </div>
         )}
       </div>
-      {!text ? <p className="page__note">{t('school.aiPromptMissing')}</p> : open && <pre className="prompt__text" tabIndex={0}>{text}</pre>}
+      {!text ? (
+        <p className="page__note">{t('school.aiPromptMissing')}</p>
+      ) : (
+        open && (
+          <pre className="prompt__text" tabIndex={0}>
+            {text}
+          </pre>
+        )
+      )}
     </section>
   );
 }
