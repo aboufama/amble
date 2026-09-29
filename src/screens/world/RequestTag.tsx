@@ -5,58 +5,16 @@
  * "Dashed = not drawn yet. Tap any dashed outline to draw it. The game keeps its place."
  */
 import { useEffect, useRef, useState } from 'react';
-import { t, type MessageKey } from '../../i18n';
-import type { CastMember, Pronoun } from '../../model/types';
+import { t } from '../../i18n';
+import type { CastMember } from '../../model/types';
 import { markSeen } from '../../state/prefs';
 import { patchSession, updateWorld } from '../../state/session';
 import { useStore } from '../../state/store';
 import { Button, IconButton, PlaceholderGlyph } from '../../ui/components';
 import { cx } from '../../ui/cx';
 import type { Box } from '../../world/objects';
+import { requestCopy } from '../../world/hints';
 import { laterUntil } from '../../world/requestPolicy';
-
-/** "the Moon King" when the game says so ("Draw the Moon King, a giant boss"), else just the name. */
-export function withArticle(m: Pick<CastMember, 'name' | 'ask'>): string {
-  const escaped = m.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`\\bthe\\s+${escaped}\\b`, 'i').test(m.ask) ? `the ${m.name}` : m.name;
-}
-
-export function plural(name: string): string {
-  if (/(s|x|z|ch|sh)$/i.test(name)) return `${name}es`;
-  if (/[^aeiou]y$/i.test(name)) return `${name.slice(0, -1)}ies`;
-  return `${name}s`;
-}
-
-function capital(s: string): string {
-  return s ? s[0].toUpperCase() + s.slice(1) : s;
-}
-
-function aOrAn(name: string): string {
-  return /^[aeiou]/i.test(name) ? `an ${name}` : `a ${name}`;
-}
-
-const PRONOUN_LINES: Record<Pronoun, MessageKey> = { him: 'world.requestHim', her: 'world.requestHer', them: 'world.requestThem', it: 'world.requestIt' };
-
-export interface RequestCopy {
-  title: string;
-  body: string;
-  button: string;
-}
-
-/** The tag's words for a member (a group when several play at once). */
-export function requestCopy(m: CastMember, warmup: boolean): RequestCopy {
-  if (warmup) {
-    return { title: t('world.requestWarmup', { name: withArticle(m) }), body: t('world.requestWarmupSub'), button: t('world.drawOne', { name: withArticle(m) }) };
-  }
-  if (m.count > 1) {
-    return {
-      title: t('world.requestAre', { names: plural(m.name) }),
-      body: t('world.requestGroup'),
-      button: t('world.drawOne', { name: aOrAn(m.name) }),
-    };
-  }
-  return { title: t('world.requestIs', { name: capital(withArticle(m)) }), body: t(PRONOUN_LINES[m.pronoun]), button: t('world.drawOne', { name: withArticle(m) }) };
-}
 
 export function RequestTag({ onDraw }: { onDraw(member: CastMember, from: HTMLElement): void }) {
   const request = useStore((s) => s.session.request);

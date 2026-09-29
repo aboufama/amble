@@ -220,8 +220,22 @@
   background: var(--bg-deep);
 }
 
+/* Full screen: the game's layer sits over the page; the overlays sit over the game. */
+.world-view[data-player-fullscreen] {
+  z-index: calc(var(--z-fullscreen) + 2) !important;
+  background: transparent !important;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.world-view[data-player-fullscreen] > * {
+  pointer-events: auto;
+}
+
 .world-view[data-player-fullscreen] .world-view__slot {
   border-radius: 0;
+  background: transparent;
+  pointer-events: none;
 }
 
 /* Everything the editor draws over the game sits above the player layer (never inside its frame). */

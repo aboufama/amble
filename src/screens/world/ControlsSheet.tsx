@@ -11,7 +11,7 @@ import { useStore } from '../../state/store';
 import { Button, Keycap, Sheet } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import { phaserKeyName } from '../../world/init';
-import { keyLabel } from './ControlsRow';
+import { keyLabel } from '../../world/hints';
 
 const WORDS: Record<Action, MessageKey> = {
   left: 'world.actLeft',

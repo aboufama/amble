@@ -123,12 +123,18 @@ export function refreshCast(): void {
 // ------------------------------------------------------------------ saving
 
 let autosave: Autosave | null = null;
+let autosaveStore: unknown = null;
 
 function saver(): Autosave {
-  autosave ??= createAutosave(getServices().store, {
-    onState: (save) => patchSession({ save }),
-    onError: (err) => console.warn('Autosave failed:', err),
-  });
+  const { store } = getServices();
+  if (!autosave || autosaveStore !== store) {
+    autosave?.dispose();
+    autosaveStore = store;
+    autosave = createAutosave(store, {
+      onState: (save) => patchSession({ save }),
+      onError: (err) => console.warn('Autosave failed:', err),
+    });
+  }
   return autosave;
 }
 

@@ -3,7 +3,7 @@
  * its sticker, name and role line, ✎ Redraw (✎ Draw it for "just bones") and Bones, then the dials the
  * game gave this member, and "Dials change the game right away. No AI needed."
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { t } from '../../i18n';
 import type { CastMember } from '../../model/types';
 import { selectThing } from '../../state/session';
@@ -34,9 +34,15 @@ export function ThingCard({ member, anchor, onDraw, onBones }: ThingCardProps) {
   const drawn = !!member.art;
   const rigged = member.kind === 'character' && member.rig !== 'none';
   const placement = anchor.left + anchor.width / 2 > window.innerWidth / 2 - 180 ? 'left' : 'right';
+  const head = useRef<HTMLDivElement>(null);
+  // The card opens hidden while it measures itself; focus its main button once it shows.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => head.current?.parentElement?.querySelector<HTMLElement>('[data-testid="thing-draw"]')?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(id);
+  }, [member.key]);
   return (
     <Popover open anchor={anchor} onClose={() => selectThing(null)} label={member.name} placement={placement} tone="lantern" className="thing-card">
-      <div className="thing-card__head" data-testid="thing-card" data-key={member.key}>
+      <div ref={head} className="thing-card__head" data-testid="thing-card" data-key={member.key}>
         <span className="thing-card__pic" aria-hidden="true">
           {drawn ? <Sticker src={sticker} alt="" size={54} /> : <PlaceholderGlyph rig={member.rig} role={member.role} shape={member.shape} size={54} />}
         </span>
