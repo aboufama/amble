@@ -77,21 +77,6 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
     if (variant === 'first') navigate({ name: 'plan' });
   };
 
-  // The explainer card opens before the first idea on this device; the idea goes when it closes.
-  useEffect(() => {
-    if (!explainer) return;
-    const id = setTimeout(() => {
-      // Nothing to read (no explainer on this build): go on without waiting.
-      if (!document.querySelector('dialog[open]') && pending.current !== null) {
-        setExplainer(false);
-        const idea = pending.current;
-        pending.current = null;
-        send(idea);
-      }
-    }, 350);
-    return () => clearTimeout(id);
-  });
-
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
     const idea = text.replace(/\s+/g, ' ').trim().slice(0, MAX);
@@ -110,6 +95,7 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
       return;
     }
     if (v.kind === 'pii' && v.block) return;
+    // The explainer card opens before the first idea on this device; the idea goes when it closes.
     if (!seenExplainer) {
       markSeen('aiExplainer');
       pending.current = idea;
@@ -253,7 +239,11 @@ export function IdeaBox({ variant, hero, lead = false, autoFocus = false, onPlan
           pending.current = null;
           if (idea) send(idea);
         }}
-        onWhatsSent={() => navigate({ name: 'page', page: 'sent' })}
+        onWhatsSent={() => {
+          // The idea waits in the box for the student's return.
+          if (pending.current) setIdea(pending.current, hero);
+          navigate({ name: 'page', page: 'sent' });
+        }}
       />
     </section>
   );

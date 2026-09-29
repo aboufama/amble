@@ -218,6 +218,5 @@ export const home = {
   noIdea: 'Tell Amble your idea first.',
   buildStarted: 'Amble is building {title}.',
   built: 'Amble built {title}.',
-  buildStep: 'Amble built your world: {title}',
   startedStep: 'You started {title}',
 } satisfies Strings;

@@ -66,29 +66,27 @@ describe("a plan's world", () => {
   });
 
   it('starts the build in the background and saves an accepted result', async () => {
-    vi.useFakeTimers();
     const files = [{ path: 'game.js', source: '// built', authors: [['ai', 1]] as Array<['ai', number]>, locked: [] }];
     const accepted: AiOutcome = { kind: 'accepted', files, manifest: {} as never, summary: 'Built', play: '', next: [], safety: { kind: 'ok', note: '' }, repairs: 0, tested: true, handEditsTouched: false, newArt: [] };
     const build = vi.fn<AiService['build']>(async () => accepted);
     const { store } = services({ ai: { ...createAiStub(), build } });
     const world = await createPlanWorld(samplePlan(), 'idea', null);
-    startBuild(world.id, samplePlan(), 'idea');
-    expect(getState().ai.job).toMatchObject({ worldId: world.id, task: 'build', progress: { phase: 'queued' } });
-    await vi.advanceTimersByTimeAsync(3100);
+    startBuild(world, samplePlan());
+    expect(getState().ai.job).toMatchObject({ worldId: world.id, task: 'build' });
+    await vi.waitFor(() => expect(getState().ai.job).toBeNull());
     expect(build).toHaveBeenCalledOnce();
     const saved = await store.worlds.get(world.id);
     expect(saved?.code[0].source).toBe('// built');
     expect(saved?.steps.at(-1)).toMatchObject({ kind: 'ask', by: 'ai', tested: true });
-    expect(getState().ai.job).toBeNull();
   });
 
   it('keeps the Warm-up when the build fails', async () => {
-    vi.useFakeTimers();
     const build = vi.fn<AiService['build']>(async () => ({ kind: 'failed', reason: 'runtime', message: 'no', details: [] }));
     const { store } = services({ ai: { ...createAiStub(), build } });
     const world = await createPlanWorld(samplePlan(), 'idea', null);
-    startBuild(world.id, samplePlan(), 'idea');
-    await vi.advanceTimersByTimeAsync(3100);
+    startBuild(world, samplePlan());
+    await vi.waitFor(() => expect(getState().ai.job).toBeNull());
+    expect(build).toHaveBeenCalledOnce();
     expect((await store.worlds.get(world.id))?.code[0].source).toContain('Warm-up');
   });
 });

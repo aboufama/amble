@@ -6,10 +6,10 @@
 import { getServices } from '../app/services';
 import { t } from '../i18n';
 import { uid } from '../model/ids';
-import type { AiOutcome, AiProgress, ArtId, ArtRecord, Assignment, CastKey, CastSlot, PlanReply, StarterId, StepSummary, World, WorldId } from '../model/types';
+import type { ArtId, ArtRecord, Assignment, CastKey, CastSlot, PlanReply, StarterId, StepSummary, World, WorldId } from '../model/types';
+import { startBuild as startBuildJob } from '../state/ai';
 import { refreshLibrary } from '../state/library';
-import { applyAccepted } from '../state/session';
-import { getState, setState } from '../state/store';
+import { getState } from '../state/store';
 import { warmupCode } from '../world/warmup';
 
 export const TITLE_MAX = 40;
@@ -90,85 +90,13 @@ export async function createPlanWorld(plan: PlanReply, idea: string, hero: ArtId
   return commitWorld(world);
 }
 
-const builds = new Map<WorldId, AbortController>();
-
-/** Whether a build started from Home is still running for this world. */
-export function isBuilding(worldId: WorldId): boolean {
-  return builds.has(worldId);
-}
-
-function showJob(worldId: WorldId, request: string, progress: AiProgress | null, startedAt: number): void {
-  setState((s) => {
-    s.ai.job = progress ? { worldId, task: 'build', request, progress, startedAt } : null;
-  });
-}
-
-async function applyBuild(worldId: WorldId, outcome: Extract<AiOutcome, { kind: 'accepted' | 'fallback' }>, title: string): Promise<void> {
-  const { store, history } = getServices();
-  // The open world takes the change through its own session (no restart, M2); otherwise it is saved.
-  if (getState().session.world?.id === worldId) {
-    try {
-      await applyAccepted(outcome);
-      return;
-    } catch {
-      // Not wired yet: save it to the world below.
-    }
-  }
-  const latest = await store.worlds.get(worldId);
-  if (!latest) return;
-  const changed: World = { ...latest, code: outcome.files, updatedAt: Date.now() };
-  let next = changed;
-  try {
-    next = await history.record(changed, { kind: 'ask', by: 'ai', text: t('home.buildStep', { title }), tested: outcome.kind === 'accepted' ? outcome.tested : false });
-  } catch {
-    next = changed;
-  }
-  await store.commit({ worlds: [next] });
-  void refreshLibrary(store);
-}
-
 /**
- * Starts `AiService.build` in the background after a random 0-3 s wait (§5.2, so a class that presses
- * at once does not arrive at once). The Warm-up keeps playing; an accepted (or ladder) result replaces
- * the code; anything else leaves the world as it was.
+ * Starts the build in the background (§2.5) as the AI slice's job (M5): it waits its random 0-3 s
+ * (§5.2), drives the build pill, and writes the result to the world (the open one, or the stored one
+ * while the student draws). The Warm-up keeps playing meanwhile.
  */
-export function startBuild(worldId: WorldId, plan: PlanReply, idea: string): void {
-  builds.get(worldId)?.abort();
-  const ctl = new AbortController();
-  builds.set(worldId, ctl);
-  const startedAt = Date.now();
-  showJob(worldId, idea, { phase: 'queued' }, startedAt);
-  const wait = Math.random() * 3000;
-  setTimeout(() => {
-    void (async () => {
-      const { ai, store } = getServices();
-      try {
-        const world = await store.worlds.get(worldId);
-        if (!world || ctl.signal.aborted) return;
-        const outcome = await ai.build(world, plan, {
-          signal: ctl.signal,
-          onProgress: (p) => {
-            if (!ctl.signal.aborted) showJob(worldId, idea, p, startedAt);
-          },
-        });
-        setState((s) => {
-          s.ai.lastOutcome = outcome;
-        });
-        if (outcome.kind === 'accepted' || outcome.kind === 'fallback') await applyBuild(worldId, outcome, world.title);
-      } catch (err) {
-        console.warn('The build stopped:', err);
-      } finally {
-        if (builds.get(worldId) === ctl) builds.delete(worldId);
-        if (getState().ai.job?.worldId === worldId) showJob(worldId, idea, null, startedAt);
-      }
-    })();
-  }, wait);
-}
-
-/** Stops a build started from Home (the world keeps its Warm-up). */
-export function stopBuild(worldId: WorldId): void {
-  builds.get(worldId)?.abort();
-  builds.delete(worldId);
+export function startBuild(world: World, plan: PlanReply): void {
+  void startBuildJob(world, plan).catch((err: unknown) => console.warn('The build stopped:', err));
 }
 
 /** An assignment's world: its starter as a seed (draw first), carrying the assignment. */

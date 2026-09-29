@@ -79,7 +79,7 @@ function Plan({ plan, session, onReplan }: { plan: PlanReply; session: PlanSessi
     setBusy(mode);
     try {
       const world = await createPlanWorld(plan, session.idea, heroId);
-      startBuild(world.id, plan, session.idea);
+      startBuild(world, plan);
       clearPlanOutcome();
       showToast(t('home.buildStarted', { title: world.title }), { kind: 'ai' });
       if (mode === 'draw' && toDraw) navigate({ name: 'draw', worldId: world.id, key: toDraw.key });
