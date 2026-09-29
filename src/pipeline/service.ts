@@ -162,6 +162,18 @@ function patchSummary(text: string): string {
 
 const byteLength = (s: string) => new TextEncoder().encode(s).length;
 
+/** The first file whose lines the student wrote were rewritten by a change, or null. */
+export function handEditFile(prev: readonly CodeFile[], next: readonly CodeFile[]): string | null {
+  for (const f of prev) {
+    const ranges = authoredRanges(f, 'student');
+    if (!ranges.length) continue;
+    const after = next.find((n) => n.path === f.path);
+    const lines = f.source.split('\n');
+    for (const [a, b] of ranges) if (!after || findBlock(after.source, lines.slice(a - 1, b)) < 0) return f.path;
+  }
+  return null;
+}
+
 export function createAiService(env: AiEnv): AmbleAi {
   const listeners = new Set<(s: AiStatus) => void>();
   const locks = new JobLocks();
@@ -309,24 +321,12 @@ export function createAiService(env: AiEnv): AmbleAi {
     });
   };
 
-  /** Did the change rewrite lines the student wrote? */
-  const touchedHandEdits = (prev: readonly CodeFile[], next: readonly CodeFile[]): string | null => {
-    for (const f of prev) {
-      const ranges = authoredRanges(f, 'student');
-      if (!ranges.length) continue;
-      const after = next.find((n) => n.path === f.path);
-      const lines = f.source.split('\n');
-      for (const [a, b] of ranges) if (!after || findBlock(after.source, lines.slice(a - 1, b)) < 0) return f.path;
-    }
-    return null;
-  };
-
   const accepted = (world: World, r: Extract<JobResult, { kind: 'accepted' }>): Extract<AiOutcome, { kind: 'accepted' }> => {
     const files = withProvenance(world.code, r.files);
     const before = readStatics(world.code);
     const statics = readStatics(files);
     const drawn = new Set(Object.values(world.cast).filter((s) => s.art).map((s) => s.key));
-    const handFile = touchedHandEdits(world.code, files);
+    const handFile = handEditFile(world.code, files);
     return {
       kind: 'accepted',
       files,

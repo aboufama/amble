@@ -56,6 +56,9 @@ export const ai = {
   phAny3: 'Add a power-up that makes {hero} giant',
   phAny4: 'Make it rain stars when you win',
   phAny5: 'Add a secret level',
+  phLocalDial: 'Turn {label} up',
+  phLocalTwist: 'Switch on {name}',
+  phLocalAny: 'Make the jump higher',
   heroFallback: 'your hero',
   bossFallback: 'the boss',
 
@@ -81,6 +84,9 @@ export const ai = {
   keepPlaying: 'Keep playing or drawing. This usually takes about a minute.',
   youAsked: 'You asked: "{words}"',
   progressLabel: 'The AI helper is working',
+  stepStateDone: 'done',
+  stepStateNow: 'working on it',
+  stepStateNext: 'next',
   heroWalking: '{hero} walks along while Amble works',
 
   // ---------------------------------------------------------------- done
@@ -89,6 +95,7 @@ export const ai = {
   seeChange: 'See the change',
   addedMember: 'Your change added a {name}. Draw it now?',
   addedMemberNamed: 'Your change added {name}. Draw them now?',
+  addedMemberAn: 'Your change added an {name}. Draw it now?',
   drawIt: 'Draw it',
   later: 'Later',
   handEdits: 'Amble also changed lines you wrote in {file}.',
@@ -196,12 +203,16 @@ export const ai = {
   // ---------------------------------------------------------------- explain (Look inside)
   explainWorking: 'The AI helper is reading these lines…',
   explainFailed: "The AI helper couldn't explain that right now.",
+  explainLine: 'Line {n}:',
+  explainLines: 'Lines {from}-{to}:',
+  explainSeeCode: 'See it in Look inside',
 
   // ---------------------------------------------------------------- What Amble sends (#/sent)
   sentTitle: 'What Amble sends',
   sentIntro: 'Every time Amble asks the AI helper something, it shows up here, exactly as it was sent. It stays on this Chromebook.',
   sentNever: 'Never sent: your name, your drawings, your recordings, your Footsteps or your class code.',
   sentEmpty: 'Nothing has been sent yet.',
+  sentLoadFailed: "Amble couldn't read the list right now.",
   sentShow: 'Show exactly',
   sentHide: 'Hide',
   sentClear: 'Clear the list',
