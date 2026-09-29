@@ -656,6 +656,16 @@ class Surface implements ArtSurface {
     for (const q of [old, next]) if (q) c.invalidateView(q.x - q.r - 3, q.y - q.r - 3, q.x + q.r + 3, q.y + q.r + 3);
   }
 
+  previewBrush(id: BrushId | null): void {
+    const c = this.comp;
+    if (!c) return;
+    const old = c.overlays.cursor;
+    const next = id ? { x: c.cssW / 2, y: c.cssH / 2, r: Math.max(1, (this.state.brushes[id].size / 2) * c.view.zoom) } : null;
+    if (!old && !next) return;
+    c.overlays.cursor = next;
+    for (const q of [old, next]) if (q) c.invalidateView(q.x - q.r - 3, q.y - q.r - 3, q.x + q.r + 3, q.y + q.r + 3);
+  }
+
   private moveView(v: ViewState): void {
     this.comp.setView({ ...v, zoom: clampZoom(v.zoom) });
     if (!this.comp.inGesture) this.em.emit('view', this.comp.view);

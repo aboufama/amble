@@ -187,6 +187,7 @@ export class DeskController {
   private readonly heroImage: ImageBitmap | null;
   private unit = 1;
   private pen = false;
+  private sizeTimer = 0;
   private artTimer = 0;
   private artSeq = 1;
   private artDone = 0;
@@ -298,6 +299,9 @@ export class DeskController {
 
   private set(patch: Partial<DeskState>): void {
     if (this.destroyed) return;
+    // Nothing new (a pan keeps the zoom): no new snapshot, so the Desk does not re-render.
+    const keys = Object.keys(patch) as Array<keyof DeskState>;
+    if (keys.every((k) => Object.is(this.state[k], patch[k]))) return;
     this.state = { ...this.state, ...patch };
     for (const fn of this.listeners) fn();
   }
@@ -357,6 +361,7 @@ export class DeskController {
     this.destroyed = true;
     clearTimeout(this.guideTimer);
     clearTimeout(this.artTimer);
+    clearTimeout(this.sizeTimer);
     this.stopPlay?.();
     for (const f of this.off) f();
     this.listeners.clear();
@@ -427,6 +432,13 @@ export class DeskController {
 
   setSize(px: number): void {
     this.surface.setBrush({ size: px }, BRUSH_OF[this.state.tool]);
+  }
+
+  /** While the Size slider moves: the brush's size as a ring on the sheet, gone a moment after. */
+  previewSize(): void {
+    this.surface.previewBrush(BRUSH_OF[this.state.tool]);
+    clearTimeout(this.sizeTimer);
+    this.sizeTimer = window.setTimeout(() => this.surface.previewBrush(null), 900);
   }
 
   setOpacity(alpha: number): void {

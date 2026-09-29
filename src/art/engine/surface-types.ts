@@ -191,6 +191,8 @@ export interface ArtSurface {
   setColor(color: string): void;
   /** Mirror: true = through the board's centre, a number = at that board coordinate, false/null = off. */
   setMirror(m: { x?: boolean | number | null; y?: boolean | number | null } | null): void;
+  /** Shows a brush's size as a ring in the middle of the view (while its Size slider moves); null hides it. */
+  previewBrush(id: BrushId | null): void;
   setHoldToPerfect(on: boolean): void;
   setFill(o: Partial<ToolState['fill']>): void;
   /** The Shapes tool's shape and fill (the shape being edited is finished first). */

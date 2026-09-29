@@ -33,7 +33,10 @@ export function BrushPanel({ ctrl, s, pixel }: { ctrl: DeskController; s: DeskSt
         max={pixel ? 4 : 100}
         value={sliderFromSize(size, pixel)}
         format={() => String(Math.round(size))}
-        onChange={(v) => ctrl.setSize(sizeFromSlider(v, pixel))}
+        onChange={(v) => {
+          ctrl.setSize(sizeFromSlider(v, pixel));
+          ctrl.previewSize();
+        }}
       />
       <Slider
         className="brush__slider"
