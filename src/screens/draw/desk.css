@@ -1529,3 +1529,21 @@ body:has(.screen.desk) .toast-region {
   margin-top: 6px;
   grid-template-columns: 64px minmax(0, 1fr) 72px;
 }
+
+/* the selected layer's options */
+.layer-opts {
+  display: grid;
+  gap: 10px;
+  width: 300px;
+}
+
+.layer-opts__title {
+  margin: 0;
+  font: var(--type-label);
+}
+
+.layer-opts__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

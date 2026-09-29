@@ -10,11 +10,11 @@ import type { LayerInfo } from '../../cores/art';
 import type { DeskController, DeskState } from '../../draw/deskController';
 import { t } from '../../i18n';
 import { rovingIndex } from '../../ui/a11y';
-import { Menu, type MenuItem } from '../../ui/components';
+import { Menu } from '../../ui/components';
 import { cx } from '../../ui/cx';
-import { askUser } from '../../ui/dialogs';
 import { Icon } from '../../ui/icons';
 import { stepLabel } from './GuideStrip';
+import { LayerOptions } from './LayerOptions';
 import { useLayerThumbs } from './useDesk';
 
 const DEFAULT_NAMES = new Set(['lines', 'colours', 'colors', 'sketch', 'layer', 'shading', 'trace', 'photo to trace', 'photo lines', 'paint']);
@@ -131,26 +131,6 @@ export function LayersPanel({ ctrl, s }: { ctrl: DeskController; s: DeskState })
     for (const id of r.ids) ctrl.setLayerVisible(id, !r.visible);
   };
 
-  const menu: MenuItem[] = activeLayer
-    ? [
-        { id: 'eye', label: activeLayer.visible ? t('draw.hideLayer', { layer: layerName(activeLayer) }) : t('draw.showLayer', { layer: layerName(activeLayer) }), icon: activeLayer.visible ? 'eyeOff' : 'eye', onSelect: () => ctrl.setLayerVisible(activeLayer.id, !activeLayer.visible) },
-        { id: 'up', label: t('draw.moveUp'), onSelect: () => ctrl.moveLayer(activeLayer.id, 1), disabled: s.layers[s.layers.length - 1]?.id === activeLayer.id },
-        { id: 'down', label: t('draw.moveDown'), onSelect: () => ctrl.moveLayer(activeLayer.id, -1), disabled: s.layers[0]?.id === activeLayer.id },
-        { id: 'copy', label: t('draw.copyLayer'), onSelect: () => ctrl.duplicateLayer(activeLayer.id) },
-        { id: 'join', label: t('draw.joinDown'), onSelect: () => void ctrl.mergeDown(activeLayer.id), disabled: s.layers[0]?.id === activeLayer.id },
-        { id: 'lock', label: activeLayer.locked ? t('draw.unlockLayer') : t('draw.lockLayer'), icon: 'lock', onSelect: () => ctrl.setLayerLocked(activeLayer.id, !activeLayer.locked) },
-        {
-          id: 'rename',
-          label: t('draw.renameLayer'),
-          onSelect: () =>
-            void askUser({ title: t('draw.renamePrompt'), label: t('draw.renamePrompt'), value: layerName(activeLayer), maxLength: 40 }).then((name) => {
-              if (name?.trim()) ctrl.renameLayer(activeLayer.id, name);
-            }),
-        },
-        { id: 'delete', label: t('draw.deleteLayer'), danger: true, onSelect: () => ctrl.removeLayer(activeLayer.id), disabled: s.layers.length <= 1 },
-      ]
-    : [];
-
   return (
     <section className="side__section layers" aria-labelledby="desk-layers">
       <div className="side__head">
@@ -168,7 +148,16 @@ export function LayersPanel({ ctrl, s }: { ctrl: DeskController; s: DeskState })
               { id: 'plain', label: t('draw.newPlain'), onSelect: () => ctrl.addLayer('plain') },
             ]}
           />
-          {activeLayer && <Menu label={t('draw.layerMenu', { layer: layerName(activeLayer) })} icon="more" size={38} items={menu} />}
+          {activeLayer && (
+            <LayerOptions
+              ctrl={ctrl}
+              layer={activeLayer}
+              name={layerName(activeLayer)}
+              first={s.layers[0]?.id === activeLayer.id}
+              last={s.layers[s.layers.length - 1]?.id === activeLayer.id}
+              count={s.layers.length}
+            />
+          )}
         </div>
       </div>
       {bones && <p className="layers__hint">{t('draw.partsHint')}</p>}

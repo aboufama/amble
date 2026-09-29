@@ -669,6 +669,13 @@ export class DeskController {
     this.surface.setLayer(id, { locked });
   }
 
+  /** Opacity, blend, lock and alpha lock of a layer (undoable in the engine). */
+  setLayerProps(id: string, patch: Partial<Pick<LayerInfo, 'opacity' | 'blend' | 'locked' | 'alphaLock'>>): void {
+    const p = { ...patch };
+    if (p.opacity !== undefined) p.opacity = Math.max(0, Math.min(1, p.opacity));
+    this.surface.setLayer(id, p);
+  }
+
   renameLayer(id: string, name: string): void {
     this.surface.setLayer(id, { name: name.trim().slice(0, 40) });
   }

@@ -115,3 +115,43 @@ test('switching drawings within 100 ms of a stroke loses nothing', async ({ page
   }, world);
   expect(saved.names).toContain('Moon King');
 });
+
+test('a photo of a paper drawing becomes a Lines layer, on this Chromebook', async ({ page, guards }) => {
+  await openAmble(page);
+  await openDesk(page, '#/draw/new');
+  // A "photo": grey paper with a dark ring drawn on it.
+  const png = await page.evaluate(async () => {
+    const c = new OffscreenCanvas(400, 300);
+    const x = c.getContext('2d') as OffscreenCanvasRenderingContext2D;
+    x.fillStyle = '#c9c4b8';
+    x.fillRect(0, 0, 400, 300);
+    x.strokeStyle = '#2a2622';
+    x.lineWidth = 10;
+    x.beginPath();
+    x.arc(200, 150, 90, 0, Math.PI * 2);
+    x.stroke();
+    const blob = await c.convertToBlob({ type: 'image/png' });
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let s = '';
+    for (const b of bytes) s += String.fromCharCode(b);
+    return btoa(s);
+  });
+  const before = (await inkedLayers(page)).length;
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Use a photo of my drawing' }).click();
+  await expect(page.getByRole('dialog', { name: 'Use a photo of your drawing' })).toBeVisible();
+  await page.getByTestId('photo-file').setInputFiles({ name: 'drawing.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await page.getByRole('button', { name: 'Use my lines' }).click();
+  await expect(page.getByText('Your lines are on a new layer.')).toBeVisible();
+  // A new Lines layer with the ring's ink, and the paper gone (the middle is clear).
+  const layers = await inkedLayers(page);
+  expect(layers.length).toBe(before + 1);
+  const photo = layers.find((l) => !['lines', 'colors', 'sketch'].includes(l)) as string;
+  const { w, h } = await boardSize(page);
+  // The photo is fitted into the board: 400 x 300 at w / 400.
+  const k = Math.min(w / 400, h / 300);
+  expect(await alphaAt(page, photo, Math.round(w / 2), Math.round(h / 2))).toBe(0);
+  expect(await alphaAt(page, photo, Math.round(w / 2 + 90 * k), Math.round(h / 2))).toBeGreaterThan(200);
+  // Nothing left the device.
+  expect(guards.egress.violations).toEqual([]);
+});
