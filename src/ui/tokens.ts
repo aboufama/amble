@@ -33,6 +33,8 @@ export interface ThemeColors {
   focusRing: string;
   /** Drawing surfaces: white in every theme, so the dark default pen always shows. */
   sheet: string;
+  /** Words, guides and marks on the sheet: dark in every theme. */
+  onSheet: string;
 }
 
 /** Original: Scratch 3's palette, with AA-safe shades of the same hues wherever words appear. */
@@ -61,6 +63,7 @@ const ORIGINAL: ThemeColors = {
   change: '#7c52d0',
   focusRing: '#3373cc',
   sheet: '#ffffff',
+  onSheet: '#575e75',
 };
 
 /** High contrast: black, white and yellow, with the drawing sheet still white. */
@@ -89,6 +92,7 @@ const CONTRAST: ThemeColors = {
   change: '#c79bff',
   focusRing: '#ffff00',
   sheet: '#ffffff',
+  onSheet: '#000000',
 };
 
 /**
@@ -136,29 +140,32 @@ export const ROLE_TINTS: Record<Role | 'friend', string> = {
   background: '#bfc6e0',
 };
 
-/** How "just bones" looks (§3.8). */
+/** How "just bones" looks in the app's own pictures (§3.8), flat: no halo under the dashed outline. */
 export const PLACEHOLDER = {
   tintAlpha: 0.55,
   hatchAngleDeg: 38,
   hatchGap: 9,
   hatchAlpha: 0.28,
-  dash: '#f4ecdc',
-  dashWidth: 2.4,
-  dashPattern: [7, 6] as const,
-  haloWidth: 5.5,
-  halo: 'rgba(8, 9, 30, 0.55)',
+  dash: '#7d8399',
+  dashWidth: 2,
+  dashPattern: [6, 5] as const,
+  haloWidth: 0,
+  halo: 'transparent',
   dashSpeedPxPerS: 20,
-  bone: '#86f3cb',
+  bone: '#0b8e69',
   boneWidth: 2,
   jointRadius: 3,
   bonesAlpha: 0.85,
 } as const;
 
-/** Bones in the Bones view and guides (§2.11): left side stripes, right side dots. */
+/**
+ * Bones in the Bones view and guides (§2.11), over the white sheet: the left side green (--bones) in
+ * stripes, the right side purple (--change) in dots, the spine in --on-sheet.
+ */
 export const BONES = {
-  left: '#86f3cb',
-  right: '#ffc15e',
-  spine: '#f4ecdc',
+  left: '#0b8e69',
+  right: '#7c52d0',
+  spine: '#575e75',
   width: 3.2,
   joint: 24,
   jointHit: 44,

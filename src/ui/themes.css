@@ -50,6 +50,8 @@
   --pencil-ink: #ffff00;
   --note: #000000;
   --sheet: #ffffff;
+  --on-sheet: #000000;
+  --on-sheet-2: #000000;
   --glow-lantern: 0 0 0 2px #ffff00;
   --glow-firefly: 0 0 0 2px #ffffff;
   --veil: rgba(0, 0, 0, 0.7);

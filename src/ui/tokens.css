@@ -52,6 +52,8 @@
   --pencil-ink: #2b63b1;
   --note: #fef49c; /* Scratch's comment-note yellow */
   --sheet: #ffffff; /* drawing surfaces: white in every theme */
+  --on-sheet: #575e75; /* words, guides and marks on --sheet: dark in every theme (black in High contrast) */
+  --on-sheet-2: #646a80; /* secondary words on --sheet */
   --glow-lantern: 0 0 0 4px var(--select-ring); /* kept names: now Scratch's flat selection halo */
   --glow-firefly: 0 0 0 4px rgba(15, 189, 140, 0.35);
   --veil: rgba(229, 240, 255, 0.5); /* Change mode's veil over the world */
