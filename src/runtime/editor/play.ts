@@ -79,7 +79,8 @@ export class PlayWatch {
     if (!this.active() || this.shell.paused()) return;
     const game = this.shell.game();
     const scene = currentScene();
-    if (!game || !scene || !kitRunning(scene) || usesPointer(scene)) return;
+    // Only a tap on the game itself: the touch buttons sit over the game, and a press on one is playing.
+    if (!game || e.target !== game.canvas || !scene || !kitRunning(scene) || usesPointer(scene)) return;
     const hit = this.hitTest(game, e.clientX, e.clientY);
     if (!hit) return;
     e.stopImmediatePropagation();

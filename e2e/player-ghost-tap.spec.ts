@@ -17,6 +17,7 @@ type Win = Window & {
     player: {
       load(b: { files: Array<{ name: string; source: string }>; autostart?: boolean }): Promise<void>;
       setMode(m: 'play' | 'change'): void;
+      setPrefs(p: Record<string, unknown>): void;
       resume(): void;
       iframe: HTMLIFrameElement | null;
     };
@@ -39,12 +40,28 @@ const CRATE = `class Game extends Amble.Scene {
 }
 `;
 
+/** A crate over the whole view, in a game played with the touch buttons. */
+const COVERED = `class Game extends Amble.Scene {
+  static art = { crate: { kind: 'prop', role: 'prop', w: 1400, h: 900, name: 'Crate' } };
+  create() {
+    this.crate = this.spawn(this.cameras.main.centerX, this.cameras.main.centerY, 'crate', { static: true });
+    this.ticks = 0;
+    this.lefts = 0;
+  }
+  update() {
+    this.ticks++;
+    if (this.controls.held('left')) this.lefts++;
+  }
+}
+`;
+
 /** The same, in a game whose taps are gameplay. */
 const TAPPY = CRATE.replace('this.ticks = 0;', "this.ticks = 0;\n    this.taps = 0;\n    this.input.on('pointerdown', () => this.taps++);");
 
-async function start(page: Page, source: string): Promise<Frame> {
+async function start(page: Page, source: string, prefs: Record<string, unknown> = {}): Promise<Frame> {
   await page.goto('/dev/player/index.html');
   await page.waitForFunction(() => !!(window as unknown as Win).harness);
+  await page.evaluate((p) => (window as unknown as Win).harness.player.setPrefs(p), prefs);
   await page.evaluate((src) => (window as unknown as Win).harness.player.load({ files: [{ name: 'game.js', source: src }], autostart: true }), source);
   const frame = await running(page);
   // What the editor does after every load.
@@ -93,6 +110,23 @@ test.describe('a tap on a stand-in while the game runs', () => {
     await tapCrate(page);
     await expect.poll(() => frame.evaluate(() => (window as unknown as { __ambleGame: { scene: { taps: number } } }).__ambleGame.scene.taps), { timeout: 15_000 }).toBe(1);
     expect(await clicks(page)).toEqual([]);
+  });
+
+  test('is not taken from the touch buttons over it', async ({ page }) => {
+    const frame = await start(page, COVERED, { touch: 'on' });
+    await page.waitForTimeout(3000);
+    const left = frame.locator('.amble-touch.on .t-btn').first();
+    await expect(left).toBeVisible({ timeout: 15_000 });
+    const box = (await left.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(600);
+    await page.mouse.up();
+    await page.waitForTimeout(1000);
+    expect(await clicks(page)).toEqual([]);
+    await expect.poll(() => frame.evaluate(() => (window as unknown as { __ambleGame: { scene: { lefts: number } } }).__ambleGame.scene.lefts), { timeout: 15_000 }).toBeGreaterThan(0);
+    // A tap on the game itself still asks for the crate.
+    expect(await tapUntilNamed(page, 0)).toEqual(['crate']);
   });
 
   test('still asks after the game was rebuilt for leaving its page', async ({ page }) => {
