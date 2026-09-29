@@ -18,11 +18,13 @@ export interface MovePreviewProps {
   /** Hold still while a star is dragged: the preview shows the new bones on the drop, and a weak
    *  Chromebook keeps its frames for the drag. */
   hold: boolean;
+  /** What the empty stage says before there are bones to show. */
+  emptyText: string;
 }
 
 const GROUND = 0.84;
 
-export function MovePreview({ bound, clip, tweak, name, reduced, hold }: MovePreviewProps) {
+export function MovePreview({ bound, clip, tweak, name, reduced, hold, emptyText }: MovePreviewProps) {
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const preview = useRef<RigPreview | null>(null);
@@ -158,10 +160,14 @@ export function MovePreview({ bound, clip, tweak, name, reduced, hold }: MovePre
             <Keycap>→</Keycap> {t('bones.toyWalk')} · <Keycap>↑</Keycap> {t('bones.toyJump')}
           </span>
         </div>
-        <span className="move-stage__pill">
-          <span className={playing ? 'move-stage__dot' : 'move-stage__dot move-stage__dot--off'} aria-hidden="true" />
-          {pill}
-        </span>
+        {bound ? (
+          <span className="move-stage__pill">
+            <span className={playing ? 'move-stage__dot' : 'move-stage__dot move-stage__dot--off'} aria-hidden="true" />
+            {pill}
+          </span>
+        ) : (
+          <p className="move-stage__empty">{emptyText}</p>
+        )}
       </div>
       <IconButton className="move-stage__play" icon={playing ? 'pause' : 'play'} label={playing ? t('bones.pause') : t('bones.play')} variant="ghost" size={44} onClick={toggle} />
     </div>

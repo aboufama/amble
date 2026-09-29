@@ -185,6 +185,7 @@ export const bones = {
   watchTitle: 'Watch {name} move',
   watchSub: 'Live, with the new bones',
   toyLabel: '{name}, moving. Left and right arrows walk. Up arrow jumps.',
+  previewEmpty: 'No bones yet. Pick what it is, then watch it move.',
   toyWalk: 'walk here',
   toyJump: 'jump',
   play: 'Play',

@@ -1022,6 +1022,18 @@
   pointer-events: none;
 }
 
+.move-stage__empty {
+  position: absolute;
+  inset: 0 0 16% 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0 40px;
+  font: var(--type-meta);
+  color: var(--text-2);
+  text-align: center;
+}
+
 .move-stage__dot {
   width: 9px;
   height: 9px;

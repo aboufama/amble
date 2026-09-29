@@ -50,7 +50,15 @@ export const MovesPanel = memo(function MovesPanel({ ctl, step, bound, name, bus
           </h2>
           <span className="bones-side__sub">{t('bones.watchSub')}</span>
         </div>
-        <MovePreview bound={bound} clip={move} tweak={{ amount, speed }} name={name} reduced={reduced} hold={dragging} />
+        <MovePreview
+          bound={bound}
+          clip={move}
+          tweak={{ amount, speed }}
+          name={name}
+          reduced={reduced}
+          hold={dragging}
+          emptyText={busy ? t('bones.statusFinding') : step ? '' : t('bones.previewEmpty')}
+        />
       </section>
       <section className="bones-side__section" aria-labelledby="bones-moves-title">
         <div className="bones-side__head">
