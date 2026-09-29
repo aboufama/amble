@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AiProgress } from '../../src/model/types';
 import { runCodeJob, type CodeJob } from '../../src/pipeline/jobs';
-import { deps, fakeChat, fakeRobot, fixture, hangs, MOON_KING, PASS, robotFail, world } from './helpers';
+import { deps, fakeChat, fakeRobot, fixture, hangs, MOON_KING, PASS, robotFail, robotFrozen, world } from './helpers';
 
 const change = (words = 'make grumbles squashable', over: Partial<CodeJob> = {}): CodeJob => ({ task: 'change', world: world(), words, level: 'middle', ...over });
 
@@ -167,6 +167,33 @@ describe('the job state machine', () => {
     const r = await runCodeJob(change(), deps(chat), track().events, new AbortController().signal);
     expect(r.kind).toBe('accepted');
     expect(calls[1].user).toContain('Your reply was not an AMBLE PATCH.');
+  });
+
+  it('tests again instead of asking for a fix when the robot only timed out (a busy Chromebook, not the code)', async () => {
+    const { calls, chat } = fakeChat([fixture('change-stomp.patch')]);
+    const robot = fakeRobot([robotFrozen('The game did not start.'), PASS]);
+    const r = await runCodeJob(change(), deps(chat, robot.robot), track().events, new AbortController().signal);
+    expect(r).toMatchObject({ kind: 'accepted', repairs: 0, tested: true });
+    expect(calls.map((c) => c.task)).toEqual(['change']);
+    expect(robot.runs).toHaveLength(2);
+  });
+
+  it('asks for a fix when the robot times out twice, and at once when the game threw before it froze', async () => {
+    const twice = fakeChat([fixture('change-stomp.patch'), REPLACE_GAME]);
+    const robot = fakeRobot([robotFrozen(), robotFrozen(), PASS]);
+    const r = await runCodeJob(change(), deps(twice.chat, robot.robot), track().events, new AbortController().signal);
+    expect(r).toMatchObject({ kind: 'accepted', repairs: 1 });
+    expect(twice.calls.map((c) => c.task)).toEqual(['change', 'fix']);
+    expect(twice.calls[1].user).toContain('frozen: The game did not start.');
+
+    const threw = robotFrozen('The game did not start.');
+    threw.errors.unshift({ file: 'game.js', line: 12, column: 3, phase: 'load', message: "SyntaxError: Identifier 'FLOOR' has already been declared", count: 1 });
+    const once = fakeChat([fixture('change-stomp.patch'), REPLACE_GAME]);
+    const robot2 = fakeRobot([threw, PASS]);
+    const r2 = await runCodeJob(change(), deps(once.chat, robot2.robot), track().events, new AbortController().signal);
+    expect(r2).toMatchObject({ kind: 'accepted', repairs: 1 });
+    expect(robot2.runs).toHaveLength(2);
+    expect(once.calls[1].user).toContain("load: SyntaxError: Identifier 'FLOOR' has already been declared");
   });
 
   it('accepts untested when there is no player (tested: false)', async () => {
