@@ -144,4 +144,42 @@ test.describe('art engine integrity', () => {
     expect(r.made).toBeGreaterThan(0);
     expect(r.open).toBe(0);
   });
+
+  test('a flipbook asked to play twice at once leaves no timer running once stopped', async ({ page }) => {
+    await open(page, 'w=256&h=256');
+    const left = await page.evaluate(async () => {
+      const w = window as unknown as HarnessWindow;
+      const s = w.__art.surface as unknown as {
+        addFrame(o?: { copy?: boolean }): Promise<string | null>;
+        drawShape(o: { shape: string; points: Array<[number, number]> }): boolean;
+        playFrames(fps: number): Promise<() => void>;
+      };
+      for (let i = 0; i < 3; i++) {
+        s.drawShape({ shape: 'line', points: [[20 + i * 30, 40], [200, 200 - i * 30]] });
+        await s.addFrame({ copy: true });
+      }
+      // Count the timers that tick on their own from here on.
+      const live = new Set<number>();
+      const realSet = window.setInterval.bind(window);
+      const realClear = window.clearInterval.bind(window);
+      window.setInterval = ((fn: TimerHandler, ms?: number, ...a: unknown[]) => {
+        const id = realSet(fn, ms, ...a);
+        live.add(id);
+        return id;
+      }) as typeof window.setInterval;
+      window.clearInterval = ((id?: number) => {
+        if (id !== undefined) live.delete(id);
+        realClear(id);
+      }) as typeof window.clearInterval;
+      // Play pressed twice before the pages are ready: then stopped.
+      const [a, b] = await Promise.all([s.playFrames(8), s.playFrames(8)]);
+      a();
+      b();
+      window.setInterval = realSet as typeof window.setInterval;
+      window.clearInterval = realClear as typeof window.clearInterval;
+      for (const id of live) realClear(id);
+      return live.size;
+    });
+    expect(left).toBe(0);
+  });
 });

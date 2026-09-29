@@ -118,6 +118,8 @@ export class Compositor {
   private gestureFrom: ViewState | null = null;
   private gestureAt = 0;
   private playback: Playback | null = null;
+  /** Bumped by every play, stop and destroy: a play still getting its pages ready starts only if it is the latest. */
+  private playSeq = 0;
   /** Called after each render with its cost in ms (for the render budget and stats). */
   onRender: ((ms: number, full: boolean) => void) | null = null;
   /** Measurement only: read a pixel back after each render so the timing includes the raster. */
@@ -805,6 +807,7 @@ export class Compositor {
   /** Plays the frames in place of the editable view until stopped. */
   async play(fps: number, onFrame?: (index: number) => void): Promise<() => void> {
     this.stopPlayback();
+    const seq = ++this.playSeq;
     const { W, H } = this.board;
     const frames: Array<OffscreenCanvas | null> = [];
     for (const f of this.board.frames) {
@@ -827,6 +830,9 @@ export class Compositor {
       c.getContext('2d')?.putImageData(new ImageData(flat, W, H), 0, 0);
       frames.push(c);
     }
+    // Played again, stopped or torn down while the pages were unpacked: this one never starts (its timer
+    // would tick for good, with nothing left that could clear it).
+    if (seq !== this.playSeq) return () => undefined;
     const holds = this.board.frames.map((f) => f.hold);
     const pb: Playback = { frames, timer: 0, index: 0, left: holds[0] ?? 1 };
     this.playback = pb;
@@ -855,6 +861,7 @@ export class Compositor {
   }
 
   stopPlayback(): void {
+    this.playSeq++;
     if (!this.playback) return;
     clearInterval(this.playback.timer);
     this.playback = null;
@@ -870,6 +877,7 @@ export class Compositor {
 
   destroy(): void {
     if (this.raf) cancelAnimationFrame(this.raf);
+    this.playSeq++;
     if (this.playback) clearInterval(this.playback.timer);
     this.playback = null;
     this.canvas.remove();
