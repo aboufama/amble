@@ -1,46 +1,20 @@
-import {
-  AbstractMesh,
-  Color3,
-  LoadAssetContainerAsync,
-  Material,
-  MeshBuilder,
-  StandardMaterial,
-  Texture,
-  TransformNode,
-  Vector3,
-  type AssetContainer,
-  type Mesh,
-  type Scene,
-} from './babylon';
-import type { RunCostume, WorldMode } from '../player/protocol';
-import { buildRecipeTemplate, recipeBounds } from './models';
+import type * as Phaser from 'phaser';
+import type { RunCostume } from '../player/protocol';
 
-/** 3D cutouts: 100 image pixels = 1 meter. */
-export const PIXELS_PER_METER = 100;
-
-export interface ImageCostume {
-  kind: 'image';
+/** A costume (or backdrop) as a texture, with its size and rotation center in stage pixels. */
+export interface Costume {
   name: string;
-  texture: Texture;
-  material: StandardMaterial;
-  /** Size in world units. */
+  /** Key in Phaser's texture manager. */
+  key: string;
+  /** Size in stage pixels. */
   width: number;
   height: number;
-  /** Where the plane's center sits relative to the sprite's origin. */
-  offsetX: number;
-  offsetY: number;
+  /** The rotation center as a fraction of the size, from the top left (Phaser's origin). */
+  originX: number;
+  originY: number;
+  /** Texture pixels per stage pixel (vector costumes are drawn at extra resolution so they stay sharp). */
+  density: number;
 }
-
-export interface ModelCostume {
-  kind: 'model';
-  name: string;
-  /** Returns a fresh copy of the model to parent under a sprite. */
-  instantiate(parent: TransformNode): TransformNode;
-  width: number;
-  height: number;
-}
-
-export type CostumeResource = ImageCostume | ModelCostume;
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -51,238 +25,68 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Rasterizes an image (SVGs at extra resolution so they stay sharp) into a canvas-backed data URL. */
-async function rasterize(c: RunCostume): Promise<{ url: string; pixelRatio: number }> {
-  if (!c.isVector) return { url: c.url, pixelRatio: 1 };
+let nextKey = 0;
+
+async function loadCostume(c: RunCostume, textures: Phaser.Textures.TextureManager, prefix: string): Promise<Costume> {
   const img = await loadImage(c.url);
-  const w = img.naturalWidth || c.width || 100;
-  const h = img.naturalHeight || c.height || 100;
-  const scale = Math.min(4, Math.max(1, 1024 / Math.max(w, h)), 3);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(w * scale));
-  canvas.height = Math.max(1, Math.round(h * scale));
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return { url: c.url, pixelRatio: 1 };
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  return { url: canvas.toDataURL('image/png'), pixelRatio: scale };
-}
-
-function textureFromUrl(url: string, scene: Scene): Promise<Texture> {
-  return new Promise((resolve, reject) => {
-    const tex: Texture = new Texture(
-      url,
-      scene,
-      false,
-      true,
-      Texture.TRILINEAR_SAMPLINGMODE,
-      () => resolve(tex),
-      (message) => reject(new Error(message ?? 'Texture failed to load')),
-    );
-  });
-}
-
-async function loadImageCostume(c: RunCostume, mode: WorldMode, scene: Scene): Promise<ImageCostume> {
-  const { url } = await rasterize(c);
-  const texture = await textureFromUrl(url, scene);
-  texture.hasAlpha = true;
-  texture.wrapU = Texture.CLAMP_ADDRESSMODE;
-  texture.wrapV = Texture.CLAMP_ADDRESSMODE;
-  const material = new StandardMaterial(`costume:${c.name}`, scene);
-  material.diffuseTexture = texture;
-  // Unlit: with lighting disabled the texture is multiplied by the emissive color.
-  material.disableLighting = true;
-  material.emissiveColor = Color3.White();
-  material.specularColor = Color3.Black();
-  material.backFaceCulling = false;
-  material.useAlphaFromDiffuseTexture = true;
-  if (mode === '2d') {
-    material.transparencyMode = Material.MATERIAL_ALPHABLEND;
-    material.disableDepthWrite = true;
-  } else {
-    // Cutouts use alpha testing so they sort correctly with 3D geometry and cast proper shadows.
-    material.transparencyMode = Material.MATERIAL_ALPHATEST;
-    material.alphaCutOff = 0.5;
-  }
   const res = c.resolution || 1;
-  const w = (c.width || texture.getSize().width) / res;
-  const h = (c.height || texture.getSize().height) / res;
-  const cx = (c.centerX ?? c.width / 2) / res;
-  const cy = (c.centerY ?? c.height / 2) / res;
-  if (mode === '2d') {
-    return { kind: 'image', name: c.name, texture, material, width: w, height: h, offsetX: w / 2 - cx, offsetY: cy - h / 2 };
+  const width = Math.max(1, (c.width || img.naturalWidth || 100) / res);
+  const height = Math.max(1, (c.height || img.naturalHeight || 100) / res);
+  const cx = (c.centerX ?? (c.width || width * res) / 2) / res;
+  const cy = (c.centerY ?? (c.height || height * res) / 2) / res;
+  const key = `${prefix}${nextKey++}`;
+  let density: number;
+  if (c.isVector) {
+    // Drawn at up to 3x (at most 2048 pixels across), so it stays sharp when the stage is big or zoomed in.
+    density = Math.max(1, Math.min(3, 2048 / Math.max(width, height)));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(width * density));
+    canvas.height = Math.max(1, Math.round(height * density));
+    canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+    textures.addCanvas(key, canvas);
+  } else {
+    density = (img.naturalWidth || width) / width;
+    textures.addImage(key, img);
   }
-  // 3D cutouts stand on their bottom edge.
-  const mw = w / PIXELS_PER_METER;
-  const mh = h / PIXELS_PER_METER;
-  return { kind: 'image', name: c.name, texture, material, width: mw, height: mh, offsetX: 0, offsetY: mh / 2 };
+  return { name: c.name, key, width, height, originX: width ? cx / width : 0.5, originY: height ? cy / height : 0.5, density };
 }
 
-async function loadModelCostume(c: RunCostume, mode: WorldMode, scene: Scene): Promise<ModelCostume> {
-  const scale = mode === '2d' ? PIXELS_PER_METER : 1;
-  if (c.recipe) {
-    const template = buildRecipeTemplate(c.recipe, c.name, scene);
-    const { min, max } = recipeBounds(c.recipe);
-    return {
-      kind: 'model',
-      name: c.name,
-      width: (max[0] - min[0]) * scale,
-      height: (max[1] - min[1]) * scale,
-      instantiate(parent) {
-        const copy = template.instantiateHierarchy(parent, { doNotInstantiate: true }) as TransformNode;
-        copy.setEnabled(true);
-        copy.scaling.setAll(scale);
-        return copy;
-      },
-    };
-  }
-  const container: AssetContainer = await LoadAssetContainerAsync(c.url, scene, { pluginExtension: '.glb' });
-  const probe = container.instantiateModelsToScene((n: string) => n, false, { doNotInstantiate: true });
-  const probeRoot = probe.rootNodes[0] as TransformNode | undefined;
-  let width = 1;
-  let height = 1;
-  if (probeRoot) {
-    const { min, max } = probeRoot.getHierarchyBoundingVectors(true);
-    width = max.x - min.x;
-    height = max.y - min.y;
-    probe.dispose();
-  }
-  return {
-    kind: 'model',
-    name: c.name,
-    width: width * scale,
-    height: height * scale,
-    instantiate(parent) {
-      const entries = container.instantiateModelsToScene((n: string) => n, false, { doNotInstantiate: true });
-      const holder = new TransformNode(`glb:${c.name}`, scene);
-      for (const node of entries.rootNodes) node.parent = holder;
-      for (const group of entries.animationGroups) group.play(true);
-      holder.parent = parent;
-      holder.scaling.setAll(scale);
-      return holder;
-    },
-  };
-}
-
-/** Loads every costume of one sprite (or backdrops of the stage). Broken costumes are skipped with a warning. */
-export async function loadCostumes(costumes: RunCostume[], mode: WorldMode, scene: Scene): Promise<CostumeResource[]> {
+/** Loads every costume of one sprite (or the stage's backdrops). Broken costumes are skipped with a warning. */
+export async function loadCostumes(costumes: RunCostume[], textures: Phaser.Textures.TextureManager, prefix: string): Promise<Costume[]> {
   const loaded = await Promise.all(
     costumes.map(async (c) => {
+      if (c.kind !== 'image') return null;
       try {
-        return c.kind === 'model' ? await loadModelCostume(c, mode, scene) : await loadImageCostume(c, mode, scene);
+        return await loadCostume(c, textures, prefix);
       } catch (err) {
         console.warn(`Could not load costume "${c.name}": ${(err as Error).message}`);
         return null;
       }
     }),
   );
-  return loaded.filter((c): c is CostumeResource => c !== null);
+  return loaded.filter((c): c is Costume => c !== null);
 }
 
-/** A sprite's on-screen look: one plane for image costumes, plus lazily created model copies. */
-export class SpriteVisual {
-  readonly plane: Mesh;
-  private models = new Map<string, TransformNode>();
-  private current: CostumeResource | null = null;
-  private ownMaterial: StandardMaterial | null = null;
-  private tintColor: Color3 | null = null;
-
-  constructor(
-    private readonly node: TransformNode,
-    private readonly mode: WorldMode,
-    private readonly scene: Scene,
-  ) {
-    this.plane = MeshBuilder.CreatePlane(`${node.name}:plane`, { size: 1 }, scene);
-    this.plane.parent = node;
-    this.plane.isPickable = true;
-    if (mode === '3d') this.plane.billboardMode = AbstractMesh.BILLBOARDMODE_Y;
+/** A color name or "#rgb" / "#rrggbb" as a number (0xrrggbb). */
+export function parseColor(color: string | number | undefined | null, fallback = 0xffffff): number {
+  if (typeof color === 'number' && Number.isFinite(color)) return color;
+  const s = String(color ?? '').trim();
+  if (!s) return fallback;
+  const hex = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s);
+  if (hex) {
+    const h = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join('') : hex[1];
+    return parseInt(h, 16);
   }
-
-  get costume(): CostumeResource | null {
-    return this.current;
-  }
-
-  /** Meshes that make up the current look (for picking, bounds, shadows). */
-  meshes(): AbstractMesh[] {
-    if (!this.current) return [];
-    if (this.current.kind === 'image') return [this.plane];
-    const model = this.models.get(this.current.name);
-    return model ? model.getChildMeshes(false) : [];
-  }
-
-  show(costume: CostumeResource): void {
-    this.current = costume;
-    if (costume.kind === 'image') {
-      this.plane.setEnabled(true);
-      this.plane.scaling.set(costume.width, costume.height, 1);
-      this.plane.position.set(costume.offsetX, costume.offsetY, 0);
-      this.applyMaterial(costume.material);
-      this.models.forEach((m) => m.setEnabled(false));
-    } else {
-      this.plane.setEnabled(false);
-      this.models.forEach((m, name) => m.setEnabled(name === costume.name));
-      if (!this.models.has(costume.name)) {
-        const model = costume.instantiate(this.node);
-        this.models.set(costume.name, model);
-        for (const mesh of model.getChildMeshes(false)) mesh.metadata = { ...(mesh.metadata ?? {}), amble: this.node.metadata?.amble };
-      }
+  try {
+    const ctx = document.createElement('canvas').getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#010203';
+      ctx.fillStyle = s;
+      const parsed = String(ctx.fillStyle);
+      if (parsed !== '#010203' || /^(#010203|rgb\(1, 2, 3\))$/i.test(s)) return parseColor(parsed, fallback);
     }
+  } catch {
+    /* not a color */
   }
-
-  private applyMaterial(base: StandardMaterial): void {
-    if (this.tintColor) {
-      if (!this.ownMaterial || this.ownMaterial.diffuseTexture !== base.diffuseTexture) {
-        this.ownMaterial?.dispose();
-        this.ownMaterial = base.clone(`${base.name}:tinted`) as StandardMaterial;
-      }
-      this.ownMaterial.emissiveColor = this.tintColor;
-      this.plane.material = this.ownMaterial;
-    } else {
-      this.plane.material = base;
-    }
-  }
-
-  set tint(color: Color3 | null) {
-    this.tintColor = color;
-    if (this.current?.kind === 'image') this.applyMaterial(this.current.material);
-  }
-
-  set opacity(value: number) {
-    const v = Math.max(0, Math.min(1, value));
-    this.plane.visibility = v;
-    this.models.forEach((m) => m.getChildMeshes(false).forEach((mesh) => (mesh.visibility = v)));
-  }
-
-  set layer(value: number) {
-    this.plane.alphaIndex = value;
-    if (this.mode === '2d') this.plane.position.z = 0;
-  }
-
-  /** Size of the current look in world units (before sprite scaling). */
-  get size(): { width: number; height: number } {
-    return this.current ? { width: this.current.width, height: this.current.height } : { width: 0, height: 0 };
-  }
-
-  dispose(): void {
-    this.ownMaterial?.dispose();
-    this.plane.dispose();
-    this.models.forEach((m) => m.dispose());
-  }
-
-  /** World-space top point, for speech bubbles. */
-  topPoint(): Vector3 {
-    const meshes = this.meshes();
-    if (!meshes.length) return this.node.getAbsolutePosition().clone();
-    let maxY = -Infinity;
-    let sumX = 0;
-    let sumZ = 0;
-    for (const m of meshes) {
-      m.computeWorldMatrix(true);
-      const bb = m.getBoundingInfo().boundingBox;
-      maxY = Math.max(maxY, bb.maximumWorld.y);
-      sumX += (bb.minimumWorld.x + bb.maximumWorld.x) / 2;
-      sumZ += (bb.minimumWorld.z + bb.maximumWorld.z) / 2;
-    }
-    void this.scene;
-    return new Vector3(sumX / meshes.length, maxY, sumZ / meshes.length);
-  }
+  return fallback;
 }

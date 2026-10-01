@@ -1,9 +1,8 @@
 /**
  * Amble player: runs inside a sandboxed iframe (or a standalone exported HTML file).
- * Boots Babylon.js + Havok once, then builds/starts/stops games on request.
+ * Boots one Phaser game, then builds/starts/stops Amble games in it on request (each in a scene of its own).
  */
-import HavokPhysics from '@babylonjs/havok';
-import { Engine } from './babylon';
+import * as Phaser from 'phaser';
 import { STAGE_HEIGHT, STAGE_WIDTH, type RunPackage, type ToPlayer } from '../player/protocol';
 import { forwardConsole, onEditorMessage, post, reportError, resetReports } from './bridge';
 import { clearGameTimers } from './sandbox';
@@ -17,7 +16,7 @@ const style = document.createElement('style');
 style.textContent = `
 html, body { margin: 0; height: 100%; overflow: hidden; background: #111; }
 #amble-viewport { position: absolute; overflow: hidden; background: #fff; }
-#amble-canvas { position: absolute; inset: 0; width: 100%; height: 100%; outline: none; touch-action: none; display: block; }
+#amble-viewport canvas { position: absolute; left: 0; top: 0; outline: none; touch-action: none; display: block; }
 #amble-ui-host { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
 .amble-loading { position: absolute; inset: 0; display: grid; place-items: center; font: 600 14px system-ui, sans-serif; color: #888; }
 .amble-start { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,0.35); cursor: pointer; }
@@ -28,15 +27,15 @@ document.head.append(style);
 
 const viewport = document.createElement('div');
 viewport.id = 'amble-viewport';
-const canvas = document.createElement('canvas');
-canvas.id = 'amble-canvas';
-canvas.tabIndex = 0;
 const uiHost = document.createElement('div');
 uiHost.id = 'amble-ui-host';
-viewport.append(canvas, uiHost);
+viewport.append(uiHost);
 document.body.append(viewport);
 
-/** Letterboxes the 4:3 stage into the window and scales the UI layer to match. */
+/** Canvas pixels per stage pixel: the stage is drawn at the screen's own resolution, so it stays sharp at any size. */
+let pixelScale = 1;
+
+/** Letterboxes the 4:3 stage into the window, sizes the canvas to match it in real pixels and scales the UI layer. */
 function layout(): void {
   const w = window.innerWidth;
   const h = window.innerHeight;
@@ -49,16 +48,54 @@ function layout(): void {
   viewport.style.top = `${Math.floor((h - vh) / 2)}px`;
   const uiRoot = uiHost.firstElementChild as HTMLElement | null;
   if (uiRoot) uiRoot.style.transform = `scale(${vw / STAGE_WIDTH})`;
-  engine?.resize();
+  if (!phaser) return;
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const pw = Math.max(1, Math.round(vw * dpr));
+  const ph = Math.max(1, Math.round(vh * dpr));
+  if (phaser.scale.width !== pw || phaser.scale.height !== ph) phaser.scale.resize(pw, ph);
+  phaser.scale.setZoom(1 / dpr);
+  pixelScale = pw / STAGE_WIDTH;
 }
 
-let engine: Engine | null = null;
-let havok: unknown = null;
-let havokReady: Promise<unknown> | null = null;
-let resolveHavokBytes: (bytes: ArrayBuffer) => void = () => {};
-const havokBytes = new Promise<ArrayBuffer>((resolve) => {
-  resolveHavokBytes = resolve;
-});
+let phaser: Phaser.Game | null = null;
+let booting: Promise<Phaser.Game> | null = null;
+let canvas: HTMLCanvasElement | null = null;
+
+/** The player's Phaser game, booted once (the WebGL context and Phaser's systems are reused by every game). */
+function bootPhaser(): Promise<Phaser.Game> {
+  booting ??= new Promise((resolve) => {
+    const game = new Phaser.Game({
+      type: Phaser.AUTO,
+      parent: viewport,
+      width: STAGE_WIDTH,
+      height: STAGE_HEIGHT,
+      backgroundColor: '#ffffff',
+      banner: false,
+      // Sound plays through Amble's own mixer (so Stop silences everything at once).
+      audio: { noAudio: true },
+      scale: { mode: Phaser.Scale.NONE },
+      render: { antialias: true, powerPreference: 'high-performance' },
+      disableContextMenu: true,
+      // Never take focus from the editor around the stage (the stage takes it when it is clicked or played).
+      autoFocus: false,
+      callbacks: {
+        postBoot: (booted) => {
+          phaser = booted;
+          canvas = booted.canvas;
+          canvas.tabIndex = 0;
+          canvas.id = 'amble-canvas';
+          // The UI layer (scores, bubbles, buttons) stays above the canvas.
+          viewport.append(uiHost);
+          layout();
+          if (!standalone) enableDragging(canvas);
+          resolve(booted);
+        },
+      },
+    });
+    void game;
+  });
+  return booting;
+}
 
 let game: Game | null = null;
 let lastPackage: RunPackage | null = null;
@@ -66,43 +103,12 @@ let loadSeq = 0;
 /** A load that will start the game is in progress. */
 let starting = false;
 
-function initEngine(): Engine {
-  if (engine) return engine;
-  engine = new Engine(
-    canvas,
-    true,
-    {
-      deterministicLockstep: true,
-      lockstepMaxSteps: 4,
-      timeStep: 1 / 60,
-      stencil: true,
-      preserveDrawingBuffer: false,
-      audioEngine: false,
-    },
-    true,
-  );
-  engine.runRenderLoop(() => {
-    if (game) game.render();
-  });
-  layout();
-  return engine;
-}
-
-async function getHavok(): Promise<unknown> {
-  if (!havokReady) {
-    havokReady = havokBytes.then((bytes) =>
-      HavokPhysics({ wasmBinary: bytes, locateFile: () => 'HavokPhysics.wasm' } as never),
-    );
-  }
-  havok = await havokReady;
-  return havok;
-}
-
-const host = (): GameHost => ({
-  engine: initEngine(),
-  canvas,
+const host = (booted: Phaser.Game): GameHost => ({
+  Phaser,
+  phaser: booted,
+  canvas: canvas!,
   uiParent: uiHost,
-  havok,
+  scale: () => pixelScale,
   onStateChange(state: GameState) {
     post({ type: 'status', state });
   },
@@ -126,13 +132,13 @@ async function load(pkg: RunPackage | null, start: boolean): Promise<void> {
   loading.textContent = 'Loading…';
   if (!game) viewport.append(loading);
   try {
-    await getHavok();
+    const booted = await bootPhaser();
     if (seq !== loadSeq) return;
     game?.dispose();
     game = null;
     clearGameTimers();
     resetReports();
-    const next = await Game.create(host(), pkg);
+    const next = await Game.create(host(booted), pkg);
     if (seq !== loadSeq) {
       next.dispose();
       return;
@@ -143,7 +149,7 @@ async function load(pkg: RunPackage | null, start: boolean): Promise<void> {
     post({ type: 'loaded' });
     post({ type: 'status', state: 'idle' });
     if (start) {
-      canvas.focus();
+      canvas?.focus();
       game.start();
     }
   } catch (err) {
@@ -161,9 +167,6 @@ function stop(): void {
 
 function handle(msg: ToPlayer): void {
   switch (msg.type) {
-    case 'init':
-      resolveHavokBytes(msg.havokWasm);
-      break;
     case 'load':
       void load(msg.pkg, msg.start);
       break;
@@ -199,13 +202,13 @@ function keyNameFrom(key: string, code: string): string {
  */
 let endStageDrag = (): void => {};
 
-function enableDragging(): void {
+function enableDragging(canvas: HTMLCanvasElement): void {
   let drag: { sprite: Sprite; dx: number; dy: number; moved: boolean } | null = null;
   const at = (e: PointerEvent) => {
     const rect = canvas.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
-  const draggable = () => game && game.mode === '2d' && (game.state === 'idle' || game.state === 'stopped');
+  const draggable = () => game && (game.state === 'idle' || game.state === 'stopped');
   canvas.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 || !draggable()) return;
     const p = at(e);
@@ -244,12 +247,8 @@ forwardConsole();
 if (standalone) {
   // Exported game: data is embedded in the page.
   const pkgEl = document.getElementById('amble-package');
-  const havokEl = document.getElementById('amble-havok');
-  if (pkgEl && havokEl) {
+  if (pkgEl) {
     const pkg = JSON.parse(pkgEl.textContent ?? '{}') as RunPackage;
-    const b64 = (havokEl.textContent ?? '').trim();
-    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    resolveHavokBytes(bin.buffer);
     document.title = pkg.title || 'Amble game';
     void load(pkg, false).then(() => {
       const overlay = document.createElement('div');
@@ -260,13 +259,13 @@ if (standalone) {
       viewport.append(overlay);
       overlay.addEventListener('click', () => {
         overlay.remove();
-        canvas.focus();
+        canvas?.focus();
         game?.start();
       });
     });
   }
 } else {
   onEditorMessage(handle);
-  enableDragging();
+  void bootPhaser();
   post({ type: 'hello' });
 }

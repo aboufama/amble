@@ -10,7 +10,7 @@ const THIS_GENERATORS = new Set(['wait', 'waitUntil', 'glideTo', 'tween', 'sayFo
 const GAME_GENERATORS = new Set(['broadcastAndWait', 'ask']);
 
 /** Identifiers the sandbox reserves; a class can't be named like these. */
-const RESERVED_CLASS_NAMES = new Set(['Sprite', 'Stage', 'BABYLON', 'Vector3', 'Color3', 'Math', 'Object', 'Array', 'String', 'Number', 'Game']);
+const RESERVED_CLASS_NAMES = new Set(['Sprite', 'Stage', 'Phaser', 'Math', 'Object', 'Array', 'String', 'Number', 'Game']);
 
 export interface TransformResult {
   className: string | null;

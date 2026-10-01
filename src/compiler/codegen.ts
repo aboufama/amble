@@ -71,7 +71,8 @@ function engineKey(menuValue: string): string {
 }
 
 export function pieceKey(parts: { kind: PieceKind; target: string; type: string; words: string; inLoop: boolean; mode: string }): string {
-  const text = JSON.stringify({ v: 1, ...parts });
+  // v2: the engine moved to Phaser, so words written for the one before are written again.
+  const text = JSON.stringify({ v: 2, ...parts });
   return hashString(text) + hashString(`amble:${text}`);
 }
 

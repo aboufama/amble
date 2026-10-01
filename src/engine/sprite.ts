@@ -1,9 +1,9 @@
-import { Color3, PhysicsMotionType, Quaternion, TransformNode, Vector3, type AbstractMesh, type PhysicsBody } from './babylon';
+import type * as Phaser from 'phaser';
 import type { SoundHandle, PlayOptions } from './audio';
 import type { Coroutine, CoroutineOwner, TimerHandle } from './coroutines';
-import type { PhysicsOptions } from './physics';
-import { SpriteVisual, type CostumeResource } from './visuals';
-import { parseColor } from './effects';
+import type { Body, PhysicsOptions, Point } from './physics';
+import { toStage, toWorld } from './physics';
+import { parseColor, type Costume } from './visuals';
 import { warnOnce } from './bridge';
 import { normalizeKey } from './input';
 import type { Game, TargetDef } from './game';
@@ -12,7 +12,7 @@ const DEG = Math.PI / 180;
 let nextId = 1;
 
 /** What sprite helpers accept as a target: a sprite, a sprite's name, "mouse", "random", or a point. */
-export type TargetLike = Sprite | string | { x: number; y: number; z?: number };
+export type TargetLike = Sprite | string | { x: number; y: number };
 
 export type Ease = 'linear' | 'easeIn' | 'easeOut' | 'easeInOut' | 'bounce' | 'elastic' | 'back';
 
@@ -32,14 +32,6 @@ export const EASES: Record<Ease, (t: number) => number> = {
     return n1 * (t -= 2.625 / d1) * t + 0.984375;
   },
 };
-
-export interface VectorLike {
-  x: number;
-  y: number;
-  z: number;
-  /** Sets several components at once. */
-  set(x: number, y: number, z?: number): void;
-}
 
 /** Set by the game while it constructs an instance, so `super()` without arguments still works. */
 let constructing: { game: Game; def: TargetDef } | null = null;
@@ -219,22 +211,31 @@ export abstract class Entity implements CoroutineOwner {
   }
 }
 
+export interface VectorLike {
+  x: number;
+  y: number;
+  /** Sets both components at once. */
+  set(x: number, y: number): void;
+}
+
 /**
  * Base class for every sprite. Compiled game code extends it:
  * `class Player extends Sprite { start() {...} update(dt) {...} }`.
+ * Positions are stage pixels (0, 0 is the middle, y is up); angles are degrees counter-clockwise.
  */
 export class Sprite extends Entity {
-  /** Root transform: position and rotation live here. Parent your own meshes to it. */
-  readonly node: TransformNode;
   /** True for instances created with clone()/spawn(). */
   isClone = false;
   /** This sprite's own variables ("for this sprite only"). Each copy gets its own copy. */
   vars: Record<string, any> = {};
-  /** @internal */ _visual: SpriteVisual;
-  /** @internal */ _visualRoot: TransformNode;
-  /** @internal */ _body: PhysicsBody | null = null;
+  /** The Phaser image that draws this sprite (for Phaser's effects: postFX, blend modes, masks...). */
+  image: Phaser.GameObjects.Image;
+  /** @internal The same image (game code may reuse the name `image` for its own things). */ readonly _image: Phaser.GameObjects.Image;
+  /** @internal */ _body: Body | null = null;
   /** @internal */ _physicsOpts: PhysicsOptions | null = null;
-  /** @internal */ _vel = new Vector3();
+  /** @internal */ _vel: Point = { x: 0, y: 0 };
+  private _x = 0;
+  private _y = 0;
   private _costumeIndex = 0;
   private _size = 100;
   private _flipX = false;
@@ -249,246 +250,154 @@ export class Sprite extends Entity {
   private _jumping: Coroutine | null = null;
   private _bubble: HTMLDivElement | null = null;
   private _velocityProxy: VectorLike;
-  private _tmp = new Vector3();
 
   constructor(game?: Game, def?: TargetDef) {
     super(game, def);
-    const scene = this.game.scene;
-    this.node = new TransformNode(`${this.name}#${this.id}`, scene);
-    this.node.metadata = { amble: this };
-    // Rotation always lives in a quaternion (physics bodies require it); use angle/heading/pitch/roll.
-    this.node.rotationQuaternion = Quaternion.Identity();
-    this._visualRoot = new TransformNode(`${this.name}#${this.id}:look`, scene);
-    this._visualRoot.parent = this.node;
-    this._visualRoot.metadata = { amble: this };
-    this._visual = new SpriteVisual(this._visualRoot, this.game.mode, scene);
-    this._visual.plane.metadata = { amble: this };
+    this._image = this.game.scene.add.image(0, 0, '__DEFAULT');
+    this._image.setData('amble', this);
+    this.image = this._image;
     const self = this;
     this._velocityProxy = {
       get x() {
         return self._readVelocity().x;
       },
       set x(v: number) {
-        self._writeVelocity('x', v);
+        self.velocity = { x: v };
       },
       get y() {
         return self._readVelocity().y;
       },
       set y(v: number) {
-        self._writeVelocity('y', v);
+        self.velocity = { y: v };
       },
-      get z() {
-        return self._readVelocity().z;
-      },
-      set z(v: number) {
-        self._writeVelocity('z', v);
-      },
-      set(x: number, y: number, z?: number) {
-        self.velocity = { x, y, z: z ?? self._readVelocity().z };
+      set(x: number, y: number) {
+        self.velocity = { x, y };
       },
     };
     const init = this._def.run;
-    this.node.position.set(init.x, init.y, this.game.mode === '3d' ? init.z : 0);
+    this._x = Number(init.x) || 0;
+    this._y = Number(init.y) || 0;
     this._rotationStyle = init.rotationStyle ?? 'all around';
-    if (this.game.mode === '2d') this._angle = normalizeDeg(init.direction);
-    else this.node.rotationQuaternion = Quaternion.FromEulerAngles(0, init.direction * DEG, 0);
+    this._angle = normalizeDeg(init.direction);
     this._size = init.size;
     this._visible = init.visible;
     this._layer = init.layerOrder;
     this._costumeIndex = Math.max(0, Math.min(this._def.costumes.length - 1, (init.costumeNumber || 1) - 1));
-    this._applyLook();
-    this._applyTransform();
+    this._sync();
     this.game._register(this);
   }
 
   // ---------- position & rotation ----------
 
-  /** Horizontal position. 2D: stage pixels (0 = center, right is +). 3D: meters. */
+  /** Horizontal position in stage pixels (0 = center, right is +). */
   get x(): number {
-    return this.node.position.x;
+    return this._x;
   }
   set x(v: number) {
-    this.node.position.x = Number(v) || 0;
+    this._x = Number(v) || 0;
     this._moved();
   }
-  /** Vertical position (up is +). 3D: height above the ground. */
+  /** Vertical position in stage pixels (up is +). */
   get y(): number {
-    return this.node.position.y;
+    return this._y;
   }
   set y(v: number) {
-    this.node.position.y = Number(v) || 0;
+    this._y = Number(v) || 0;
     this._moved();
   }
-  /** 3D depth position (+z is away from the default camera). Always 0 in 2D. */
-  get z(): number {
-    return this.node.position.z;
+  /** Where the sprite is now, as { x, y }. */
+  get position(): Point {
+    return { x: this._x, y: this._y };
   }
-  set z(v: number) {
-    if (this.game.mode === '2d') return;
-    this.node.position.z = Number(v) || 0;
-    this._moved();
-  }
-  /** Live position vector (Babylon Vector3). */
-  get position(): Vector3 {
-    return this.node.position;
-  }
-  setPosition(x: number, y: number, z?: number): void {
-    this.node.position.set(Number(x) || 0, Number(y) || 0, this.game.mode === '3d' ? Number(z ?? this.z) || 0 : 0);
+  setPosition(x: number, y: number): void {
+    this._x = Number(x) || 0;
+    this._y = Number(y) || 0;
     this._moved();
   }
 
-  /** 2D rotation in degrees, counter-clockwise, 0 = facing right, 90 = up. */
+  /** Rotation in degrees, counter-clockwise, 0 = facing right, 90 = up. */
   get angle(): number {
-    if (this.game.mode === '2d' && this._rotationStyle === 'all around') {
-      return normalizeDeg(this._euler().z / DEG);
-    }
     return this._angle;
   }
   set angle(deg: number) {
     this._angle = normalizeDeg(Number(deg) || 0);
-    this._applyRotation2D();
     this._moved();
   }
 
-  /** 3D facing in degrees around the up axis: 0 = +z (away from the default camera), 90 = +x (right). */
-  get heading(): number {
-    return normalizeDeg(this._euler().y / DEG);
-  }
-  set heading(deg: number) {
-    const e = this._euler();
-    this._setEuler(e.x, (Number(deg) || 0) * DEG, e.z);
-  }
-  /** 3D tilt up/down in degrees (positive = nose down). */
-  get pitch(): number {
-    return normalizeDeg(this._euler().x / DEG);
-  }
-  set pitch(deg: number) {
-    const e = this._euler();
-    this._setEuler((Number(deg) || 0) * DEG, e.y, e.z);
-  }
-  /** 3D roll in degrees. */
-  get roll(): number {
-    return normalizeDeg(this._euler().z / DEG);
-  }
-  set roll(deg: number) {
-    const e = this._euler();
-    this._setEuler(e.x, e.y, (Number(deg) || 0) * DEG);
-  }
-
-  private _euler(): Vector3 {
-    return (this.node.rotationQuaternion ?? Quaternion.Identity()).toEulerAngles();
-  }
-
-  private _setEuler(x: number, y: number, z: number): void {
-    this.node.rotationQuaternion = Quaternion.FromEulerAngles(x, y, z);
-    this._moved();
-  }
-
-  private _applyRotation2D(): void {
-    if (this.game.mode !== '2d') return;
-    const z = this._rotationStyle === 'all around' ? this._angle * DEG : 0;
-    this.node.rotationQuaternion = Quaternion.FromEulerAngles(0, 0, z);
-    this._applyScale();
-  }
-
-  /** "all around" | "left-right" (only flips horizontally) | "don't rotate". Affects how `angle` is drawn in 2D. */
+  /** "all around" | "left-right" (only flips horizontally) | "don't rotate": how `angle` is drawn. */
   get rotationStyle(): string {
     return this._rotationStyle;
   }
   set rotationStyle(v: string) {
-    const current = this.angle;
     this._rotationStyle = v === 'left-right' || v === "don't rotate" ? v : 'all around';
-    this._angle = current;
-    this._applyRotation2D();
     this._moved();
   }
 
-  /** Rotates by `degrees` (2D: counter-clockwise; 3D: turns right for positive values). */
+  /** Rotates by `degrees` (counter-clockwise). */
   turn(degrees: number): void {
-    if (this.game.mode === '2d') this.angle = this.angle + (Number(degrees) || 0);
-    else this.heading = this.heading + (Number(degrees) || 0);
+    this.angle = this._angle + (Number(degrees) || 0);
   }
 
-  /** Moves in the facing direction (2D: angle, 3D: heading). */
+  /** Moves in the facing direction. */
   moveForward(distance: number): void {
     const d = Number(distance) || 0;
-    if (this.game.mode === '2d') {
-      const a = this.angle * DEG;
-      this.setPosition(this.x + Math.cos(a) * d, this.y + Math.sin(a) * d);
-    } else {
-      const h = this.heading * DEG;
-      this.setPosition(this.x + Math.sin(h) * d, this.y, this.z + Math.cos(h) * d);
-    }
+    const a = this._angle * DEG;
+    this.setPosition(this._x + Math.cos(a) * d, this._y + Math.sin(a) * d);
   }
 
-  /** 3D: moves to the right of the facing direction (negative = left). 2D: moves perpendicular to angle. */
+  /** Moves at a right angle to the facing direction (positive = to the right of it). */
   moveSideways(distance: number): void {
     const d = Number(distance) || 0;
-    if (this.game.mode === '2d') {
-      const a = (this.angle - 90) * DEG;
-      this.setPosition(this.x + Math.cos(a) * d, this.y + Math.sin(a) * d);
-    } else {
-      const h = (this.heading + 90) * DEG;
-      this.setPosition(this.x + Math.sin(h) * d, this.y, this.z + Math.cos(h) * d);
-    }
+    const a = (this._angle - 90) * DEG;
+    this.setPosition(this._x + Math.cos(a) * d, this._y + Math.sin(a) * d);
   }
 
-  /** Points at a target (sprite, sprite name, "mouse", or {x, y, z}). */
+  /** Points at a target (sprite, sprite name, "mouse", or {x, y}). */
   pointTowards(target: TargetLike): void {
     const p = this.game._resolvePoint(target, this);
-    if (!p) return;
-    if (this.game.mode === '2d') {
-      if (p.x === this.x && p.y === this.y) return;
-      this.angle = Math.atan2(p.y - this.y, p.x - this.x) / DEG;
-    } else {
-      if (p.x === this.x && p.z === this.z) return;
-      this.heading = Math.atan2(p.x - this.x, p.z - this.z) / DEG;
-    }
+    if (!p || (p.x === this._x && p.y === this._y)) return;
+    this.angle = Math.atan2(p.y - this._y, p.x - this._x) / DEG;
   }
 
-  /** Direction to a target: 2D angle or 3D heading, in degrees. */
+  /** Direction to a target in degrees (counter-clockwise from facing right). */
   directionTo(target: TargetLike): number {
     const p = this.game._resolvePoint(target, this);
-    if (!p) return this.game.mode === '2d' ? this.angle : this.heading;
-    return this.game.mode === '2d' ? Math.atan2(p.y - this.y, p.x - this.x) / DEG : Math.atan2(p.x - this.x, p.z - this.z) / DEG;
+    return p ? Math.atan2(p.y - this._y, p.x - this._x) / DEG : this._angle;
   }
 
   /** Distance to a target (Infinity if it doesn't exist). */
   distanceTo(target: TargetLike): number {
     const p = this.game._resolvePoint(target, this);
-    if (!p) return Infinity;
-    const dz = this.game.mode === '3d' ? p.z - this.z : 0;
-    return Math.hypot(p.x - this.x, p.y - this.y, dz);
+    return p ? Math.hypot(p.x - this._x, p.y - this._y) : Infinity;
   }
 
-  /** Moves up to `step` units toward a target. Returns true once it arrives. */
+  /** Moves up to `step` pixels toward a target. Returns true once it arrives. */
   moveTowards(target: TargetLike, step: number): boolean {
     const p = this.game._resolvePoint(target, this);
     if (!p) return false;
-    const dx = p.x - this.x;
-    const dy = p.y - this.y;
-    const dz = this.game.mode === '3d' ? p.z - this.z : 0;
-    const dist = Math.hypot(dx, dy, dz);
+    const dx = p.x - this._x;
+    const dy = p.y - this._y;
+    const dist = Math.hypot(dx, dy);
     if (dist <= step || dist === 0) {
-      this.setPosition(p.x, p.y, p.z);
+      this.setPosition(p.x, p.y);
       return true;
     }
     const k = step / dist;
-    this.setPosition(this.x + dx * k, this.y + dy * k, this.z + dz * k);
+    this.setPosition(this._x + dx * k, this._y + dy * k);
     return false;
   }
 
-  /** Jumps to a target (sprite, name, "mouse", "random", or {x, y, z}). */
+  /** Jumps to a target (sprite, name, "mouse", "random", or {x, y}). */
   goTo(target: TargetLike): void {
     const p = this.game._resolvePoint(target, this);
-    if (p) this.setPosition(p.x, p.y, p.z);
+    if (p) this.setPosition(p.x, p.y);
   }
 
   /** Coroutine helper: glides to a target over `seconds`. */
   *glideTo(target: TargetLike, seconds: number, ease: Ease = 'easeInOut'): Generator<void, void, unknown> {
     const p = this.game._resolvePoint(target, this);
     if (!p) return;
-    yield* this.tween(this, { x: p.x, y: p.y, ...(this.game.mode === '3d' ? { z: p.z } : {}) }, seconds, ease);
+    yield* this.tween(this, { x: p.x, y: p.y }, seconds, ease);
   }
 
   /** Coroutine helper: animates numeric properties of any object, e.g. `yield* this.tween(this, { size: 150 }, 0.5)`. */
@@ -527,8 +436,10 @@ export class Sprite extends Entity {
       warnOnce(`${this.name}: no costume named "${value}". Costumes: ${list.map((c) => c.name).join(', ')}`);
       return;
     }
+    if (index === this._costumeIndex) return;
     this._costumeIndex = index;
-    this._applyLook();
+    this._sync();
+    this._refreshCollider();
   }
   /** Names of this sprite's costumes (yours first, then compiled ones). */
   get costumes(): string[] {
@@ -569,16 +480,17 @@ export class Sprite extends Entity {
   }
   set size(v: number) {
     this._size = Math.max(0, Number(v) || 0);
-    this._applyScale();
+    this._sync();
     this._refreshCollider();
   }
-  /** Mirror horizontally (2D and 3D cutouts). */
+  /** Mirror horizontally. */
   get flipX(): boolean {
     return this._flipX;
   }
   set flipX(v: boolean) {
+    if (this._flipX === Boolean(v)) return;
     this._flipX = Boolean(v);
-    this._applyScale();
+    this._sync();
     this._refreshCollider();
   }
   get visible(): boolean {
@@ -586,7 +498,7 @@ export class Sprite extends Entity {
   }
   set visible(v: boolean) {
     this._visible = Boolean(v);
-    this._visualRoot.setEnabled(this._visible);
+    this._sync();
     if (!this._visible) this._hideBubble();
   }
   show(): void {
@@ -601,7 +513,7 @@ export class Sprite extends Entity {
   }
   set opacity(v: number) {
     this._opacity = Math.max(0, Math.min(1, Number(v)));
-    this._visual.opacity = this._opacity;
+    this._image.setAlpha(this._opacity);
   }
   /** Multiplies the costume's colors ("#ff8080" = reddish). null = none. */
   get tint(): string | null {
@@ -609,25 +521,22 @@ export class Sprite extends Entity {
   }
   set tint(color: string | null) {
     this._tint = color || null;
-    this._visual.tint = this._tint ? parseColor(this._tint) : null;
+    if (this._tint) this._image.setTint(parseColor(this._tint));
+    else this._image.clearTint();
   }
-  /** 2D draw order: higher layers draw on top. */
+  /** Draw order: higher layers draw on top. */
   get layer(): number {
     return this._layer;
   }
   set layer(v: number) {
     this._layer = Number(v) || 0;
-    this._visual.layer = this._layer;
+    this._image.setDepth(this._layer);
   }
   bringToFront(): void {
     this.layer = this.game._maxLayer() + 1;
   }
   sendToBack(): void {
     this.layer = this.game._minLayer() - 1;
-  }
-  /** The mesh showing the current costume (Babylon AbstractMesh). */
-  get mesh(): AbstractMesh | null {
-    return this._visual.meshes()[0] ?? null;
   }
 
   /** Speech bubble above the sprite. `say(null)` or `say("")` hides it. */
@@ -655,12 +564,8 @@ export class Sprite extends Entity {
   /** @internal */
   _updateBubble(): void {
     if (!this._bubble || this._bubble.style.display === 'none') return;
-    const screen = this.game._toScreen(this._visual.topPoint());
-    if (!screen) {
-      this._bubble.style.visibility = 'hidden';
-      return;
-    }
-    this._bubble.style.visibility = '';
+    const b = this.bounds();
+    const screen = this.game._toScreen({ x: (b.left + b.right) / 2, y: b.top });
     // Keep the whole bubble on the stage; its tail still points at the sprite.
     const width = this._bubble.offsetWidth;
     const want = 240 + screen.x;
@@ -672,62 +577,39 @@ export class Sprite extends Entity {
 
   // ---------- sensing ----------
 
-  /** World-space bounds of the current look. */
-  bounds(shrink = 1): { left: number; right: number; bottom: number; top: number; back: number; front: number } {
-    const meshes = this._visual.meshes();
-    this.node.computeWorldMatrix(true);
-    this._visualRoot.computeWorldMatrix(true);
-    let minX = Infinity,
-      minY = Infinity,
-      minZ = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity,
-      maxZ = -Infinity;
-    for (const m of meshes) {
-      m.computeWorldMatrix(true);
-      const bb = m.getBoundingInfo().boundingBox;
-      minX = Math.min(minX, bb.minimumWorld.x);
-      minY = Math.min(minY, bb.minimumWorld.y);
-      minZ = Math.min(minZ, bb.minimumWorld.z);
-      maxX = Math.max(maxX, bb.maximumWorld.x);
-      maxY = Math.max(maxY, bb.maximumWorld.y);
-      maxZ = Math.max(maxZ, bb.maximumWorld.z);
-    }
-    if (!Number.isFinite(minX)) {
-      const p = this.node.position;
-      return { left: p.x, right: p.x, bottom: p.y, top: p.y, back: p.z, front: p.z };
-    }
+  /** Bounds of the current look, in stage coordinates (rotation included). */
+  bounds(shrink = 1): { left: number; right: number; bottom: number; top: number } {
+    if (!this._look()) return { left: this._x, right: this._x, bottom: this._y, top: this._y };
+    const r = this._image.getBounds();
+    let left = r.x - 240;
+    let right = r.right - 240;
+    let top = 180 - r.y;
+    let bottom = 180 - r.bottom;
     if (shrink !== 1) {
-      const sx = ((maxX - minX) * (1 - shrink)) / 2;
-      const sy = ((maxY - minY) * (1 - shrink)) / 2;
-      const sz = ((maxZ - minZ) * (1 - shrink)) / 2;
-      minX += sx;
-      maxX -= sx;
-      minY += sy;
-      maxY -= sy;
-      minZ += sz;
-      maxZ -= sz;
+      const sx = ((right - left) * (1 - shrink)) / 2;
+      const sy = ((top - bottom) * (1 - shrink)) / 2;
+      left += sx;
+      right -= sx;
+      bottom += sy;
+      top -= sy;
     }
-    return { left: minX, right: maxX, bottom: minY, top: maxY, back: minZ, front: maxZ };
+    return { left, right, bottom, top };
   }
 
   /**
    * Overlap test (no physics needed). Returns the first touching sprite (or null).
    * target: a sprite name, a sprite, an array of either, or nothing (any sprite).
-   * Also: touching("edge") (2D, true/false) and touching("mouse") (true/false).
+   * Also: touching("edge") and touching("mouse") (true/false).
    */
   touching(target?: TargetLike | TargetLike[] | 'edge' | 'mouse'): Sprite | boolean | null {
     if (!this._visible || this._destroyed) return target === 'edge' || target === 'mouse' ? false : null;
-    if (target === 'edge') return this.game.mode === '2d' ? this._touchingEdge() : false;
+    if (target === 'edge') return this._touchingEdge();
     if (target === 'mouse') return this.game._mouseOver(this);
     const candidates = this.game._candidates(target, this);
     const a = this.bounds(0.9);
-    const is3d = this.game.mode === '3d';
     for (const other of candidates) {
       const b = other.bounds(0.9);
-      if (a.left < b.right && a.right > b.left && a.bottom < b.top && a.top > b.bottom && (!is3d || (a.back < b.front && a.front > b.back))) {
-        return other;
-      }
+      if (a.left < b.right && a.right > b.left && a.bottom < b.top && a.top > b.bottom) return other;
     }
     return null;
   }
@@ -738,17 +620,15 @@ export class Sprite extends Entity {
     return b.left < v.left || b.right > v.right || b.bottom < v.bottom || b.top > v.top;
   }
 
-  /** 2D: true when completely outside the visible area. */
+  /** True when completely outside the visible area. */
   isOffStage(): boolean {
-    if (this.game.mode !== '2d') return false;
     const v = this.game.camera.view();
     const b = this.bounds();
     return b.right < v.left || b.left > v.right || b.top < v.bottom || b.bottom > v.top;
   }
 
-  /** 2D: pushes the sprite back inside the visible area. */
+  /** Pushes the sprite back inside the visible area. */
   keepOnStage(): void {
-    if (this.game.mode !== '2d') return;
     const v = this.game.camera.view();
     const b = this.bounds();
     let dx = 0;
@@ -757,22 +637,21 @@ export class Sprite extends Entity {
     else if (b.right > v.right) dx = v.right - b.right;
     if (b.bottom < v.bottom) dy = v.bottom - b.bottom;
     else if (b.top > v.top) dy = v.top - b.top;
-    if (dx || dy) this.setPosition(this.x + dx, this.y + dy);
+    if (dx || dy) this.setPosition(this._x + dx, this._y + dy);
   }
 
-  /** 2D: bounces off the edges of the visible area (flips angle and velocity). Returns true if it bounced. */
+  /** Bounces off the edges of the visible area (flips angle and velocity). Returns true if it bounced. */
   bounceOffEdges(): boolean {
-    if (this.game.mode !== '2d') return false;
     const v = this.game.camera.view();
     const b = this.bounds();
     let bounced = false;
     const vel = this.velocity;
-    const a = this.angle;
+    const a = this._angle;
     if ((b.left < v.left && Math.cos(a * DEG) < 0) || (b.right > v.right && Math.cos(a * DEG) > 0)) {
       this.angle = 180 - a;
       bounced = true;
     }
-    const a2 = this.angle;
+    const a2 = this._angle;
     if ((b.bottom < v.bottom && Math.sin(a2 * DEG) < 0) || (b.top > v.top && Math.sin(a2 * DEG) > 0)) {
       this.angle = -a2;
       bounced = true;
@@ -792,138 +671,119 @@ export class Sprite extends Entity {
   // ---------- velocity & physics ----------
 
   /**
-   * Velocity in units per second. Works with or without physics: without a body the engine
+   * Velocity in pixels per second. Works with or without physics: without a body the engine
    * moves the sprite by velocity * dt every tick. `this.velocity.x = 200` or `this.velocity = {x: 0, y: 300}`.
    */
   get velocity(): VectorLike {
     return this._velocityProxy;
   }
-  set velocity(v: { x?: number; y?: number; z?: number }) {
-    const cur = this._readVelocity().clone();
-    const next = new Vector3(v.x ?? cur.x, v.y ?? cur.y, this.game.mode === '3d' ? (v.z ?? cur.z) : 0);
-    if (this._isDynamic()) this._body!.setLinearVelocity(next);
-    else this._vel.copyFrom(next);
+  set velocity(v: { x?: number; y?: number }) {
+    const cur = this._readVelocity();
+    const next = { x: Number(v.x ?? cur.x) || 0, y: Number(v.y ?? cur.y) || 0 };
+    if (this._isDynamic()) this.game._physics.setVelocity(this._body!, next);
+    else this._vel = next;
   }
 
   private _isDynamic(): boolean {
-    return Boolean(this._body && !this._body.isDisposed && this._body.getMotionType() === PhysicsMotionType.DYNAMIC);
+    return Boolean(this._body && !this._body.isStatic);
   }
 
-  private _readVelocity(): Vector3 {
-    if (this._isDynamic()) {
-      this._body!.getLinearVelocityToRef(this._tmp);
-      return this._tmp;
-    }
-    return this._vel;
-  }
-
-  private _writeVelocity(axis: 'x' | 'y' | 'z', value: number): void {
-    if (axis === 'z' && this.game.mode === '2d') return;
-    const v = Number(value) || 0;
-    if (this._isDynamic()) {
-      this._body!.getLinearVelocityToRef(this._tmp);
-      this._tmp[axis] = v;
-      this._body!.setLinearVelocity(this._tmp);
-    } else {
-      this._vel[axis] = v;
-    }
+  private _readVelocity(): Point {
+    return this._isDynamic() ? this.game._physics.velocityOf(this._body!) : { ...this._vel };
   }
 
   /**
-   * Gives this sprite a physics body (Havok). Options: type ("dynamic" | "static" | "kinematic"),
+   * Gives this sprite a physics body (Matter). Options: type ("dynamic" | "static" | "kinematic"),
    * shape ("box" | "circle" | "capsule"), mass, friction, bounce, fixedRotation, gravity, sensor, damping, scale.
    * Collisions call `onCollide(other, info)` on both sprites.
    */
-  addPhysics(opts: PhysicsOptions = {}): PhysicsBody {
+  addPhysics(opts: PhysicsOptions = {}): Body {
     this.removePhysics();
     this._physicsOpts = { ...opts };
-    const { size, center } = this._colliderGeometry();
-    this._body = this.game._physics.createBody(this.node, size, center, opts);
-    if (!this._isDynamic() && this._vel.lengthSquared() === 0) this._vel.setAll(0);
+    this._body = this._createBody(opts);
     return this._body;
   }
 
   removePhysics(): void {
-    if (this._body && !this._body.isDisposed) this._body.dispose();
+    if (this._body) this.game._physics.removeBody(this._body);
     this._body = null;
     this._physicsOpts = null;
   }
 
-  /** The Havok physics body (null until addPhysics). */
-  get body(): PhysicsBody | null {
+  /** The Matter physics body (null until addPhysics). */
+  get body(): Body | null {
     return this._body;
   }
 
   /** Instant push (units: mass * velocity). Without physics it changes velocity directly. */
-  applyImpulse(x: number, y: number, z = 0): void {
-    const v = new Vector3(Number(x) || 0, Number(y) || 0, this.game.mode === '3d' ? Number(z) || 0 : 0);
-    if (this._isDynamic()) this._body!.applyImpulse(v, this._body!.getObjectCenterWorld());
-    else this._vel.addInPlace(v);
+  applyImpulse(x: number, y: number): void {
+    const dx = Number(x) || 0;
+    const dy = Number(y) || 0;
+    if (this._isDynamic()) {
+      const m = this._body!.mass || 1;
+      const v = this.game._physics.velocityOf(this._body!);
+      this.game._physics.setVelocity(this._body!, { x: v.x + dx / m, y: v.y + dy / m });
+    } else {
+      this._vel = { x: this._vel.x + dx, y: this._vel.y + dy };
+    }
   }
 
-  /** Continuous push for this tick. */
-  applyForce(x: number, y: number, z = 0): void {
-    const v = new Vector3(Number(x) || 0, Number(y) || 0, this.game.mode === '3d' ? Number(z) || 0 : 0);
-    if (this._isDynamic()) this._body!.applyForce(v, this._body!.getObjectCenterWorld());
-    else this._vel.addInPlace(v.scale(this.game.dt));
+  /** Continuous push for this tick (units: mass * pixels per second squared). */
+  applyForce(x: number, y: number): void {
+    const fx = Number(x) || 0;
+    const fy = Number(y) || 0;
+    if (this._isDynamic()) this.game._physics.applyForce(this._body!, { x: fx, y: fy });
+    else this._vel = { x: this._vel.x + fx * this.game.dt, y: this._vel.y + fy * this.game.dt };
   }
 
-  /** True when standing on something (physics bodies), or on the ground plane (3D without physics). */
+  /** True when standing on something solid (needs physics). */
   isOnGround(): boolean {
+    if (!this._body) return false;
     const b = this.bounds();
-    if (!this._body) return this.game.mode === '3d' ? this.y <= 0.001 : false;
-    const is2d = this.game.mode === '2d';
-    const reach = is2d ? 3 : 0.08;
-    const up = is2d ? 2 : 0.05;
     const cx = (b.left + b.right) / 2;
-    const cz = is2d ? 0 : (b.back + b.front) / 2;
     const halfW = ((b.right - b.left) / 2) * 0.8;
-    const xs = [cx - halfW, cx, cx + halfW];
-    for (const x of xs) {
-      const hit = this.game._physics.raycast(new Vector3(x, b.bottom + up, cz), new Vector3(x, b.bottom - reach, cz), this._body);
-      if (hit.hasHit) return true;
+    for (const x of [cx - halfW, cx, cx + halfW]) {
+      if (this.game._physics.raycast({ x, y: b.bottom + 2 }, { x, y: b.bottom - 3 }, this._body).length) return true;
     }
     return false;
   }
 
-  private _colliderGeometry(): { size: { width: number; height: number; depth: number }; center: Vector3 } {
+  /** The collider: costume size, its middle relative to the rotation center (unrotated), all in stage pixels. */
+  private _collider(): { width: number; height: number; dx: number; dy: number } {
+    const look = this._look();
+    if (!look) return { width: 1, height: 1, dx: 0, dy: 0 };
     const s = this._size / 100;
-    const look = this._def.costumes[this._costumeIndex];
-    const is2d = this.game.mode === '2d';
-    if (!look) return { size: { width: 1, height: 1, depth: 1 }, center: Vector3.Zero() };
-    if (look.kind === 'image') {
-      const w = look.width * s;
-      const h = look.height * s;
-      const center = is2d ? new Vector3(look.offsetX * s * (this._flipX ? -1 : 1), look.offsetY * s, 0) : new Vector3(0, h / 2, 0);
-      return { size: { width: w, height: h, depth: is2d ? 200 : Math.max(0.1, w) }, center };
-    }
-    // Model: measure its bounds relative to the node with rotation temporarily cleared.
-    const rot = (this.node.rotationQuaternion ?? Quaternion.Identity()).clone();
-    this.node.rotationQuaternion = Quaternion.Identity();
-    this.node.computeWorldMatrix(true);
-    const { min, max } = this._visualRoot.getHierarchyBoundingVectors(true, (m) => m.isEnabled());
-    this.node.rotationQuaternion = rot;
-    this.node.computeWorldMatrix(true);
-    const p = this.node.position;
-    const center = new Vector3((min.x + max.x) / 2 - p.x, (min.y + max.y) / 2 - p.y, is2d ? 0 : (min.z + max.z) / 2 - p.z);
-    return {
-      size: { width: max.x - min.x, height: max.y - min.y, depth: is2d ? 200 : Math.max(0.05, max.z - min.z) },
-      center,
-    };
+    const w = look.width * s;
+    const h = look.height * s;
+    return { width: w, height: h, dx: (0.5 - look.originX) * w * (this._drawnFlipped() ? -1 : 1), dy: -(0.5 - look.originY) * h };
+  }
+
+  /** The angle the look is drawn at. */
+  private _drawnAngle(): number {
+    return this._rotationStyle === 'all around' ? this._angle : 0;
+  }
+
+  private _bodyCenter(): Point {
+    const c = this._collider();
+    const a = this._drawnAngle() * DEG;
+    return { x: this._x + c.dx * Math.cos(a) - c.dy * Math.sin(a), y: this._y + c.dx * Math.sin(a) + c.dy * Math.cos(a) };
+  }
+
+  private _createBody(opts: PhysicsOptions): Body {
+    const c = this._collider();
+    return this.game._physics.createBody(this, this._bodyCenter(), { width: c.width, height: c.height }, this._drawnAngle(), opts);
   }
 
   // ---------- ready-made game behaviors (the Game blocks) ----------
 
-  /** Blocks measure distance in steps: pixels in 2D, and 100 steps to a meter in 3D. */
+  /** Blocks measure distance in steps: one step is one pixel. */
   _fromSteps(steps: number): number {
-    const n = Number(steps) || 0;
-    return this.game.mode === '3d' ? n / 100 : n;
+    return Number(steps) || 0;
   }
 
   /**
    * From now on the player steers this sprite. controls: "arrow keys", "left and right arrows",
-   * "WASD", "A and D" or "the mouse". speed: steps per second. In 3D, left/right turn and
-   * up/down walk forward and back.
+   * "WASD", "A and D" or "the mouse". speed: steps per second.
    */
   walkWith(controls = 'arrow keys', speed = 200): void {
     this._walking?.stop();
@@ -933,12 +793,10 @@ export class Sprite extends Entity {
     const mouse = c.includes('mouse');
     const v = this._fromSteps(speed);
     const input = this.game.input;
-    const is3d = this.game.mode === '3d';
     this._walking = this.run(function* walk() {
       for (;;) {
         if (mouse) {
-          const target = is3d ? this.game.mouseGround() : { x: input.mouse.x, y: input.mouse.y };
-          if (target) this.moveTowards(target, v * this.game.dt);
+          this.moveTowards({ x: input.mouse.x, y: input.mouse.y }, v * this.game.dt);
         } else {
           const right = input.isDown(letters ? 'd' : 'right') ? 1 : 0;
           const left = input.isDown(letters ? 'a' : 'left') ? 1 : 0;
@@ -946,17 +804,10 @@ export class Sprite extends Entity {
           const down = input.isDown(letters ? 's' : 'down') ? 1 : 0;
           const dx = right - left;
           const dy = sideways ? 0 : up - down;
-          if (is3d) {
-            this.turn(dx * 150 * this.game.dt);
-            const h = this.heading * DEG;
-            this.velocity.x = Math.sin(h) * dy * v;
-            this.velocity.z = Math.cos(h) * dy * v;
-          } else {
-            this.velocity.x = dx * v;
-            // With gravity, up and down belong to jumping and falling.
-            if (!this._isDynamic()) this.velocity.y = dy * v;
-            if (dx) this.flipX = dx < 0;
-          }
+          this.velocity.x = dx * v;
+          // With gravity, up and down belong to jumping and falling.
+          if (!this._isDynamic()) this.velocity.y = dy * v;
+          if (dx) this.flipX = dx < 0;
         }
         yield;
       }
@@ -977,10 +828,10 @@ export class Sprite extends Entity {
     });
   }
 
-  /** Falls and lands on solid things. In 2D the bottom of the screen is solid too. */
+  /** Falls and lands on solid things. The bottom of the screen is solid too. */
   fallWithGravity(): void {
     if (!this._isDynamic()) this.addPhysics({ type: 'dynamic', fixedRotation: true });
-    if (this.game.mode === '2d') this.game._ensureFloor();
+    this.game._ensureFloor();
   }
 
   /** Others can stand on this sprite, like a floor or a platform. */
@@ -1002,58 +853,74 @@ export class Sprite extends Entity {
 
   // ---------- internals ----------
 
-  /** @internal */
+  /** @internal The current costume. */
+  _look(): Costume | null {
+    return this._def.costumes[this._costumeIndex] ?? null;
+  }
+
+  private _drawnFlipped(): boolean {
+    let flip = this._flipX;
+    if (this._rotationStyle === 'left-right' && Math.cos(this._angle * DEG) < -1e-6) flip = !flip;
+    return flip;
+  }
+
+  /** @internal Draws the sprite as it is now. */
+  _sync(): void {
+    const img = this._image;
+    const look = this._look();
+    if (!look) {
+      img.setVisible(false);
+      return;
+    }
+    if (img.texture.key !== look.key) img.setTexture(look.key);
+    img.setOrigin(look.originX, look.originY);
+    const s = this._size / 100 / look.density;
+    img.setScale(this._drawnFlipped() ? -s : s, s);
+    img.setAngle(-this._drawnAngle());
+    const at = toWorld(this._x, this._y);
+    img.setPosition(at.x, at.y);
+    img.setDepth(this._layer);
+    img.setVisible(this._visible && !this._destroyed);
+  }
+
+  /** @internal The sprite moved or turned (by code): draw it there, and take its body along. */
   _moved(): void {
-    if (this._body && !this._body.isDisposed) this.game._physics.teleport(this._body);
+    this._sync();
+    if (this._body) {
+      const kinematic = this._physicsOpts?.type === 'kinematic';
+      this.game._physics.place(this._body, this._bodyCenter(), this._physicsOpts?.fixedRotation && !kinematic ? null : this._drawnAngle(), kinematic);
+    }
   }
 
   /** @internal Integrates velocity for sprites without a dynamic body. */
   _integrate(dt: number): void {
     if (this._isDynamic()) return;
     const v = this._vel;
-    if (v.x === 0 && v.y === 0 && v.z === 0) return;
-    this.node.position.addInPlace(v.scale(dt));
-    if (this._body && this._body.getMotionType() === PhysicsMotionType.STATIC) this._moved();
+    if (v.x === 0 && v.y === 0) return;
+    this.setPosition(this._x + v.x * dt, this._y + v.y * dt);
   }
 
-  /** @internal */
-  _applyLook(): void {
-    const look: CostumeResource | undefined = this._def.costumes[this._costumeIndex];
-    if (!look) {
-      this._visual.plane.setEnabled(false);
-      return;
-    }
-    this._visual.show(look);
-    this._visual.layer = this._layer;
-    if (this._opacity !== 1) this._visual.opacity = this._opacity;
-    if (this._tint) this._visual.tint = parseColor(this._tint);
-    this._visualRoot.setEnabled(this._visible);
-    if (this.game.mode === '3d') for (const m of this._visual.meshes()) this.game._castShadow(m);
-  }
-
-  /** @internal Initial placement. */
-  _applyTransform(): void {
-    this._applyRotation2D();
-    this._applyScale();
-    this._moved();
-  }
-
-  private _applyScale(): void {
-    const s = this._size / 100;
-    let flip = this._flipX;
-    if (this.game.mode === '2d' && this._rotationStyle === 'left-right' && Math.cos(this._angle * DEG) < -1e-6) flip = !flip;
-    this._visualRoot.scaling.set(flip ? -s : s, s, s);
+  /** @internal After a physics step: a dynamic body moves the sprite. */
+  _fromBody(): void {
+    const body = this._body;
+    if (!body || body.isStatic) return;
+    const free = this._rotationStyle === 'all around' && !this._physicsOpts?.fixedRotation;
+    if (free) this._angle = normalizeDeg((-body.angle * 180) / Math.PI);
+    const c = this._collider();
+    const a = this._drawnAngle() * DEG;
+    const center = toStage(body.position.x, body.position.y);
+    this._x = center.x - (c.dx * Math.cos(a) - c.dy * Math.sin(a));
+    this._y = center.y - (c.dx * Math.sin(a) + c.dy * Math.cos(a));
+    this._sync();
   }
 
   /** Rebuilds the collider after the size/flip/costume changed. */
   private _refreshCollider(): void {
     if (!this._body || !this._physicsOpts) return;
-    const opts = this._physicsOpts;
-    const vel = this._readVelocity().clone();
-    this._body.dispose();
-    const { size, center } = this._colliderGeometry();
-    this._body = this.game._physics.createBody(this.node, size, center, opts);
-    if (this._isDynamic()) this._body.setLinearVelocity(vel);
+    const vel = this._readVelocity();
+    this.game._physics.removeBody(this._body);
+    this._body = this._createBody(this._physicsOpts);
+    if (this._isDynamic()) this.game._physics.setVelocity(this._body, vel);
   }
 
   /** @internal */
@@ -1063,8 +930,7 @@ export class Sprite extends Entity {
     this._hideBubble();
     this._bubble?.remove();
     this.removePhysics();
-    this._visual.dispose();
-    this.node.dispose();
+    this._image.destroy();
   }
 }
 
@@ -1094,8 +960,4 @@ export function normalizeDeg(deg: number): number {
   if (d > 180) d -= 360;
   if (d <= -180) d += 360;
   return d;
-}
-
-export function colorOf(value: string): Color3 {
-  return parseColor(value);
 }

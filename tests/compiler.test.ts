@@ -444,7 +444,7 @@ describe('compileProject', () => {
     const call = server.calls[0];
     expect(call.url).toBe('https://api.openai.com/v1/chat/completions');
     expect(call.body.response_format.json_schema?.name).toBe('amble_pieces');
-    expect(call.body.messages[0].content).toContain('# 2D world');
+    expect(call.body.messages[0].content).toContain('# Phaser (for anything more elaborate)');
     const prompt = call.body.messages[1].content;
     expect(idsIn(prompt)).toEqual(['p1', 'p2', 'p3']);
     expect(prompt).toContain('- p1: rule, in "Stage" (art style: [a cute night sky with glowing yellow stars]): art style: [a cute night sky with glowing yellow stars]');
@@ -706,10 +706,11 @@ describe('prompts', () => {
     expect(names).toEqual(['StageScript', 'Amble', 'Amble2', 'SpriteScript', 'S3Cats']);
   });
 
-  it('switches the engine notes by world mode', () => {
-    expect(piecesSystemPrompt('2d')).toContain('# 2D world');
-    expect(piecesSystemPrompt('3d')).toContain('# 3D world');
-    expect(piecesSystemPrompt('3d')).not.toContain('# 2D world');
+  it('describes the 2D engine on Phaser, and Phaser itself for elaborate games', () => {
+    const prompt = piecesSystemPrompt();
+    expect(prompt).toContain('runs on Phaser 3');
+    expect(prompt).toContain('# Phaser (for anything more elaborate)');
+    expect(prompt).not.toMatch(/BABYLON|3D|meters/);
   });
 
   it('uses a strict schema', () => {

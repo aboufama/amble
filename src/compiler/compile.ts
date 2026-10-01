@@ -50,7 +50,8 @@ export function inputHash(project: Project): string {
     s: x.sounds.map((s) => s.name),
     p: x.kind === 'sprite' ? [x.x, x.y, x.z, x.size, x.direction, x.visible, x.rotationStyle] : 0,
   });
-  return hashString(JSON.stringify({ m: project.mode, t: project.title, n: project.notes, v: project.variables ?? [], s: t(project.stage), sp: project.sprites.map(t) }));
+  // e: the engine the game was built for (Phaser now): a game built for another one builds again.
+  return hashString(JSON.stringify({ e: 'phaser', m: project.mode, t: project.title, n: project.notes, v: project.variables ?? [], s: t(project.stage), sp: project.sprites.map(t) }));
 }
 
 function planProject(project: Project): TargetPlan[] {

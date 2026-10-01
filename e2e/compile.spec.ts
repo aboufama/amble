@@ -250,7 +250,7 @@ test('catching a star runs "when I touch Star", and every burst shows and clears
   await expect.poll(async () => (await game(frame)).state, { timeout: 30_000 }).toBe('running');
 
   type Star = { x: number; y: number; isClone: boolean; visible: boolean };
-  type Player = { __actions?: number; __ambleGame: { vars: Record<string, number>; find(n: string): Star; findAll(n: string): Star[]; scene: { particleSystems: unknown[] } } };
+  type Player = { __actions?: number; __ambleGame: { vars: Record<string, number>; find(n: string): Star; findAll(n: string): Star[]; scene: { children: { list: Array<{ type: string }> } } } };
   // Amble stands under the lowest star. Each star deletes itself the moment it touches Amble.
   await expect
     .poll(
@@ -266,7 +266,7 @@ test('catching a star runs "when I touch Star", and every burst shows and clears
     .toBeGreaterThanOrEqual(3);
   // Amble's "when I touch Star" still ran for each catch, and each burst showed and cleared.
   expect(await frame.evaluate(() => (window as unknown as Player).__actions ?? 0)).toBeGreaterThanOrEqual(3);
-  await expect.poll(() => frame.evaluate(() => (window as unknown as Player).__ambleGame.scene.particleSystems.length)).toBe(0);
+  await expect.poll(() => frame.evaluate(() => (window as unknown as Player).__ambleGame.scene.children.list.filter((o) => o.type === 'ParticleEmitter').length)).toBe(0);
 });
 
 test('a speech bubble at the edge of the stage stays on it, without breaking its words', async ({ page }) => {

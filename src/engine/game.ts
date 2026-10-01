@@ -1,28 +1,15 @@
-import * as BABYLON from './babylon';
-import {
-  Color4,
-  HemisphericLight,
-  Layer,
-  Matrix,
-  Plane,
-  Scene,
-  Vector3,
-  type AbstractMesh,
-  type Engine,
-  type PickingInfo,
-} from './babylon';
-import type { RunPackage, RunTarget, WorldMode } from '../player/protocol';
+import type * as Phaser from 'phaser';
+import type { RunPackage, RunTarget } from '../player/protocol';
 import { STAGE_HEIGHT, STAGE_WIDTH } from '../player/protocol';
 import { AudioManager } from './audio';
 import { CameraRig } from './camera';
 import { Scheduler, STOP_GAME, isGenerator, type Coroutine } from './coroutines';
-import { Effects, parseColor } from './effects';
+import { Effects, ensureDot } from './effects';
 import { Input } from './input';
-import { PhysicsWorld } from './physics';
+import { PhysicsWorld, toWorld, type Body, type Matter, type Point } from './physics';
 import { Entity, Sprite, Stage, withConstruction, type TargetLike } from './sprite';
 import { Ui } from './ui';
-import { loadCostumes, type CostumeResource, type ImageCostume } from './visuals';
-import { World3D } from './world3d';
+import { loadCostumes, parseColor, type Costume } from './visuals';
 import { reportError, warnOnce } from './bridge';
 import { beginFrame, evaluateClass, sandboxGlobals } from './sandbox';
 
@@ -30,17 +17,21 @@ export interface TargetDef {
   name: string;
   kind: 'stage' | 'sprite';
   run: RunTarget;
-  costumes: CostumeResource[];
+  costumes: Costume[];
   /** sound name -> audio key */
   sounds: Map<string, string>;
   cls: new (game?: Game, def?: TargetDef) => Entity;
 }
 
 export interface GameHost {
-  engine: Engine;
+  /** Phaser's namespace (the player bundles it; game code reaches it as `Phaser`). */
+  Phaser: typeof Phaser;
+  /** The player's one Phaser game: each Amble game runs in a scene of its own. */
+  phaser: Phaser.Game;
   canvas: HTMLCanvasElement;
   uiParent: HTMLElement;
-  havok: unknown;
+  /** Canvas pixels per stage pixel (the stage is drawn at the screen's own resolution). */
+  scale(): number;
   onStateChange(state: GameState): void;
   requestRestart(): void;
 }
@@ -49,19 +40,22 @@ export type GameState = 'idle' | 'running' | 'paused' | 'stopped';
 
 type HookName = 'start' | 'onSpawn' | 'update' | 'onKeyDown' | 'onKeyUp' | 'onClick' | 'onMessage' | 'onCollide' | 'onDestroy';
 
+const TICK_MS = 1000 / 60;
+/** At most this many ticks per drawn frame, so a slow computer slows the game down rather than freezing it. */
+const MAX_TICKS_PER_FRAME = 4;
+let scenes = 0;
+
 /**
- * One loaded game. Game code reaches it as `this.game`.
- * Logic runs in fixed 60 Hz ticks (Babylon deterministic lockstep), independent of the display's frame rate.
+ * One loaded game, in a Phaser scene of its own. Game code reaches it as `this.game`.
+ * Logic runs in fixed 60 Hz ticks (and Matter physics steps once per tick), independent of the
+ * display's frame rate.
  */
 export class Game {
-  readonly mode: WorldMode;
-  readonly scene: Scene;
+  readonly mode = '2d' as const;
   readonly input: Input;
   readonly camera: CameraRig;
   readonly ui: Ui;
   readonly effects: Effects;
-  /** 3D only: sky, sun, ground, fog. null in 2D. */
-  readonly world: World3D | null;
   /** Shared variables for game-wide state (score, lives, level...). */
   vars: Record<string, any> = {};
   /** What the player typed at the last ask. */
@@ -78,7 +72,7 @@ export class Game {
 
   /** @internal */ readonly _scheduler = new Scheduler();
   /** @internal */ readonly _audio: AudioManager;
-  /** @internal */ readonly _physics: PhysicsWorld;
+  /** @internal */ readonly _physics: PhysicsWorld<Sprite>;
   /** @internal */ readonly _bubbles = new Set<Sprite>();
   private readonly defs = new Map<string, TargetDef>();
   private stageDef!: TargetDef;
@@ -86,63 +80,69 @@ export class Game {
   private started = new WeakSet<Entity>();
   private pendingDestroy: Sprite[] = [];
   private listeners = new Map<string, Set<{ fn: (data: unknown) => unknown; owner: Entity | null }>>();
-  private backdropLayer: Layer | null = null;
+  private backdropImage: Phaser.GameObjects.Image | null = null;
   private backdropIndex = 0;
   private tickCount = 0;
-  private floor: BABYLON.TransformNode | null = null;
+  private pendingMs = 0;
+  private floor: Body | null = null;
   private failedChecks = new Set<string>();
+  private textureKeys: string[] = [];
+  private readonly prefix: string;
 
   private constructor(
     private readonly host: GameHost,
     readonly pkg: RunPackage,
+    /** The Phaser scene this game runs in (`this.game.scene.add`, `.tweens`, `.matter`...). */
+    readonly scene: Phaser.Scene,
   ) {
-    this.mode = pkg.mode;
-    const scene = new Scene(host.engine);
-    this.scene = scene;
-    scene.skipPointerMovePicking = true;
-    scene.clearColor = this.mode === '2d' ? new Color4(1, 1, 1, 1) : new Color4(0.6, 0.8, 1, 1);
+    this.prefix = `${scene.sys.settings.key}:`;
     this.input = new Input(host.canvas);
-    this._physics = new PhysicsWorld(scene, this.mode, host.havok);
-    this.camera = new CameraRig(scene, this.mode, this.input);
+    this._physics = new PhysicsWorld<Sprite>(scene, (host.Phaser.Physics.Matter as unknown as { Matter: Matter }).Matter);
+    this.camera = new CameraRig(scene.cameras.main);
+    scene.cameras.main.setBackgroundColor(0xffffff);
     this.ui = new Ui(host.uiParent);
-    this.effects = new Effects(scene, this.mode);
+    this.effects = new Effects(scene);
+    ensureDot(scene.textures);
     this._audio = new AudioManager();
-    if (this.mode === '3d') {
-      this.world = new World3D(scene);
-    } else {
-      this.world = null;
-      const light = new HemisphericLight('light', new Vector3(0.2, 1, -0.6), scene);
-      light.intensity = 1;
-    }
-    scene.onBeforeStepObservable.add(() => this.tick());
-    scene.onAfterStepObservable.add(() => this.afterStep());
-    // Particles move with game time: each drawn frame, as far as the ticks that ran in it (Babylon's
-    // lockstep otherwise moves them one tick per frame, so they'd crawl on slow computers and race
-    // on 144 Hz screens). Particle systems read this ratio; 0 would count as 1, so "no tick" is tiny.
-    let ticks = 0;
-    const ratio = scene as unknown as { _animationRatio: number };
-    scene.onBeforeAnimationsObservable.add(() => {
-      ticks = 0;
-      ratio._animationRatio = 1e-6;
-    });
-    scene.onAfterStepObservable.add(() => {
-      ratio._animationRatio = ++ticks;
-    });
   }
 
   /** Loads assets, evaluates compiled code and places every sprite (the game is idle until start()). */
   static async create(host: GameHost, pkg: RunPackage): Promise<Game> {
-    const game = new Game(host, pkg);
-    await game.build();
+    const P = host.Phaser;
+    const key = `amble-${++scenes}`;
+    let game: Game | null = null;
+    let created: (scene: Phaser.Scene) => void = () => undefined;
+    const ready = new Promise<Phaser.Scene>((resolve) => (created = resolve));
+    class AmbleScene extends P.Scene {
+      constructor() {
+        super({ key, physics: { default: 'matter', matter: { gravity: { x: 0, y: 1.6 }, autoUpdate: false, enableSleeping: false } } });
+      }
+      create(): void {
+        created(this);
+      }
+      update(_time: number, delta: number): void {
+        game?._frame(delta);
+      }
+    }
+    // Added between frames it starts at once; during one, at the next (create() says when).
+    host.phaser.scene.add(key, AmbleScene, true);
+    const scene = await ready;
+    game = new Game(host, pkg, scene);
+    try {
+      await game.build();
+    } catch (err) {
+      game.dispose();
+      throw err;
+    }
     return game;
   }
 
   private async build(): Promise<void> {
-    const { scene } = this;
-    const targets = this.pkg.targets;
+    const textures = this.scene.textures;
     const loaded = await Promise.all(
-      targets.map(async (t) => {
-        const costumes = await loadCostumes(t.costumes, t.kind === 'stage' ? '2d' : this.mode, scene);
+      this.pkg.targets.map(async (t) => {
+        const costumes = await loadCostumes(t.costumes, textures, this.prefix);
+        this.textureKeys.push(...costumes.map((c) => c.key));
         const sounds = new Map<string, string>();
         await Promise.all(
           t.sounds.map(async (snd) => {
@@ -172,12 +172,12 @@ export class Game {
       this.stageDef = { name: 'Stage', kind: 'stage', run, costumes: [], sounds: new Map(), cls: class extends Stage {} as TargetDef['cls'] };
     }
 
-    // Backdrop (2D always; 3D only if the stage has backdrops).
-    const backdrops = this.stageDef.costumes.filter((c): c is ImageCostume => c.kind === 'image');
+    // The backdrop fills the view, behind everything.
+    const backdrops = this.stageDef.costumes;
     if (backdrops.length) {
       this.backdropIndex = Math.max(0, Math.min(backdrops.length - 1, (this.stageDef.run.costumeNumber || 1) - 1));
-      this.backdropLayer = new Layer('backdrop', null, scene, true);
-      this.backdropLayer.texture = backdrops[this.backdropIndex].texture;
+      this.backdropImage = this.scene.add.image(STAGE_WIDTH / 2, STAGE_HEIGHT / 2, backdrops[this.backdropIndex].key);
+      this.backdropImage.setDepth(-1e9);
     }
 
     beginFrame();
@@ -187,6 +187,7 @@ export class Game {
       beginFrame();
       this.instantiate(def);
     }
+    this._render();
   }
 
   private evaluate(t: RunTarget, base: TargetDef['cls']): TargetDef['cls'] {
@@ -194,9 +195,7 @@ export class Game {
     try {
       const scope: Record<string, unknown> = {
         ...sandboxGlobals(),
-        BABYLON,
-        Vector3: BABYLON.Vector3,
-        Color3: BABYLON.Color3,
+        Phaser: this.host.Phaser,
         Sprite: t.kind === 'sprite' ? base : Sprite,
         Stage: t.kind === 'stage' ? base : Stage,
       };
@@ -232,6 +231,7 @@ export class Game {
     if (this.state !== 'idle') return;
     this.state = 'running';
     this.time = 0;
+    this.pendingMs = 0;
     this._audio.resume();
     this.host.onStateChange(this.state);
     beginFrame();
@@ -248,14 +248,14 @@ export class Game {
     }
   }
 
-  /** Stops the game (logic, physics and sounds freeze). */
+  /** Stops the game (logic, physics, Phaser's tweens and timers, and sounds freeze). */
   stop(): void {
     if (this.state === 'stopped') return;
     this.state = 'stopped';
-    this.scene.physicsEnabled = false;
     this._scheduler.clear();
     this._audio.stopAll();
     this.input.unlockPointer();
+    this.freeze(true);
     this.host.onStateChange(this.state);
   }
 
@@ -263,13 +263,29 @@ export class Game {
   pause(): void {
     if (this.state !== 'running') return;
     this.state = 'paused';
-    this.scene.physicsEnabled = false;
+    this.freeze(true);
   }
 
   resume(): void {
     if (this.state !== 'paused') return;
     this.state = 'running';
-    this.scene.physicsEnabled = true;
+    this.freeze(false);
+  }
+
+  /** Phaser's own clocks (tweens, timers, particles, animations) stop and go with the game. */
+  private freeze(frozen: boolean): void {
+    const scene = this.scene;
+    if (!scene.sys) return;
+    scene.time.paused = frozen;
+    if (frozen) scene.tweens.pauseAll();
+    else scene.tweens.resumeAll();
+    for (const obj of scene.children.list) {
+      const emitter = obj as unknown as { pause?: () => void; resume?: () => void; type?: string };
+      if (emitter.type === 'ParticleEmitter') {
+        if (frozen) emitter.pause?.();
+        else emitter.resume?.();
+      }
+    }
   }
 
   /** Shows a "Game Over" banner and stops the game. */
@@ -298,16 +314,29 @@ export class Game {
     this._audio.dispose();
     this.input.dispose();
     this.ui.dispose();
-    this.effects.dispose();
-    this.scene.dispose();
+    const manager = this.host.phaser.scene;
+    if (manager.getScene(this.scene.sys.settings.key)) manager.remove(this.scene.sys.settings.key);
+    for (const key of this.textureKeys) if (this.scene.textures.exists(key)) this.scene.textures.remove(key);
+    this.textureKeys = [];
   }
 
   // ---------------------------------------------------------------------------
-  // Fixed tick
+  // Frames and fixed ticks
   // ---------------------------------------------------------------------------
 
+  /** @internal Called by the scene every drawn frame: runs the ticks due, then draws. */
+  _frame(deltaMs: number): void {
+    if (this.state === 'running') {
+      this.pendingMs = Math.min(this.pendingMs + deltaMs, TICK_MS * MAX_TICKS_PER_FRAME);
+      while (this.pendingMs >= TICK_MS - 0.01 && this.state === 'running') {
+        this.pendingMs -= TICK_MS;
+        this.tick();
+      }
+    }
+    this._render();
+  }
+
   private tick(): void {
-    if (this.state !== 'running') return;
     beginFrame();
     this.tickCount++;
     this.time = this.tickCount * this.dt;
@@ -347,34 +376,30 @@ export class Game {
     } catch (err) {
       if (err !== STOP_GAME) reportError(err, { phase: 'run' });
     }
+    if (this.state === 'running') {
+      this._physics.step();
+      for (const s of this.all) if (!s.destroyed) s._fromBody();
+      this.collisions();
+    }
+    this.flushDestroyed();
   }
 
-  private afterStep(): void {
-    this._physics.afterStep();
-    if (this.state !== 'running') {
-      this.flushDestroyed();
-      return;
-    }
+  private collisions(): void {
     try {
       const seen = new Set<string>();
       for (const ev of this._physics.takeEvents()) {
-        const a = entityOfNode(ev.a.transformNode);
-        const b = entityOfNode(ev.b.transformNode);
+        const { a, b } = ev;
         const key = `${a?.id ?? 'x'}:${b?.id ?? 'x'}`;
         if (seen.has(key)) continue;
         seen.add(key);
         seen.add(`${b?.id ?? 'x'}:${a?.id ?? 'x'}`);
         const info = { point: ev.point, normal: ev.normal, sensor: ev.sensor };
         if (a && !a.destroyed) this.callHook(a, 'onCollide', [b ?? 'ground', info]);
-        if (b && !b.destroyed) {
-          const flipped = { ...info, normal: ev.normal ? ev.normal.scale(-1) : null };
-          this.callHook(b, 'onCollide', [a ?? 'ground', flipped]);
-        }
+        if (b && !b.destroyed) this.callHook(b, 'onCollide', [a ?? 'ground', { ...info, normal: ev.normal ? { x: -ev.normal.x, y: -ev.normal.y } : null }]);
       }
     } catch (err) {
       if (err !== STOP_GAME) reportError(err, { phase: 'run', script: 'onCollide' });
     }
-    this.flushDestroyed();
   }
 
   private flushDestroyed(): void {
@@ -389,9 +414,19 @@ export class Game {
     this.all = this.all.filter((s) => !dead.has(s));
   }
 
-  /** Called every rendered frame by the host. */
-  render(): void {
-    this.scene.render();
+  /** @internal Points the camera, fits the backdrop to the view and places the overlays (every frame). */
+  _render(): void {
+    if (!this.scene.sys) return;
+    const scale = this.host.scale();
+    this.camera._apply(scale);
+    if (this.backdropImage) {
+      // Fixed to the screen, like Scratch's: it fills the view whatever the camera does.
+      const look = this.stageDef.costumes[this.backdropIndex];
+      const mid = this.scene.cameras.main.midPoint;
+      this.backdropImage.setPosition(mid.x, mid.y);
+      this.backdropImage.setOrigin(0.5, 0.5);
+      this.backdropImage.setScale(STAGE_WIDTH / (look.width * look.density) / this.camera.zoom, STAGE_HEIGHT / (look.height * look.density) / this.camera.zoom);
+    }
     this.ui.refresh();
     for (const s of this._bubbles) s._updateBubble();
   }
@@ -454,7 +489,7 @@ export class Game {
 
   /**
    * Creates a new copy of a sprite (by name) and runs its onSpawn().
-   * props can set x, y, z, angle, heading, size, costume, visible and any custom fields.
+   * props can set x, y, angle, size, costume, visible and any custom fields.
    */
   spawn(name: string, props: Record<string, unknown> = {}): Sprite | null {
     const def = this.defs.get(name) ?? [...this.defs.values()].find((d) => d.name.toLowerCase() === String(name).toLowerCase());
@@ -488,13 +523,9 @@ export class Game {
     }
     sprite.isClone = true;
     // Copy the look and position, like a Scratch clone.
-    sprite.setPosition(src.x, src.y, src.z);
-    if (this.mode === '2d') {
-      sprite.rotationStyle = src.rotationStyle;
-      sprite.angle = src.angle;
-    } else {
-      sprite.heading = src.heading;
-    }
+    sprite.setPosition(src.x, src.y);
+    sprite.rotationStyle = src.rotationStyle;
+    sprite.angle = src.angle;
     sprite.size = src.size;
     sprite.costume = src.costume;
     sprite.flipX = src.flipX;
@@ -511,7 +542,7 @@ export class Game {
     }
     // Variables "for this sprite only": each copy gets its own.
     sprite.vars = { ...src.vars };
-    if (!src.body) sprite.velocity = { x: src.velocity.x, y: src.velocity.y, z: src.velocity.z };
+    if (!src.body) sprite.velocity = { x: src.velocity.x, y: src.velocity.y };
     applyProps(sprite, props);
     this.afterCreate(sprite);
     return sprite;
@@ -546,11 +577,6 @@ export class Game {
     return this.all.reduce((m, s) => Math.min(m, s.layer), 0);
   }
 
-  /** @internal */
-  _castShadow(mesh: AbstractMesh): void {
-    this.world?.addShadowCaster(mesh);
-  }
-
   /**
    * @internal Sprites a touching() check should consider. A copy deleted during this tick still
    * counts until the tick ends, so a star that deletes itself when it touches Amble is still seen
@@ -571,36 +597,29 @@ export class Game {
   }
 
   /** @internal Turns a target (sprite, name, "mouse", "random", point) into a position. */
-  _resolvePoint(target: TargetLike, self?: Sprite): { x: number; y: number; z: number } | null {
-    if (target instanceof Sprite) return target.destroyed ? null : { x: target.x, y: target.y, z: target.z };
+  _resolvePoint(target: TargetLike, self?: Sprite): Point | null {
+    if (target instanceof Sprite) return target.destroyed ? null : { x: target.x, y: target.y };
     if (typeof target === 'string') {
-      if (target === 'mouse') {
-        if (this.mode === '2d') return { x: this.input.mouse.x, y: this.input.mouse.y, z: 0 };
-        const p = this.mouseGround();
-        return p ? { x: p.x, y: p.y, z: p.z } : null;
-      }
+      if (target === 'mouse') return { x: this.input.mouse.x, y: this.input.mouse.y };
       if (target === 'random') {
-        if (this.mode === '2d') {
-          const v = this.camera.view();
-          return { x: this.random(v.left, v.right), y: this.random(v.bottom, v.top), z: 0 };
-        }
-        return { x: this.random(-10, 10), y: 0, z: this.random(-10, 10) };
+        const v = this.camera.view();
+        return { x: this.random(v.left, v.right), y: this.random(v.bottom, v.top) };
       }
       let best: Sprite | null = null;
       let bestD = Infinity;
       for (const s of this.all) {
         if (s === self || s.destroyed || s.name !== target) continue;
-        const d = self ? Math.hypot(s.x - self.x, s.y - self.y, s.z - self.z) : 0;
+        const d = self ? Math.hypot(s.x - self.x, s.y - self.y) : 0;
         if (d < bestD) {
           best = s;
           bestD = d;
         }
       }
       if (!best && !this.defs.has(target)) warnOnce(`No sprite named "${target}".`);
-      return best ? { x: best.x, y: best.y, z: best.z } : null;
+      return best ? { x: best.x, y: best.y } : null;
     }
     if (target && typeof target === 'object' && 'x' in target) {
-      return { x: Number(target.x) || 0, y: Number(target.y) || 0, z: Number((target as { z?: number }).z) || 0 };
+      return { x: Number(target.x) || 0, y: Number(target.y) || 0 };
     }
     return null;
   }
@@ -611,41 +630,29 @@ export class Game {
 
   private updateMouseWorld(): void {
     const m = this.input.mouse;
-    if (this.mode === '2d') {
-      m.x = this.camera.x + m.screenX / this.camera.zoom;
-      m.y = this.camera.y + m.screenY / this.camera.zoom;
-    } else {
-      m.x = m.screenX;
-      m.y = m.screenY;
-    }
+    m.x = this.camera.x + m.screenX / this.camera.zoom;
+    m.y = this.camera.y + m.screenY / this.camera.zoom;
   }
 
-  private canvasPoint(screenX: number, screenY: number): { x: number; y: number } {
-    const rect = this.host.canvas.getBoundingClientRect();
-    return {
-      x: ((screenX + STAGE_WIDTH / 2) / STAGE_WIDTH) * rect.width,
-      y: ((STAGE_HEIGHT / 2 - screenY) / STAGE_HEIGHT) * rect.height,
-    };
+  /** The frontmost visible sprite whose costume has a visible pixel at a point (stage coordinates). */
+  private spriteAtPoint(p: Point): Sprite | null {
+    const at = toWorld(p.x, p.y);
+    const order = this.all.map((s, i) => ({ s, i })).filter(({ s }) => !s.destroyed && s.visible && s._look());
+    order.sort((a, b) => b.s.layer - a.s.layer || b.i - a.i);
+    for (const { s } of order) {
+      const look = s._look()!;
+      const local = s._image.getLocalPoint(at.x, at.y);
+      const w = s._image.frame.width;
+      const h = s._image.frame.height;
+      if (local.x < 0 || local.y < 0 || local.x >= w || local.y >= h) continue;
+      const alpha = this.scene.textures.getPixelAlpha(Math.floor(local.x), Math.floor(local.y), look.key);
+      if (alpha === null || alpha > 8) return s;
+    }
+    return null;
   }
 
   private pickAt(canvasX: number, canvasY: number): Sprite | null {
-    const picks: PickingInfo[] =
-      this.scene.multiPick(canvasX, canvasY, (mesh) => {
-        const e = entityOfNode(mesh);
-        return Boolean(e && e instanceof Sprite && !e.destroyed && e.visible && mesh.isEnabled());
-      }) ?? [];
-    let best: Sprite | null = null;
-    let bestScore = -Infinity;
-    for (const p of picks) {
-      const e = entityOfNode(p.pickedMesh);
-      if (!(e instanceof Sprite)) continue;
-      const score = this.mode === '2d' ? e.layer * 1e6 + this.all.indexOf(e) : -p.distance;
-      if (score > bestScore) {
-        best = e;
-        bestScore = score;
-      }
-    }
-    return best;
+    return this.spriteAtPoint(this.stagePointAt(canvasX, canvasY));
   }
 
   /** Editor: the frontmost visible sprite at a canvas point (CSS pixels from the canvas's top left). */
@@ -653,42 +660,24 @@ export class Game {
     return this.pickAt(canvasX, canvasY);
   }
 
-  /** Editor (2D): the stage position under a canvas point (CSS pixels from the canvas's top left). */
-  stagePointAt(canvasX: number, canvasY: number): { x: number; y: number } {
+  /** Editor: the stage position under a canvas point (CSS pixels from the canvas's top left). */
+  stagePointAt(canvasX: number, canvasY: number): Point {
     const rect = this.host.canvas.getBoundingClientRect();
-    const screenX = (canvasX / rect.width) * STAGE_WIDTH - STAGE_WIDTH / 2;
-    const screenY = STAGE_HEIGHT / 2 - (canvasY / rect.height) * STAGE_HEIGHT;
+    const screenX = (canvasX / (rect.width || STAGE_WIDTH)) * STAGE_WIDTH - STAGE_WIDTH / 2;
+    const screenY = STAGE_HEIGHT / 2 - (canvasY / (rect.height || STAGE_HEIGHT)) * STAGE_HEIGHT;
     return { x: this.camera.x + screenX / this.camera.zoom, y: this.camera.y + screenY / this.camera.zoom };
   }
 
   /** @internal */
   _mouseOver(sprite: Sprite): boolean {
-    if (this.mode === '2d') {
-      const b = sprite.bounds();
-      const m = this.input.mouse;
-      return m.x >= b.left && m.x <= b.right && m.y >= b.bottom && m.y <= b.top;
-    }
-    const p = this.canvasPoint(this.input.mouse.screenX, this.input.mouse.screenY);
-    return this.pickAt(p.x, p.y) === sprite;
+    const b = sprite.bounds();
+    const m = this.input.mouse;
+    return m.x >= b.left && m.x <= b.right && m.y >= b.bottom && m.y <= b.top;
   }
 
-  /** 3D: the point on the ground plane (y = 0) under the mouse, or null. */
-  mouseGround(): Vector3 | null {
-    const p = this.canvasPoint(this.input.mouse.screenX, this.input.mouse.screenY);
-    const ray = this.scene.createPickingRay(p.x, p.y, Matrix.Identity(), this.camera.babylon);
-    const distance = ray.intersectsPlane(Plane.FromPositionAndNormal(Vector3.Zero(), Vector3.Up()));
-    return distance === null ? null : ray.origin.add(ray.direction.scale(distance));
-  }
-
-  /** @internal World point -> stage coordinates on screen (null if behind the camera). */
-  _toScreen(point: Vector3): { x: number; y: number } | null {
-    const engine = this.scene.getEngine();
-    const w = engine.getRenderWidth();
-    const h = engine.getRenderHeight();
-    const cam = this.camera.babylon;
-    const projected = Vector3.Project(point, Matrix.Identity(), this.scene.getTransformMatrix(), cam.viewport.toGlobal(w, h));
-    if (projected.z < 0 || projected.z > 1) return null;
-    return { x: (projected.x / w) * STAGE_WIDTH - STAGE_WIDTH / 2, y: STAGE_HEIGHT / 2 - (projected.y / h) * STAGE_HEIGHT };
+  /** @internal A stage point -> where it shows on the screen, in stage coordinates (-240..240, -180..180). */
+  _toScreen(point: Point): Point {
+    return { x: (point.x - this.camera.x) * this.camera.zoom, y: (point.y - this.camera.y) * this.camera.zoom };
   }
 
   // ---------------------------------------------------------------------------
@@ -760,24 +749,32 @@ export class Game {
     return answer;
   }
 
-  /** Physics settings: `this.game.physics.gravity = { y: -2000 }`. */
-  get physics(): { gravity: Vector3; raycast: PhysicsWorld['raycast'] } {
+  /**
+   * Physics settings: `this.game.physics.gravity = { y: -2000 }` (stage pixels per second squared, up is +);
+   * `raycast(from, to)` gives the first sprite in the way (or null); `matter` is Phaser's Matter.
+   */
+  get physics(): { gravity: Point; raycast(from: Point, to: Point): Sprite | null; readonly matter: Phaser.Physics.Matter.MatterPhysics } {
     const world = this._physics;
+    const scene = this.scene;
     return {
       get gravity() {
         return world.gravity;
       },
-      set gravity(g: Vector3) {
+      set gravity(g: Point) {
         world.gravity = g;
       },
-      raycast: world.raycast.bind(world),
+      raycast(from: Point, to: Point) {
+        return world.raycast(from, to).find((h) => h.owner && !h.owner.destroyed)?.owner ?? null;
+      },
+      get matter() {
+        return scene.matter;
+      },
     };
   }
 
   /** Background color behind everything ("#87ceeb"). */
   set background(color: string) {
-    const c = parseColor(color);
-    this.scene.clearColor = new Color4(c.r, c.g, c.b, 1);
+    this.scene.cameras.main.setBackgroundColor(parseColor(color));
   }
 
   get backdrop(): string {
@@ -794,8 +791,8 @@ export class Game {
       return;
     }
     this.backdropIndex = index;
-    const images = this.stageDef.costumes.filter((c): c is ImageCostume => c.kind === 'image');
-    if (this.backdropLayer) this.backdropLayer.texture = images[index].texture;
+    this.backdropImage?.setTexture(this.stageDef.costumes[index].key);
+    this._render();
     this.dispatch(`backdrop:${names[index]}`, names[index]);
   }
 
@@ -822,13 +819,11 @@ export class Game {
     return source ? this._cloneFrom(source, {}) : this.spawn(name);
   }
 
-  /** @internal In 2D, gravity lands on the bottom of the screen: an invisible, endless floor there. */
+  /** @internal Gravity lands on the bottom of the screen: an invisible, endless floor there. */
   _ensureFloor(): void {
-    if (this.floor || this.mode !== '2d') return;
+    if (this.floor) return;
     const depth = 100;
-    this.floor = new BABYLON.TransformNode('amble-floor', this.scene);
-    this.floor.position.set(0, -STAGE_HEIGHT / 2 - depth / 2, 0);
-    this._physics.createBody(this.floor, { width: 200000, height: depth, depth: 400 }, BABYLON.Vector3.Zero(), { type: 'static' });
+    this.floor = this._physics.createBody(null as unknown as Sprite, { x: 0, y: -STAGE_HEIGHT / 2 - depth / 2 }, { width: 200000, height: depth }, 0, { type: 'static' });
   }
 
   /** @internal A check block found its condition false: tell the author once per game. */
@@ -841,7 +836,7 @@ export class Game {
 
   /** @internal */
   _backdropNames(): string[] {
-    return this.stageDef.costumes.filter((c) => c.kind === 'image').map((c) => c.name);
+    return this.stageDef.costumes.map((c) => c.name);
   }
 
   /** Plays a sound as looping background music (one at a time). `music(null)` stops it. */
@@ -874,25 +869,16 @@ export class Game {
     return null;
   }
 
-  /** Babylon's namespace, for anything the helpers don't cover. */
-  get BABYLON(): typeof BABYLON {
-    return BABYLON;
+  /** Phaser's namespace, for anything the helpers don't cover (also a global in game code). */
+  get Phaser(): typeof Phaser {
+    return this.host.Phaser;
   }
 }
 
-const RESERVED_FIELDS = new Set(['game', 'name', 'id', 'node', 'isClone']);
-
-function entityOfNode(node: { metadata?: unknown; parent?: unknown } | null | undefined): Entity | null {
-  let n = node as { metadata?: { amble?: Entity }; parent?: unknown } | null | undefined;
-  while (n) {
-    if (n.metadata?.amble) return n.metadata.amble;
-    n = n.parent as typeof n;
-  }
-  return null;
-}
+const RESERVED_FIELDS = new Set(['game', 'name', 'id', 'isClone', 'image']);
 
 function applyProps(sprite: Sprite, props: Record<string, unknown>): void {
-  const order = ['size', 'costume', 'rotationStyle', 'angle', 'heading', 'x', 'y', 'z'];
+  const order = ['size', 'costume', 'rotationStyle', 'angle', 'x', 'y'];
   const keys = Object.keys(props).sort((a, b) => {
     const ia = order.indexOf(a);
     const ib = order.indexOf(b);

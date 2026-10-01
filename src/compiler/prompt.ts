@@ -24,7 +24,7 @@ Reply with the BODY of each piece's method only (no signature, no braces around 
 - message: body of \`piece()\` that returns the text for the end-of-game banner ("" for none).
 - behavior: body of \`*piece()\`, started for the sprite and for each copy of it when the game starts. It runs in the background all game, usually \`for (;;) { ...; yield; }\`.
 - rule: body of \`*piece()\`, started once when the game starts. Make the rule true for the whole game: set things up, then watch in a \`for (;;) { ...; yield; }\` loop if needed.
-- art style: a rule for the look of the whole game, in that style: set up the world when the game starts (in 3D the sky, ground, light, fog and scenery built from shapes, like trees or rocks; in 2D the background and decorations) and give the sprites' 3D models and shapes matching materials and colors. Keep the author's own costumes and backdrops as they are; new art is made in this style anyway.
+- art style: a rule for the look of the whole game, in that style: set it up when the game starts with Phaser (see below): the background behind the sprites (gradients, layered hills or skylines, decorations, moving particles like stars, snow or fireflies) and a mood for the whole picture (camera effects like a soft glow or vignette). Keep the author's own costumes and backdrops as they are; new art is made in this style anyway.
 Pieces of one sprite share its fields (this.something). Reuse the names in the code already written for that sprite. Give any field you add a starting value before using it (e.g. \`this.speed ??= 200\`).
 Only the engine API below: no imports, DOM, network, timers or async.
 
@@ -33,8 +33,10 @@ A piece is a method of the sprite (or the stage) whose block holds it, but words
 The pieces already written can change too. When what you write (or a new brief) means one of them must work differently, rewrite it: put it in "pieces" with its id (e.g. "e2") and its whole new body. Leave out the ones that stay the same (don't copy them back).`;
 
 const COMMON_API = `# Amble engine API
+The game is 2D and runs on Phaser 3 (3.90). Amble's API below covers most games; for anything more elaborate, use Phaser directly (see "Phaser" at the end).
 Each sprite is \`class <ClassName> extends Sprite { ... }\`; the stage is \`class <ClassName> extends Stage { ... }\`. You never construct them: the engine creates one instance per sprite at its editor position/size/costume/visibility, plus any clones. Use the class names given in the project. Prefer start() over constructors (if you write a constructor it must be \`constructor(...a) { super(...a); ... }\`).
 
+Space: the screen shows 480 x 360 pixels around the camera. Units are pixels; (0, 0) is the center of the starting view; +x right, +y up. Angles are degrees counter-clockwise (0 = facing right, 90 = up).
 Timing: logic runs in fixed ticks, exactly 60 per second, identical on every computer. Move things by speed * dt.
 
 Hooks (all optional):
@@ -62,32 +64,36 @@ Coroutines (game clock): inside generators
   this.after(seconds, fn), this.every(seconds, fn)   timers on the game clock; return { cancel() }
   Any loop that spans frames must \`yield\` each iteration. Never use async/await, Promises, setTimeout or setInterval.
 
-Motion (details per world below):
-  this.moveForward(d), this.turn(degrees), this.pointTowards(target), this.directionTo(target), this.distanceTo(target)
-  this.moveTowards(target, step) -> true on arrival;  this.goTo(target);  this.setPosition(x, y, z?)
-  target = a Sprite, a sprite name (the nearest one), "mouse", "random", or { x, y, z }
-  this.velocity  {x, y, z} in units/second. Works with or without physics (without physics the engine moves the sprite by velocity*dt each tick). Set parts (this.velocity.x = 200) or all (this.velocity = { x: 0, y: 300 }).
+Motion:
+  this.x, this.y, this.setPosition(x, y); this.angle; this.rotationStyle = "all around" | "left-right" | "don't rotate"; this.flipX
+  this.moveForward(d), this.moveSideways(d), this.turn(degrees), this.pointTowards(target), this.directionTo(target), this.distanceTo(target)
+  this.moveTowards(target, step) -> true on arrival;  this.goTo(target)
+  target = a Sprite, a sprite name (the nearest one), "mouse", "random", or { x, y }
+  this.velocity  {x, y} in pixels/second. Works with or without physics (without physics the engine moves the sprite by velocity*dt each tick). Set parts (this.velocity.x = 200) or all (this.velocity = { x: 0, y: 300 }).
+  this.touching("edge"), this.isOffStage(), this.keepOnStage(), this.bounceOffEdges() use the visible area.
 
 Looks:
   this.costume = "name" (read: current costume name); this.costumes (names); this.nextCostume()
   this.animate(["walk1", "walk2"], fps = 8, loop = true) / this.animate() for all costumes; this.stopAnimation()
   this.visible, this.show(), this.hide(); this.size (percent, 100 = natural size); this.opacity (0..1); this.tint = "#ff8080" or null
+  this.layer (higher draws in front), this.bringToFront(), this.sendToBack()
   this.say(text) (null/"" clears); yield* this.sayFor(text, seconds)
-  this.node: the sprite's Babylon TransformNode (parent your own meshes to it); this.mesh: the current costume's mesh
+  this.image: the Phaser Image that draws the sprite (for Phaser effects, e.g. this.image.postFX.addGlow(0xffee88, 4))
 
 Sensing:
   this.touching("SpriteName" | sprite | [list] | undefined) -> the touching Sprite or null. No physics needed; hidden sprites are ignored.
   this.touching("mouse") -> boolean
   this.game.input.isDown(key), .wasPressed(key) (went down this tick), .wasReleased(key), .axis("horizontal" | "vertical") -> -1..1 from arrow keys and WASD
   this.game.input.mouse -> { x, y, down, clicked (this tick), dx, dy, wheel }
-  this.isOnGround() -> standing on something (with physics) or on the ground plane (3D)
+  this.isOnGround() -> standing on something solid (needs physics)
 
-Physics (Havok):
+Physics (Matter):
   this.addPhysics({ type: "dynamic" | "static" | "kinematic", shape: "box" | "circle" | "capsule", mass, friction, bounce, fixedRotation, gravity, sensor, damping, scale })
     dynamic: moved by physics. static: floors, walls, platforms. kinematic: moved by your code (set position or velocity), pushes dynamic bodies. sensor: detects overlaps only.
     Characters that must not tip over: fixedRotation: true. The collider matches the current costume and size (call addPhysics after setting size).
-  this.velocity, this.applyImpulse(x, y, z?), this.applyForce(x, y, z?), this.removePhysics(), this.body (Babylon PhysicsBody)
-  this.game.physics.gravity = { y: ... }
+  this.velocity, this.applyImpulse(x, y), this.applyForce(x, y), this.removePhysics(), this.body (the Matter body)
+  this.game.physics.gravity = { y: -1600 } (pixels/second², up is +; 1600 down by default); this.game.physics.raycast(from, to) -> the first sprite in the way or null
+  Good numbers: walk 150-300 px/s, jump velocity 550-750, bullets 400-700 px/s.
 
 Sprites and clones:
   this.clone(props?)  a copy of this sprite (copies position/look/fields, then runs its onSpawn). this.game.spawn("Name", { x, y, ... })  a new copy of any sprite (runs onSpawn). this.destroy()
@@ -97,10 +103,9 @@ Sprites and clones:
 Sound: this.playSound(name, { volume, pitch, loop }) -> { stop() }; yield* this.playSoundUntilDone(name); this.stopSounds(); this.game.music(name) loops music (null stops); this.game.stopAllSounds()
 
 Ready-made behaviors (the exact blocks use these; you can too):
-  this.walkWith(controls, speed)   the player steers this sprite from now on. controls: "arrow keys" | "left and right arrows" | "WASD" | "A and D" | "the mouse"; speed in steps per second
+  this.walkWith(controls, speed)   the player steers this sprite from now on. controls: "arrow keys" | "left and right arrows" | "WASD" | "A and D" | "the mouse"; speed in steps (pixels) per second
   this.jumpWith(key, strength)     the key makes it jump when it stands on something (turns on gravity); strength in steps per second
-  this.fallWithGravity(), this.beSolid()   gravity (in 2D the bottom of the screen is solid) / something others stand on
-  Blocks measure distance in steps: pixels in 2D, and 100 steps = 1 meter in 3D.
+  this.fallWithGravity(), this.beSolid()   gravity (the bottom of the screen is solid) / something others stand on
 
 Variables: the author's variables "for all sprites" are this.game.vars["name"]; "for this sprite only" are this.vars["name"] (each copy has its own). this.game.lastAnswer is what the player typed at the last ask.
 
@@ -111,49 +116,41 @@ The game (this.game):
   ui.text(id, text, { x, y, size, color, align, background, bold })  on-screen text in screen coordinates (x -240..240, y -180..180, 0,0 = center). ui.hide(id), ui.remove(id)
   ui.value(label, () => value, { x, y })  a live value box (score, lives...), stacked top-left by default
   ui.button(id, label, { x, y, size, background }, () => { ... })
-  effects.burst({ x, y, z, color, count, speed, size, lifetime, gravity })  particle burst
+  effects.burst({ x, y, color, count, speed, size, lifetime, gravity })  particle burst
+  camera: follow(sprite, { smooth: 0.85, bounds: { minX, maxX, minY, maxY }, offsetX, offsetY }) for scrolling worlds; x, y, zoom (1 = normal); shake(strength, seconds); view() -> { left, right, top, bottom }; phaser (Phaser's camera: flash(ms, r, g, b), fade, postFX). The backdrop stays fixed behind everything.
   backdrop (get/set by name), nextBackdrop(), background = "#rrggbb" (color behind everything)
-  scene (the BABYLON.Scene), BABYLON (namespace: MeshBuilder, StandardMaterial, PBRMaterial, Color3, Color4, Vector3, Quaternion, DynamicTexture, ParticleSystem, GlowLayer, TrailMesh, Animation, PhysicsAggregate, PhysicsShapeType...). Vector3 and Color3 are also globals.
-  The Stage class also has this.backdrop, this.backdrops, this.nextBackdrop().`;
+  The Stage class also has this.backdrop, this.backdrops, this.nextBackdrop().
 
-const API_2D = `# 2D world (this project)
-- The screen shows 480 x 360 pixels around the camera. Units are pixels; (0, 0) is the center of the starting view; +x right, +y up.
-- this.x, this.y; this.angle in degrees counter-clockwise (0 = facing right, 90 = up); this.rotationStyle = "all around" | "left-right" | "don't rotate"; this.flipX; this.layer (higher draws in front), this.bringToFront(), this.sendToBack()
-- this.touching("edge"), this.isOffStage(), this.keepOnStage(), this.bounceOffEdges() use the visible area.
-- Physics gravity is 1600 px/s² downward. Good numbers: walk 150-300 px/s, jump velocity 550-750, bullets 400-700 px/s.
-- Camera: this.game.camera.follow(sprite, { smooth: 0.85, bounds: { minX, maxX, minY, maxY }, offsetX, offsetY }) for scrolling worlds; camera.x, camera.y, camera.zoom (1 = normal), camera.shake(strength, seconds), camera.view() -> { left, right, top, bottom }. The backdrop stays fixed behind everything.
-- Sprites are flat images (their costumes). Extra shapes from code: e.g. BABYLON.MeshBuilder.CreatePlane / CreateDisc with a StandardMaterial (disableLighting = true, emissiveColor = color), at z = 0, mesh.alphaIndex = a high number to draw on top. Prefer costumes (existing or new assets) for anything that looks like a character or object.
-- Floors and platforms in a platformer: sprites with addPhysics({ type: "static" }); or invisible walls built from code with BABYLON.PhysicsAggregate.`;
-
-const API_3D = `# 3D world (this project)
-- Units are meters; +y is up; the ground is at y = 0. The default camera looks from behind (-z) toward +z; +x is to the right.
-- this.x, this.y, this.z; this.heading in degrees around the up axis (0 = facing +z, 90 = facing +x; turn(positive) turns right); this.pitch, this.roll; this.moveForward(d), this.moveSideways(d) (+ = right).
-- A sprite's position is at its feet. Image costumes are upright cutouts that always face the camera (100 image pixels = 1 m, so size 100 of a 180 px tall costume is 1.8 m). Model costumes are real 3D models.
-- Default world: gradient sky, sun with shadows, ambient light, and a 200 m grass ground with physics. Change it with this.game.world:
-  world.sky("#87ceeb" | ["#top", "#horizon"]), world.ground({ size, color, grid } | false), world.fog(color | false, density), world.sunlight({ direction: [x, y, z], intensity, color }), world.ambient(intensity, color?), world.shadows(bool), world.addShadowCaster(mesh), world.groundMesh
-- Camera: camera.follow(sprite, { distance: 7, height: 3, smooth: 0.85, lookHeight: 1 }) third person behind the sprite's heading; camera.firstPerson(sprite, { height: 1.6, mouseLook: true }) (click to capture the mouse; the mouse turns the sprite's heading; camera.lookPitch is the up/down look); camera.orbit(target, { distance, height, speed }); camera.position = { x, y, z }; camera.lookAt(x, y, z); camera.fov; camera.shake(strength, seconds); camera.babylon
-- Physics gravity is 20 m/s² downward. Good numbers: walk 4-6 m/s, run 8-10, jump velocity 7-9.
-- Typical player: start() { this.addPhysics({ shape: "capsule", fixedRotation: true }); this.game.camera.follow(this); } update(dt) { const f = this.game.input.axis("vertical") * 5; this.turn(this.game.input.axis("horizontal") * 150 * dt); const h = this.heading * Math.PI / 180; this.velocity.x = Math.sin(h) * f; this.velocity.z = Math.cos(h) * f; }  (keep velocity.y so gravity works)
-- this.game.mouseGround() -> the point on the ground under the mouse (or null).
-- Build level geometry and scenery in code with BABYLON.MeshBuilder (CreateBox, CreateCylinder, CreateSphere, CreateGround, CreateTorus...) and StandardMaterial/PBRMaterial colors. Call this.game.world.addShadowCaster(mesh) so they cast shadows, set mesh.receiveShadows = true, and make solid ones collidable with new BABYLON.PhysicsAggregate(mesh, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, this.game.scene).`;
+# Phaser (for anything more elaborate)
+this.game.scene is the Phaser.Scene the game runs in, and \`Phaser\` is a global. Use them freely for what the API above doesn't cover:
+- Drawing: scene.add.graphics() (fillStyle, fillGradientStyle, fillRect, fillRoundedRect, fillCircle, lineStyle, strokePath...), scene.add.rectangle / ellipse / star / polygon, scene.add.text(x, y, text, style), scene.add.tileSprite (repeating backgrounds; scroll with tilePositionX), scene.add.image(x, y, sprite.image.texture.key) to reuse a costume.
+- Particles: scene.add.particles(x, y, "amble-dot", { speed, lifespan, scale, alpha, tint, frequency, quantity, gravityY, blendMode: "ADD", follow: sprite.image... }) for rain, snow, sparkles, trails, fire, smoke. "amble-dot" is a soft white dot; tint it.
+- Effects (WebGL): sprite.image.postFX.addGlow(color, strength), addShadow(), addBloom(), addVignette(), addBlur(); camera.phaser.postFX.addVignette(...), addBloom(...), addColorMatrix().grayscale(); camera.phaser.flash(250), camera.phaser.fade(...).
+- Tweens: scene.tweens.add({ targets, props or fields, duration (ms), ease: "Sine.easeInOut", yoyo, repeat: -1 }) for visual polish (pulsing, bobbing, color). Keep game logic and timing on Amble's clock (coroutines, this.after, this.every).
+- Physics for your own shapes: scene.matter.add.rectangle(wx, wy, w, h, { isStatic: true }) for level geometry, slopes (scene.matter.add.fromVertices), constraints and chains (scene.matter.add.constraint, scene.matter.add.chain).
+- Coordinates: Phaser objects use world pixels with y down and (0, 0) at the starting view's top left: worldX = x + 240, worldY = 180 - y for a stage point (x, y). Phaser rotation is in radians, clockwise.
+- Depth: sprites draw at their layer (small numbers); setDepth(-10) puts your drawing behind the sprites (the backdrop is further back still) and setDepth(100) in front. setScrollFactor(0) pins something to the screen, setScrollFactor(0.3) makes a slow parallax layer.
+- Everything you add is cleaned up when the game stops. No loading files or network: make art from shapes, graphics, particles and the costumes you have (or new assets).`;
 
 const OUTPUT_RULES = `# Characters, art and sound
 - Use costume, backdrop and sound names exactly as listed. Only use names that exist or that you add to assets.
-- If a piece needs a character that doesn't exist (enemies, coins, bullets...), add it to "sprites" with its whole class (\`class <Name> extends Sprite { ... }\`, same API, hooks like start() and update(dt)) and give it a costume (or a model in 3D) in "assets" with the new sprite's name as the target.
-- assets: art, 3D models and sounds your code uses that don't exist yet. They are made from your description, in the game's art style.
-  - costume: 2D image (in 3D an upright cutout); width/height in pixels (16..400). backdrop: 480 x 360 in 2D. model (3D only): made of primitive shapes; width/height in meters. sound: width = height = 0.
+- If a piece needs a character that doesn't exist (enemies, coins, bullets...), add it to "sprites" with its whole class (\`class <Name> extends Sprite { ... }\`, same API, hooks like start() and update(dt)) and give it a costume in "assets" with the new sprite's name as the target.
+- assets: art and sounds your code uses that don't exist yet. They are made from your description, in the game's art style.
+  - costume: an image; width/height in pixels (16..400). backdrop: 480 x 360. sound: width = height = 0.
   - Describe colors, shapes, style and pose specifically (e.g. "a round red apple with a green leaf, side view").
   - Earlier compiled assets are kept; list one again only to replace it.`;
 
-export function piecesSystemPrompt(mode: WorldMode): string {
-  return [INTRO, COMMON_API, mode === '3d' ? API_3D : API_2D, OUTPUT_RULES].join('\n\n');
+/** The compile request's system prompt. Every game is 2D now; `mode` is left over from 3D projects. */
+export function piecesSystemPrompt(mode?: WorldMode): string {
+  void mode;
+  return [INTRO, COMMON_API, OUTPUT_RULES].join('\n\n');
 }
 
 // -----------------------------------------------------------------------------
 // Class names
 // -----------------------------------------------------------------------------
 
-const RESERVED = new Set(['Sprite', 'Stage', 'BABYLON', 'Vector3', 'Color3', 'Math', 'Object', 'Array', 'String', 'Number', 'Game', 'Date', 'JSON', 'Map', 'Set']);
+const RESERVED = new Set(['Sprite', 'Stage', 'Phaser', 'Math', 'Object', 'Array', 'String', 'Number', 'Game', 'Date', 'JSON', 'Map', 'Set']);
 
 function pascal(name: string): string {
   const words = name.normalize('NFKD').replace(/[^\w\s]/g, ' ').split(/[\s_]+/).filter(Boolean);
@@ -192,11 +189,11 @@ export function classNameFor(name: string, taken: Set<string>): string {
 // The compile request: the project, and the pieces to write
 // -----------------------------------------------------------------------------
 
-function describeCostume(c: CostumeAsset, mode: WorldMode): string {
-  if (c.kind === 'model') return `"${c.name}" (3D model${c.recipe ? '' : ', uploaded .glb'})`;
-  const w = Math.round(c.width / (c.resolution || 1));
-  const h = Math.round(c.height / (c.resolution || 1));
-  return mode === '3d' ? `"${c.name}" (${w}x${h} px image, ${(h / 100).toFixed(2)} m tall as a cutout)` : `"${c.name}" (${w}x${h} px)`;
+function describeCostume(c: CostumeAsset): string {
+  const size = c as { width?: number; height?: number; resolution?: number };
+  const w = Math.round((size.width ?? 0) / (size.resolution || 1));
+  const h = Math.round((size.height ?? 0) / (size.resolution || 1));
+  return `"${c.name}" (${w}x${h} px)`;
 }
 
 function describeSound(s: SoundAsset): string {
@@ -226,18 +223,17 @@ export interface PiecesPromptInput {
 
 function describeTarget(t: Target, plan: TargetPlan, input: PiecesPromptInput, ids: ReadonlyMap<string, string>, marks: ReadonlyMap<string, string>): string {
   const lines: string[] = [];
-  const mode = input.project.mode;
   lines.push(t.kind === 'stage' ? `## Stage (class ${plan.className})` : `## Sprite "${t.name}" (class ${plan.className})`);
   if (t.description.trim()) lines.push(`About it: ${t.description.trim()}`);
   if (t.kind === 'sprite') {
     const s = t as SpriteTarget;
     if (s.variables?.length) lines.push(`Variables for this sprite only: ${s.variables.map((v) => `"${v}"`).join(', ')}`);
-    const pos = mode === '3d' ? `x=${s.x}, y=${s.y}, z=${s.z}, heading ${s.direction}°` : `x=${s.x}, y=${s.y}, direction ${s.direction}°, rotation style "${s.rotationStyle}"`;
+    const pos = `x=${s.x}, y=${s.y}, direction ${s.direction}°, rotation style "${s.rotationStyle}"`;
     lines.push(`Starts at ${pos}, size ${s.size}%, ${s.visible ? 'visible' : 'hidden'}`);
   }
   const label = t.kind === 'stage' ? 'Backdrops' : 'Costumes';
   const current = t.costumes[t.currentCostume]?.name;
-  lines.push(`${label}: ${t.costumes.length ? t.costumes.map((c) => describeCostume(c, mode)).join(', ') : '(none)'}${current ? `; current: "${current}"` : ''}`);
+  lines.push(`${label}: ${t.costumes.length ? t.costumes.map((c) => describeCostume(c)).join(', ') : '(none)'}${current ? `; current: "${current}"` : ''}`);
   lines.push(`Sounds: ${t.sounds.length ? t.sounds.map(describeSound).join(', ') : '(none)'}`);
   const { text } = serializeBlocks(t.blocks, {
     mark: (b) => {
@@ -280,7 +276,7 @@ export function piecesUserPrompt(input: PiecesPromptInput): string {
   const marks = new Map([...tasks, ...revisable].map((t) => [t.request.key, t.id]));
   const parts: string[] = [];
   parts.push(`Game title: ${project.title || 'Untitled'}`);
-  parts.push(project.mode === '3d' ? 'World: 3D' : 'World: 2D (480 x 360 stage)');
+  parts.push('World: 2D (480 x 360 stage)');
   if (project.notes.trim()) parts.push(`The author's notes: ${project.notes.trim()}`);
   const brief = plans.flatMap((p) => p.brief);
   if (brief.length) parts.push(['Brief:', ...brief.map((b) => `- ${b}`)].join('\n'));
@@ -335,7 +331,7 @@ export function svgPrompt(opts: {
 Rules:
 - The root <svg> must have xmlns="http://www.w3.org/2000/svg", width, height and viewBox="0 0 W H" exactly as requested.
 - ${opts.kind === 'backdrop' ? 'Fill the whole canvas (it is a background). Keep it simple enough that sprites stand out in front of it.' : 'Transparent background: do not draw a background rectangle. The subject should fill most of the canvas with about 4 px margin.'}
-- ${opts.kind === 'costume' && opts.mode === '2d' ? 'Characters and vehicles face right unless told otherwise.' : ''}${opts.kind === 'costume' && opts.mode === '3d' ? 'This image becomes an upright cardboard cutout in a 3D world: show the subject from the front, standing, with its feet/base on the bottom edge.' : ''}
+- ${opts.kind === 'costume' ? 'Characters and vehicles face right unless told otherwise.' : ''}
 - Only use basic SVG elements (path, rect, circle, ellipse, polygon, polyline, line, g, linearGradient/radialGradient). No <image>, <foreignObject>, <script>, external references, CSS files or fonts.
 - Keep it under 12 KB.`;
   const user = `Game: ${opts.gameTitle}
@@ -348,7 +344,7 @@ export function imagePrompt(opts: { kind: 'costume' | 'backdrop'; mode: WorldMod
   if (opts.kind === 'backdrop') {
     return `A colorful 2D video game background for "${opts.gameTitle}": ${opts.description}. Flat, friendly cartoon style like Scratch, clean shapes, no text, no characters in the foreground.`;
   }
-  return `A single game sprite for "${opts.gameTitle}": ${opts.description}. Flat cartoon style like Scratch costumes, bold clean outlines, bright colors, centered, ${opts.mode === '3d' ? 'front view, standing, full body' : 'side view facing right'}, isolated on a transparent background, no text, no shadow on the ground.`;
+  return `A single game sprite for "${opts.gameTitle}": ${opts.description}. Flat cartoon style like Scratch costumes, bold clean outlines, bright colors, centered, side view facing right, isolated on a transparent background, no text, no shadow on the ground.`;
 }
 
 export function modelPrompt(opts: { description: string; width: number; height: number; spriteName: string; gameTitle: string }): {

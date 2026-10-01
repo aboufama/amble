@@ -10,22 +10,9 @@ export interface PlayerHandlers {
 
 const base = (): string => new URL(import.meta.env?.BASE_URL ?? '/', window.location.href).href;
 
-/** URL of the bundled player runtime (Babylon.js + Havok + Amble engine). */
+/** URL of the bundled player runtime (Phaser + the Amble engine). */
 export function playerScriptUrl(): string {
   return new URL('amble-player.js', base()).href;
-}
-
-export function havokWasmUrl(): string {
-  return new URL('amble-havok.wasm', base()).href;
-}
-
-let havokBytes: Promise<ArrayBuffer> | null = null;
-export function loadHavokWasm(): Promise<ArrayBuffer> {
-  havokBytes ??= fetch(havokWasmUrl()).then((r) => {
-    if (!r.ok) throw new Error(`Could not load the physics engine (${r.status})`);
-    return r.arrayBuffer();
-  });
-  return havokBytes;
 }
 
 /**
@@ -77,20 +64,17 @@ export class PlayerHost {
     window.addEventListener('message', this.onMessage);
     window.addEventListener('pointerup', this.onPointerUp, true);
     container.append(iframe);
-    void loadHavokWasm().catch((err: Error) => handlers.onError?.({ message: err.message, phase: 'load' }));
   }
 
   private handle(msg: FromPlayer): void {
     switch (msg.type) {
-      case 'hello':
-        void loadHavokWasm().then((bytes) => {
-          this.post({ type: 'init', havokWasm: bytes.slice(0) });
-          this.ready = true;
-          const queued = this.queue;
-          this.queue = [];
-          queued.forEach((m) => this.post(m));
-        });
+      case 'hello': {
+        this.ready = true;
+        const queued = this.queue;
+        this.queue = [];
+        queued.forEach((m) => this.post(m));
         break;
+      }
       case 'loaded':
         this.handlers.onLoaded?.();
         break;
@@ -113,13 +97,11 @@ export class PlayerHost {
   }
 
   private post(msg: ToPlayer): void {
-    const payload = { channel: CHANNEL, ...msg };
-    if (msg.type === 'init') this.iframe.contentWindow?.postMessage(payload, '*', [msg.havokWasm]);
-    else this.iframe.contentWindow?.postMessage(payload, '*');
+    this.iframe.contentWindow?.postMessage({ channel: CHANNEL, ...msg }, '*');
   }
 
   private send(msg: ToPlayer): void {
-    if (!this.ready && msg.type !== 'init') {
+    if (!this.ready) {
       if (msg.type === 'load') {
         // Only the newest package matters, but a queued "start" must not be lost.
         const queued = this.queue.find((m): m is Extract<ToPlayer, { type: 'load' }> => m.type === 'load');

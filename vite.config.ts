@@ -2,7 +2,6 @@
 import { defineConfig, loadEnv, type Plugin, type Connect } from 'vite';
 import react from '@vitejs/plugin-react';
 import { build } from 'esbuild';
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
@@ -10,14 +9,12 @@ import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * The game player (Babylon.js + Havok + the Amble engine) runs inside a sandboxed
- * iframe with an opaque origin. It is bundled separately into a classic script,
- * `amble-player.js`, which the iframe loads with a plain <script src> (no CORS
- * needed). The Havok WebAssembly binary is handed to the iframe by the editor.
+ * The game player (Phaser + the Amble engine) runs inside a sandboxed iframe with an
+ * opaque origin. It is bundled separately into a classic script, `amble-player.js`,
+ * which the iframe loads with a plain <script src> (no CORS needed).
  */
 function playerRuntime(): Plugin {
   const entry = path.join(root, 'src/engine/index.ts');
-  const havokWasm = path.join(root, 'node_modules/@babylonjs/havok/lib/esm/HavokPhysics.wasm');
   let cached: Promise<string> | null = null;
 
   const bundle = async (minify: boolean): Promise<string> => {
@@ -60,17 +57,11 @@ function playerRuntime(): Plugin {
           );
           return;
         }
-        if (url === '/amble-havok.wasm') {
-          res.setHeader('content-type', 'application/wasm');
-          res.end(readFileSync(havokWasm));
-          return;
-        }
         next();
       });
     },
     async generateBundle() {
       this.emitFile({ type: 'asset', fileName: 'amble-player.js', source: await bundle(true) });
-      this.emitFile({ type: 'asset', fileName: 'amble-havok.wasm', source: readFileSync(havokWasm) });
     },
   };
 }

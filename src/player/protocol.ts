@@ -85,7 +85,6 @@ export const STAGE_HEIGHT = 360;
 
 /** Messages the editor sends to the player. */
 export type ToPlayer =
-  | { type: 'init'; havokWasm: ArrayBuffer }
   | { type: 'load'; pkg: RunPackage; start: boolean }
   | { type: 'greenFlag' }
   | { type: 'stop' }
