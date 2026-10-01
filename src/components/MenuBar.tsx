@@ -6,7 +6,7 @@ import { pickFile } from '../project/importers';
 import { EXAMPLES, blankProject } from '../project/examples';
 import { blankBackdrop } from '../project/defaults';
 import type { Project, WorldMode } from '../project/types';
-import { compile, signInWithChatGpt } from '../actions';
+import { buildNow, compile, signInWithChatGpt } from '../actions';
 import { confirmUser } from '../prompt';
 import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
 import { DEV_TOOLS } from './ProblemsDialog';
@@ -136,8 +136,8 @@ export function MenuBar() {
                   <button
                     role="menuitem"
                     onClick={act(async () => {
-                      if (!useStore.getState().project.compiled) notify('Compile first: the web page contains the compiled game.');
-                      await exportGameHtml(useStore.getState().project);
+                      // The page holds the game as built: build what changed first.
+                      await exportGameHtml(await buildNow());
                     })}
                   >
                     Export playable web page
@@ -220,7 +220,7 @@ export function MenuBar() {
                 if (mode === m) return;
                 void confirmUser({
                   title: `Switch to ${m.toUpperCase()}`,
-                  message: `Switch this project to ${m.toUpperCase()}? Sprite positions are converted, and you'll need to compile again.`,
+                  message: `Switch this project to ${m.toUpperCase()}? Sprite positions are converted, and your blocks build again.`,
                   confirmLabel: 'Switch',
                 }).then((ok) => ok && update((p) => switchMode(p, m)));
               }}

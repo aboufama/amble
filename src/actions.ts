@@ -124,14 +124,14 @@ export function needsCompile(project: Project): boolean {
  * request, which may also rewrite other words to fit. `fresh` starts over: every word is written
  * again and the compiled art is made again, so it can come out different.
  */
-export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean; fresh?: boolean; quiet?: boolean } = {}): Promise<void> {
+export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean; fresh?: boolean; quiet?: boolean; play?: boolean } = {}): Promise<void> {
   if (controller) return;
   const store = useStore.getState();
   const project = store.project;
   controller = new AbortController();
   const loads = store.projectLoads;
   quietBuild = Boolean(opts.quiet);
-  playWhenBuilt = !opts.quiet;
+  playWhenBuilt = !opts.quiet && opts.play !== false;
   // Instant compiles don't show progress: the game just starts.
   const instant = !fixProblems?.length && !opts.fresh && !compileNeedsRequest(project);
   const building = instant ? [] : piecesToWrite(project, Boolean(opts.fresh || fixProblems?.length));
@@ -140,7 +140,7 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
     progress: instant ? null : { stage: 'preparing', message: 'Reading your blocks' },
     error: null,
     building,
-    forPlay: !opts.quiet,
+    forPlay: playWhenBuilt,
     failed: [],
   });
   const done = (compiled: CompiledGame) => {
@@ -178,10 +178,7 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
       // Words wait for an account (their blocks say so); the flag still plays everything else.
       s.setNeedsAccount(true);
       if (opts.quiet && !playWhenBuilt) s.setCompile({ status: 'idle', progress: null, building: [], forPlay: false });
-      else {
-        playWhenBuilt = true;
-        done(await compileProject(project, { settings: s.settings, offline: true }));
-      }
+      else done(await compileProject(project, { settings: s.settings, offline: true }));
     } else if (opts.quiet && !playWhenBuilt) {
       // Building after typing never interrupts: problems show when the flag builds again.
       console.warn('Building in the background stopped:', err);
@@ -195,6 +192,14 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
     controller = null;
     quietBuild = false;
   }
+}
+
+/** Builds what changed without starting the game (e.g. to export it), and returns the project as built. */
+export async function buildNow(): Promise<Project> {
+  while (controller) await new Promise((r) => window.setTimeout(r, 100));
+  const s = useStore.getState();
+  if (needsCompile(s.project) || (compileNeedsRequest(s.project) && !s.needsAccount)) await compile(undefined, { play: false });
+  return useStore.getState().project;
 }
 
 export function cancelCompile(): void {

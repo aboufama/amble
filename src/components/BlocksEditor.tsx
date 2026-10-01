@@ -11,6 +11,7 @@ import { alertUser, askUser, confirmUser } from '../prompt';
 import type { BlocksState } from '../project/types';
 import { CodeIcon, KeepIcon } from './icons';
 import { CodeNotes } from './CodeNotes';
+import { DEV_TOOLS } from './ProblemsDialog';
 import { oneLine } from '../compiler/serialize';
 
 // Blockly's own questions ("Delete all 7 blocks?", text prompts on touch screens) use Amble's
@@ -423,7 +424,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
             {compiledSprite.sprite.description && <p>{compiledSprite.sprite.description}</p>}
             <p className="muted small">Keep it to make it yours: what it does becomes a block you can change.</p>
             <div className="row">
-              {import.meta.env.DEV && (
+              {DEV_TOOLS && (
                 <button
                   className="btn"
                   onClick={() => {

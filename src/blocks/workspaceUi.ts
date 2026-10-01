@@ -93,6 +93,8 @@ class AmbleToolbox extends ContinuousToolbox {
     const flyout = this.getFlyout();
     const flyoutWs = flyout.getWorkspace();
     const scroll = same ? -flyoutWs.scrollY : 0;
+    // A new set of categories also stops a scroll still gliding to a category of the old set.
+    if (!same) (flyout as unknown as { scrollTarget?: number }).scrollTarget = undefined;
     flyout.show(this.getToolboxItems().flatMap((item) => this.convertToolboxItemToFlyoutItems(item)));
     const metrics = flyoutWs.getMetrics();
     flyoutWs.scrollbar?.setY(Math.min(scroll, Math.max(0, metrics.scrollHeight - metrics.viewHeight)));
