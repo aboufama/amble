@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayerHost } from '../player/host';
-import { moveSpriteFromStage, needsCompile, previewProject, registerPlayer, startGame, stopGame } from '../actions';
+import { moveSpriteFromStage, previewProject, registerPlayer, startGame, stopGame } from '../actions';
 import { compileNeedsRequest } from '../compiler/compile';
 import { useStore } from '../store';
 import { ExpandIcon, FlagIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, StopIcon, WarningIcon } from './icons';
@@ -25,8 +25,9 @@ export function StagePanel() {
   const setStageSize = useStore((s) => s.setStageSize);
   const [fullscreen, setFullscreen] = useState(false);
   const problems = useProblemCount();
-  // Exact blocks compile instantly when the game starts; only new words (or a new brief) wait for Compile.
-  const dirty = useMemo(() => needsCompile(project) && compileNeedsRequest(project), [project]);
+  // New words (or a new brief) the flag will build first; exact blocks build instantly anyway.
+  const needsAccount = useStore((s) => s.needsAccount);
+  const dirty = useMemo(() => compileNeedsRequest(project), [project]) && !needsAccount;
 
   useEffect(() => {
     const store = useStore.getState;
@@ -130,6 +131,11 @@ export function StagePanel() {
               {progress.stage === 'assets' && progress.assetsTotal ? `Making art ${progress.assetsDone ?? 0} of ${progress.assetsTotal}` : buildingCount ? `Building ${buildingCount} block${buildingCount > 1 ? 's' : ''}` : progress.message}
             </span>
           )}
+          {compileState.status === 'error' && (
+            <button className="build-chip failed" title={compileState.error ? `${compileState.error} Click to try again.` : 'Click to try again.'} onClick={startGame}>
+              Didn't build
+            </button>
+          )}
           {problems.count > 0 && (
             <button
               className={`problems-btn ${problems.errors ? 'has-errors' : ''}`}
@@ -145,9 +151,6 @@ export function StagePanel() {
               {problems.count}
             </button>
           )}
-          <span className="mode-badge" title="World type">
-            {project.mode.toUpperCase()}
-          </span>
         </div>
         <div className="stage-size-row">
           <div className="stage-size-toggle" role="group" aria-label="Stage size">
@@ -177,11 +180,6 @@ export function StagePanel() {
           </div>
         )}
       </div>
-      {compileState.status === 'error' && compileState.error && (
-        <div className="compile-error" role="alert">
-          <b>Compile failed:</b> {compileState.error}
-        </div>
-      )}
     </div>
   );
 }

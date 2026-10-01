@@ -251,14 +251,11 @@ export function toolboxFor(ctx: PaletteContext): Blockly.utils.toolbox.ToolboxIn
   const skills = ctx.menus ? procedureNames(ctx.menus) : [];
   return {
     kind: 'categoryToolbox',
-    contents: CATEGORIES.filter((c) => !c.modes || c.modes.includes(ctx.mode)).map((c) => {
+    // The brief (game, made for, art style, win and lose) is the Stage's; the Stage doesn't move.
+    contents: CATEGORIES.filter((c) => (!c.modes || c.modes.includes(ctx.mode)) && !(c.id === 'brief' && !ctx.isStage) && !(c.id === 'motion' && ctx.isStage)).map((c) => {
       const contents: Blockly.utils.toolbox.FlyoutItemInfoArray = [];
       const blocks = available.filter((b) => b.category === c.id);
       switch (c.id) {
-        case 'motion':
-          if (ctx.isStage) contents.push({ kind: 'label', text: 'Stage selected: no motion blocks' });
-          for (const b of blocks) contents.push(paletteBlock(b, ctx));
-          break;
         case 'characters':
           contents.push(...characterBlocks(ctx));
           for (const b of blocks) contents.push(paletteBlock(b, ctx));

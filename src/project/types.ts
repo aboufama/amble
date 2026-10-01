@@ -131,6 +131,21 @@ export interface CompiledPiece {
   code: string;
 }
 
+/** A question the compiler asked about words it had to guess at. It shows on their block until they change. */
+export interface CompiledQuestion {
+  /** The sprite (or the stage) and the piece the words became. */
+  targetId: string;
+  pieceKey: string;
+  text: string;
+}
+
+/** Something in the blocks that doesn't work as placed, found while compiling. It shows on the block. */
+export interface CompiledIssue {
+  targetId: string;
+  blockId: string;
+  text: string;
+}
+
 export interface CompiledGame {
   createdAt: number;
   model: string;
@@ -151,6 +166,10 @@ export interface CompiledGame {
   style?: string;
   /** Words written before that this compile rewrote to fit the change ("Sprite: block"). */
   revised?: string[];
+  /** Questions about words the compiler had to guess at (missing in older games). */
+  questions?: CompiledQuestion[];
+  /** Blocks that don't work as placed (missing in older games). */
+  issues?: CompiledIssue[];
 }
 
 export interface Project {

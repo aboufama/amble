@@ -1,11 +1,12 @@
 import { compileNeedsRequest, compileProject, inputHash, NO_ACCOUNT, piecesToWrite } from './compiler/compile';
-import { AiError, CHATGPT_MODEL_NAME } from './compiler/openai';
+import { AiError } from './compiler/openai';
 import { cancelCodexLogin, fetchCodexStatus, startCodexLogin } from './compiler/chatgpt';
 import type { CodexStatus } from './compiler/codexTypes';
 import { buildRunPackage, packageKey } from './player/package';
 import type { PlayerHost } from './player/host';
 import { findTarget, useStore } from './store';
 import { uniqueName } from './project/ids';
+import { block, workspace } from './project/defaults';
 import { applyRename, deleteVariableDeclaration, renameScope, renameVariableDeclaration, type RenameChange } from './blocks/menus';
 import type { MenuKind } from './blocks/spec';
 import type { CompiledAsset, CompiledGame, CostumeAsset, Project, SoundAsset, SpriteTarget } from './project/types';
@@ -36,7 +37,9 @@ export function startGame(): void {
     useStore.getState().setCompile({ forPlay: true });
     return;
   }
-  if (needsCompile(useStore.getState().project)) {
+  const s = useStore.getState();
+  // Words still waiting for an account build as soon as there may be one.
+  if (needsCompile(s.project) || (compileNeedsRequest(s.project) && !s.needsAccount)) {
     void compile(undefined, { fromFlag: true });
     return;
   }
@@ -96,12 +99,19 @@ let controller: AbortController | null = null;
 let quietBuild = false;
 /** The flag was pressed during a quiet build: start the game when it is done. */
 let playWhenBuilt = false;
-/** Quiet builds stop trying without an account, until the settings change. */
-let noAccountFor: unknown = null;
+let accountTimer: number | null = null;
 
-// Opening another project stops a build of the one before.
 useStore.subscribe((s, prev) => {
+  // Opening another project stops a build of the one before.
   if (s.projectLoads !== prev.projectLoads) controller?.abort();
+  // A new key or sign-in: words that were waiting for one build quietly.
+  if (prev.needsAccount && !s.needsAccount) {
+    if (accountTimer !== null) window.clearTimeout(accountTimer);
+    accountTimer = window.setTimeout(() => {
+      accountTimer = null;
+      buildQuietly();
+    }, 1500);
+  }
 });
 
 export function needsCompile(project: Project): boolean {
@@ -124,12 +134,14 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
   playWhenBuilt = !opts.quiet;
   // Instant compiles don't show progress: the game just starts.
   const instant = !fixProblems?.length && !opts.fresh && !compileNeedsRequest(project);
+  const building = instant ? [] : piecesToWrite(project, Boolean(opts.fresh || fixProblems?.length));
   store.setCompile({
     status: instant ? 'idle' : 'running',
     progress: instant ? null : { stage: 'preparing', message: 'Reading your blocks' },
     error: null,
-    building: instant ? [] : piecesToWrite(project, Boolean(opts.fresh || fixProblems?.length)),
+    building,
     forPlay: !opts.quiet,
+    failed: [],
   });
   const done = (compiled: CompiledGame) => {
     // Another project was opened meanwhile: this build was for the one before.
@@ -162,21 +174,22 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
     const s = useStore.getState();
     if (controller?.signal.aborted) {
       s.setCompile({ status: 'idle', progress: null, building: [], forPlay: false });
+    } else if (err instanceof AiError && err.code === NO_ACCOUNT) {
+      // Words wait for an account (their blocks say so); the flag still plays everything else.
+      s.setNeedsAccount(true);
+      if (opts.quiet && !playWhenBuilt) s.setCompile({ status: 'idle', progress: null, building: [], forPlay: false });
+      else {
+        playWhenBuilt = true;
+        done(await compileProject(project, { settings: s.settings, offline: true }));
+      }
     } else if (opts.quiet && !playWhenBuilt) {
-      // Building after typing never interrupts: without an account it waits for the flag, and other
-      // problems show when the flag builds again.
-      if (err instanceof AiError && err.code === NO_ACCOUNT) noAccountFor = s.settings;
-      else console.warn('Building in the background stopped:', err);
+      // Building after typing never interrupts: problems show when the flag builds again.
+      console.warn('Building in the background stopped:', err);
       s.setCompile({ status: 'idle', progress: null, building: [], forPlay: false });
-    } else if ((opts.fromFlag || opts.quiet) && err instanceof AiError && err.code === NO_ACCOUNT) {
-      // The flag still plays the game: blocks in words wait until there's an account.
-      playWhenBuilt = true;
-      done(await compileProject(project, { settings: s.settings, offline: true }));
-      s.notify('Blocks in your own words need a ChatGPT sign-in or an API key to compile. Until then they do nothing.', 'error');
     } else {
+      // The failure shows on the blocks that were building, and next to the flag; nothing pops open.
       const message = err instanceof Error ? err.message : String(err);
-      s.setCompile({ status: 'error', progress: null, error: message, building: [], forPlay: false });
-      if ((err instanceof AiError && (err.code === NO_ACCOUNT || err.status === 401)) || /api key|sign in/i.test(message)) s.setDialog('settings');
+      s.setCompile({ status: 'error', progress: null, error: message, building: [], forPlay: false, failed: building });
     }
   } finally {
     controller = null;
@@ -194,7 +207,7 @@ export function cancelCompile(): void {
  */
 export function buildQuietly(): void {
   const s = useStore.getState();
-  if (controller || noAccountFor === s.settings || !compileNeedsRequest(s.project)) return;
+  if (controller || s.needsAccount || !compileNeedsRequest(s.project)) return;
   void compile(undefined, { quiet: true });
 }
 
@@ -230,7 +243,7 @@ function stopLoginPoll(): void {
 function signedIn(): void {
   const { setSettings, notify } = useStore.getState();
   setSettings({ useChatGpt: true });
-  notify(`Signed in with ChatGPT. Compiling now uses ${CHATGPT_MODEL_NAME} on your ChatGPT plan.`);
+  notify('Signed in. Blocks in your own words build now.');
 }
 
 /**
@@ -350,7 +363,8 @@ export function keepCompiledSprite(spriteId: string): void {
       costumes: assets.filter((a) => a.kind !== 'sound').map((a) => stripCompiled(a) as CostumeAsset),
       sounds: assets.filter((a) => a.kind === 'sound').map((a) => stripCompiled(a) as SoundAsset),
       currentCostume: 0,
-      blocks: null,
+      // What it did becomes a block of its own: an "always:" in its own words, built like any other.
+      blocks: workspace(block('ru_always', { RULE: s.description.trim() || `be ${s.name}` })),
       x: s.x,
       y: s.y,
       z: s.z,
@@ -364,7 +378,8 @@ export function keepCompiledSprite(spriteId: string): void {
     compiled.assets = compiled.assets.filter((a) => a.targetId !== spriteId);
   });
   select(spriteId);
-  notify('Kept. Its behavior now comes from its description until you add blocks.');
+  notify('Kept. What it does is now a block in its code.');
+  window.setTimeout(buildQuietly, 300);
 }
 
 // -----------------------------------------------------------------------------

@@ -57,7 +57,11 @@ export interface EditorState {
     building: Array<{ targetId: string; words: string }>;
     /** The green flag asked for this build (or for the game once it is built): the flag shows it building. */
     forPlay: boolean;
+    /** The words a build that failed was building (the failure shows on their blocks). */
+    failed: Array<{ targetId: string; words: string }>;
   };
+  /** Words can't build without a sign-in or a key: found on the last try, until the settings or the sign-in change. */
+  needsAccount: boolean;
   run: { state: RunState; errors: PlayerError[]; logs: LogEntry[] };
   dialog: null | 'settings' | 'new' | 'about';
   prompt: PromptRequest | null;
@@ -81,6 +85,7 @@ export interface EditorState {
   setSettings(patch: Partial<AiSettings>): void;
   setCodex(status: CodexStatus | null): void;
   setCompile(patch: Partial<EditorState['compile']>): void;
+  setNeedsAccount(needs: boolean): void;
   setRunState(state: RunState): void;
   addError(error: PlayerError): void;
   addLog(level: LogEntry['level'], message: string): void;
@@ -108,7 +113,8 @@ export const useStore = create<EditorState>()(
     soundSel: {},
     settings: loadSettings(),
     codex: null,
-    compile: { status: 'idle', progress: null, error: null, building: [], forPlay: false },
+    compile: { status: 'idle', progress: null, error: null, building: [], forPlay: false, failed: [] },
+    needsAccount: false,
     run: { state: 'loading', errors: [], logs: [] },
     dialog: null,
     prompt: null,
@@ -126,7 +132,7 @@ export const useStore = create<EditorState>()(
         s.selectedId = project.sprites[0]?.id ?? project.stage.id;
         s.costumeSel = {};
         s.soundSel = {};
-        s.compile = { status: 'idle', progress: null, error: null, building: [], forPlay: false };
+        s.compile = { status: 'idle', progress: null, error: null, building: [], forPlay: false, failed: [] };
         s.run.errors = [];
         s.run.logs = [];
         s.restore = null;
@@ -159,14 +165,20 @@ export const useStore = create<EditorState>()(
       set((s) => {
         Object.assign(s.settings, patch);
         saveSettings({ ...s.settings });
+        s.needsAccount = false;
       }),
     setCodex: (status) =>
       set((s) => {
+        if (JSON.stringify(s.codex) !== JSON.stringify(status)) s.needsAccount = false;
         s.codex = status;
       }),
     setCompile: (patch) =>
       set((s) => {
         Object.assign(s.compile, patch);
+      }),
+    setNeedsAccount: (needs) =>
+      set((s) => {
+        s.needsAccount = needs;
       }),
     setRunState: (state) =>
       set((s) => {
@@ -256,3 +268,6 @@ export function allCostumeNames(t: Target): string[] {
 export function allSoundNames(t: Target): string[] {
   return t.sounds.map((s: SoundAsset) => s.name);
 }
+
+// The end-to-end tests reach the store on the dev server (e.g. to add a key without the Settings dialog).
+if (import.meta.env.DEV) (window as unknown as { __ambleStore?: typeof useStore }).__ambleStore = useStore;

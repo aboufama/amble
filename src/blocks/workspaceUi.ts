@@ -77,20 +77,28 @@ class AmbleToolbox extends ContinuousToolbox {
     this.ready = true;
   }
 
-  /** Re-renders the categories and the palette, keeping the palette's scroll position. */
+  /**
+   * Re-renders the categories and the palette, keeping the palette's scroll position. When the
+   * categories themselves change (the Stage has a brief but no motion), it starts from the top.
+   */
   override render(toolboxDef: Blockly.utils.toolbox.ToolboxInfo) {
+    const names = () => this.getToolboxItems().map((item) => (item as Blockly.ISelectableToolboxItem).getName?.() ?? '').join('|');
+    const before = this.ready ? names() : '';
     const selected = this.getSelectedItem()?.getName();
     // The old category rows are about to be replaced.
     this.selectedItem_ = null;
     super.render(toolboxDef);
     if (!this.ready) return;
+    const same = names() === before;
     const flyout = this.getFlyout();
     const flyoutWs = flyout.getWorkspace();
-    const scroll = -flyoutWs.scrollY;
+    const scroll = same ? -flyoutWs.scrollY : 0;
     flyout.show(this.getToolboxItems().flatMap((item) => this.convertToolboxItemToFlyoutItems(item)));
     const metrics = flyoutWs.getMetrics();
     flyoutWs.scrollbar?.setY(Math.min(scroll, Math.max(0, metrics.scrollHeight - metrics.viewHeight)));
-    if (selected) this.selectCategoryByName(selected);
+    const first = (this.getToolboxItems()[0] as Blockly.ISelectableToolboxItem | undefined)?.getName?.();
+    const pick = same ? selected : first;
+    if (pick) this.selectCategoryByName(pick);
   }
 
   /** The palette is refreshed by the editor when its contents change, not after every block edit. */
@@ -116,15 +124,17 @@ class AmbleZoomControls implements Blockly.IPositionable {
 
   init() {
     this.group = Blockly.utils.dom.createSvgElement(Blockly.utils.Svg.G, { class: 'ambleZoomControls' });
-    const button = (cls: string, href: string, y: number, onDown: (e: PointerEvent) => void) => {
-      const g = Blockly.utils.dom.createSvgElement(Blockly.utils.Svg.G, { class: `blocklyZoom ${cls}`, transform: `translate(0,${y})` }, this.group);
+    const button = (cls: string, href: string, y: number, tip: string, onDown: (e: PointerEvent) => void) => {
+      const g = Blockly.utils.dom.createSvgElement(Blockly.utils.Svg.G, { class: `blocklyZoom ${cls}`, transform: `translate(0,${y})`, role: 'button', 'aria-label': tip }, this.group);
+      // The tooltip.
+      Blockly.utils.dom.createSvgElement('title', {}, g).textContent = tip;
       const image = Blockly.utils.dom.createSvgElement(Blockly.utils.Svg.IMAGE, { width: this.size, height: this.size }, g);
       image.setAttributeNS(Blockly.utils.dom.XLINK_NS, 'xlink:href', href);
       this.events.push(Blockly.browserEvents.conditionalBind(g, 'pointerdown', null, onDown));
     };
-    button('blocklyZoomIn', ZOOM_IN_ICON, 0, (e) => this.zoom(e, 1));
-    button('blocklyZoomOut', ZOOM_OUT_ICON, this.size + this.smallGap, (e) => this.zoom(e, -1));
-    button('blocklyZoomReset', ZOOM_RESET_ICON, 2 * this.size + this.smallGap + this.largeGap, (e) => this.reset(e));
+    button('blocklyZoomIn', ZOOM_IN_ICON, 0, 'Zoom in', (e) => this.zoom(e, 1));
+    button('blocklyZoomOut', ZOOM_OUT_ICON, this.size + this.smallGap, 'Zoom out', (e) => this.zoom(e, -1));
+    button('blocklyZoomReset', ZOOM_RESET_ICON, 2 * this.size + this.smallGap + this.largeGap, 'Normal size', (e) => this.reset(e));
     this.workspace.getParentSvg().appendChild(this.group);
     this.workspace.getComponentManager().addComponent({ component: this, weight: 2, capabilities: [Blockly.ComponentManager.Capability.POSITIONABLE] });
   }

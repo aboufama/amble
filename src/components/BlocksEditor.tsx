@@ -10,6 +10,8 @@ import { buildQuietly, deleteVariable, keepCompiledSprite, registerLiveBlocks, r
 import { alertUser, askUser, confirmUser } from '../prompt';
 import type { BlocksState } from '../project/types';
 import { CodeIcon, KeepIcon } from './icons';
+import { CodeNotes } from './CodeNotes';
+import { oneLine } from '../compiler/serialize';
 
 // Blockly's own questions ("Delete all 7 blocks?", text prompts on touch screens) use Amble's
 // dialog, never the browser's.
@@ -40,6 +42,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
   const paletteTimer = useRef<number | null>(null);
   /** Words build quietly a moment after the student stops typing them (never while a field is open). */
   const buildTimer = useRef<number | null>(null);
+  const buildSoon = useRef<((ms: number) => void) | null>(null);
   const paletteKey = useRef('');
   const liveCache = useRef<BlocksState | null>(null);
   const newMessages = useRef<string[]>([]);
@@ -315,6 +318,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
         if (change.element === 'field' && block?.getField(change.name ?? '') instanceof FieldAmbleText) scheduleQuietBuild(1800);
       }
     });
+    buildSoon.current = scheduleQuietBuild;
     function scheduleQuietBuild(ms: number): void {
       if (buildTimer.current !== null) window.clearTimeout(buildTimer.current);
       buildTimer.current = window.setTimeout(() => {
@@ -386,6 +390,15 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, target?.id, projectLoads]);
 
+  /** An answer to a question about words joins the words, and they build again. */
+  const answerQuestion = (blockId: string, words: string, answer: string) => {
+    const block = wsRef.current?.getBlockById(blockId);
+    const field = block?.inputList.flatMap((i) => i.fieldRow).find((f) => f instanceof FieldAmbleText && oneLine(f.getValue()) === words);
+    if (!field) return;
+    field.setValue(`${String(field.getValue() ?? '').replace(/[\s.!]+$/, '')}, ${answer.replace(/^[\s,]+/, '')}`);
+    buildSoon.current?.(300);
+  };
+
   useEffect(() => {
     visibleRef.current = visible;
     const ws = wsRef.current;
@@ -397,6 +410,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
   return (
     <div className="blocks-editor" style={{ display: visible ? undefined : 'none' }}>
       <div ref={divRef} className="blockly-host" />
+      <CodeNotes ws={wsRef} targetId={target?.id ?? null} visible={visible && !compiledSprite} onAnswer={answerQuestion} />
       {watermark && (
         <div className="sprite-watermark" aria-hidden="true">
           <img src={watermark} alt="" draggable={false} />
@@ -405,19 +419,21 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       {compiledSprite && (
         <div className="compiled-overlay">
           <div className="compiled-card">
-            <h3>{compiledSprite.sprite.name} was made by the compiler</h3>
-            <p>{compiledSprite.sprite.description || 'The compiler added this sprite because your game needed it.'}</p>
-            <p className="muted small">It has no blocks; its behavior is in the compiled code. Keep it to make it yours and add blocks.</p>
+            <h3>{compiledSprite.sprite.name} joined so your words work</h3>
+            {compiledSprite.sprite.description && <p>{compiledSprite.sprite.description}</p>}
+            <p className="muted small">Keep it to make it yours: what it does becomes a block you can change.</p>
             <div className="row">
-              <button
-                className="btn"
-                onClick={() => {
-                  useStore.getState().setOutputTab('code');
-                  useStore.getState().setProblemsOpen(true);
-                }}
-              >
-                <CodeIcon size={15} /> View code
-              </button>
+              {import.meta.env.DEV && (
+                <button
+                  className="btn"
+                  onClick={() => {
+                    useStore.getState().setOutputTab('code');
+                    useStore.getState().setProblemsOpen(true);
+                  }}
+                >
+                  <CodeIcon size={15} /> View code
+                </button>
+              )}
               <button className="btn primary" onClick={() => keepCompiledSprite(compiledSprite.sprite.id)}>
                 <KeepIcon size={15} /> Keep as my sprite
               </button>

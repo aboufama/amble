@@ -49,6 +49,10 @@ export interface TargetPlan {
   className: string;
   pieces: PieceRequest[];
   warnings: string[];
+  /** The warnings that are about one block, with its id (to show them on it). */
+  issues: Array<{ blockId: string; text: string }>;
+  /** The block each script and standalone line starts at, by its text (to show run problems on it). */
+  scripts: ReadonlyMap<string, string>;
   /** Brief blocks (game, made for, art style) in this target, as text. */
   brief: string[];
   /** Which piece each block (by id) became, to point at it in the compile request. */
@@ -114,6 +118,10 @@ class TargetCompiler {
   readonly pieces = new Map<string, PieceRequest>();
   readonly markers = new Map<string, string>();
   readonly warnings: string[] = [];
+  readonly issues: Array<{ blockId: string; text: string }> = [];
+  readonly scripts = new Map<string, string>();
+  /** The block being compiled, for warnings about it. */
+  private at: string | undefined;
   readonly brief: string[] = [];
   private readonly starts: string[] = [];
   private readonly spawns: string[] = [];
@@ -151,6 +159,7 @@ class TargetCompiler {
   private warn(message: string): void {
     const text = `${this.target.name}: ${message}`;
     if (!this.warnings.includes(text)) this.warnings.push(text);
+    if (this.at && !this.issues.some((i) => i.blockId === this.at && i.text === message)) this.issues.push({ blockId: this.at, text: message });
   }
 
   compile(): void {
@@ -161,6 +170,7 @@ class TargetCompiler {
       if (name && !this.skills.has(name)) this.skills.set(name, `_k${this.skills.size + 1}`);
     }
     for (const b of tops) {
+      this.at = b.id;
       const spec = BLOCK_BY_TYPE.get(b.type);
       if (!spec) {
         this.warn(`Skipped a block Amble doesn't know ("${b.type}").`);
@@ -179,6 +189,8 @@ class TargetCompiler {
   private hat(b: JsonBlock): void {
     const label = blockText(b);
     this.script = label;
+    this.at = b.id;
+    if (b.id && !this.scripts.has(label)) this.scripts.set(label, b.id);
     this.hatType = b.type;
     if (b.type === 'pr_define') {
       const name = oneLine(b.fields?.NAME);
@@ -267,6 +279,7 @@ class TargetCompiler {
   }
 
   private statement(b: JsonBlock, depth: number): string[] {
+    this.at = b.id;
     const pad = '  '.repeat(depth);
     const line = (code: string) => [pad + code];
     const spec = BLOCK_BY_TYPE.get(b.type);
@@ -484,6 +497,8 @@ class TargetCompiler {
   private standalone(b: JsonBlock): void {
     const label = blockText(b);
     this.script = label;
+    this.at = b.id;
+    if (b.id && !this.scripts.has(label)) this.scripts.set(label, b.id);
     const spec = BLOCK_BY_TYPE.get(b.type);
     if (spec?.targets && !spec.targets.includes(this.target.kind)) {
       this.warn(`"${label}" only works on ${spec.targets.includes('sprite') ? 'sprites' : 'the stage'}.`);
@@ -804,6 +819,8 @@ export function planTarget(project: Project, target: Target, className: string):
     className,
     pieces: [...c.pieces.values()],
     warnings: c.warnings,
+    issues: c.issues,
+    scripts: c.scripts,
     brief: c.brief,
     markers: c.markers,
     render: (code) => c.render(code),

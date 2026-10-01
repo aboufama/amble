@@ -549,7 +549,7 @@ describe('compileProject', () => {
     );
     const game = await compileProject(starCatcher(), { settings: DEFAULT_SETTINGS, offline: true });
     expect(game.warnings).toEqual([
-      "3 blocks in your own words aren't compiled yet, so they do nothing for now. Sign in with ChatGPT or add an OpenAI API key in Settings, then press Compile.",
+      "3 blocks in your own words aren't built yet, so they do nothing for now. They build once you add a key in Settings, or sign in.",
     ]);
     expect(game.code.map((c) => c.targetName)).toEqual(['Stage', 'Amble', 'Star']);
     expect(game.pieces).toEqual([]);
@@ -643,6 +643,45 @@ describe('compileProject', () => {
     expect(second.style).toBe('art style: [pale blue watercolor]');
     expect(second.assets.map((a) => [a.name, a.request])).toEqual([['moon', 'a smiling crescent moon']]);
     expect(second.assets[0].kind === 'image' && atob(second.assets[0].dataUrl.split(',')[1])).toContain('#9ad0ff');
+  });
+
+  it('keeps a question about words with their piece, until the words change', async () => {
+    const asks = (prompt: string) => {
+      const id = [...prompt.matchAll(/^- (p\d+): (.*)$/gm)].find(([, , line]) => line.includes('particles:'))?.[1];
+      return { ...starReply()(prompt), questions: id ? [{ piece: id, question: 'How long should the sparkles last?' }] : [] };
+    };
+    const server = fakeServer([asks, starReply()]);
+    const p = starCatcher();
+    const amble = p.sprites.find((x) => x.name === 'Amble')!;
+    const first = await compileProject(p, { settings });
+    const sparkle = first.pieces!.find((x) => x.block.startsWith('particles:'))!;
+    expect(first.questions).toEqual([{ targetId: amble.id, pieceKey: sparkle.key, text: 'How long should the sparkles last?' }]);
+    // Nothing new to write: the question stays.
+    const again = await compileProject({ ...p, compiled: first }, { settings });
+    expect(again.questions).toEqual(first.questions);
+    // New words for the sparkles: the question goes with the old ones.
+    const changed = { ...p, compiled: first };
+    const visit = (b: JsonBlock | undefined): void => {
+      for (; b; b = b.next?.block) if (b.fields?.HOW === 'a small burst of yellow sparkles') b.fields.HOW = 'a small burst of yellow sparkles, about half a second';
+    };
+    for (const b of top(amble)) visit(b);
+    const third = await compileProject(changed, { settings });
+    expect(server.calls).toHaveLength(2);
+    expect(third.questions).toEqual([]);
+  });
+
+  it('points at the block each warning is about, and at the block each script starts at', async () => {
+    const p = newProject('2d');
+    const sprite = p.sprites[0];
+    const when = block('ev_when');
+    when.x = 24;
+    when.y = 480;
+    top(sprite).push(when);
+    const plan = planTarget(p, sprite, 'Amble');
+    expect(plan.issues).toEqual([{ blockId: when.id, text: '"when <>" needs a condition in its slot.' }]);
+    expect([...plan.scripts.values()]).toContain(top(sprite)[0].id);
+    const game = await compileProject(p, { settings: DEFAULT_SETTINGS });
+    expect(game.issues).toEqual([{ targetId: sprite.id, blockId: when.id, text: '"when <>" needs a condition in its slot.' }]);
   });
 
   it('starts over when asked: every piece written again, and the art made again', async () => {

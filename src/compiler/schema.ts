@@ -19,12 +19,14 @@ export interface PiecesReply {
   sprites: Array<{ name: string; description: string; x: number; y: number; z: number; size: number; direction: number; visible: boolean; code: string }>;
   assets: AssetRequest[];
   warnings: string[];
+  /** Questions about words you had to guess at, each for one piece (shown on its block). */
+  questions?: Array<{ piece: string; question: string }>;
 }
 
 export const PIECES_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['pieces', 'sprites', 'assets', 'warnings'],
+  required: ['pieces', 'sprites', 'assets', 'warnings', 'questions'],
   properties: {
     pieces: {
       type: 'array',
@@ -77,7 +79,20 @@ export const PIECES_SCHEMA = {
         },
       },
     },
-    warnings: { type: 'array', items: str(), description: 'Assumptions you made, or words you could not turn into code.' },
+    warnings: { type: 'array', items: str(), description: 'Words you could not turn into code, or problems the author should know about.' },
+    questions: {
+      type: 'array',
+      description: 'Usually empty. At most one per piece, only when its words could mean quite different games and your guess matters.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['piece', 'question'],
+        properties: {
+          piece: str('The piece id, e.g. "p1".'),
+          question: str('What you picked, then a short open question a child can answer in a few words, whose answer reads well added after the words (never yes or no), e.g. "I made the stars fall slowly. How fast should they fall?"'),
+        },
+      },
+    },
   },
 } as const;
 

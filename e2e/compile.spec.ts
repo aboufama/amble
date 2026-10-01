@@ -304,11 +304,12 @@ test('without an account the flag still plays; words wait', async ({ page }) => 
   await page.locator('.green-flag').click();
   const frame = await gameFrame(page);
   await expect.poll(async () => (await game(frame)).time, { timeout: 30_000 }).toBeGreaterThan(0.3);
-  await expect(page.getByText('Blocks in your own words need a ChatGPT sign-in or an API key')).toBeVisible();
+  // No red message: the words' blocks say they wait for an account.
+  await expect(page.locator('.code-note[data-kind="waiting"]').first()).toContainText(/This builds once you (sign in|add a key in Settings)\./);
   expect((await game(frame)).twinkles).toBe(0);
   expect(calls).toEqual([]);
   await page.locator('.problems-btn').click();
-  await expect(page.getByRole('dialog', { name: 'Problems' })).toContainText("3 blocks in your own words aren't compiled yet");
+  await expect(page.getByRole('dialog', { name: 'Problems' })).toContainText("3 blocks in your own words aren't built yet");
 });
 
 test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', async ({ page }) => {
@@ -353,7 +354,7 @@ test('3D world mode renders and runs', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('radio', { name: '3D' }).click();
   await page.getByRole('dialog', { name: 'Switch to 3D' }).getByRole('button', { name: 'Switch' }).click();
-  await expect(page.locator('.mode-badge')).toHaveText('3D');
+  await expect(page.getByRole('radio', { name: '3D' })).toBeChecked();
   const frame = await gameFrame(page);
   // The player reports loading and idle; start it with the green flag.
   await page.locator('.green-flag').click();

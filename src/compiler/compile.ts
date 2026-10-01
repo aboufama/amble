@@ -8,7 +8,7 @@ import { PIECES_SCHEMA, type AssetRequest, type PiecesReply } from './schema';
 import { instrumentTargetCode } from './transform';
 import { generateAsset, placeholderAsset, type AssetJob } from './assets';
 import { hashString, uid } from '../project/ids';
-import type { CompiledAsset, CompiledCode, CompiledGame, CompiledPiece, CompiledSprite, Project, WorldMode } from '../project/types';
+import type { CompiledAsset, CompiledCode, CompiledGame, CompiledPiece, CompiledQuestion, CompiledSprite, Project, WorldMode } from '../project/types';
 
 export type CompileStage = 'preparing' | 'thinking' | 'writing' | 'checking' | 'repairing' | 'assets' | 'done';
 
@@ -211,6 +211,7 @@ async function writePieces(
     const second = await ask(again);
     failed = check(second, failed.map((f) => f.task));
     reply.warnings = [...(reply.warnings ?? []), ...(second.warnings ?? [])];
+    reply.questions = [...(reply.questions ?? []), ...(second.questions ?? [])];
   }
   for (const f of failed) warnings.push(`${f.task.request.targetName}: couldn't compile "${f.task.request.block}" (${f.error}). It does nothing for now.`);
   return { code, reply, revised };
@@ -314,21 +315,22 @@ function planAssets(
   return { kept, jobs };
 }
 
-async function runJobs(jobs: AssetJob[], project: Project, transport: Transport, settings: AiSettings, opts: CompileOptions, warnings: string[]): Promise<CompiledAsset[]> {
+async function runJobs(jobs: AssetJob[], project: Project, style: string, transport: Transport, settings: AiSettings, opts: CompileOptions, warnings: string[]): Promise<CompiledAsset[]> {
   const results: CompiledAsset[] = [];
   let done = 0;
   const report = (current?: string) =>
     opts.onProgress?.({ stage: 'assets', message: current ? `Making ${current}` : 'Making art and sounds', assetsDone: done, assetsTotal: jobs.length });
   report();
   const queue = [...jobs];
-  const style = [project.notes, ...serializeBlocks(project.stage.blocks).text.split('\n').filter((l) => l.startsWith('art style:'))].join(' ').slice(0, 300);
+  // The art style blocks, wherever they are (the same ones that decide when the art is made again).
+  const styleHint = style.split('\n').filter(Boolean).join(' ').slice(0, 300);
   const worker = async () => {
     for (;;) {
       const job = queue.shift();
       if (!job) return;
       report(`${job.kind} "${job.name}"`);
       try {
-        results.push(await generateAsset(job, { transport, settings, mode: project.mode, gameTitle: project.title, styleHint: style, signal: opts.signal }));
+        results.push(await generateAsset(job, { transport, settings, mode: project.mode, gameTitle: project.title, styleHint, signal: opts.signal }));
       } catch (err) {
         if (opts.signal?.aborted) throw err;
         warnings.push(`Couldn't make ${job.kind} "${job.name}" (${(err as Error).message}); used a placeholder.`);
@@ -381,7 +383,7 @@ export async function compileProject(project: Project, options: CompileOptions):
   const code = new Map<string, string>([...cache].map(([k, p]) => [k, p.code]));
   if (request && opts.offline) {
     const words = tasks.filter((t) => !cache.has(t.request.key)).length;
-    if (words) warnings.push(`${words} block${words > 1 ? 's' : ''} in your own words ${words > 1 ? "aren't" : "isn't"} compiled yet, so ${words > 1 ? 'they do' : 'it does'} nothing for now. Sign in with ChatGPT or add an OpenAI API key in Settings, then press Compile.`);
+    if (words) warnings.push(`${words} block${words > 1 ? 's' : ''} in your own words ${words > 1 ? "aren't" : "isn't"} built yet, so ${words > 1 ? 'they do' : 'it does'} nothing for now. ${words > 1 ? 'They build' : 'It builds'} once you add a key in Settings, or sign in.`);
   } else if (request) {
     transport = await requireTransport(opts.settings);
     settings = effectiveSettings(opts.settings, transport);
@@ -391,6 +393,22 @@ export async function compileProject(project: Project, options: CompileOptions):
     revised = result.revised;
     for (const [k, c] of result.code) code.set(k, c);
     for (const w of reply.warnings ?? []) warnings.push(String(w));
+  }
+
+  // Questions about words: new ones for the pieces just written, and the earlier ones for pieces kept as they were.
+  const questions: CompiledQuestion[] = [];
+  const byTask = new Map([...tasks, ...revisable].map((t) => [t.id, t.request]));
+  for (const q of reply?.questions ?? []) {
+    const r = byTask.get(String(q.piece ?? '').trim());
+    const text = String(q.question ?? '').trim();
+    if (r && text && !questions.some((x) => x.pieceKey === r.key)) questions.push({ targetId: r.targetId, pieceKey: r.key, text });
+  }
+  if (!fresh) {
+    const keep = new Set(inUse.map((r) => r.key));
+    const rewritten = new Set([...tasks.filter((t) => code.has(t.request.key)).map((t) => t.request.key), ...(reply ? revisable.filter((r) => reply!.pieces?.some((p) => String(p.id).trim() === r.id && String(p.code ?? '').trim())).map((r) => r.request.key) : [])]);
+    for (const q of previous?.questions ?? []) {
+      if (keep.has(q.pieceKey) && !rewritten.has(q.pieceKey) && !questions.some((x) => x.pieceKey === q.pieceKey)) questions.push(q);
+    }
   }
 
   // Characters added by the compiler: earlier ones stay with their code; new ones join.
@@ -438,7 +456,7 @@ export async function compileProject(project: Project, options: CompileOptions):
     made = jobs.map((j) => placeholderAsset(j, project.mode));
   } else if (jobs.length) {
     transport ??= await requireTransport(opts.settings);
-    made = await runJobs(jobs, project, transport, settings, opts, warnings);
+    made = await runJobs(jobs, project, style, transport, settings, opts, warnings);
   }
 
   // Put the classes together and make them safe to run.
@@ -492,5 +510,7 @@ export async function compileProject(project: Project, options: CompileOptions):
     brief: request && opts.offline && previous?.brief !== undefined ? previous.brief : brief,
     style: opts.offline && previous?.style !== undefined ? previous.style : style,
     revised,
+    questions,
+    issues: plans.flatMap((p) => p.issues.map((i) => ({ targetId: p.targetId, ...i }))),
   };
 }

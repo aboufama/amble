@@ -721,6 +721,18 @@ select {
   user-select: none;
 }
 
+.build-chip.failed {
+  border: none;
+  background: var(--warn-light);
+  color: var(--warn-text);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.build-chip.failed:hover {
+  box-shadow: 0 0 0 2px var(--warn-glow);
+}
+
 .stop-all {
   opacity: 0.5;
 }
@@ -742,17 +754,6 @@ select {
   to {
     transform: rotate(360deg);
   }
-}
-
-.mode-badge {
-  margin-left: 8px;
-  padding: 3px 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  font-size: 10px;
-  font-weight: bold;
-  color: var(--text-primary-transparent);
-  user-select: none;
 }
 
 .stage-size-row {
@@ -918,24 +919,6 @@ select {
   display: none;
 }
 
-/* Scratch's orange "warn" alert. */
-.compile-error {
-  position: absolute;
-  top: 52px;
-  left: 8px;
-  right: 8px;
-  z-index: 6;
-  max-height: 150px;
-  overflow: auto;
-  padding: 10px 14px;
-  border: 1px solid var(--data-primary);
-  border-radius: var(--radius-md);
-  background: var(--warn-light);
-  box-shadow: 0 0 0 2px var(--warn-glow);
-  color: #56535a;
-  font-size: 12px;
-  line-height: 1.4;
-}
 
 /* ---------- Problems (the warning button next to Compile, and its dialog) ---------- */
 
@@ -1848,8 +1831,7 @@ body.reordering * {
 }
 
 /* Small stage: Scratch stacks the sprite info labels above their fields. */
-.gui-body.stage-small .build-chip,
-.gui-body.stage-small .mode-badge {
+.gui-body.stage-small .build-chip:not(.failed) {
   display: none;
 }
 
@@ -3000,9 +2982,10 @@ details summary {
 .toast {
   position: fixed;
   top: 53px;
-  left: 50%;
+  /* Centred over the code area, clear of the green flag and the stage. */
+  left: calc((100vw - 500px) / 2);
   z-index: 600;
-  max-width: 548px;
+  max-width: min(548px, calc(100vw - 540px));
   padding: 14px 16px;
   border: 1px solid var(--extensions-tertiary);
   border-radius: var(--radius-md);
@@ -3069,9 +3052,173 @@ details summary {
   }
 }
 
+/* ---------- Notes pinned to the code (src/components/CodeNotes.tsx) ---------- */
+
+.code-notes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.code-note-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.code-note-line {
+  fill: none;
+  stroke: var(--looks-secondary);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1 4;
+  opacity: 0.7;
+}
+
+.code-note-line[data-kind='issue'] {
+  stroke: var(--data-primary);
+}
+
+.code-note-line[data-kind='problem'] {
+  stroke: var(--red);
+}
+
+.code-note-line[data-kind='waiting'] {
+  stroke: var(--motion-primary);
+}
+
+.code-note-place {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.code-note {
+  --note: var(--looks-secondary);
+  position: relative;
+  display: flex;
+  gap: 8px;
+  padding: 9px 26px 10px 10px;
+  border-radius: var(--radius-md);
+  background: var(--ui-white);
+  box-shadow: var(--float), inset 0 0 0 1px var(--rim);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: auto;
+  animation: code-note-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.code-note[data-kind='issue'] {
+  --note: var(--data-primary);
+}
+
+.code-note[data-kind='problem'] {
+  --note: var(--red);
+}
+
+.code-note[data-kind='waiting'] {
+  --note: var(--motion-primary);
+}
+
+@keyframes code-note-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+}
+
+.code-note-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--note);
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.code-note-body {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.code-note-body p {
+  margin: 1px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.code-note-answer {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--ui-secondary);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.code-note-answer:focus {
+  outline: none;
+  border-color: var(--note);
+  background: var(--ui-white);
+  box-shadow: 0 0 0 3px var(--looks-light-transparent);
+}
+
+.code-note-fix {
+  justify-self: start;
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--note);
+  color: #fff;
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.code-note-fix:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.code-note-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+.code-note-close:hover,
+.code-note-close:focus-visible {
+  opacity: 1;
+  background: var(--ui-black-transparent-10);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .amble-assembly {
     transition: none;
+  }
+  .code-note {
+    animation: none;
   }
   .amble-snap > .blocklyPath,
   .green-flag.building::before {
