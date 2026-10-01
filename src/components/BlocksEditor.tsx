@@ -233,7 +233,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       trashcan: false,
       sounds: false,
       comments: true,
-      grid: { spacing: 40, length: 2, colour: '#ddd', snap: false },
+      grid: { spacing: 40, length: 2, colour: '#dfdce3', snap: false },
     });
     wsRef.current = ws;
     loadedId.current = null;

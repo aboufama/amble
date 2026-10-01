@@ -17,7 +17,7 @@ import { menuDefault, procedureNames, variablesFor, type MenuContext } from './m
 import { FLAG_ICON, REPEAT_ICON } from './icons';
 import { registerFields } from './fields';
 import { registerComments } from './comments';
-import { BLOCK_FONT_FAMILY, registerRenderer } from './renderer';
+import { BLOCK_FONT_FAMILY, BLOCK_TEXT_COLOUR, registerRenderer } from './renderer';
 import { registerWorkspaceUi } from './workspaceUi';
 
 /** Loops get Scratch's little arrow at the bottom right. */
@@ -141,7 +141,7 @@ export function registerBlockly(): void {
 
 const blockStyles: Record<string, Partial<Blockly.Theme.BlockStyle>> = {
   // Typed-in numbers and words: white ovals (zelos fills a shadow with its secondary colour).
-  shadow_blocks: { colourPrimary: '#ffffff', colourSecondary: '#ffffff', colourTertiary: '#c6c6c6', hat: '' },
+  shadow_blocks: { colourPrimary: '#ffffff', colourSecondary: '#ffffff', colourTertiary: '#c8c5cc', hat: '' },
 };
 for (const c of CATEGORIES) {
   const colours = { colourPrimary: c.colour, colourSecondary: c.secondary, colourTertiary: c.tertiary };
@@ -157,13 +157,14 @@ export const AMBLE_THEME = Blockly.Theme.defineTheme('amble', {
   blockStyles,
   categoryStyles: Object.fromEntries(CATEGORIES.map((c) => [`${c.id}_category`, { colour: c.colour }])),
   componentStyles: {
-    workspaceBackgroundColour: '#f9f9f9',
+    // Scratch's greys with Amble's lilac tint.
+    workspaceBackgroundColour: '#fbf8ff',
     toolboxBackgroundColour: '#ffffff',
-    toolboxForegroundColour: '#575e75',
-    flyoutBackgroundColour: '#f9f9f9',
-    flyoutForegroundColour: '#575e75',
+    toolboxForegroundColour: BLOCK_TEXT_COLOUR,
+    flyoutBackgroundColour: '#fbf8ff',
+    flyoutForegroundColour: BLOCK_TEXT_COLOUR,
     flyoutOpacity: 0.8,
-    scrollbarColour: '#cecdce',
+    scrollbarColour: '#d0ccd4',
     scrollbarOpacity: 1,
     insertionMarkerColour: '#000000',
     insertionMarkerOpacity: 0.2,

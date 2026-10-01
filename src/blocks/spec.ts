@@ -37,19 +37,24 @@ export interface Category {
   modes?: Array<'2d' | '3d'>;
 }
 
+/**
+ * Scratch's category colours, each turned 6 degrees and a touch softer for Amble (never more than 6
+ * degrees of perceived hue, so Triggers stays yellow). Where the turn made white words harder to read,
+ * the colour is a shade darker, so every block reads at least as well as Scratch's.
+ */
 export const CATEGORIES: Category[] = [
-  { id: 'brief', name: 'Brief', colour: '#5C6BC0', secondary: '#5160B0', tertiary: '#3F4E9E' },
-  { id: 'events', name: 'Triggers', colour: '#FFBF00', secondary: '#E6AC00', tertiary: '#CC9900' },
-  { id: 'characters', name: 'Characters', colour: '#29A3A3', secondary: '#238F8F', tertiary: '#1E7A7A' },
-  { id: 'motion', name: 'Motion', colour: '#4C97FF', secondary: '#4280D7', tertiary: '#3373CC' },
-  { id: 'game', name: 'Game', colour: '#0FBD8C', secondary: '#0DA57A', tertiary: '#0B8E69' },
-  { id: 'looks', name: 'Looks', colour: '#9966FF', secondary: '#855CD6', tertiary: '#774DCB' },
-  { id: 'sound', name: 'Sound', colour: '#CF63CF', secondary: '#C94FC9', tertiary: '#BD42BD' },
-  { id: 'control', name: 'Flow', colour: '#FFAB19', secondary: '#EC9C13', tertiary: '#CF8B17' },
-  { id: 'logic', name: 'Logic', colour: '#59C059', secondary: '#46B946', tertiary: '#389438' },
-  { id: 'variables', name: 'Memory', colour: '#FF8C1A', secondary: '#FF8000', tertiary: '#DB6E00' },
-  { id: 'myblocks', name: 'Skills', colour: '#FF6680', secondary: '#FF4D6A', tertiary: '#FF3355' },
-  { id: 'rules', name: 'Rules', colour: '#E0584B', secondary: '#CC4B3F', tertiary: '#B33F34' },
+  { id: 'brief', name: 'Brief', colour: '#556EB9', secondary: '#4E63A2', tertiary: '#3C518E' },
+  { id: 'events', name: 'Triggers', colour: '#F7AE08', secondary: '#DF9D07', tertiary: '#C68C06' },
+  { id: 'characters', name: 'Characters', colour: '#2D9F98', secondary: '#268C86', tertiary: '#217772' },
+  { id: 'motion', name: 'Motion', colour: '#3D99F9', secondary: '#3882D0', tertiary: '#3476B9' },
+  { id: 'game', name: 'Game', colour: '#14B87A', secondary: '#12A06A', tertiary: '#0F8A5C' },
+  { id: 'looks', name: 'Looks', colour: '#8C6BFA', secondary: '#7B60D2', tertiary: '#6C51C7' },
+  { id: 'sound', name: 'Sound', colour: '#C266CC', secondary: '#BA53C5', tertiary: '#AE46B9' },
+  { id: 'control', name: 'Flow', colour: '#F89D20', secondary: '#E58E1A', tertiary: '#C97F1D' },
+  { id: 'logic', name: 'Logic', colour: '#66BD5C', secondary: '#54B649', tertiary: '#43913B' },
+  { id: 'variables', name: 'Memory', colour: '#F87D21', secondary: '#F77008', tertiary: '#D46007' },
+  { id: 'myblocks', name: 'Skills', colour: '#FA688D', secondary: '#FA507A', tertiary: '#F93969' },
+  { id: 'rules', name: 'Rules', colour: '#DC4F51', secondary: '#C84345', tertiary: '#AF3839' },
 ];
 
 export type BlockShape =

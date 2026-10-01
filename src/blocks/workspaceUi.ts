@@ -1,7 +1,7 @@
 import * as Blockly from 'blockly/core';
 import { ContinuousCategory, ContinuousFlyout, ContinuousToolbox, registerContinuousToolbox } from '@blockly/continuous-toolbox';
 import { ZOOM_IN_ICON, ZOOM_OUT_ICON, ZOOM_RESET_ICON } from './icons';
-import { BLOCK_FONT_FAMILY } from './renderer';
+import { BLOCK_FONT_FAMILY, BLOCK_TEXT_COLOUR } from './renderer';
 
 /** Width of the block palette, like Scratch's. */
 export const FLYOUT_WIDTH = 250;
@@ -210,8 +210,15 @@ function registerContextMenus() {
 }
 
 // -----------------------------------------------------------------------------
-// Scratch's look for everything Blockly draws in HTML
+// Scratch's look for everything Blockly draws in HTML (in Amble's colours, like src/styles.css)
 // -----------------------------------------------------------------------------
+
+/** Dividers (Scratch's black 15%, with Amble's lilac tint), the panels' inner rim, and floating menus' shadow. */
+const LINE = 'hsla(240, 18%, 40%, 0.22)';
+const RIM = 'hsla(255, 55%, 62%, 0.2)';
+const FLOAT = '0 2px 4px hsla(250, 35%, 25%, 0.08), 0 8px 24px -4px hsla(250, 35%, 25%, 0.24)';
+/** The selected category's row and pressed buttons (Scratch's light grey, tinted). */
+const SELECTED_ROW = '#ecedf8';
 
 const CSS = `
 /* Category column */
@@ -219,10 +226,10 @@ const CSS = `
   width: 60px;
   padding: 0;
   background: #fff;
-  border-right: 1px solid rgba(0, 0, 0, 0.15);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+  border-right: 1px solid ${LINE};
+  border-bottom: 1px solid ${LINE};
   box-sizing: content-box;
-  color: #575e75;
+  color: ${BLOCK_TEXT_COLOUR};
   font-family: ${BLOCK_FONT_FAMILY};
   overflow-x: hidden;
   scrollbar-width: none;
@@ -234,12 +241,12 @@ const CSS = `
   margin: 0;
   padding: 0.375rem 0;
   line-height: 22px;
-  color: #575e75;
+  color: ${BLOCK_TEXT_COLOUR};
   cursor: pointer;
   white-space: nowrap;
 }
-.blocklyToolbox .blocklyToolboxCategory:hover { color: #4c97ff; }
-.blocklyToolbox .blocklyToolboxSelected { background-color: #e9eef2; }
+.blocklyToolbox .blocklyToolboxCategory:hover { color: #2a9dee; }
+.blocklyToolbox .blocklyToolboxSelected { background-color: ${SELECTED_ROW}; }
 .blocklyToolbox .blocklyToolboxCategoryLabel {
   width: 60px;
   margin: 0;
@@ -264,26 +271,26 @@ const CSS = `
 }
 
 /* Palette */
-.blocklyFlyout { border-right: 1px solid rgba(0, 0, 0, 0.15); box-sizing: content-box; }
-.blocklyFlyoutBackground { fill: #f9f9f9; fill-opacity: 0.8; }
+.blocklyFlyout { border-right: 1px solid ${LINE}; box-sizing: content-box; }
+.blocklyFlyoutBackground { fill: #fbf8ff; fill-opacity: 0.8; }
 .blocklyFlyoutLabel { cursor: default; }
 .blocklyFlyoutLabelBackground { opacity: 0; }
 .blocklyFlyoutButton { fill: none; cursor: pointer; }
 .blocklyFlyoutButton:hover { fill: #fff; }
-.blocklyFlyoutButton:active { fill: #e9eef2; }
+.blocklyFlyoutButton:active { fill: ${SELECTED_ROW}; }
 .blocklyFlyoutButtonShadow { fill: transparent; }
-.blocklyFlyoutButtonBackground { stroke: #c6c6c6; }
-.injectionDiv .blocklyFlyout .blocklyFlyoutButton .blocklyText { fill: #575e75; font: 500 12pt ${BLOCK_FONT_FAMILY}; }
-.blocklyFlyout .blocklyScrollbarHandle { fill: #cecdce; }
+.blocklyFlyoutButtonBackground { stroke: #c8c5cc; }
+.injectionDiv .blocklyFlyout .blocklyFlyoutButton .blocklyText { fill: ${BLOCK_TEXT_COLOUR}; font: 500 12pt ${BLOCK_FONT_FAMILY}; }
+.blocklyFlyout .blocklyScrollbarHandle { fill: #d0ccd4; }
 
 /* Workspace */
 .blocklyMainBackground { stroke: none; }
-.blocklyScrollbarHandle { fill: #cecdce; }
+.blocklyScrollbarHandle { fill: #d0ccd4; }
 .blocklyScrollbarBackground { opacity: 0; }
 .blocklyZoom > image { opacity: 1; cursor: pointer; }
 .blocklyZoom > image:hover { opacity: 0.75; }
 .blocklyZoom > image:active { opacity: 0.6; }
-:not(.blocklyDragging) > .blocklyDragging { filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.6)); }
+:not(.blocklyDragging) > .blocklyDragging { filter: drop-shadow(0 0 6px hsla(250, 35%, 12%, 0.6)); }
 .blocklyInsertionMarker > .blocklyPath { stroke: none; }
 
 /* Inputs */
@@ -291,7 +298,7 @@ const CSS = `
 .blocklyWidgetDiv textarea.ambleTextInput {
   font-family: ${BLOCK_FONT_FAMILY};
   font-weight: 500;
-  color: #575e75;
+  color: ${BLOCK_TEXT_COLOUR};
   background: #fff;
   box-sizing: border-box;
   resize: none;
@@ -303,8 +310,8 @@ const CSS = `
 
 /* Dropdown menus (colored like the block, like Scratch) */
 .blocklyDropDownDiv {
-  border-radius: 4px;
-  box-shadow: 0 0 8px 1px rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  box-shadow: ${FLOAT};
   padding: 4px;
 }
 .blocklyDropDownDiv .blocklyMenu { padding: 0; }
@@ -324,10 +331,9 @@ const CSS = `
 .blocklyWidgetDiv .blocklyContextMenu {
   padding: 4px 0;
   background: #fff;
-  border: 1px solid;
-  border-color: #ccc #666 #666 #ccc;
-  border-radius: 4px;
-  box-shadow: none;
+  border: 1px solid ${RIM};
+  border-radius: 6px;
+  box-shadow: ${FLOAT};
   font: 13px ${BLOCK_FONT_FAMILY};
 }
 .blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItem {
@@ -340,10 +346,10 @@ const CSS = `
   color: #000;
   line-height: normal;
 }
-.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItem.blocklyMenuItemHighlight { background-color: rgba(77, 151, 255, 0.25); }
-.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItemDisabled { color: #ccc; }
+.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItem.blocklyMenuItemHighlight { background-color: rgba(89, 179, 242, 0.25); }
+.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItemDisabled { color: #cdcad1; }
 .blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItemDisabled.blocklyMenuItemHighlight { background: none; }
-.blocklyWidgetDiv .blocklyContextMenu:focus { box-shadow: none; }
+.blocklyWidgetDiv .blocklyContextMenu:focus { box-shadow: ${FLOAT}; }
 .blocklyWidgetDiv .blocklyContextMenu .blocklyShortcut { display: none; }
 
 /* Comments: Scratch's yellow notes */
@@ -353,7 +359,7 @@ const CSS = `
   border: none;
   padding: 12px;
   background: #fef49c;
-  color: #575e75;
+  color: ${BLOCK_TEXT_COLOUR};
   font: 400 12pt ${BLOCK_FONT_FAMILY};
 }
 .blocklyComment .blocklyTextarea::placeholder { color: rgba(0, 0, 0, 0.5); font-style: italic; }
@@ -363,17 +369,17 @@ const CSS = `
 .blocklyComment .blocklyFoldoutIcon { width: 32px; height: 32px; transform-origin: 16px 16px; }
 .blocklyComment.blocklyCollapsed .blocklyFoldoutIcon { transform: rotate(-90deg); }
 .blocklyComment .blocklyResizeHandle { width: 20px; height: 20px; }
-.blocklyComment .blocklyCommentPreview.blocklyText { fill: #575e75; font: 400 12pt ${BLOCK_FONT_FAMILY}; }
+.blocklyComment .blocklyCommentPreview.blocklyText { fill: ${BLOCK_TEXT_COLOUR}; font: 400 12pt ${BLOCK_FONT_FAMILY}; }
 .blocklySelected .blocklyCommentHighlight { stroke: #bca903; stroke-width: 1px; }
 .ambleCommentLine { stroke-width: 1px; }
 
 .blocklyTooltipDiv {
   font: 12px ${BLOCK_FONT_FAMILY};
-  color: #575e75;
+  color: ${BLOCK_TEXT_COLOUR};
   background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
-  box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.15);
+  border: 1px solid ${RIM};
+  border-radius: 6px;
+  box-shadow: ${FLOAT};
   padding: 6px 8px;
   opacity: 1;
 }
@@ -393,6 +399,8 @@ export function registerWorkspaceUi(): void {
   Blockly.Scrollbar.scrollbarThickness = Blockly.Touch.TOUCH_ENABLED ? 14 : 11;
   Blockly.FlyoutButton.TEXT_MARGIN_X = 40;
   Blockly.FlyoutButton.TEXT_MARGIN_Y = 10;
+  // Soft-square buttons, like the rest of Amble's.
+  Blockly.FlyoutButton.BORDER_RADIUS = 6;
   Blockly.config.dragRadius = 3;
   Blockly.config.snapRadius = 48;
   Blockly.config.connectingSnapRadius = 68;

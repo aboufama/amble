@@ -6,10 +6,21 @@ import * as Blockly from 'blockly/core';
  * - no glowing outline on the selected block (Scratch shows none),
  * - label text in regular weight (500) instead of bold,
  * - "define" blocks get Scratch's rounded "bowler hat" top,
- * - no connection highlight; insertion markers show where a block will go.
+ * - no connection highlight; insertion markers show where a block will go,
+ * - Amble's own corners: a little rounder than Scratch's (see BLOCK_CORNER_RADIUS).
  */
 
 export const BLOCK_FONT_FAMILY = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+
+/** Words on white inputs and in the palette: Scratch's text grey with Amble's lilac tint. */
+export const BLOCK_TEXT_COLOUR = '#595c7a';
+
+/**
+ * The outer corners of blocks (Scratch's are 4). Blocks are still measured with zelos's 4
+ * (CORNER_RADIUS), so every block keeps its size and its connections: each corner is drawn
+ * larger and ends exactly where the 4px corner ended.
+ */
+const BLOCK_CORNER_RADIUS = 6;
 
 type BlockWithHat = Blockly.BlockSvg & { hat?: string };
 
@@ -17,8 +28,40 @@ class AmbleConstants extends Blockly.zelos.ConstantProvider {
   override SELECTED_GLOW_COLOUR = '#ffffff';
   override FIELD_TEXT_FONTWEIGHT = '500';
   override FIELD_TEXT_FONTFAMILY = BLOCK_FONT_FAMILY;
+  /** Square menus on blocks round their corners like the blocks do. */
+  override FIELD_BORDER_RECT_RADIUS = BLOCK_CORNER_RADIUS;
   /** Height of the rounded top of "define" blocks. */
   BOWLER_HAT_HEIGHT = 20;
+
+  /**
+   * Each corner path starts and ends where zelos's corner of CORNER_RADIUS does; the extra length
+   * of the larger arc is taken back along the straight edge next to it (a step of `d` there and back).
+   */
+  protected override makeOutsideCorners() {
+    const r = this.CORNER_RADIUS;
+    const R = BLOCK_CORNER_RADIUS;
+    const d = R - r;
+    return {
+      topLeft: `m 0,${R} a ${R},${R} 0 0,1 ${R},${-R} h ${-d}`,
+      topRight: `h ${-d} a ${R},${R} 0 0,1 ${R},${R} v ${-d}`,
+      bottomRight: `a ${R},${R} 0 0,1 ${-R},${R} h ${d}`,
+      bottomLeft: `h ${d} a ${R},${R} 0 0,1 ${-R},${-R} v ${d}`,
+      // The bottom right corner starts this far above the bottom edge.
+      rightHeight: R,
+    };
+  }
+
+  /** C-blocks: the inner corners keep Scratch's size; the ends of the arms get the larger corner. */
+  override makeInsideCorners() {
+    const corners = super.makeInsideCorners();
+    const R = BLOCK_CORNER_RADIUS;
+    const d = R - corners.rightWidth;
+    return {
+      ...corners,
+      pathTopRight: `v ${-d} a ${R},${R} 0 0,1 ${-R},${R} h ${d}`,
+      pathBottomRight: `h ${-d} a ${R},${R} 0 0,1 ${R},${R} v ${-d}`,
+    };
+  }
 
   override createDom(svg: SVGElement, selector: string, injectionDivIfIsParent?: HTMLElement) {
     super.createDom(svg, selector, injectionDivIfIsParent);
@@ -45,7 +88,18 @@ class AmbleConstants extends Blockly.zelos.ConstantProvider {
       `}`,
       `${selector} .blocklyFlyoutLabelText {`,
       `font: bold 14pt ${BLOCK_FONT_FAMILY};`,
-      `fill: #575E75;`,
+      `fill: ${BLOCK_TEXT_COLOUR};`,
+      `}`,
+      // Words in the white inputs (zelos draws them in Scratch's grey).
+      `${selector} .blocklyNonEditableField>text,`,
+      `${selector} .blocklyEditableField>text,`,
+      `${selector} .blocklyNonEditableField>g>text,`,
+      `${selector} .blocklyEditableField>g>text,`,
+      `${selector} .blocklyText.blocklyBubbleText {`,
+      `fill: ${BLOCK_TEXT_COLOUR};`,
+      `}`,
+      `${selector} .blocklyHtmlInput {`,
+      `color: ${BLOCK_TEXT_COLOUR};`,
       `}`,
     ];
   }

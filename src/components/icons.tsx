@@ -176,22 +176,22 @@ export const WrenchIcon = (p: P) => (
 /** Stacked blocks (Code tab). */
 export const BlocksTabIcon = (p: P) => (
   <svg {...base(p)} stroke="none">
-    <path d="M3 5.5a1.5 1.5 0 0 1 1.5-1.5H7l1 1.2h3L12 4h7.5A1.5 1.5 0 0 1 21 5.5v3A1.5 1.5 0 0 1 19.5 10H12l-1 1.2H8L7 10H4.5A1.5 1.5 0 0 1 3 8.5z" fill="#9966ff" />
-    <path d="M3 14.5a1.5 1.5 0 0 1 1.5-1.5H7l1 1.2h3L12 13h4.5a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5H12l-1 1.2H8L7 19H4.5A1.5 1.5 0 0 1 3 17.5z" fill="#855cd6" />
+    <path d="M3 5.5a1.5 1.5 0 0 1 1.5-1.5H7l1 1.2h3L12 4h7.5A1.5 1.5 0 0 1 21 5.5v3A1.5 1.5 0 0 1 19.5 10H12l-1 1.2H8L7 10H4.5A1.5 1.5 0 0 1 3 8.5z" fill="#8771f4" />
+    <path d="M3 14.5a1.5 1.5 0 0 1 1.5-1.5H7l1 1.2h3L12 13h4.5a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5H12l-1 1.2H8L7 19H4.5A1.5 1.5 0 0 1 3 17.5z" fill="#7462cc" />
   </svg>
 );
 /** Paintbrush (Costumes tab). */
 export const BrushTabIcon = (p: P) => (
   <svg {...base(p)} stroke="none">
-    <path d="M20.6 3.4a1.6 1.6 0 0 0-2.3 0l-8.1 8.4 2 2 8.4-8.1a1.6 1.6 0 0 0 0-2.3z" fill="#855cd6" />
-    <path d="M9.3 12.9c-1.9-.4-3.7.7-4.3 2.6-.4 1.3-.8 2.6-2.4 3.2 2.6 1.9 7 1.6 8.3-1.2.6-1.2.3-2.4-.3-3.2z" fill="#855cd6" />
+    <path d="M20.6 3.4a1.6 1.6 0 0 0-2.3 0l-8.1 8.4 2 2 8.4-8.1a1.6 1.6 0 0 0 0-2.3z" fill="#7462cc" />
+    <path d="M9.3 12.9c-1.9-.4-3.7.7-4.3 2.6-.4 1.3-.8 2.6-2.4 3.2 2.6 1.9 7 1.6 8.3-1.2.6-1.2.3-2.4-.3-3.2z" fill="#7462cc" />
   </svg>
 );
 /** Speaker (Sounds tab). */
 export const SpeakerTabIcon = (p: P) => (
   <svg {...base(p)} stroke="none">
-    <path d="M3.5 9.3h3.3L11.4 5c.6-.5 1.6-.1 1.6.7v12.6c0 .8-1 1.2-1.6.7l-4.6-4.3H3.5a1 1 0 0 1-1-1V10.3a1 1 0 0 1 1-1z" fill="#855cd6" />
-    <path d="M15.6 9c1.6 1.6 1.6 4.4 0 6M18.4 6.6c2.9 2.9 2.9 7.9 0 10.8" fill="none" stroke="#855cd6" strokeWidth="1.9" strokeLinecap="round" />
+    <path d="M3.5 9.3h3.3L11.4 5c.6-.5 1.6-.1 1.6.7v12.6c0 .8-1 1.2-1.6.7l-4.6-4.3H3.5a1 1 0 0 1-1-1V10.3a1 1 0 0 1 1-1z" fill="#7462cc" />
+    <path d="M15.6 9c1.6 1.6 1.6 4.4 0 6M18.4 6.6c2.9 2.9 2.9 7.9 0 10.8" fill="none" stroke="#7462cc" strokeWidth="1.9" strokeLinecap="round" />
   </svg>
 );
 /** Small stage layout. */
@@ -254,16 +254,16 @@ export const CaretDownIcon = (p: P) => (
 export const FileIcon = (p: P) => (
   <svg {...base(p)} stroke="none">
     <path d="M6.5 2.5h7.6c.5 0 1 .2 1.4.6l3.4 3.4c.4.4.6.9.6 1.4v11.6a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2z" fill="currentColor" />
-    <path d="M8 11h8M8 14.5h8M8 18h5" stroke="#855cd6" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M8 11h8M8 14.5h8M8 18h5" stroke="#7462cc" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
 /** A friendly character with a plus: add a sprite or costume. */
 export const AddCharacterIcon = (p: P) => (
   <svg {...base(p)} stroke="none">
     <path d="M10.5 6.5c4.4 0 7.5 3.3 7.5 7.4 0 4-3.1 6.6-7.5 6.6S3 17.9 3 13.9c0-4.1 3.1-7.4 7.5-7.4z" fill="currentColor" />
-    <circle cx="8" cy="13" r="1.3" fill="#855cd6" />
-    <circle cx="13" cy="13" r="1.3" fill="#855cd6" />
-    <path d="M8.5 16.4c1.2.9 2.8.9 4 0" fill="none" stroke="#855cd6" strokeWidth="1.3" strokeLinecap="round" />
+    <circle cx="8" cy="13" r="1.3" fill="#7462cc" />
+    <circle cx="13" cy="13" r="1.3" fill="#7462cc" />
+    <path d="M8.5 16.4c1.2.9 2.8.9 4 0" fill="none" stroke="#7462cc" strokeWidth="1.3" strokeLinecap="round" />
     <path d="M19 2.5v6M16 5.5h6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
   </svg>
 );
@@ -271,8 +271,8 @@ export const AddCharacterIcon = (p: P) => (
 export const AddPictureIcon = (p: P) => (
   <svg {...base(p)} stroke="none">
     <rect x="2.5" y="6" width="16" height="14" rx="2.5" fill="currentColor" />
-    <path d="M4.5 17.5l4-4.4c.4-.4 1-.4 1.4 0l2 2.1 1.6-1.6c.4-.4 1-.4 1.4 0l1.6 1.8v2.1z" fill="#855cd6" />
-    <circle cx="13.5" cy="10" r="1.4" fill="#855cd6" />
+    <path d="M4.5 17.5l4-4.4c.4-.4 1-.4 1.4 0l2 2.1 1.6-1.6c.4-.4 1-.4 1.4 0l1.6 1.8v2.1z" fill="#7462cc" />
+    <circle cx="13.5" cy="10" r="1.4" fill="#7462cc" />
     <path d="M19.5 2.5v6M16.5 5.5h6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
   </svg>
 );

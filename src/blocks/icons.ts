@@ -14,8 +14,8 @@ export const FLAG_ICON = svgUri(
 export const REPEAT_ICON = svgUri(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' +
     '<g fill="none" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M5.6 15.4c2.9 3.1 8.2 2.6 10.1-1.4.5-1 .7-2.2.6-3.3" stroke="#cf8b17" stroke-width="4.4"/>' +
-    '<path d="M12.6 11.3l3.8-4.4 3.8 4.4z" fill="#cf8b17" stroke="#cf8b17" stroke-width="2.6"/>' +
+    '<path d="M5.6 15.4c2.9 3.1 8.2 2.6 10.1-1.4.5-1 .7-2.2.6-3.3" stroke="#c97f1d" stroke-width="4.4"/>' +
+    '<path d="M12.6 11.3l3.8-4.4 3.8 4.4z" fill="#c97f1d" stroke="#c97f1d" stroke-width="2.6"/>' +
     '<path d="M5.6 15.4c2.9 3.1 8.2 2.6 10.1-1.4.5-1 .7-2.2.6-3.3" stroke="#fff" stroke-width="2"/>' +
     '<path d="M12.6 11.3l3.8-4.4 3.8 4.4z" fill="#fff" stroke="#fff" stroke-width=".4"/>' +
     '</g></svg>',
@@ -24,9 +24,9 @@ export const REPEAT_ICON = svgUri(
 const zoomButton = (glyph: string) =>
   svgUri(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">' +
-      '<circle cx="18" cy="18" r="18" fill="#000" fill-opacity=".15"/>' +
+      '<circle cx="18" cy="18" r="18" fill="#545478" fill-opacity=".22"/>' +
       '<circle cx="18" cy="18" r="16.5" fill="#fff"/>' +
-      `<g fill="none" stroke="#575e75" stroke-opacity=".8" stroke-width="1.5" stroke-linecap="round">${glyph}</g>` +
+      `<g fill="none" stroke="#595c7a" stroke-opacity=".8" stroke-width="1.5" stroke-linecap="round">${glyph}</g>` +
       '</svg>',
   );
 
