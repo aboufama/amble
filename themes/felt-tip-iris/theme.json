@@ -1,0 +1,16 @@
+{
+  "order": 1.5,
+  "name": "Felt-Tip Iris",
+  "seed": 827687546,
+  "base": "4d4030b8c31172e194c0a675313b9d498d104d13",
+  "summary": "Iris Haze with Amble's own icons, drawn like a fat felt-tip pen: bold round strokes, each icon with one dab of apricot. The green flag is a \"go\" chevron on a stubby pole, stop is a soft octagon, and the category markers are rings around their own glyphs. The purple turns a little further, greys take a touch more lilac, and corners get a little rounder.",
+  "swatches": [
+    "#7b5fcb",
+    "#2a8dee",
+    "#eaf4fd",
+    "#5a5b7c",
+    "#f08c1e",
+    "#ffd56a",
+    "#4cbf56"
+  ]
+}
