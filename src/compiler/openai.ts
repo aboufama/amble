@@ -17,7 +17,7 @@ export interface AiSettings {
   baseUrl: string;
   model: string;
   reasoningEffort: ReasoningEffort;
-  /** Model used for compiled assets (SVG art, sounds, 3D recipes). Empty = same as `model`. */
+  /** Model used for compiled assets (SVG art and sounds). Empty = same as `model`. */
   assetModel: string;
   /** How compiled costumes are drawn: vector art written by the chat model, or an image model. */
   artMode: 'svg' | 'image';

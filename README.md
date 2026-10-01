@@ -1,18 +1,15 @@
 # Amble
 
-Make real 2D and 3D games with blocks. Amble has its own block language: lots of **exact blocks** for the basics (move, walk, jump, touching, repeat, score...), and **blocks in your own words** for everything else (`do [spin around and shrink away]`, `always: [twinkle as I fall]`). Games run on [Babylon.js](https://www.babylonjs.com/).
+Make real 2D games with blocks. Amble has its own block language: lots of **exact blocks** for the basics (move, walk, jump, touching, repeat, score...), and **blocks in your own words** for everything else (`do [spin around and shrink away]`, `always: [twinkle as I fall]`). Games run on [Babylon.js](https://www.babylonjs.com/).
 
 **Try it:** https://aboufama.github.io/amble/ (exact blocks work right away; to compile blocks in your own words, open **Settings** and add an OpenAI API key, which stays in your browser). Running Amble on your own computer? You can **sign in with ChatGPT** instead.
 
-![The Amble editor in 2D mode](docs/editor-2d.png)
+![The Amble editor](docs/editor-2d.png)
 
 - **Blocks that teach how to direct anything.** The categories follow how you'd brief a capable helper. **Brief**: say what you're making, who it's for, how it looks, and what winning means. **Characters**: name exactly who you mean, by dragging their block (with their picture) into a slot. **Rules**: say what must always or never happen, and add **checks** that tell you when something isn't true. **Skills**: break big jobs into named steps.
 - **Exact where it can be, open where it should be.** Exact blocks compile instantly, offline, the same way every time. Words reach the whole game: a sentence on one sprite can change how another one plays, so when you add or change words (or the brief), the compile sees the whole program and may rewrite words elsewhere to fit, and tells you when it does. Words it didn't need to touch keep their code, and moving scripts around never recompiles anything. **Edit → Build everything again** starts over and writes everything again, so it can come out different.
-- **You make the assets.** Paint costumes, upload images or `.glb` 3D models, record or synthesize sounds.
-- **The compiler fills the gaps.** If your words need something you didn't make (the stars in "catch the falling stars", a laser sound, a 3D crate), the compiler makes it. It shows up as a **compiled asset** with a dashed outline. Keep it to make it yours, or delete it and the next compile makes a new one. Compiled assets are reused between compiles, so your game doesn't change looks every build, until you change the **art style**: then the compiler makes its art again in the new style.
-- **2D and 3D in the same engine.** Pick a world with the 2D / 3D switch.
-
-![The 3D example](docs/editor-3d.png)
+- **You make the assets.** Paint costumes, upload images, record or synthesize sounds.
+- **The compiler fills the gaps.** If your words need something you didn't make (the stars in "catch the falling stars", a laser sound, a crate to jump on), the compiler makes it. It shows up as a **compiled asset** with a dashed outline. Keep it to make it yours, or delete it and the next compile makes a new one. Compiled assets are reused between compiles, so your game doesn't change looks every build, until you change the **art style**: then the compiler makes its art again in the new style.
 
 ## Quick start
 
@@ -27,9 +24,9 @@ Then either:
 - open **Settings** and paste an OpenAI API key (stored only in your browser), or
 - put `OPENAI_API_KEY=sk-...` in a `.env` file (see `.env.example`). The dev server then proxies OpenAI calls, and the key never reaches the browser.
 
-Press the green flag: the starter project uses only exact blocks, so it compiles instantly and needs no account. Try **File → Examples → Star Catcher** or **Coin Hills (3D)**: they have a couple of blocks in your own words: with an account, the green flag builds them first and then plays.
+Press the green flag: the starter project uses only exact blocks, so it compiles instantly and needs no account. Try **File → Examples → Star Catcher**: it has a couple of blocks in your own words: with an account, the green flag builds them first and then plays.
 
-Defaults: `gpt-5` with low reasoning compiles blocks in your own words; `gpt-5-mini` makes compiled art, models and sounds. Any model your key can use can be picked in Settings, and any OpenAI-compatible endpoint works via the base URL. Signed in with ChatGPT, everything uses GPT-6 Astra Light (`gpt-6-astra` with low reasoning).
+Defaults: `gpt-5` with low reasoning compiles blocks in your own words; `gpt-5-mini` makes compiled art and sounds. Any model your key can use can be picked in Settings, and any OpenAI-compatible endpoint works via the base URL. Signed in with ChatGPT, everything uses GPT-6 Astra Light (`gpt-6-astra` with low reasoning).
 
 ### Signing in with ChatGPT
 
@@ -53,9 +50,9 @@ The GitHub Pages demo has no server, so there it's API keys only.
 
 1. **The block language** (`src/blocks/spec.ts`) defines every block once: its shape (hat, stack, C, reporter, condition, or a standalone rule), its inputs (typed numbers and words, menus, character slots, condition slots) and its help text. The editor (`src/blocks/blockly.ts`) and the compiler both read it.
 2. **Exact blocks compile locally** (`src/compiler/codegen.ts`). Like Scratch, each script becomes a coroutine that its trigger starts (with Scratch's rules for restarting), loops yield once per frame, and every exact block becomes a direct engine call. The same blocks always give the same code.
-3. **Words become pieces.** A block in your own words becomes a small method. Its key is a hash of what it says and where it is (the words, the block, the sprite, whether it repeats, 2D or 3D). Pieces whose key is new go out, all in one request with the whole program and the code of every piece already written (`src/compiler/prompt.ts`, strict JSON from `src/compiler/schema.ts`). Words reach the whole game, so the reply can also rewrite pieces written before, on any sprite, when the new words need them to change; a changed brief sends them to be looked at again too. The art style is a piece of its own: a rule that sets up the game's look when it starts. Pieces that don't parse get one repair round. Pieces nothing rewrote come from the last compile, and undoing an edit compiles instantly again. **Edit → Build everything again** starts over: every piece is written again and the compiled art is made again.
+3. **Words become pieces.** A block in your own words becomes a small method. Its key is a hash of what it says and where it is (the words, the block, the sprite, whether it repeats). Pieces whose key is new go out, all in one request with the whole program and the code of every piece already written (`src/compiler/prompt.ts`, strict JSON from `src/compiler/schema.ts`). Words reach the whole game, so the reply can also rewrite pieces written before, on any sprite, when the new words need them to change; a changed brief sends them to be looked at again too. The art style is a piece of its own: a rule that sets up the game's look when it starts. Pieces that don't parse get one repair round. Pieces nothing rewrote come from the last compile, and undoing an edit compiles instantly again. **Edit → Build everything again** starts over: every piece is written again and the compiled art is made again.
 4. **Check and harden.** Every class is parsed with acorn (`src/compiler/transform.ts`). Loops get guards so a runaway `while (true)` pauses or stops instead of freezing the page. A missing `yield*` before `wait()` is added, and hooks that wait become coroutines.
-5. **Make assets.** Compiled costumes are drawn as SVG (or by an image model, if you choose that in Settings). 3D models are assembled from primitive shapes. Sounds come from a small synthesizer (`src/audio/synth.ts`). If generation fails, a placeholder keeps the game running.
+5. **Make assets.** Compiled costumes are drawn as SVG (or by an image model, if you choose that in Settings). Sounds come from a small synthesizer (`src/audio/synth.ts`). If generation fails, a placeholder keeps the game running.
 6. **Run.** The green flag builds what changed and then plays the game in an iframe with an opaque origin and a Content-Security-Policy that blocks all network access. A moment after you finish typing words, they're built quietly in the background, so the flag usually plays at once; while a block is being built it goes pale and fills back in with bricks of its own colour. With no account, blocks in your own words do nothing until they're built (adding a key or signing in builds them right away), and everything else still plays. Problems show where they happen, as a note pinned beside the block: an error or a failed **check** from the last run (with **Fix it**, which builds the words of the sprites that had problems again, with the problems attached), a block that doesn't work where it is, words that didn't build (**Try again**), and words waiting for a key or a sign-in. When words could mean quite different games, the compiler picks one and asks about it in a note on their block; the answer joins the words, and they build again. The **Problems** dialog lists everything at once.
 
 Old projects made with earlier versions of Amble are converted to the new blocks when they're opened (`src/project/migrate.ts`), keeping every word.
@@ -67,13 +64,12 @@ The Amble engine (`src/engine/`) is a thin, consistent game layer over Babylon.j
 - **Consistent timing.** Logic and physics run on Babylon's deterministic lockstep: exactly 60 ticks per second on every machine, independent of the monitor's refresh rate. `wait()`, timers and tweens use game time, not wall-clock time.
 - **Unity-style sprites.** `class Player extends Sprite { start() {} update(dt) {} onKeyDown(key) {} onClick() {} onMessage(name, data) {} onCollide(other) {} onSpawn() {} }`, plus coroutines (`*start() { yield* this.wait(1) }`).
 - **2D:** orthographic 480×360 stage in pixels (Scratch coordinates), costumes as textured sprites, scrolling camera, layers.
-- **3D:** meters, sky, sun with shadows, ground, follow / first-person / orbit cameras. Image costumes are billboard cutouts; `.glb` and compiled models are real meshes.
-- **Physics:** Havok (dynamic/static/kinematic bodies, collisions, sensors). In 2D, bodies are constrained to the plane.
-- **Ready-made behaviors** for the exact Game blocks: walk with the arrow keys, jump, fall with gravity (the bottom of the screen is solid in 2D), be solid ground.
+- **Physics:** Havok (dynamic/static/kinematic bodies, collisions, sensors), constrained to the plane.
+- **Ready-made behaviors** for the exact Game blocks: walk with the arrow keys, jump, fall with gravity (the bottom of the screen is solid), be solid ground.
 - **Also:** input (keys, mouse, touch, pointer lock), Web Audio sounds, HUD text/values/buttons, speech bubbles, questions, particles.
 - **Full Babylon access:** compiled code can use the `BABYLON` namespace for anything the helpers don't cover.
 
-Why Babylon.js? It's a full game engine (rendering, physics, particles, glTF, cameras, input) where 2D and 3D share one scene graph and API. It has a built-in fixed-timestep mode, and it's famously backward compatible, so compiled code rarely breaks on version drift.
+Why Babylon.js? It's a full game engine (rendering, physics, particles, cameras, input). It has a built-in fixed-timestep mode, and it's famously backward compatible, so compiled code rarely breaks on version drift.
 
 ## Project layout
 
@@ -119,6 +115,5 @@ To point Playwright at an already-installed Chromium, set `PW_CHROMIUM_PATH`, e.
 
 ## Ideas for next steps
 
-- Live previews of compiled 3D models in the costume list.
 - More providers (Anthropic, Gemini, local models). Everything goes through `src/compiler/openai.ts`.
 - Show the compiler a picture of your costumes so compiled art matches your style even more closely.

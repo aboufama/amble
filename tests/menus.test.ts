@@ -22,7 +22,7 @@ import {
 } from '../src/blocks/menus';
 import { serializeBlocks } from '../src/compiler/serialize';
 import { block, character, newProject, variable, workspace } from '../src/project/defaults';
-import { coinHills, starCatcher } from '../src/project/examples';
+import { starCatcher } from '../src/project/examples';
 import type { ImageAsset, Project, SoundAsset } from '../src/project/types';
 
 const image = (name: string): ImageAsset => ({
@@ -41,7 +41,7 @@ const sound = (name: string): SoundAsset => ({ id: name, name, kind: 'sound', da
 
 /** A project with a stage, a cat and a dog. */
 function project(): Project {
-  const p = newProject('2d');
+  const p = newProject();
   p.variables = ['score'];
   p.stage.costumes = [image('day'), image('night')];
   const cat = p.sprites[0];
@@ -137,7 +137,7 @@ describe('dropdown options', () => {
     expect(values(menuOptions('character', ctx(p, p.stage.id), '', ['me']))).toEqual(['Cat', 'Dog']);
     // Characters the compiler added can be named too.
     const withCompiled = structuredClone(p);
-    withCompiled.compiled = { createdAt: 0, model: '', mode: '2d', inputHash: '', summary: '', howToPlay: '', warnings: [], code: [], assets: [], sprites: [{ id: 'c', name: 'Moon', description: '', x: 0, y: 0, z: 0, size: 100, direction: 0, visible: true, rotationStyle: 'all around' }] };
+    withCompiled.compiled = { createdAt: 0, model: '', mode: '2d', inputHash: '', summary: '', howToPlay: '', warnings: [], code: [], assets: [], sprites: [{ id: 'c', name: 'Moon', description: '', x: 0, y: 0, size: 100, direction: 0, visible: true, rotationStyle: 'all around' }] };
     expect(values(menuOptions('character', ctx(withCompiled, cat.id), '', ['me']))).toEqual(['me', 'Dog', 'Moon']);
     expect(CHARACTER_SPECIAL_LABELS.anyone).toBe('anyone');
   });
@@ -155,7 +155,7 @@ describe('dropdown options', () => {
     // The editor's unsaved blocks count, and so do messages made with "New message".
     const live = { ...ctx(p, cat.id), liveBlocks: workspace([block('ev_broadcast', { MESSAGE: 'boom' })]), newMessages: ['zap'] };
     expect(values(menuOptions('message', live))).toEqual(['boom', 'go', 'zap', NEW_MESSAGE]);
-    const empty = newProject('2d');
+    const empty = newProject();
     expect(values(menuOptions('message', ctx(empty, empty.sprites[0].id)))).toEqual(['message1', NEW_MESSAGE]);
   });
 
@@ -175,7 +175,8 @@ describe('dropdown options', () => {
   });
 
   it('never offers an empty menu', () => {
-    const bare = newProject('3d');
+    const bare = newProject();
+    bare.stage.costumes = [];
     bare.sprites[0].sounds = [];
     expect(values(menuOptions('sound', ctx(bare, bare.sprites[0].id), 'boing'))).toEqual(['boing', RECORD_SOUND]);
     expect(values(menuOptions('costume', ctx(bare, bare.stage.id)))).toEqual(['costume1']);
@@ -265,7 +266,7 @@ describe('dropdowns for the compiler', () => {
 
 describe('starter projects', () => {
   it('only use dropdown values that are options', () => {
-    for (const p of [newProject('2d'), newProject('3d'), starCatcher(), coinHills()]) {
+    for (const p of [newProject(), starCatcher()]) {
       for (const t of [p.stage, ...p.sprites]) {
         forEachBlock(t.blocks, (b) => {
           for (const [field, input] of Object.entries(BLOCK_BY_TYPE.get(b.type)?.inputs ?? {})) {
@@ -281,7 +282,7 @@ describe('starter projects', () => {
 
 describe('character menus', () => {
   it('are never empty (the stage, with no sprites to name)', () => {
-    const p = newProject('2d');
+    const p = newProject();
     p.sprites = [];
     expect(menuOptions('character', { project: p, target: p.stage }, 'me', ['me'])).toEqual([['me', 'me']]);
   });

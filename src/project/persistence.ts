@@ -2,7 +2,7 @@ import { get, set } from 'idb-keyval';
 import { uid } from './ids';
 import type { Project, SpriteTarget } from './types';
 import { DEFAULT_SETTINGS, type AiSettings } from '../compiler/openai';
-import { migrateProject } from './migrate';
+import { migrateProject, migrateSprite } from './migrate';
 
 const PROJECT_KEY = 'amble:project';
 const SETTINGS_KEY = 'amble:settings';
@@ -74,7 +74,6 @@ const EXTENSIONS: Record<string, string> = {
   'audio/ogg': 'ogg',
   'audio/webm': 'webm',
   'audio/mp4': 'm4a',
-  'model/gltf-binary': 'glb',
 };
 
 /** Right-click > export on a costume or sound: saves its file. */
@@ -101,12 +100,12 @@ export async function readSpriteFile(file: File): Promise<SpriteTarget> {
   if (!sprite || sprite.kind !== 'sprite' || !Array.isArray(sprite.costumes) || !Array.isArray(sprite.sounds)) {
     throw new Error('That file is not an Amble sprite.');
   }
-  return {
+  return migrateSprite({
     ...sprite,
     id: uid('t'),
     costumes: sprite.costumes.map((c) => ({ ...c, id: uid('a') })),
     sounds: sprite.sounds.map((s) => ({ ...s, id: uid('a') })),
-  };
+  });
 }
 
 export function loadSettings(): AiSettings {

@@ -2,7 +2,7 @@ import { synthToDataUrl, SOUND_PRESETS } from '../audio/synth';
 import { BLOCK_BY_TYPE, SHADOW_TYPES } from '../blocks/spec';
 import { svgDataUrl } from './images';
 import { uid } from './ids';
-import type { BlocksState, ImageAsset, Project, SoundAsset, SpriteTarget, StageTarget, WorldMode } from './types';
+import type { BlocksState, ImageAsset, Project, SoundAsset, SpriteTarget, StageTarget } from './types';
 
 // -----------------------------------------------------------------------------
 // Blocks helpers (Blockly JSON serialization)
@@ -154,20 +154,20 @@ export function ambleCostumes(): ImageAsset[] {
 // Targets and projects
 // -----------------------------------------------------------------------------
 
-export function newStage(mode: WorldMode): StageTarget {
+export function newStage(): StageTarget {
   return {
     id: uid('t'),
     kind: 'stage',
     name: 'Stage',
     description: '',
-    costumes: mode === '2d' ? [blankBackdrop()] : [],
+    costumes: [blankBackdrop()],
     sounds: [],
     currentCostume: 0,
     blocks: null,
   };
 }
 
-export function newSprite(name: string, mode: WorldMode, costumes: SpriteTarget['costumes'] = [], x = 0, y = 0): SpriteTarget {
+export function newSprite(name: string, costumes: SpriteTarget['costumes'] = [], x = 0, y = 0): SpriteTarget {
   return {
     id: uid('t'),
     kind: 'sprite',
@@ -183,7 +183,7 @@ export function newSprite(name: string, mode: WorldMode, costumes: SpriteTarget[
     size: 100,
     direction: 0,
     visible: true,
-    rotationStyle: mode === '2d' ? 'left-right' : 'all around',
+    rotationStyle: 'left-right',
   };
 }
 
@@ -191,23 +191,22 @@ export function newSprite(name: string, mode: WorldMode, costumes: SpriteTarget[
  * A fresh project: Amble walks, jumps and lands, built only from exact blocks, so it compiles
  * instantly. The stage holds a short brief.
  */
-export function newProject(mode: WorldMode = '2d'): Project {
-  const amble = newSprite('Amble', mode, ambleCostumes(), 0, mode === '2d' ? -60 : 0);
+export function newProject(): Project {
+  const amble = newSprite('Amble', ambleCostumes(), 0, -60);
   amble.description = 'The player: a small, friendly walking creature.';
   amble.sounds = [synthSound('pop', 'pop'), synthSound('jump', 'jump')];
   amble.blocks = workspace(
     [
       block('ev_start'),
       block('kit_gravity'),
-      block('kit_walk', { KEYS: mode === '2d' ? 'left and right arrows' : 'arrow keys', SPEED: mode === '2d' ? 220 : 300 }),
-      block('kit_jump', { KEY: 'space', POWER: mode === '2d' ? 650 : 700 }),
-      ...(mode === '3d' ? [block('kit_follow')] : []),
-      block('lk_say_for', { TEXT: mode === '2d' ? "Hi! I'm Amble. Arrows to walk, space to jump!" : "Hi! I'm Amble. Arrow keys to walk, space to jump!", SECONDS: 3 }),
+      block('kit_walk', { KEYS: 'left and right arrows', SPEED: 220 }),
+      block('kit_jump', { KEY: 'space', POWER: 650 }),
+      block('lk_say_for', { TEXT: "Hi! I'm Amble. Arrows to walk, space to jump!", SECONDS: 3 }),
     ],
     [block('ev_key', { KEY: 'space' }), block('so_play', { SOUND: 'jump' })],
     [block('ev_click'), block('lk_say_for', { TEXT: 'Hello!', SECONDS: 2 }), block('so_play', { SOUND: 'pop' })],
   );
-  const stage = newStage(mode);
+  const stage = newStage();
   stage.blocks = workspace(block('br_game', { WHAT: 'Amble explores a little world' }), block('br_audience', { WHO: 'kids who are new to games' }));
   return {
     format: 'amble',
@@ -215,7 +214,7 @@ export function newProject(mode: WorldMode = '2d'): Project {
     id: uid('p'),
     title: 'Untitled game',
     notes: '',
-    mode,
+    mode: '2d',
     stage,
     sprites: [amble],
     variables: ['my variable'],

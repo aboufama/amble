@@ -180,7 +180,6 @@ export const MAKE_VARIABLE = 'MAKE_VARIABLE';
 export const MAKE_SKILL = 'MAKE_SKILL';
 
 export interface PaletteContext {
-  mode: '2d' | '3d';
   /** Editing the stage (it has no motion blocks, and only stage blocks). */
   isStage: boolean;
   /** The project and edited sprite, for menu defaults and the character and variable blocks. */
@@ -244,15 +243,15 @@ function characterBlocks(ctx: PaletteContext): Blockly.utils.toolbox.FlyoutItemI
   return items;
 }
 
-/** The block palette for a world mode and the sprite or stage being edited. */
+/** The block palette for the sprite or stage being edited. */
 export function toolboxFor(ctx: PaletteContext): Blockly.utils.toolbox.ToolboxInfo {
-  const available = blocksFor(ctx.mode, ctx.isStage ? 'stage' : 'sprite').filter((b) => !b.hidden);
+  const available = blocksFor(ctx.isStage ? 'stage' : 'sprite').filter((b) => !b.hidden);
   const variables = ctx.menus ? variablesFor(ctx.menus.project, ctx.menus.target) : [];
   const skills = ctx.menus ? procedureNames(ctx.menus) : [];
   return {
     kind: 'categoryToolbox',
     // The brief (game, made for, art style, win and lose) is the Stage's; the Stage doesn't move.
-    contents: CATEGORIES.filter((c) => (!c.modes || c.modes.includes(ctx.mode)) && !(c.id === 'brief' && !ctx.isStage) && !(c.id === 'motion' && ctx.isStage)).map((c) => {
+    contents: CATEGORIES.filter((c) => !(c.id === 'brief' && !ctx.isStage) && !(c.id === 'motion' && ctx.isStage)).map((c) => {
       const contents: Blockly.utils.toolbox.FlyoutItemInfoArray = [];
       const blocks = available.filter((b) => b.category === c.id);
       switch (c.id) {

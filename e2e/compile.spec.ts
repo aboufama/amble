@@ -18,7 +18,7 @@ function piecesReply(prompt: string) {
   };
   return {
     pieces: tasks.map((t) => ({ id: t.id, code: code[t.kind] ?? '' })),
-    sprites: [{ name: 'Moon', description: 'A sleepy moon in the corner', x: 170, y: 130, z: 0, size: 100, direction: 0, visible: true, code: 'class Moon extends Sprite {\n  start() {\n    this.setPosition(170, 130);\n  }\n}' }],
+    sprites: [{ name: 'Moon', description: 'A sleepy moon in the corner', x: 170, y: 130, size: 100, direction: 0, visible: true, code: 'class Moon extends Sprite {\n  start() {\n    this.setPosition(170, 130);\n  }\n}' }],
     assets: [{ target: 'Moon', kind: 'costume', name: 'moon', description: 'a smiling crescent moon', width: 60, height: 60, reuse: false }],
     warnings: [],
   };
@@ -141,7 +141,7 @@ test('words are compiled once, in one request, and reused after', async ({ page 
   });
   await mockOpenAI(page, calls);
   await page.goto('/');
-  await openExample(page, 'Star Catcher (2D)');
+  await openExample(page, 'Star Catcher');
 
   // Three blocks are written in words (the art style too): the flag shows new words waiting.
   await expect(page.locator('.green-flag')).toHaveClass(/has-new/);
@@ -205,7 +205,7 @@ test('words build quietly a moment after typing, without starting the game', asy
   });
   await mockOpenAI(page, calls);
   await page.goto('/');
-  await openExample(page, 'Star Catcher (2D)');
+  await openExample(page, 'Star Catcher');
   await expect(page.locator('.green-flag')).toHaveClass(/has-new/);
 
   // Typing new words in a block (here, through Blockly, like a finished edit)...
@@ -244,7 +244,7 @@ test('catching a star runs "when I touch Star", and every burst shows and clears
   });
   await mockOpenAI(page, calls);
   await page.goto('/');
-  await openExample(page, 'Star Catcher (2D)');
+  await openExample(page, 'Star Catcher');
   await page.locator('.green-flag').click();
   const frame = await gameFrame(page);
   await expect.poll(async () => (await game(frame)).state, { timeout: 30_000 }).toBe('running');
@@ -302,7 +302,7 @@ test('without an account the flag still plays; words wait', async ({ page }) => 
   const calls: string[] = [];
   await mockOpenAI(page, calls);
   await page.goto('/');
-  await openExample(page, 'Star Catcher (2D)');
+  await openExample(page, 'Star Catcher');
   await page.locator('.green-flag').click();
   const frame = await gameFrame(page);
   await expect.poll(async () => (await game(frame)).time, { timeout: 30_000 }).toBeGreaterThan(0.3);
@@ -336,7 +336,7 @@ test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', 
   await expect(page.locator('.advanced-fields')).toContainText('GPT-6 Astra Light');
   await page.keyboard.press('Escape');
 
-  await openExample(page, 'Star Catcher (2D)');
+  await openExample(page, 'Star Catcher');
   await page.locator('.green-flag').click();
   const frame = await gameFrame(page);
   await expect.poll(async () => (await game(frame)).twinkles, { timeout: 30_000 }).toBeGreaterThan(5);
@@ -354,18 +354,4 @@ test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', 
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   await expect(page.locator('.menu-btn.sign-in')).toHaveText('Sign in');
-});
-
-test('3D world mode renders and runs', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('radio', { name: '3D' }).click();
-  await page.getByRole('dialog', { name: 'Switch to 3D' }).getByRole('button', { name: 'Switch' }).click();
-  await expect(page.getByRole('radio', { name: '3D' })).toBeChecked();
-  const frame = await gameFrame(page);
-  // The player reports loading and idle; start it with the green flag.
-  await page.locator('.green-flag').click();
-  await expect
-    .poll(async () => frame.evaluate(() => (window as unknown as { __ambleGame?: { state: string; mode: string } }).__ambleGame?.mode ?? ''))
-    .toBe('3d');
-  await expect.poll(async () => frame.evaluate(() => (window as unknown as { __ambleGame?: { state: string } }).__ambleGame?.state ?? '')).toBe('running');
 });

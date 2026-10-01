@@ -115,7 +115,7 @@ useStore.subscribe((s, prev) => {
 });
 
 export function needsCompile(project: Project): boolean {
-  return !project.compiled || project.compiled.mode !== project.mode || project.compiled.inputHash !== inputHash(project);
+  return !project.compiled || project.compiled.inputHash !== inputHash(project);
 }
 
 /**
@@ -372,7 +372,7 @@ export function keepCompiledSprite(spriteId: string): void {
       blocks: workspace(block('ru_always', { RULE: s.description.trim() || `be ${s.name}` })),
       x: s.x,
       y: s.y,
-      z: s.z,
+      z: 0,
       size: s.size,
       direction: s.direction,
       visible: s.visible,

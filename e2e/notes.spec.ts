@@ -83,7 +83,7 @@ test('a question about words shows on their block; the answer joins the words an
     },
   }));
   await page.goto('/');
-  await openExample(page, 'Star Catcher (2D)');
+  await openExample(page, 'Star Catcher');
   await page.locator('.green-flag').click();
 
   const note = page.locator('.code-note[data-kind="question"]');
@@ -144,7 +144,7 @@ test('a problem in the last run shows on its script, with Fix it', async ({ page
       tasksOf(prompt).map((t) => ({ id: t.id, code: t.kind === 'behavior' && first ? 'yield;\nthrow new Error("the star has nowhere to fall");' : (CODE[t.kind] ?? '') })),
   }));
   await page.goto('/');
-  await openExample(page, 'Star Catcher (2D)');
+  await openExample(page, 'Star Catcher');
   await page.locator('.green-flag').click();
   await page.locator('.sprite-tile', { hasText: 'Star' }).click();
   const note = page.locator('.code-note[data-kind="problem"]');
@@ -162,7 +162,7 @@ test('words that did not build say so on their blocks, and Try again builds them
   await withKey(page);
   await mockOpenAI(page, calls, () => ({ fail }));
   await page.goto('/');
-  await openExample(page, 'Star Catcher (2D)');
+  await openExample(page, 'Star Catcher');
   await page.locator('.green-flag').click();
   const note = page.locator('.code-note[data-kind="problem"]');
   await expect(note).toContainText("This didn't build", { timeout: 30_000 });
@@ -179,7 +179,7 @@ test('without an account words wait with a note; adding a key builds them, witho
   const calls: string[] = [];
   await mockOpenAI(page, calls, () => ({}));
   await page.goto('/');
-  await openExample(page, 'Star Catcher (2D)');
+  await openExample(page, 'Star Catcher');
   await page.locator('.green-flag').click();
   const waiting = page.locator('.code-note[data-kind="waiting"]');
   await expect(waiting.first()).toContainText(/This builds once you (sign in|add a key in Settings)\./, { timeout: 30_000 });

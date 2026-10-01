@@ -97,12 +97,6 @@ export const CodeIcon = (p: P) => (
     <path d="M16 18l6-6-6-6M8 6l-6 6 6 6" />
   </svg>
 );
-export const CubeIcon = (p: P) => (
-  <svg {...base(p)}>
-    <path d="M21 16V8l-9-5-9 5v8l9 5z" />
-    <path d="M3.3 7.3L12 12l8.7-4.7M12 22V12" />
-  </svg>
-);
 export const XIcon = (p: P) => (
   <svg {...base(p)}>
     <path d="M18 6L6 18M6 6l12 12" />

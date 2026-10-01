@@ -79,7 +79,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
   const compiledSprite = target || !compiledSprites ? null : findCompiledSprite(project, selectedId);
   // Like Scratch, a faded picture of the edited sprite sits in the code area's top right corner.
   const shown = target ? target.costumes[target.currentCostume] : null;
-  const watermark = shown?.kind === 'image' ? shown.dataUrl : shown?.kind === 'model' ? shown.thumbnail : undefined;
+  const watermark = shown?.kind === 'image' ? shown.dataUrl : undefined;
 
   const flushSave = () => {
     const ws = wsRef.current;
@@ -115,7 +115,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
 
   const paletteContext = (): PaletteContext => {
     const s = useStore.getState();
-    return { mode: s.project.mode, isStage: findTarget(s.project, s.selectedId)?.kind === 'stage', menus: menuContext() };
+    return { isStage: findTarget(s.project, s.selectedId)?.kind === 'stage', menus: menuContext() };
   };
 
   /** Rebuilds the palette when something it shows changed (costumes, sounds, variables, skills, characters...). */
@@ -337,7 +337,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     });
     const ro = new ResizeObserver(() => Blockly.svgResize(ws));
     ro.observe(divRef.current!);
-    // The palette follows the project: costumes, sounds, sprites, variables, world mode, the selected target.
+    // The palette follows the project: costumes, sounds, sprites, variables, the selected target.
     const unsubscribe = useStore.subscribe((state, prev) => {
       if (state.project !== prev.project || state.selectedId !== prev.selectedId) {
         schedulePalette();

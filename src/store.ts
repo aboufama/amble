@@ -100,7 +100,7 @@ export interface EditorState {
 }
 
 let logId = 0;
-const initial = newProject('2d');
+const initial = newProject();
 
 export const useStore = create<EditorState>()(
   immer((set) => ({

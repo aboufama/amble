@@ -1,6 +1,6 @@
 import type { ModelRecipe, RotationStyleName, WorldMode } from '../player/protocol';
 
-export type { ModelRecipe, RotationStyleName, WorldMode };
+export type { RotationStyleName, WorldMode };
 
 /** A bitmap or SVG image (costume or backdrop). */
 export interface ImageAsset {
@@ -20,7 +20,10 @@ export interface ImageAsset {
   description?: string;
 }
 
-/** A 3D model: an uploaded .glb or an AI-made primitive recipe. */
+/**
+ * A 3D model (an uploaded .glb or an AI-made primitive recipe), from when Amble also made 3D
+ * games. Projects open without them (see migrate.ts).
+ */
 export interface ModelAsset {
   id: string;
   name: string;
@@ -74,10 +77,10 @@ export interface SpriteTarget extends TargetBase {
   variables?: string[];
   x: number;
   y: number;
-  /** 3D only. */
+  /** Depth in projects saved as 3D, which open as 2D (see migrate.ts); 0 otherwise. */
   z: number;
   size: number;
-  /** 2D: angle in degrees counter-clockwise (0 = right). 3D: heading (0 = away from the camera). */
+  /** Angle in degrees counter-clockwise (0 = right). */
   direction: number;
   visible: boolean;
   rotationStyle: RotationStyleName;
@@ -102,7 +105,6 @@ export interface CompiledSprite {
   description: string;
   x: number;
   y: number;
-  z: number;
   size: number;
   direction: number;
   visible: boolean;
@@ -149,6 +151,7 @@ export interface CompiledIssue {
 export interface CompiledGame {
   createdAt: number;
   model: string;
+  /** '2d' (games built for 3D are built again, see migrate.ts). */
   mode: WorldMode;
   /** Hash of everything the compiler saw; differs when blocks/assets change. */
   inputHash: string;
@@ -179,6 +182,7 @@ export interface Project {
   title: string;
   /** Overall description of the game in the author's words. */
   notes: string;
+  /** Always '2d', kept for older versions of Amble. Projects saved as 3D open as 2D (see migrate.ts). */
   mode: WorldMode;
   stage: StageTarget;
   sprites: SpriteTarget[];
