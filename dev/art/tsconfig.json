@@ -1,4 +1,0 @@
-{
-  "extends": "../../tsconfig.json",
-  "include": ["../../src/art", "../../tests/art", "harness.ts", "../../e2e/art-engine.spec.ts"]
-}

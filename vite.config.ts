@@ -1,19 +1,79 @@
 /// <reference types="vitest/config" />
-import { defineConfig, loadEnv, searchForWorkspaceRoot, type Plugin, type Connect } from 'vite';
+import { defineConfig, loadEnv, type Plugin, type Connect } from 'vite';
 import react from '@vitejs/plugin-react';
+import { build } from 'esbuild';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
-import { ambleRuntime, playerBootHashes } from './vite/ambleRuntime.ts';
-import { LAZY_GROUPS, PURE_ON_LOAD } from './vite/chunks.ts';
-import { aiConnectSources, csp } from './vite/csp.ts';
-import { devOnlyGuard } from './vite/devOnlyGuard.ts';
-import { envGuard } from './vite/envGuard.ts';
-import { imageGenGuard } from './vite/imageGenGuard.ts';
-import { swPlugin } from './vite/swPlugin.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * The game player (Babylon.js + Havok + the Amble engine) runs inside a sandboxed
+ * iframe with an opaque origin. It is bundled separately into a classic script,
+ * `amble-player.js`, which the iframe loads with a plain <script src> (no CORS
+ * needed). The Havok WebAssembly binary is handed to the iframe by the editor.
+ */
+function playerRuntime(): Plugin {
+  const entry = path.join(root, 'src/engine/index.ts');
+  const havokWasm = path.join(root, 'node_modules/@babylonjs/havok/lib/esm/HavokPhysics.wasm');
+  let cached: Promise<string> | null = null;
+
+  const bundle = async (minify: boolean): Promise<string> => {
+    const result = await build({
+      entryPoints: [entry],
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: 'es2020',
+      minify,
+      write: false,
+      legalComments: 'none',
+      define: { 'import.meta.url': '""' },
+      logLevel: 'error',
+    });
+    return result.outputFiles[0].text;
+  };
+
+  return {
+    name: 'amble-player-runtime',
+    configureServer(server) {
+      server.watcher.on('change', (file) => {
+        if (file.includes(`${path.sep}src${path.sep}engine${path.sep}`) || file.endsWith('protocol.ts')) cached = null;
+      });
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url ?? '').split('?')[0];
+        if (url === '/amble-player.js') {
+          cached ??= bundle(false);
+          cached.then(
+            (js) => {
+              res.setHeader('content-type', 'text/javascript; charset=utf-8');
+              res.setHeader('cache-control', 'no-cache');
+              res.end(js);
+            },
+            (err: Error) => {
+              cached = null;
+              res.statusCode = 500;
+              res.end(`console.error(${JSON.stringify(String(err.message))})`);
+            },
+          );
+          return;
+        }
+        if (url === '/amble-havok.wasm') {
+          res.setHeader('content-type', 'application/wasm');
+          res.end(readFileSync(havokWasm));
+          return;
+        }
+        next();
+      });
+    },
+    async generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'amble-player.js', source: await bundle(true) });
+      this.emitFile({ type: 'asset', fileName: 'amble-havok.wasm', source: readFileSync(havokWasm) });
+    },
+  };
+}
 
 /**
  * Optional server-side key: if OPENAI_API_KEY is set, `/api/openai/*` is
@@ -84,8 +144,6 @@ function openaiProxy(env: Record<string, string>): Plugin {
 
   return {
     name: 'amble-openai-proxy',
-    // Dev and preview servers only: production builds never request /api/*.
-    apply: 'serve',
     configureServer(server) {
       const allowed = allowedHostsOf(server.config.server);
       server.middlewares.use(handler(allowed));
@@ -104,37 +162,13 @@ export default defineConfig(({ mode }) => {
   return {
     // Relative asset paths, so the build works from any sub-path (e.g. GitHub Pages at /amble/).
     base: './',
-    // Each checkout keeps its own dependency cache, even when node_modules is shared.
-    cacheDir: '.vite',
-    // A checkout may link node_modules from elsewhere (parallel worktrees share one install), so the
-    // dev server must also serve files from wherever node_modules really lives, fonts included.
-    // Other checkouts of the repo can live under .claude/worktrees/: watching them all runs out of file watchers.
-    server: { fs: { allow: [searchForWorkspaceRoot(root), realpathSync(path.join(root, 'node_modules'))] }, watch: { ignored: ['**/.claude/**'] } },
-    plugins: [
-      react(),
-      // The game runtime plugin: it bundles the Phaser player for the sandboxed game iframe, serves it
-      // from the dev server and emits it into the build (`import runtimeUrl from 'virtual:amble-runtime'`).
-      ambleRuntime({ root }),
-      envGuard(env),
-      // Fails a build that still holds the test hooks or an e2e harness.
-      devOnlyGuard(),
-      // Game frames (srcdoc) inherit this policy, so it allows the player's bootstrap by its hash.
-      csp({ connect: aiConnectSources(env), bootHashes: playerBootHashes }),
-      swPlugin(),
-      // Fails a build whose files name an image-generation endpoint or model (§5.11: the AI never draws).
-      imageGenGuard(),
-      openaiProxy(env),
-    ],
+    plugins: [react(), playerRuntime(), openaiProxy(env)],
     build: {
       chunkSizeWarningLimit: 2500,
-      // The validator, the kit's API and the player in chunks of their own, out of the first load.
-      rolldownOptions: { treeshake: { moduleSideEffects: PURE_ON_LOAD }, output: { codeSplitting: { groups: LAZY_GROUPS } } },
     },
     test: {
       include: ['tests/**/*.test.ts', 'server/**/*.test.ts'],
       environment: 'node',
-      // CSS reaches tests as text (`?raw`), so the token and style checks read the real stylesheets.
-      css: { include: [/\.css/] },
     },
   };
 });

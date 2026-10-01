@@ -95,23 +95,9 @@ export function waveformPath(levels: number[], width: number, height: number): s
   return `M0 0 ${parts.join(' ')} Z`;
 }
 
-/** The bytes of a `data:` URL, read locally (no fetch, so nothing can leave the page). */
-export function dataUrlBytes(dataUrl: string): ArrayBuffer {
-  const comma = dataUrl.indexOf(',');
-  if (!dataUrl.startsWith('data:') || comma < 0) throw new Error('Sounds are stored as data: URLs.');
-  const body = dataUrl.slice(comma + 1);
-  if (/;base64$/i.test(dataUrl.slice(5, comma))) {
-    const bin = atob(body);
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out.buffer;
-  }
-  return new TextEncoder().encode(decodeURIComponent(body)).buffer as ArrayBuffer;
-}
-
 /** Decodes a sound to mono samples at EDIT_SAMPLE_RATE. */
 export async function decodeSound(dataUrl: string): Promise<Float32Array> {
-  const bytes = dataUrlBytes(dataUrl);
+  const bytes = await (await fetch(dataUrl)).arrayBuffer();
   const probe = new OfflineAudioContext(1, 1, EDIT_SAMPLE_RATE);
   const buffer = await probe.decodeAudioData(bytes);
   const mono = new Float32Array(buffer.length);

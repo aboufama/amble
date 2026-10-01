@@ -8,9 +8,7 @@
  *
  * Every request runs `codex exec` in an empty temporary folder with a read-only sandbox, no web
  * search, without your Codex config (`--ignore-user-config`), and without saving a session
- * (`--ephemeral`). The answer must match a JSON schema (`--output-schema`). Pictures in the
- * request are written next to that folder and attached with `--image`; the whole temporary
- * folder is removed when the run ends.
+ * (`--ephemeral`). The answer must match a JSON schema (`--output-schema`).
  *
  *   GET  /api/codex/status        is Codex installed, and how is it signed in?
  *   POST /api/codex/login         start `codex login` (opens the ChatGPT sign-in page)
@@ -24,20 +22,9 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import type { Connect } from 'vite';
-import {
-  CODEX_MAX_IMAGE_BYTES,
-  CODEX_MAX_IMAGES,
-  type CodexAuth,
-  type CodexRunEvent,
-  type CodexRunRequest,
-  type CodexStatus,
-} from '../src/ai/codexTypes.ts';
+import type { CodexAuth, CodexRunEvent, CodexRunRequest, CodexStatus } from '../src/compiler/codexTypes.ts';
 
 const RUN_TIMEOUT_MS = 10 * 60 * 1000;
-/** Codex has hung with `--image` before (openai/codex#5773), so a run that goes quiet this long is stopped. */
-const STALL_TIMEOUT_MS = 3 * 60 * 1000;
-/** Four pictures of up to 4 MB each, base64-encoded, plus the prompt. */
-const MAX_BODY_BYTES = 24 * 1024 * 1024;
 const INSTALL_HINT = 'Install Codex with `npm install -g @openai/codex` (or set CODEX_PATH), then reload.';
 
 // -----------------------------------------------------------------------------
@@ -114,12 +101,8 @@ export function parseAuth(output: string): CodexAuth {
   return 'none';
 }
 
-/**
- * Arguments for one structured, read-only, throwaway Codex run. The prompt comes on stdin.
- * Each picture gets its own `--image` flag, placed before `--sandbox`: the flag takes a list, so
- * right before the trailing `-` it would swallow the stdin marker as another picture.
- */
-export function execArgs(o: { cwd: string; schemaFile: string; model: string; reasoningEffort: string; images?: readonly string[] }): string[] {
+/** Arguments for one structured, read-only, throwaway Codex run. The prompt comes on stdin. */
+export function execArgs(o: { cwd: string; schemaFile: string; model: string; reasoningEffort: string }): string[] {
   return [
     'exec',
     '--json',
@@ -127,7 +110,6 @@ export function execArgs(o: { cwd: string; schemaFile: string; model: string; re
     '--ignore-user-config',
     '--ignore-rules',
     '--skip-git-repo-check',
-    ...(o.images ?? []).flatMap((file) => ['--image', file]),
     '--sandbox',
     'read-only',
     '--cd',
@@ -158,45 +140,12 @@ export function codexPrompt(req: Pick<CodexRunRequest, 'system' | 'user'>): stri
   ].join('\n\n');
 }
 
-/** A picture the browser sent, checked and decoded for writing to a temporary file. */
-export interface DecodedImage {
-  ext: 'png' | 'jpg' | 'webp' | 'gif';
-  bytes: Buffer;
-}
-
-const IMAGE_DATA_URL = /^data:image\/(png|jpeg|jpg|webp|gif);base64,([A-Za-z0-9+/=\r\n]+)$/i;
-
-function hasImageSignature(ext: DecodedImage['ext'], b: Buffer): boolean {
-  if (ext === 'png') return b.length > 8 && b.readUInt32BE(0) === 0x89504e47;
-  if (ext === 'jpg') return b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
-  if (ext === 'gif') return b.length > 6 && b.toString('latin1', 0, 4) === 'GIF8';
-  return b.length > 12 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP';
-}
-
-/** Checks a `data:image/...;base64,` URL (type, size, file signature) and decodes it, or returns null. */
-export function decodeImageDataUrl(url: unknown): DecodedImage | null {
-  if (typeof url !== 'string' || url.length > Math.ceil(CODEX_MAX_IMAGE_BYTES / 3) * 4 + 64) return null;
-  const m = IMAGE_DATA_URL.exec(url);
-  if (!m) return null;
-  const type = m[1].toLowerCase();
-  const ext: DecodedImage['ext'] = type === 'jpeg' || type === 'jpg' ? 'jpg' : (type as DecodedImage['ext']);
-  const bytes = Buffer.from(m[2], 'base64');
-  if (bytes.length === 0 || bytes.length > CODEX_MAX_IMAGE_BYTES || !hasImageSignature(ext, bytes)) return null;
-  return { ext, bytes };
-}
-
 /**
  * Turns one line of `codex exec --json` output into what the browser needs to hear, if anything.
  * Like the Codex SDK, only `turn.failed` is fatal: `error` events can be retries Codex recovers from.
  */
 export function readCodexEvent(line: string): CodexRunEvent | { type: 'message'; text: string } | { type: 'note'; message: string } | null {
-  let ev: {
-    type?: string;
-    item?: { type?: string; text?: string; message?: string };
-    error?: { message?: string };
-    message?: string;
-    usage?: { input_tokens?: number; cached_input_tokens?: number; output_tokens?: number };
-  };
+  let ev: { type?: string; item?: { type?: string; text?: string; message?: string }; error?: { message?: string }; message?: string };
   try {
     ev = JSON.parse(line);
   } catch {
@@ -209,12 +158,6 @@ export function readCodexEvent(line: string): CodexRunEvent | { type: 'message';
       return ev.item?.type === 'command_execution' || ev.item?.type === 'file_change' ? { type: 'progress', phase: 'working' } : { type: 'progress', phase: 'thinking' };
     case 'item.completed':
       return ev.item?.type === 'agent_message' && typeof ev.item.text === 'string' ? { type: 'message', text: ev.item.text } : null;
-    case 'turn.completed': {
-      const u = ev.usage;
-      if (!u) return null;
-      const n = (v: number | undefined) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
-      return { type: 'usage', usage: { inputTokens: n(u.input_tokens), cachedInputTokens: n(u.cached_input_tokens), outputTokens: n(u.output_tokens) } };
-    }
     case 'turn.failed':
       return { type: 'error', message: ev.error?.message || 'Codex could not finish the request.' };
     case 'error':
@@ -316,43 +259,17 @@ function lastLines(text: string, max = 400): string {
 // One structured request
 // -----------------------------------------------------------------------------
 
-/**
- * Runs one structured request through Codex and reports progress, usage and the result through `send`.
- * Everything it writes (schema, pictures, Codex's empty working folder) lives in one temporary folder
- * that is removed before this resolves, whatever happened.
- */
-export async function runCodexRequest(req: CodexRunRequest, send: (ev: CodexRunEvent) => void, signal: AbortSignal): Promise<void> {
+async function run(req: CodexRunRequest, send: (ev: CodexRunEvent) => void, signal: AbortSignal): Promise<void> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'amble-codex-'));
   const cwd = path.join(dir, 'work');
   const schemaFile = path.join(dir, 'schema.json');
   try {
     await mkdir(cwd);
     await writeFile(schemaFile, JSON.stringify(req.schema));
-    const images: string[] = [];
-    for (const [i, url] of (req.images ?? []).slice(0, CODEX_MAX_IMAGES).entries()) {
-      const image = decodeImageDataUrl(url);
-      if (!image) continue;
-      const file = path.join(dir, `image-${i + 1}.${image.ext}`);
-      await writeFile(file, image.bytes);
-      images.push(file);
-    }
-    if (signal.aborted) return;
-    const child = spawnCodex(execArgs({ cwd, schemaFile, model: req.model, reasoningEffort: req.reasoningEffort, images }));
-    let stalled = false;
+    const child = spawnCodex(execArgs({ cwd, schemaFile, model: req.model, reasoningEffort: req.reasoningEffort }));
     const stop = () => stopProcess(child);
     signal.addEventListener('abort', stop);
     const timer = setTimeout(stop, RUN_TIMEOUT_MS);
-    let stallTimer = setTimeout(() => {
-      stalled = true;
-      stop();
-    }, STALL_TIMEOUT_MS);
-    const alive = () => {
-      clearTimeout(stallTimer);
-      stallTimer = setTimeout(() => {
-        stalled = true;
-        stop();
-      }, STALL_TIMEOUT_MS);
-    };
 
     let stderr = '';
     let buffer = '';
@@ -368,7 +285,6 @@ export async function runCodexRequest(req: CodexRunRequest, send: (ev: CodexRunE
       else send(ev);
     };
     child.stdout?.on('data', (d: Buffer) => {
-      alive();
       buffer += d.toString();
       let i: number;
       while ((i = buffer.indexOf('\n')) >= 0) {
@@ -385,7 +301,6 @@ export async function runCodexRequest(req: CodexRunRequest, send: (ev: CodexRunE
       child.once('close', (code) => resolve({ code, err: null }));
     });
     clearTimeout(timer);
-    clearTimeout(stallTimer);
     signal.removeEventListener('abort', stop);
     if (buffer.trim()) onLine(buffer);
     if (signal.aborted) return;
@@ -394,8 +309,6 @@ export async function runCodexRequest(req: CodexRunRequest, send: (ev: CodexRunE
       send({ type: 'error', message: `Codex isn't installed. ${INSTALL_HINT}` });
     } else if (message !== null && !failure) {
       send({ type: 'result', text: message });
-    } else if (stalled) {
-      send({ type: 'error', message: `Codex stopped answering for ${STALL_TIMEOUT_MS / 60_000} minutes, so Amble ended the request.` });
     } else {
       const detail = failure ?? note ?? (lastLines(stderr) || `Codex stopped (exit code ${exit.code}).`);
       send({ type: 'error', message: /not logged in|login|401|unauthorized/i.test(detail) ? `Codex isn't signed in (${detail}). Sign in with ChatGPT again.` : `Codex: ${detail}` });
@@ -454,24 +367,10 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-class BodyTooLarge extends Error {}
-
-async function readJson<T>(req: IncomingMessage, maxBytes = MAX_BODY_BYTES): Promise<T> {
+async function readJson<T>(req: IncomingMessage): Promise<T> {
   const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += (chunk as Buffer).length;
-    if (size > maxBytes) throw new BodyTooLarge('The request is too large.');
-    chunks.push(chunk as Buffer);
-  }
+  for await (const chunk of req) chunks.push(chunk as Buffer);
   return JSON.parse(Buffer.concat(chunks).toString() || '{}') as T;
-}
-
-/** The pictures of a run request, when they are all acceptable: at most CODEX_MAX_IMAGES valid data URLs. */
-export function readRunImages(images: unknown): string[] | null {
-  if (images === undefined) return [];
-  if (!Array.isArray(images) || images.length > CODEX_MAX_IMAGES) return null;
-  return images.every((url) => decodeImageDataUrl(url) !== null) ? (images as string[]) : null;
 }
 
 export const codexBridge = (allowed: AllowedHosts): Connect.NextHandleFunction => (req, res, next) => {
@@ -498,14 +397,9 @@ export const codexBridge = (allowed: AllowedHosts): Connect.NextHandleFunction =
       } else if (url === '/api/codex/run' && req.method === 'POST') {
         const body = await readJson<Partial<CodexRunRequest>>(req);
         const effort = String(body.reasoningEffort || 'low');
-        const images = readRunImages(body.images);
         // Model and effort become command-line arguments, so only plain names are accepted.
         if (typeof body.system !== 'string' || typeof body.user !== 'string' || !body.schema || typeof body.model !== 'string' || !/^[\w.:/-]{1,80}$/.test(body.model) || !/^[a-z]{1,20}$/.test(effort)) {
-          sendJson(res, 400, { error: { message: 'Expected { system, user, schema, model, reasoningEffort, images? }.' } });
-          return;
-        }
-        if (!images) {
-          sendJson(res, 400, { error: { message: `Expected at most ${CODEX_MAX_IMAGES} PNG, JPEG, WebP or GIF data URLs of up to ${CODEX_MAX_IMAGE_BYTES / 1024 / 1024} MB each.` } });
+          sendJson(res, 400, { error: { message: 'Expected { system, user, schema, model, reasoningEffort }.' } });
           return;
         }
         const controller = new AbortController();
@@ -516,8 +410,8 @@ export const codexBridge = (allowed: AllowedHosts): Connect.NextHandleFunction =
         res.setHeader('content-type', 'application/x-ndjson');
         res.setHeader('cache-control', 'no-store');
         res.flushHeaders();
-        await runCodexRequest(
-          { system: body.system, user: body.user, schema: body.schema, model: body.model, reasoningEffort: effort, images },
+        await run(
+          { system: body.system, user: body.user, schema: body.schema, model: body.model, reasoningEffort: effort },
           (ev) => {
             if (!res.destroyed) res.write(`${JSON.stringify(ev)}\n`);
           },
@@ -529,7 +423,7 @@ export const codexBridge = (allowed: AllowedHosts): Connect.NextHandleFunction =
       }
     } catch (err) {
       if (res.headersSent) res.end(`${JSON.stringify({ type: 'error', message: (err as Error).message })}\n`);
-      else sendJson(res, err instanceof BodyTooLarge ? 413 : 500, { error: { message: (err as Error).message } });
+      else sendJson(res, 500, { error: { message: (err as Error).message } });
     }
   })();
 };
