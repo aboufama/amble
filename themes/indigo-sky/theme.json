@@ -1,0 +1,8 @@
+{
+  "order": 2,
+  "name": "Indigo Sky",
+  "seed": 3317003459,
+  "base": "5be6525adfcd13bd4e4e70af113ec8fd7108ec9e",
+  "summary": "The purple moves to a bluer indigo, the backgrounds go sky blue and greys take a slate tint. Tabs round like folder tabs, buttons are soft squares, panels float on a soft shadow, and block corners are crisper.",
+  "swatches": ["#6265dd", "#009eef", "#e1f2fd", "#535d7a", "#229afc", "#ffb804", "#ffa428"]
+}
