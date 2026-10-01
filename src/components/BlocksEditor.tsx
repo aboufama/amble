@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { AMBLE_THEME, Blockly, MAKE_SKILL, MAKE_VARIABLE, registerBlockly, toolboxFor, type PaletteContext } from '../blocks/blockly';
-import { FieldAmbleMenu, FieldCharacter, setMenuHost } from '../blocks/fields';
+import { FieldAmbleMenu, FieldAmbleText, FieldCharacter, setMenuHost } from '../blocks/fields';
+import { syncAssembly } from '../blocks/assembly';
 import { BLOCK_SCALE, addZoomControls } from '../blocks/workspaceUi';
 import { globalVariables, procedureNames, variablesFor, type MenuContext } from '../blocks/menus';
 import type { MenuKind } from '../blocks/spec';
 import { findCompiledSprite, findTarget, useStore } from '../store';
-import { deleteVariable, keepCompiledSprite, registerLiveBlocks, renameVariable } from '../actions';
+import { buildQuietly, deleteVariable, keepCompiledSprite, registerLiveBlocks, renameVariable } from '../actions';
 import { alertUser, askUser, confirmUser } from '../prompt';
 import type { BlocksState } from '../project/types';
 import { CodeIcon, KeepIcon } from './icons';
@@ -37,6 +38,8 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
   const loading = useRef(false);
   const saveTimer = useRef<number | null>(null);
   const paletteTimer = useRef<number | null>(null);
+  /** Words build quietly a moment after the student stops typing them (never while a field is open). */
+  const buildTimer = useRef<number | null>(null);
   const paletteKey = useRef('');
   const liveCache = useRef<BlocksState | null>(null);
   const newMessages = useRef<string[]>([]);
@@ -306,6 +309,26 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
       saveTimer.current = window.setTimeout(flushSave, 250);
       schedulePalette();
+      if (e.type === Blockly.Events.BLOCK_CHANGE) {
+        const change = e as Blockly.Events.BlockChange;
+        const block = change.blockId ? ws.getBlockById(change.blockId) : null;
+        if (change.element === 'field' && block?.getField(change.name ?? '') instanceof FieldAmbleText) scheduleQuietBuild(1800);
+      }
+    });
+    function scheduleQuietBuild(ms: number): void {
+      if (buildTimer.current !== null) window.clearTimeout(buildTimer.current);
+      buildTimer.current = window.setTimeout(() => {
+        buildTimer.current = null;
+        if (Blockly.WidgetDiv.isVisible()) return scheduleQuietBuild(1000);
+        flushSave();
+        buildQuietly();
+      }, ms);
+    }
+    // Words being built assemble on their blocks, and settle once when the build lands.
+    const unsubscribeBuild = useStore.subscribe((state, prev) => {
+      if (state.compile === prev.compile) return;
+      const landed = prev.compile.status === 'running' && state.compile.status === 'done';
+      syncAssembly(ws, loadedId.current, state.compile.status === 'running' ? state.compile.building : [], landed);
     });
     const ro = new ResizeObserver(() => Blockly.svgResize(ws));
     ro.observe(divRef.current!);
@@ -318,6 +341,8 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     });
     return () => {
       unsubscribe();
+      unsubscribeBuild();
+      if (buildTimer.current !== null) window.clearTimeout(buildTimer.current);
       ro.disconnect();
       flushSave();
       setMenuHost(null);
@@ -356,6 +381,8 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     refreshPalette();
     needsScroll.current = true;
     if (visibleRef.current) showScripts(ws);
+    const build = useStore.getState().compile;
+    syncAssembly(ws, loadedId.current, build.status === 'running' ? build.building : [], false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, target?.id, projectLoads]);
 

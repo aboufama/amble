@@ -49,7 +49,15 @@ export interface EditorState {
   settings: AiSettings;
   /** ChatGPT sign-in through Codex on this computer; null when unavailable (e.g. GitHub Pages). */
   codex: CodexStatus | null;
-  compile: { status: 'idle' | 'running' | 'error' | 'done'; progress: CompileProgress | null; error: string | null };
+  compile: {
+    status: 'idle' | 'running' | 'error' | 'done';
+    progress: CompileProgress | null;
+    error: string | null;
+    /** The words being built (shown assembling on their blocks), while a build runs. */
+    building: Array<{ targetId: string; words: string }>;
+    /** The green flag asked for this build (or for the game once it is built): the flag shows it building. */
+    forPlay: boolean;
+  };
   run: { state: RunState; errors: PlayerError[]; logs: LogEntry[] };
   dialog: null | 'settings' | 'new' | 'about';
   prompt: PromptRequest | null;
@@ -100,7 +108,7 @@ export const useStore = create<EditorState>()(
     soundSel: {},
     settings: loadSettings(),
     codex: null,
-    compile: { status: 'idle', progress: null, error: null },
+    compile: { status: 'idle', progress: null, error: null, building: [], forPlay: false },
     run: { state: 'loading', errors: [], logs: [] },
     dialog: null,
     prompt: null,
@@ -118,7 +126,7 @@ export const useStore = create<EditorState>()(
         s.selectedId = project.sprites[0]?.id ?? project.stage.id;
         s.costumeSel = {};
         s.soundSel = {};
-        s.compile = { status: 'idle', progress: null, error: null };
+        s.compile = { status: 'idle', progress: null, error: null, building: [], forPlay: false };
         s.run.errors = [];
         s.run.logs = [];
         s.restore = null;

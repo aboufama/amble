@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayerHost } from '../player/host';
-import { cancelCompile, compile, moveSpriteFromStage, needsCompile, previewProject, registerPlayer, startGame, stopGame } from '../actions';
+import { moveSpriteFromStage, needsCompile, previewProject, registerPlayer, startGame, stopGame } from '../actions';
 import { compileNeedsRequest } from '../compiler/compile';
 import { useStore } from '../store';
-import { ExpandIcon, FlagIcon, HammerIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, StopIcon, WarningIcon, XIcon } from './icons';
+import { ExpandIcon, FlagIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, StopIcon, WarningIcon } from './icons';
 import { useProblemCount } from './ProblemsDialog';
 
 function isEditable(el: EventTarget | null): boolean {
@@ -27,8 +27,6 @@ export function StagePanel() {
   const problems = useProblemCount();
   // Exact blocks compile instantly when the game starts; only new words (or a new brief) wait for Compile.
   const dirty = useMemo(() => needsCompile(project) && compileNeedsRequest(project), [project]);
-  // Nothing changed since the last compile: the button starts over instead.
-  const upToDate = useMemo(() => Boolean(project.compiled) && !needsCompile(project), [project]);
 
   useEffect(() => {
     const store = useStore.getState;
@@ -106,38 +104,31 @@ export function StagePanel() {
 
   const compiling = compileState.status === 'running';
   const progress = compileState.progress;
+  // The flag shows a build it is waiting for; any build shows on its blocks and in a small chip.
+  const building = compiling && compileState.forPlay;
+  const buildingCount = new Set(compileState.building.map((b) => `${b.targetId}\u0000${b.words}`)).size;
   const running = runState === 'running' || runState === 'paused';
 
   return (
     <div className={`stage-panel ${fullscreen ? 'full-screen' : ''}`}>
       <div className="stage-header">
         <div className="stage-controls">
-          <button className={`green-flag ${runState === 'running' ? 'active' : ''}`} title="Start (green flag)" aria-label="Start (green flag)" onClick={startGame} disabled={compiling}>
+          <button
+            className={`green-flag ${runState === 'running' ? 'active' : ''} ${building ? 'building' : ''} ${dirty && !compiling ? 'has-new' : ''}`}
+            title={building ? 'Building your new blocks. Stop cancels.' : dirty ? 'Start: your new blocks are built first' : 'Start (green flag)'}
+            aria-label={building ? 'Building your new blocks' : 'Start (green flag)'}
+            onClick={startGame}
+            aria-busy={building}
+          >
             <FlagIcon size={24} />
           </button>
-          <button className={`stop-all ${running ? 'active' : ''}`} title="Stop" aria-label="Stop" onClick={stopGame}>
+          <button className={`stop-all ${running || building ? 'active' : ''}`} title="Stop" aria-label="Stop" onClick={stopGame}>
             <StopIcon size={24} />
           </button>
-          {compiling ? (
-            <button className="compile-btn running" onClick={cancelCompile} title="Cancel" aria-label="Compiling… (cancel)">
-              <span className="spinner" /> <span className="compile-label">Compiling…</span> <XIcon size={13} strokeWidth={3} />
-            </button>
-          ) : (
-            <button
-              className={`compile-btn ${dirty ? 'dirty' : ''}`}
-              aria-label={upToDate ? 'Recompile' : 'Compile'}
-              onClick={() => void compile(undefined, { fresh: upToDate })}
-              title={
-                dirty
-                  ? 'Some blocks in your own words (or the brief) are new: compile them'
-                  : upToDate
-                    ? `Compile everything again, from scratch: every block in your own words is written again and the compiled art is made again, so it can come out different${project.compiled?.model ? ` (last compiled with ${project.compiled.model})` : ''}`
-                    : 'Compile the game'
-              }
-            >
-              <HammerIcon size={16} />
-              <span className="compile-label">{upToDate ? 'Recompile' : `Compile${dirty && project.compiled ? ' •' : ''}`}</span>
-            </button>
+          {compiling && progress && (
+            <span className="build-chip" role="status">
+              {progress.stage === 'assets' && progress.assetsTotal ? `Making art ${progress.assetsDone ?? 0} of ${progress.assetsTotal}` : buildingCount ? `Building ${buildingCount} block${buildingCount > 1 ? 's' : ''}` : progress.message}
+            </span>
           )}
           {problems.count > 0 && (
             <button
@@ -180,21 +171,6 @@ export function StagePanel() {
       </div>
       <div className="stage-shell" ref={shellRef} style={fullscreen ? fit : undefined}>
         <div className="stage-frame" ref={frameRef} />
-        {compiling && progress && (
-          <div className="compile-overlay">
-            <div className="compile-card">
-              <span className="spinner dark" />
-              <b>{progress.message}</b>
-              {progress.stage === 'writing' && progress.chars ? <small>{(progress.chars / 1000).toFixed(1)}k characters of code</small> : null}
-              {progress.stage === 'thinking' ? <small>This can take a minute.</small> : null}
-              {progress.stage === 'assets' && progress.assetsTotal ? (
-                <div className="bar">
-                  <div style={{ width: `${((progress.assetsDone ?? 0) / progress.assetsTotal) * 100}%` }} />
-                </div>
-              ) : null}
-            </div>
-          </div>
-        )}
         {!compiling && !project.compiled && runState !== 'running' && (
           <div className="stage-hint">
             Click the green flag to play.

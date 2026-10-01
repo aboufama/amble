@@ -97,6 +97,18 @@ export function compileNeedsRequest(project: Project): boolean {
   return inUse.length > 0 && briefChanged(project.compiled, plans);
 }
 
+/**
+ * The words a compile request would write now, for showing them being built: new or changed words,
+ * or every word when the brief changed, everything is written again (`all`), or older games kept no pieces.
+ */
+export function piecesToWrite(project: Project, all = false): Array<Pick<PieceRequest, 'targetId' | 'words'>> {
+  const plans = planProject(project);
+  const inUse = piecesInUse(plans);
+  const known = new Set((project.compiled?.pieces ?? []).map((p) => p.key));
+  const every = all || (project.compiled && !project.compiled.pieces) || briefChanged(project.compiled, plans);
+  return inUse.filter((r) => every || !known.has(r.key)).map((r) => ({ targetId: r.targetId, words: r.words }));
+}
+
 /** The targets that problems mention ("Amble (when ⚑ clicked): ..."); all of them when none match. */
 function targetsInProblems(plans: TargetPlan[], problems: string[]): Set<string> {
   const names = new Set<string>();

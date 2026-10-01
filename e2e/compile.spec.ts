@@ -104,7 +104,7 @@ test('exact blocks compile instantly with the green flag, without any request', 
   await page.goto('/');
   await expect(page.locator('.blocklyMainBackground')).toBeVisible();
 
-  await page.getByTitle('Start (green flag)').click();
+  await page.locator('.green-flag').click();
   const frame = await gameFrame(page);
   await expect.poll(async () => (await game(frame)).time, { timeout: 30_000 }).toBeGreaterThan(0.3);
   // Amble falls with gravity and walks with the arrow keys.
@@ -124,7 +124,7 @@ test('the Edit menu shows the JavaScript the blocks compiled to', async ({ page 
   await expect(page.getByRole('menuitem', { name: 'Show compiled code' })).toBeDisabled();
   await page.keyboard.press('Escape');
 
-  await page.getByTitle('Start (green flag)').click();
+  await page.locator('.green-flag').click();
   const frame = await gameFrame(page);
   await expect.poll(async () => (await game(frame)).state, { timeout: 30_000 }).toBe('running');
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
@@ -143,14 +143,25 @@ test('words are compiled once, in one request, and reused after', async ({ page 
   await page.goto('/');
   await openExample(page, 'Star Catcher (2D)');
 
-  // Three blocks are written in words (the art style too): Compile is marked.
-  await expect(page.locator('.compile-btn')).toHaveClass(/dirty/);
-  await page.getByRole('button', { name: 'Compile' }).click();
+  // Three blocks are written in words (the art style too): the flag shows new words waiting.
+  await expect(page.locator('.green-flag')).toHaveClass(/has-new/);
+  // While they are built, their blocks show it (and settle when the build lands).
+  await page.evaluate(() => {
+    const w = window as unknown as { __sawAssembly: boolean };
+    w.__sawAssembly = false;
+    new MutationObserver(() => {
+      if (document.querySelector('.amble-building .amble-assembly')) w.__sawAssembly = true;
+    }).observe(document.body, { subtree: true, childList: true, attributes: true });
+  });
+  // The flag builds the new words first, then plays.
+  await page.locator('.green-flag').click();
   const frame = await gameFrame(page);
   await expect.poll(async () => (await game(frame)).twinkles, { timeout: 30_000 }).toBeGreaterThan(5);
   // One request for the words, one for the art of the character the compiler added.
   expect(calls).toEqual(['amble_pieces', 'svg_art']);
-  await expect(page.locator('.compile-btn')).not.toHaveClass(/dirty/);
+  await expect(page.locator('.green-flag')).not.toHaveClass(/has-new/);
+  expect(await page.evaluate(() => (window as unknown as { __sawAssembly: boolean }).__sawAssembly)).toBe(true);
+  await expect(page.locator('.amble-assembly')).toHaveCount(0);
 
   // Playing again, or after moving scripts around, compiles instantly.
   await page.getByTitle('Stop').click();
@@ -158,15 +169,15 @@ test('words are compiled once, in one request, and reused after', async ({ page 
     const ws = (window as unknown as { __ambleWorkspace: { getTopBlocks(o: boolean): Array<{ moveBy(x: number, y: number): void }> } }).__ambleWorkspace;
     ws.getTopBlocks(false)[0].moveBy(160, 40);
   });
-  await page.getByTitle('Start (green flag)').click();
+  await page.locator('.green-flag').click();
   await expect.poll(async () => (await game(frame)).state).toBe('running');
   await page.waitForTimeout(500);
   expect(calls).toEqual(['amble_pieces', 'svg_art']);
 
-  // With nothing new, the button starts over: every block in words is written again, and the art made again.
-  await page.getByRole('button', { name: 'Recompile' }).hover();
-  await expect(page.getByRole('button', { name: 'Recompile' })).toHaveAttribute('title', /from scratch.*last compiled with gpt-5/);
-  await page.getByRole('button', { name: 'Recompile' }).click();
+  // Edit > Compile everything again starts over: every block in words is written again, and the art made again.
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: 'Compile everything again' })).toHaveAttribute('title', /written again.*last compiled with gpt-5/);
+  await page.getByRole('menuitem', { name: 'Compile everything again' }).click();
   await expect.poll(() => calls.length, { timeout: 30_000 }).toBe(4);
   expect(calls).toEqual(['amble_pieces', 'svg_art', 'amble_pieces', 'svg_art']);
   // The new game plays (in a new player frame).
@@ -185,6 +196,45 @@ test('words are compiled once, in one request, and reused after', async ({ page 
   await expect(page.locator('.sprite-tile:not(.compiled)', { hasText: 'Moon' })).toBeVisible();
 });
 
+test('words build quietly a moment after typing, without starting the game', async ({ page }) => {
+  const calls: string[] = [];
+  await page.addInitScript(() => {
+    localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test', model: 'gpt-5', assetModel: 'gpt-5-mini' }));
+  });
+  await mockOpenAI(page, calls);
+  await page.goto('/');
+  await openExample(page, 'Star Catcher (2D)');
+  await expect(page.locator('.green-flag')).toHaveClass(/has-new/);
+
+  // Typing new words in a block (here, through Blockly, like a finished edit)...
+  const edited = await page.evaluate(() => {
+    type Field = { constructor: { name: string }; getValue(): string; setValue(v: string): void };
+    type Block = { inputList: Array<{ fieldRow: Field[] }> };
+    const ws = (window as unknown as { __ambleWorkspace: { getAllBlocks(o: boolean): Block[] } }).__ambleWorkspace;
+    for (const b of ws.getAllBlocks(false))
+      for (const input of b.inputList)
+        for (const f of input.fieldRow)
+          if (f.constructor.name === 'FieldAmbleText') {
+            f.setValue(`${f.getValue()} and sparkle a little`);
+            return true;
+          }
+    return false;
+  });
+  expect(edited).toBe(true);
+  // ...builds them on their own a moment later: no flag press, and the game doesn't start.
+  await expect.poll(() => calls.filter((c) => c === 'amble_pieces').length, { timeout: 20_000 }).toBe(1);
+  await expect(page.locator('.green-flag')).not.toHaveClass(/has-new/, { timeout: 30_000 });
+  await expect(page.locator('.build-chip')).toHaveCount(0);
+  const frame = await gameFrame(page);
+  expect((await game(frame)).state).not.toBe('running');
+
+  // The flag then plays at once, with nothing left to build.
+  const before = calls.length;
+  await page.locator('.green-flag').click();
+  await expect.poll(async () => (await game(await gameFrame(page))).state, { timeout: 30_000 }).toBe('running');
+  expect(calls.length).toBe(before);
+});
+
 test('catching a star runs "when I touch Star", and every burst shows and clears', async ({ page }) => {
   const calls: string[] = [];
   await page.addInitScript(() => {
@@ -193,7 +243,7 @@ test('catching a star runs "when I touch Star", and every burst shows and clears
   await mockOpenAI(page, calls);
   await page.goto('/');
   await openExample(page, 'Star Catcher (2D)');
-  await page.getByRole('button', { name: 'Compile' }).click();
+  await page.locator('.green-flag').click();
   const frame = await gameFrame(page);
   await expect.poll(async () => (await game(frame)).state, { timeout: 30_000 }).toBe('running');
 
@@ -220,7 +270,7 @@ test('catching a star runs "when I touch Star", and every burst shows and clears
 test('a speech bubble at the edge of the stage stays on it, without breaking its words', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.blocklyMainBackground')).toBeVisible();
-  await page.getByTitle('Start (green flag)').click();
+  await page.locator('.green-flag').click();
   const frame = await gameFrame(page);
   // After Amble's greeting (it says hello for 3 seconds), so this bubble stays up.
   await expect.poll(async () => (await game(frame)).time, { timeout: 30_000 }).toBeGreaterThan(3.5);
@@ -251,7 +301,7 @@ test('without an account the flag still plays; words wait', async ({ page }) => 
   await mockOpenAI(page, calls);
   await page.goto('/');
   await openExample(page, 'Star Catcher (2D)');
-  await page.getByTitle('Start (green flag)').click();
+  await page.locator('.green-flag').click();
   const frame = await gameFrame(page);
   await expect.poll(async () => (await game(frame)).time, { timeout: 30_000 }).toBeGreaterThan(0.3);
   await expect(page.getByText('Blocks in your own words need a ChatGPT sign-in or an API key')).toBeVisible();
@@ -280,7 +330,7 @@ test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', 
   await page.keyboard.press('Escape');
 
   await openExample(page, 'Star Catcher (2D)');
-  await page.getByRole('button', { name: 'Compile' }).click();
+  await page.locator('.green-flag').click();
   const frame = await gameFrame(page);
   await expect.poll(async () => (await game(frame)).twinkles, { timeout: 30_000 }).toBeGreaterThan(5);
   expect(requests).toEqual([
@@ -288,7 +338,9 @@ test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', 
     { model: 'gpt-6-astra', reasoningEffort: 'low', kind: 'svg' },
   ]);
   expect(direct).toEqual([]);
-  await expect(page.getByRole('button', { name: 'Compile' })).toHaveAttribute('title', /last compiled with GPT-6 Astra Light/);
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: 'Compile everything again' })).toHaveAttribute('title', /last compiled with GPT-6 Astra Light/);
+  await page.keyboard.press('Escape');
 
   // Signing out goes back to the API key settings.
   await page.locator('.menu-btn.account').click();
@@ -304,7 +356,7 @@ test('3D world mode renders and runs', async ({ page }) => {
   await expect(page.locator('.mode-badge')).toHaveText('3D');
   const frame = await gameFrame(page);
   // The player reports loading and idle; start it with the green flag.
-  await page.getByTitle('Start (green flag)').click();
+  await page.locator('.green-flag').click();
   await expect
     .poll(async () => frame.evaluate(() => (window as unknown as { __ambleGame?: { state: string; mode: string } }).__ambleGame?.mode ?? ''))
     .toBe('3d');

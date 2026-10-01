@@ -52,6 +52,7 @@ export function MenuBar() {
   const restore = useStore((s) => s.restore);
   const setRestore = useStore((s) => s.setRestore);
   const compiledCount = useStore((s) => s.project.compiled?.code.length ?? 0);
+  const lastModel = useStore((s) => s.project.compiled?.model);
   const compiling = useStore((s) => s.compile.status === 'running');
   const [open, setOpen] = useState<'file' | 'edit' | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -188,7 +189,7 @@ export function MenuBar() {
                   <button
                     role="menuitem"
                     disabled={compiling}
-                    title="Every block in your own words is written again and the compiled art is made again, so it can come out different"
+                    title={`Every block in your own words is written again and the compiled art is made again, so it can come out different${lastModel ? ` (last compiled with ${lastModel})` : ''}`}
                     onClick={act(() => void compile(undefined, { fresh: true }))}
                   >
                     Compile everything again
