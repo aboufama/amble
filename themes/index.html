@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amble themes</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<style>
+  :root { --bg: #e5f0ff; --card: #fff; --text: #575e75; --line: rgba(0, 0, 0, 0.15); --accent: #855cd6; --on-accent: #fff; color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  header { background: var(--accent); color: var(--on-accent); padding: 14px 16px; }
+  header h1 { margin: 0 auto; max-width: 1100px; font-size: 22px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+  .lede { margin: 0 0 20px; max-width: 70ch; }
+  ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); }
+  .theme { background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: grid; align-content: start; }
+  .shot img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--line); }
+  .about { padding: 12px 16px 16px; display: grid; gap: 6px; }
+  .about h2 { margin: 0; font-size: 18px; }
+  .about p { margin: 0; }
+  .seed { font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.8; }
+  .swatches { list-style: none; display: flex; gap: 6px; margin: 4px 0; padding: 0; }
+  .swatches li { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); }
+  .open { justify-self: start; margin-top: 4px; padding: 8px 14px; border-radius: 4px; background: var(--accent); color: var(--on-accent); font-weight: 700; text-decoration: none; }
+  .open:focus-visible, .shot:focus-visible { outline: 3px solid #333; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<header><h1>Amble themes</h1></header>
+<main>
+  <p class="lede">The Scratch-style editor with a subtle spin. Each theme is a full, working copy of Amble: open one and build a game in it. Your projects are shared between them, so you can open the same game in each and compare.</p>
+  <ol>
+    <li class="theme">
+      <a class="shot" href="./classic/"><img src="./classic/preview.webp" alt="The Scratch classic theme: the code area, blocks and stage" width="1440" height="900" loading="lazy"></a>
+      <div class="about">
+        <h2>Scratch classic</h2>
+        <p class="seed">The untouched Scratch look</p>
+        <p>Scratch's own colours and shapes, as Amble looked before Iris Haze, for comparison.</p>
+        <ul class="swatches" aria-label="Its colours"><li style="background:#855cd6" title="#855cd6"></li><li style="background:#4c97ff" title="#4c97ff"></li><li style="background:#e5f0ff" title="#e5f0ff"></li><li style="background:#575e75" title="#575e75"></li><li style="background:#4c97ff" title="#4c97ff"></li><li style="background:#ffbf00" title="#ffbf00"></li><li style="background:#ffab19" title="#ffab19"></li></ul>
+        <a class="open" href="./classic/">Open Scratch classic</a>
+      </div>
+    </li>
+    <li class="theme">
+      <a class="shot" href="./iris-haze/"><img src="./iris-haze/preview.webp" alt="The Iris Haze theme: the code area, blocks and stage" width="1440" height="900" loading="lazy"></a>
+      <div class="about">
+        <h2>Iris Haze</h2>
+        <p class="seed">Seed 4138523179</p>
+        <p>The main site's look, in a copy from before the green flag built new blocks itself and games moved to Phaser. The purple turns toward iris, greys get a faint lilac tint, and blocks soften slightly. Panels lose their outlines and float on a soft shadow; corners are rounder, with folder-style tabs and soft-square buttons.</p>
+        <ul class="swatches" aria-label="Its colours"><li style="background:#7462cc" title="#7462cc"></li><li style="background:#2a9dee" title="#2a9dee"></li><li style="background:#e7f4fd" title="#e7f4fd"></li><li style="background:#595c7a" title="#595c7a"></li><li style="background:#3d99f9" title="#3d99f9"></li><li style="background:#f7ae08" title="#f7ae08"></li><li style="background:#f89d20" title="#f89d20"></li></ul>
+        <a class="open" href="./iris-haze/">Open Iris Haze</a>
+      </div>
+    </li>
+    <li class="theme">
+      <a class="shot" href="./paper-iris/"><img src="./paper-iris/preview.webp" alt="The Paper Iris theme: the code area, blocks and stage" width="1440" height="900" loading="lazy"></a>
+      <div class="about">
+        <h2>Paper Iris</h2>
+        <p class="seed">Seed 460228954</p>
+        <p>Iris Haze with Amble's own icons cut from paper: flat pieces of card with no outlines, each on a back card a little down and to the right, with the details cut out. The green flag is a waving banner with a star, stop is a round button with two pause bars, and the toolbox's plain circles become coloured squircles, each with its own white glyph. The purple turns a hair, the greys take a little less lilac, and corners get a touch tighter.</p>
+        <ul class="swatches" aria-label="Its colours"><li style="background:#6f62cc" title="#6f62cc"></li><li style="background:#149deb" title="#149deb"></li><li style="background:#e7f5fd" title="#e7f5fd"></li><li style="background:#585c78" title="#585c78"></li><li style="background:#ffc23d" title="#ffc23d"></li><li style="background:#ff7a6b" title="#ff7a6b"></li><li style="background:#4cbf56" title="#4cbf56"></li></ul>
+        <a class="open" href="./paper-iris/">Open Paper Iris</a>
+      </div>
+    </li>
+    <li class="theme">
+      <a class="shot" href="./felt-tip-iris/"><img src="./felt-tip-iris/preview.webp" alt="The Felt-Tip Iris theme: the code area, blocks and stage" width="1440" height="900" loading="lazy"></a>
+      <div class="about">
+        <h2>Felt-Tip Iris</h2>
+        <p class="seed">Seed 827687546</p>
+        <p>Iris Haze with Amble's own icons, drawn like a fat felt-tip pen: bold round strokes, each icon with one dab of apricot. The green flag is a &quot;go&quot; chevron on a stubby pole, stop is a soft octagon, and the category markers are rings around their own glyphs. The purple turns a little further, greys take a touch more lilac, and corners get a little rounder.</p>
+        <ul class="swatches" aria-label="Its colours"><li style="background:#7b5fcb" title="#7b5fcb"></li><li style="background:#2a8dee" title="#2a8dee"></li><li style="background:#eaf4fd" title="#eaf4fd"></li><li style="background:#5a5b7c" title="#5a5b7c"></li><li style="background:#f08c1e" title="#f08c1e"></li><li style="background:#ffd56a" title="#ffd56a"></li><li style="background:#4cbf56" title="#4cbf56"></li></ul>
+        <a class="open" href="./felt-tip-iris/">Open Felt-Tip Iris</a>
+      </div>
+    </li>
+    <li class="theme">
+      <a class="shot" href="./indigo-sky/"><img src="./indigo-sky/preview.webp" alt="The Indigo Sky theme: the code area, blocks and stage" width="1440" height="900" loading="lazy"></a>
+      <div class="about">
+        <h2>Indigo Sky</h2>
+        <p class="seed">Seed 3317003459</p>
+        <p>The purple moves to a bluer indigo, the backgrounds go sky blue and greys take a slate tint. Tabs round like folder tabs, buttons are soft squares, panels float on a soft shadow, and block corners are crisper.</p>
+        <ul class="swatches" aria-label="Its colours"><li style="background:#6265dd" title="#6265dd"></li><li style="background:#009eef" title="#009eef"></li><li style="background:#e1f2fd" title="#e1f2fd"></li><li style="background:#535d7a" title="#535d7a"></li><li style="background:#229afc" title="#229afc"></li><li style="background:#ffb804" title="#ffb804"></li><li style="background:#ffa428" title="#ffa428"></li></ul>
+        <a class="open" href="./indigo-sky/">Open Indigo Sky</a>
+      </div>
+    </li>
+    <li class="theme">
+      <a class="shot" href="./orchid-mint/"><img src="./orchid-mint/preview.webp" alt="The Orchid Mint theme: the code area, blocks and stage" width="1440" height="900" loading="lazy"></a>
+      <div class="about">
+        <h2>Orchid Mint</h2>
+        <p class="seed">Seed 2552057946</p>
+        <p>The purple deepens to orchid, the light blues turn lavender, the blue turns periwinkle, and greys take a faint mint tint. Cards and panels get softer corners and float on a soft shadow; the sprite fields become square-ish inputs.</p>
+        <ul class="swatches" aria-label="Its colours"><li style="background:#9a3fb0" title="#9a3fb0"></li><li style="background:#727df4" title="#727df4"></li><li style="background:#eeeeff" title="#eeeeff"></li><li style="background:#525f71" title="#525f71"></li><li style="background:#3c99fd" title="#3c99fd"></li><li style="background:#fcb303" title="#fcb303"></li><li style="background:#fda01b" title="#fda01b"></li></ul>
+        <a class="open" href="./orchid-mint/">Open Orchid Mint</a>
+      </div>
+    </li>
+    <li class="theme">
+      <a class="shot" href="./indigo-sand/"><img src="./indigo-sand/preview.webp" alt="The Indigo Sand theme: the code area, blocks and stage" width="1440" height="900" loading="lazy"></a>
+      <div class="about">
+        <h2>Indigo Sand</h2>
+        <p class="seed">Seed 2856563975</p>
+        <p>The purple turns toward indigo and the light blues toward sky, greys warm slightly, and blocks are a little calmer. Controls get square-ish corners, while cards and panels get softer ones and a soft shadow.</p>
+        <ul class="swatches" aria-label="Its colours"><li style="background:#6c5bd7" title="#6c5bd7"></li><li style="background:#2e9de3" title="#2e9de3"></li><li style="background:#e5f5ff" title="#e5f5ff"></li><li style="background:#595c6d" title="#595c6d"></li><li style="background:#3f9af5" title="#3f9af5"></li><li style="background:#f2b10d" title="#f2b10d"></li><li style="background:#f49724" title="#f49724"></li></ul>
+        <a class="open" href="./indigo-sand/">Open Indigo Sand</a>
+      </div>
+    </li>
+  </ol>
+</main>
+</body>
+</html>
