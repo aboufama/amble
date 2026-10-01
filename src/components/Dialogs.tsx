@@ -209,7 +209,7 @@ export function SettingsDialog() {
               </label>
             </div>
             <label className="text-field">
-              <span>Asset model (compiled art, 3D models and sounds)</span>
+              <span>Asset model (compiled art and sounds)</span>
               <input list="amble-models" value={settings.assetModel} placeholder="same as above" onChange={(e) => setSettings({ assetModel: e.target.value })} />
             </label>
             <datalist id="amble-models">

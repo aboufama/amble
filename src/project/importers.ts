@@ -1,6 +1,6 @@
 import { fileToDataUrl, loadImage, resizeImage, sanitizeSvg, svgDataUrl, svgSize } from './images';
 import { uid } from './ids';
-import type { ImageAsset, ModelAsset, SoundAsset } from './types';
+import type { ImageAsset, SoundAsset } from './types';
 
 const baseName = (file: File) => file.name.replace(/\.[^.]+$/, '').slice(0, 40) || 'costume';
 
@@ -44,14 +44,6 @@ export async function importImageFile(file: File, asBackdrop = false): Promise<I
     resolution = 2;
   }
   return { id: uid('a'), name: baseName(file), kind: 'image', dataUrl, mime: dataUrl.startsWith('data:image/png') ? 'image/png' : file.type || 'image/png', width: w, height: h, resolution, centerX: w / 2, centerY: h / 2 };
-}
-
-/** Imports a .glb 3D model. */
-export async function importModelFile(file: File): Promise<ModelAsset> {
-  if (!/\.glb$/i.test(file.name)) throw new Error('3D models must be .glb files.');
-  if (file.size > 25 * 1024 * 1024) throw new Error('That model is too big (25 MB max).');
-  const dataUrl = await fileToDataUrl(new Blob([await file.arrayBuffer()], { type: 'model/gltf-binary' }));
-  return { id: uid('a'), name: baseName(file), kind: 'model', dataUrl };
 }
 
 let ctx: AudioContext | null = null;

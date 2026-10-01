@@ -4,7 +4,7 @@ import { findCompiledSprite, findTarget, useStore } from '../store';
 import { keepCompiledSprite, renameSprite } from '../actions';
 import { blankBackdrop, newSprite } from '../project/defaults';
 import { BACKDROP_LIBRARY, SPRITE_LIBRARY, type LibrarySprite } from '../project/library';
-import { importImageFile, importModelFile, pickFile } from '../project/importers';
+import { importImageFile, pickFile } from '../project/importers';
 import { exportSprite, readSpriteFile } from '../project/persistence';
 import { uniqueName, uid } from '../project/ids';
 import type { CostumeAsset, CompiledAsset, ImageAsset, SpriteTarget } from '../project/types';
@@ -17,7 +17,6 @@ import {
   AllAroundIcon,
   DontRotateIcon,
   BrushIcon,
-  CubeIcon,
   DiceIcon,
   EyeIcon,
   EyeOffIcon,
@@ -31,7 +30,6 @@ import {
 export function costumeThumb(c: CostumeAsset | CompiledAsset | undefined): ReactElement {
   if (!c) return <div className="thumb empty" />;
   if (c.kind === 'image') return <img className="thumb" src={c.dataUrl} alt="" draggable={false} />;
-  if (c.kind === 'model') return c.thumbnail ? <img className="thumb" src={c.thumbnail} alt="" /> : <div className="thumb model"><CubeIcon size={28} /></div>;
   return <div className="thumb empty" />;
 }
 
@@ -396,14 +394,12 @@ function DirectionField({ sprite, set }: { sprite: SpriteTarget; set(fn: (s: Spr
 
 function SpriteInfo({ sprite }: { sprite: SpriteTarget }) {
   const update = useStore((s) => s.update);
-  const mode = useStore((s) => s.project.mode);
   const set = (fn: (s: SpriteTarget) => void) =>
     update((p) => {
       const t = p.sprites.find((x) => x.id === sprite.id);
       if (t) fn(t);
     });
   const [nameDraft, setNameDraft] = useState<string | null>(null);
-  const three = mode === '3d';
   return (
     <div className="sprite-info">
       <div className="info-row">
@@ -422,9 +418,8 @@ function SpriteInfo({ sprite }: { sprite: SpriteTarget }) {
             onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
           />
         </label>
-        <NumberField label="x" icon={three ? undefined : <HorizontalArrowsIcon size={18} />} value={sprite.x} onChange={(v) => set((t) => (t.x = v))} step={three ? 0.5 : 10} />
-        <NumberField label="y" icon={three ? undefined : <VerticalArrowsIcon size={18} />} value={sprite.y} onChange={(v) => set((t) => (t.y = v))} step={three ? 0.5 : 10} />
-        {three && <NumberField label="z" value={sprite.z} onChange={(v) => set((t) => (t.z = v))} step={0.5} />}
+        <NumberField label="x" icon={<HorizontalArrowsIcon size={18} />} value={sprite.x} onChange={(v) => set((t) => (t.x = v))} step={10} />
+        <NumberField label="y" icon={<VerticalArrowsIcon size={18} />} value={sprite.y} onChange={(v) => set((t) => (t.y = v))} step={10} />
       </div>
       <div className="info-row">
         <div className="info-group">
@@ -439,11 +434,7 @@ function SpriteInfo({ sprite }: { sprite: SpriteTarget }) {
           </div>
         </div>
         <NumberField label="Size" secondary value={sprite.size} onChange={(v) => set((t) => (t.size = Math.max(1, v)))} step={10} wide />
-        {three ? (
-          <NumberField label="Heading" secondary value={sprite.direction} onChange={(v) => set((t) => (t.direction = v))} step={15} wide />
-        ) : (
-          <DirectionField sprite={sprite} set={set} />
-        )}
+        <DirectionField sprite={sprite} set={set} />
       </div>
     </div>
   );
@@ -483,7 +474,6 @@ export function SpritePane() {
   const reorder = useReorder((from, to) => update((p) => moveItem(p.sprites, from, to)));
   const selected = findTarget(project, selectedId);
   const compiledSel = selected ? null : findCompiledSprite(project, selectedId);
-  const mode = project.mode;
   const names = project.sprites.map((s) => s.name);
 
   const addSprite = (sprite: SpriteTarget, tab: 'code' | 'costumes' = 'code') => {
@@ -492,7 +482,7 @@ export function SpritePane() {
     setTab(tab);
   };
 
-  const paintNew = () => addSprite(newSprite(uniqueName('Sprite1', names), mode, [blankCostume()], 0, 0), 'costumes');
+  const paintNew = () => addSprite(newSprite(uniqueName('Sprite1', names), [blankCostume()], 0, 0), 'costumes');
   const upload = async () => {
     const files = await pickFile('image/*,.ambsprite');
     if (!files.length) return;
@@ -503,23 +493,13 @@ export function SpritePane() {
         return;
       }
       const costume = await importImageFile(files[0]);
-      addSprite(newSprite(uniqueName(costume.name, names), mode, [costume]));
-    } catch (err) {
-      notify((err as Error).message, 'error');
-    }
-  };
-  const uploadModel = async () => {
-    const files = await pickFile('.glb');
-    if (!files.length) return;
-    try {
-      const model = await importModelFile(files[0]);
-      addSprite(newSprite(uniqueName(model.name, names), mode, [model]));
+      addSprite(newSprite(uniqueName(costume.name, names), [costume]));
     } catch (err) {
       notify((err as Error).message, 'error');
     }
   };
   const addFromLibrary = (item: LibrarySprite) => {
-    const sprite = newSprite(uniqueName(item.name, names), mode, item.costumes());
+    const sprite = newSprite(uniqueName(item.name, names), item.costumes());
     sprite.description = item.description;
     addSprite(sprite);
   };
@@ -531,7 +511,7 @@ export function SpritePane() {
     const copy: SpriteTarget = JSON.parse(JSON.stringify(src));
     copy.id = uid('t');
     copy.name = uniqueName(src.name, names);
-    copy.x += mode === '3d' ? 1 : 20;
+    copy.x += 20;
     copy.costumes.forEach((c) => (c.id = uid('a')));
     copy.sounds.forEach((c) => (c.id = uid('a')));
     addSprite(copy);
@@ -581,10 +561,9 @@ export function SpritePane() {
   });
 
   const backdrop = project.stage.costumes[project.stage.currentCostume];
-  const compiledSprites = (project.compiled?.mode === mode ? project.compiled?.sprites : [])?.filter((s) => !names.includes(s.name)) ?? [];
+  const compiledSprites = (project.compiled?.sprites ?? []).filter((s) => !names.includes(s.name));
   const spriteItems: ActionItem[] = [
     { label: 'Upload Sprite', icon: <UploadIcon size={20} strokeWidth={2.4} />, onClick: () => void upload() },
-    ...(mode === '3d' ? [{ label: 'Upload 3D Model', icon: <CubeIcon size={20} strokeWidth={2.2} />, onClick: () => void uploadModel() }] : []),
     { label: 'Surprise', icon: <DiceIcon size={20} strokeWidth={2.4} />, onClick: () => addFromLibrary(surprise(SPRITE_LIBRARY)) },
     { label: 'Paint', icon: <BrushIcon size={20} strokeWidth={2.4} />, onClick: paintNew },
   ];
@@ -668,7 +647,7 @@ export function SpritePane() {
         <div className="stage-selector-header">
           <span className="stage-selector-title">Stage</span>
         </div>
-        {backdrop ? <div className="stage-selector-thumb">{costumeThumb(backdrop)}</div> : <div className="stage-selector-thumb sky" />}
+        <div className="stage-selector-thumb">{backdrop && costumeThumb(backdrop)}</div>
         <div className="stage-selector-label">Backdrops</div>
         <div className="stage-selector-count">{project.stage.costumes.length}</div>
         <ActionMenu

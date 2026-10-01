@@ -8,7 +8,7 @@ import { PIECES_SCHEMA, type AssetRequest, type PiecesReply } from './schema';
 import { instrumentTargetCode } from './transform';
 import { generateAsset, placeholderAsset, type AssetJob } from './assets';
 import { hashString, uid } from '../project/ids';
-import type { CompiledAsset, CompiledCode, CompiledGame, CompiledPiece, CompiledQuestion, CompiledSprite, Project, WorldMode } from '../project/types';
+import type { CompiledAsset, CompiledCode, CompiledGame, CompiledPiece, CompiledQuestion, CompiledSprite, Project } from '../project/types';
 
 export type CompileStage = 'preparing' | 'thinking' | 'writing' | 'checking' | 'repairing' | 'assets' | 'done';
 
@@ -155,7 +155,7 @@ async function writePieces(
   warnings: string[],
   briefBefore?: string,
 ): Promise<Written> {
-  const system = piecesSystemPrompt(project.mode);
+  const system = piecesSystemPrompt('2d');
   const user = piecesUserPrompt({ project, plans, tasks, revisable, written, problems: opts.fixProblems, briefBefore });
   const ask = (prompt: string) =>
     chatJson<PiecesReply>(transport, {
@@ -218,19 +218,13 @@ async function writePieces(
   return { code, reply, revised };
 }
 
-function assetGroup(kind: string): 'image' | 'model' | 'sound' {
-  return kind === 'sound' ? 'sound' : kind === 'model' ? 'model' : 'image';
+function assetGroup(kind: string): 'image' | 'sound' {
+  return kind === 'sound' ? 'sound' : 'image';
 }
 
-/** The size a compiled asset was asked for (pixels for images, meters for models). */
+/** The size a compiled asset was asked for (in pixels). */
 function assetSize(a: CompiledAsset): { width: number; height: number } {
   if (a.kind === 'image') return { width: Math.round(a.width / (a.resolution || 1)), height: Math.round(a.height / (a.resolution || 1)) };
-  if (a.kind === 'model') {
-    const parts = a.recipe?.parts ?? [];
-    const width = Math.max(0, ...parts.map((p) => Math.abs(p.position[0]) * 2 + p.size[0]));
-    const height = Math.max(0, ...parts.map((p) => p.position[1] + p.size[1] / 2));
-    return { width: Math.round(width * 100) / 100, height: Math.round(height * 100) / 100 };
-  }
   return { width: 0, height: 0 };
 }
 
@@ -246,7 +240,6 @@ function planAssets(
   warnings: string[],
   restyle: boolean,
 ): { kept: CompiledAsset[]; jobs: AssetJob[] } {
-  const mode: WorldMode = project.mode;
   const owners = new Map<string, { id: string; name: string; user: Project['stage'] | Project['sprites'][number] | null }>();
   owners.set(project.stage.id, { id: project.stage.id, name: project.stage.name, user: project.stage });
   for (const s of project.sprites) owners.set(s.id, { id: s.id, name: s.name, user: s });
@@ -260,11 +253,7 @@ function planAssets(
   const replaced = new Set<string>();
   for (const a of requests) {
     const name = String(a.name ?? '').trim();
-    if (!name || !['costume', 'backdrop', 'model', 'sound'].includes(a.kind)) continue;
-    if (a.kind === 'model' && mode !== '3d') {
-      warnings.push(`Skipped 3D model "${name}" (this is a 2D project).`);
-      continue;
-    }
+    if (!name || !['costume', 'backdrop', 'sound'].includes(a.kind)) continue;
     const owner = byName(String(a.target ?? '').trim());
     if (!owner) {
       warnings.push(`Skipped asset "${name}" for "${a.target}", which doesn't exist.`);
@@ -289,7 +278,7 @@ function planAssets(
       const key = `${p.targetId}|${group}|${p.name}`;
       if (replaced.has(key)) continue;
       replaced.add(key);
-      const kind = p.kind === 'model' ? 'model' : p.targetId === project.stage.id ? 'backdrop' : 'costume';
+      const kind = p.targetId === project.stage.id ? 'backdrop' : 'costume';
       jobs.push({ targetId: owner.id, targetName: owner.name, kind, name: p.name, description: p.request, ...assetSize(p) });
     }
   }
@@ -305,11 +294,11 @@ function planAssets(
       jobs.push({
         targetId: s.id,
         targetName: s.name,
-        kind: mode === '3d' ? 'model' : 'costume',
+        kind: 'costume',
         name: s.name.toLowerCase(),
         description: s.description || s.name,
-        width: mode === '3d' ? 1 : 64,
-        height: mode === '3d' ? 1 : 64,
+        width: 64,
+        height: 64,
       });
     }
   }
@@ -331,11 +320,11 @@ async function runJobs(jobs: AssetJob[], project: Project, style: string, transp
       if (!job) return;
       report(`${job.kind} "${job.name}"`);
       try {
-        results.push(await generateAsset(job, { transport, settings, mode: project.mode, gameTitle: project.title, styleHint, signal: opts.signal }));
+        results.push(await generateAsset(job, { transport, settings, gameTitle: project.title, styleHint, signal: opts.signal }));
       } catch (err) {
         if (opts.signal?.aborted) throw err;
         warnings.push(`Couldn't make ${job.kind} "${job.name}" (${(err as Error).message}); used a placeholder.`);
-        results.push(placeholderAsset(job, project.mode));
+        results.push(placeholderAsset(job));
       }
       done++;
       report();
@@ -438,7 +427,6 @@ export async function compileProject(project: Project, options: CompileOptions):
       description: String(s.description ?? ''),
       x: Number(s.x) || 0,
       y: Number(s.y) || 0,
-      z: project.mode === '3d' ? Number(s.z) || 0 : 0,
       size: Number(s.size) > 0 ? Number(s.size) : 100,
       direction: Number(s.direction) || 0,
       visible: s.visible !== false,
@@ -454,7 +442,7 @@ export async function compileProject(project: Project, options: CompileOptions):
   const { kept, jobs } = planAssets(project, reply?.assets ?? [], sprites, fresh ? [] : (previous?.assets ?? []), warnings, restyle);
   let made: CompiledAsset[] = [];
   if (jobs.length && opts.offline && !transport) {
-    made = jobs.map((j) => placeholderAsset(j, project.mode));
+    made = jobs.map((j) => placeholderAsset(j));
   } else if (jobs.length) {
     transport ??= await requireTransport(opts.settings);
     made = await runJobs(jobs, project, style, transport, settings, opts, warnings);
@@ -498,7 +486,7 @@ export async function compileProject(project: Project, options: CompileOptions):
   return {
     createdAt: Date.now(),
     model: transport ? (transport.via === 'chatgpt' ? CHATGPT_MODEL_NAME : settings.model) : (previous?.model ?? ''),
-    mode: project.mode,
+    mode: '2d',
     inputHash: inputHash(project),
     summary: '',
     howToPlay: '',

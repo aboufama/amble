@@ -1,4 +1,4 @@
-import { ambleCostumes, block, character, newProject, newSprite, svgAsset, synthSound, variable, workspace } from './defaults';
+import { ambleCostumes, block, character, newProject, newSprite, svgAsset, variable, workspace } from './defaults';
 import type { Project } from './types';
 
 const nightSky = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360">
@@ -15,14 +15,12 @@ const nightSky = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="36
 
 const starSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><path d="M22 3l5.6 11.9 13 1.6-9.6 9 2.5 12.9L22 32l-11.5 6.4 2.5-12.9-9.6-9 13-1.6z" fill="#ffd84d" stroke="#c98a00" stroke-width="3" stroke-linejoin="round"/><path d="M22 10l3 6.6 7.1.9-5.2 4.9" fill="none" stroke="#fff6c2" stroke-width="2.5" stroke-linecap="round"/></svg>`;
 
-const coinSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" fill="#ffc933" stroke="#a86b00" stroke-width="5"/><circle cx="40" cy="40" r="23" fill="none" stroke="#ffe48a" stroke-width="4"/><path d="M40 24l4.5 9.5 10.3 1.2-7.6 7.1 2 10.2L40 47l-9.2 5 2-10.2-7.6-7.1 10.3-1.2z" fill="#fff1b8"/></svg>`;
-
 /**
- * 2D: catch falling stars. Almost every block is exact, so the game compiles in an instant;
+ * Catch falling stars. Almost every block is exact, so the game compiles in an instant;
  * two blocks are in the author's own words (the sparkles and the twinkling).
  */
 export function starCatcher(): Project {
-  const p = newProject('2d');
+  const p = newProject();
   p.title = 'Star Catcher';
   p.stage.costumes = [svgAsset('night sky', nightSky, 480, 360)];
   p.variables = ['score', 'misses'];
@@ -43,7 +41,7 @@ export function starCatcher(): Project {
     block('ru_check', { COND: block('cd_compare', { A: variable('score'), OP: '>', B: '-1' }) }),
   );
 
-  const star = newSprite('Star', '2d', [svgAsset('star', starSvg, 44, 44)], 0, 190);
+  const star = newSprite('Star', [svgAsset('star', starSvg, 44, 44)], 0, 190);
   star.description = 'A falling star.';
   star.blocks = workspace(
     [block('ev_start'), block('lo_hide'), block('co_forever', {}, [block('cp_make', { WHO: 'me' }), block('fl_wait', { SECONDS: block('nm_random', { A: 0.6, B: 1.3 }) })])],
@@ -64,49 +62,13 @@ export function starCatcher(): Project {
   return p;
 }
 
-/** 3D: walk the hills collecting coins before time runs out. */
-export function coinHills(): Project {
-  const p = newProject('3d');
-  p.title = 'Coin Hills';
-  p.variables = ['coins'];
-  p.stage.blocks = workspace(
-    block('br_game', { WHAT: 'collect all 10 coins on the hills before time runs out' }),
-    block('br_audience', { WHO: 'kids who are 8 to 12' }),
-    block('br_style', { STYLE: 'bright, friendly low-poly' }),
-    block('br_win', { COND: block('cd_compare', { A: variable('coins'), OP: '=', B: '10' }) }),
-    block('br_lose', { COND: block('cd_compare', { A: block('nm_timer'), OP: '>', B: '60' }) }),
-    [block('ev_start'), block('mem_set', { VARIABLE: 'coins', VALUE: '0' }), block('va_show', { VARIABLE: 'coins' }), block('ga_do', { ACTION: 'build a few rolling green hills, some low-poly trees and rocks around the edges' })],
-  );
-
-  const amble = p.sprites[0];
-  amble.description = 'The player, a small walking creature (a flat cutout in the 3D world).';
-  amble.sounds = [synthSound('coin', 'coin'), synthSound('jump', 'jump')];
-  amble.blocks = workspace(
-    [block('ev_start'), block('kit_gravity'), block('kit_walk', { KEYS: 'arrow keys', SPEED: 450 }), block('kit_jump', { KEY: 'space', POWER: 750 }), block('kit_follow')],
-    [block('ev_touch', { WHO: character('Coin') }), block('mem_change', { VARIABLE: 'coins', AMOUNT: 1 }), block('so_play', { SOUND: 'coin' })],
-  );
-
-  const coin = newSprite('Coin', '3d', [svgAsset('coin', coinSvg, 80, 80)], 0, 0);
-  coin.size = 60;
-  coin.description = 'A floating gold coin.';
-  coin.blocks = workspace(
-    [block('ev_start'), block('lo_hide'), block('fl_repeat', { TIMES: 10 }, [block('cp_make', { WHO: 'me' })])],
-    [block('ev_created'), block('mv_goto', { WHO: 'random' }), block('lo_show')],
-    [block('ev_touch', { WHO: character('Amble') }), block('co_delete_clone')],
-    block('ru_always', { RULE: 'spin and bob gently up and down' }),
-  );
-  p.sprites.push(coin);
-  return p;
-}
-
 /** Blank projects and examples offered in the File menu. */
 export const EXAMPLES: Array<{ id: string; title: string; description: string; make(): Project }> = [
-  { id: 'star-catcher', title: 'Star Catcher (2D)', description: 'Catch the falling stars. Almost all exact blocks.', make: starCatcher },
-  { id: 'coin-hills', title: 'Coin Hills (3D)', description: 'Walk, jump and collect coins before time runs out.', make: coinHills },
+  { id: 'star-catcher', title: 'Star Catcher', description: 'Catch the falling stars. Almost all exact blocks.', make: starCatcher },
 ];
 
-export function blankProject(mode: '2d' | '3d'): Project {
-  const p = newProject(mode);
+export function blankProject(): Project {
+  const p = newProject();
   p.sprites[0].costumes = ambleCostumes();
   return p;
 }

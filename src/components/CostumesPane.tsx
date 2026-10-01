@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { compiledAssetsFor, findCompiledSprite, findTarget, useStore } from '../store';
 import { deleteCompiledAsset, keepCompiledAsset, renameCostume } from '../actions';
-import { importImageFile, importModelFile, pickFile } from '../project/importers';
+import { importImageFile, pickFile } from '../project/importers';
 import { exportAsset } from '../project/persistence';
 import { blankBackdrop } from '../project/defaults';
 import { BACKDROP_LIBRARY, libraryCostumes } from '../project/library';
@@ -12,11 +12,10 @@ import { ActionMenu, AssetTile, BackdropLibrary, ContextMenu, blankCostume, cost
 import { Library } from './Library';
 import { confirmDelete } from '../prompt';
 import { moveItem, useReorder } from './useReorder';
-import { AddCharacterIcon, AddPictureIcon, BrushIcon, CubeIcon, DiceIcon, KeepIcon, TrashIcon, UploadIcon } from './icons';
+import { AddCharacterIcon, AddPictureIcon, BrushIcon, DiceIcon, KeepIcon, TrashIcon, UploadIcon } from './icons';
 
 function sizeLabel(c: CostumeAsset | CompiledAsset): string {
   if (c.kind === 'image') return `${Math.round(c.width / (c.resolution || 1))}×${Math.round(c.height / (c.resolution || 1))}`;
-  if (c.kind === 'model') return c.recipe ? `${c.recipe.parts.length} parts` : '3D model';
   return '';
 }
 
@@ -85,15 +84,6 @@ export function CostumesPane() {
       } catch (err) {
         notify((err as Error).message, 'error');
       }
-    }
-  };
-  const uploadModel = async () => {
-    const files = await pickFile('.glb');
-    if (!files.length) return;
-    try {
-      add(await importModelFile(files[0]));
-    } catch (err) {
-      notify((err as Error).message, 'error');
     }
   };
   const remove = (id: string) => {
@@ -176,7 +166,6 @@ export function CostumesPane() {
             onClick={() => setLibrary(true)}
             items={[
               { label: `Upload ${Noun}`, icon: <UploadIcon size={20} strokeWidth={2.4} />, onClick: () => void upload() },
-              ...(project.mode === '3d' && !isStage ? [{ label: 'Upload 3D Model', icon: <CubeIcon size={20} strokeWidth={2.2} />, onClick: () => void uploadModel() }] : []),
               { label: 'Surprise', icon: <DiceIcon size={20} strokeWidth={2.4} />, onClick: surprise },
               { label: 'Paint', icon: <BrushIcon size={20} strokeWidth={2.4} />, onClick: paint },
             ]}
@@ -192,9 +181,7 @@ export function CostumesPane() {
                 label: 'export',
                 onClick: () => {
                   const c = own.find((x) => x.id === menu.id);
-                  if (!c?.dataUrl) return;
-                  const mime = c.kind === 'image' ? c.mime : 'model/gltf-binary';
-                  void exportAsset({ name: c.name, dataUrl: c.dataUrl, mime }).catch((err: Error) => notify(err.message, 'error'));
+                  if (c?.kind === 'image') void exportAsset(c).catch((err: Error) => notify(err.message, 'error'));
                 },
               },
               ...(own.length > 1 || isStage
@@ -292,23 +279,10 @@ export function CostumesPane() {
                   </>
                 )}
               </div>
-              {currentIsCompiled ? (
+              {currentIsCompiled && (
                 <div className="compiled-preview">
-                  {current.kind === 'image' ? (
-                    <img src={current.dataUrl} alt={current.name} />
-                  ) : (
-                    <div className="model-preview">
-                      <CubeIcon size={64} />
-                    </div>
-                  )}
+                  {current.kind === 'image' && <img src={current.dataUrl} alt={current.name} />}
                   {target && <p className="muted small">Added so your words work. Keep it to change it.</p>}
-                </div>
-              ) : (
-                <div className="compiled-preview">
-                  <div className="model-preview">
-                    <CubeIcon size={64} />
-                  </div>
-                  <p>3D model{current.dataUrl ? ' (uploaded .glb)' : ''}. It shows up in the 3D stage.</p>
                 </div>
               )}
             </div>

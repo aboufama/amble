@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { migrateProject } from '../src/project/migrate';
+import { readProjectFile, readSpriteFile } from '../src/project/persistence';
+import { buildRunPackage } from '../src/player/package';
 import { serializeBlocks } from '../src/compiler/serialize';
 import { newProject, newSprite } from '../src/project/defaults';
 import type { JsonBlock } from '../src/project/defaults';
-import type { Project } from '../src/project/types';
+import type { ModelAsset, Project } from '../src/project/types';
 
 /** A project saved with the old, Scratch-style blocks (free-text fields). */
 function oldProject(): Project {
-  const p = newProject('2d');
-  p.sprites.push(newSprite('Coin', '2d'));
+  const p = newProject();
+  p.sprites.push(newSprite('Coin'));
   const old = (type: string, fields: Record<string, string> = {}, extra: Partial<JsonBlock> & Record<string, unknown> = {}) => ({ type, id: `id-${type}`, fields, ...extra }) as JsonBlock;
   const chain = (...blocks: JsonBlock[]) => {
     for (let i = blocks.length - 2; i >= 0; i--) blocks[i].next = { block: blocks[i + 1] };
@@ -78,9 +80,45 @@ describe('migrateProject', () => {
   });
 
   it('leaves new projects alone', () => {
-    const p = newProject('3d');
+    const p = newProject();
     expect(migrateProject(p)).toBe(p);
     const migrated = migrateProject(oldProject());
     expect(migrateProject(migrated)).toBe(migrated);
+  });
+});
+
+/** A project saved when Amble also made 3D games: positions in meters, 3D models, and a game built for 3D. */
+function saved3d(): Project {
+  const p = newProject();
+  p.mode = '3d';
+  p.stage.costumes = [];
+  const amble = p.sprites[0];
+  const car: ModelAsset = { id: 'car', name: 'car', kind: 'model', dataUrl: 'data:model/gltf-binary;base64,Z2xURg==' };
+  Object.assign(amble, { x: 1.5, y: 0, z: -2, direction: 90, rotationStyle: 'all around', costumes: [...amble.costumes, car], currentCostume: 2 });
+  p.sprites.push(newSprite('Rock', [{ id: 'rock', name: 'rock', kind: 'model', recipe: { parts: [] } }]));
+  p.compiled = { createdAt: 0, model: 'm', mode: '3d', inputHash: 'x', summary: '', howToPlay: '', warnings: [], code: [], sprites: [], assets: [], pieces: [] };
+  return p;
+}
+
+describe('projects saved as 3D', () => {
+  it('open as 2D, keeping their image costumes', async () => {
+    const saved = saved3d();
+    const p = await readProjectFile(new File([JSON.stringify(saved)], 'hills.amble'));
+    expect(p.mode).toBe('2d');
+    const [amble, rock] = p.sprites;
+    // Image costumes stay as they were; 3D models go, and a sprite left without a costume gets Amble's.
+    expect(amble.costumes).toEqual(saved.sprites[0].costumes.slice(0, 2));
+    expect(amble.currentCostume).toBe(0);
+    expect(rock.costumes.map((c) => [c.kind, c.name])).toEqual([['image', 'amble-a'], ['image', 'amble-b']]);
+    // Positions convert the way the old 2D/3D switch did: 60 pixels to a meter, and the depth becomes the height.
+    expect([amble.x, amble.y, amble.z, amble.direction, amble.rotationStyle]).toEqual([90, -120, 0, 0, 'left-right']);
+    // The stage gets a blank backdrop, and the game built for 3D builds again.
+    expect(p.stage.costumes.map((c) => c.name)).toEqual(['backdrop1']);
+    expect(p.compiled).toBeNull();
+    expect(buildRunPackage(p)).toMatchObject({ mode: '2d', targets: [{ name: 'Stage' }, { name: 'Amble', x: 90, y: -120, z: 0 }, { name: 'Rock' }] });
+    expect(migrateProject(p)).toBe(p);
+    // A sprite exported from it comes without its 3D models too.
+    const sprite = await readSpriteFile(new File([JSON.stringify({ format: 'amble-sprite', version: 1, sprite: saved.sprites[0] })], 'amble.ambsprite'));
+    expect(sprite.costumes.map((c) => c.name)).toEqual(['amble-a', 'amble-b']);
   });
 });

@@ -4,45 +4,13 @@ import { downloadProject, readProjectFile } from '../project/persistence';
 import { exportGameHtml } from '../project/exportHtml';
 import { pickFile } from '../project/importers';
 import { EXAMPLES, blankProject } from '../project/examples';
-import { blankBackdrop } from '../project/defaults';
-import type { Project, WorldMode } from '../project/types';
 import { buildNow, compile, signInWithChatGpt } from '../actions';
 import { confirmUser } from '../prompt';
 import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
 import { DEV_TOOLS } from './ProblemsDialog';
 
-/** Converts a project between 2D and 3D (positions are rescaled; the blank white backdrop is dropped in 3D). */
-export function switchMode(p: Project, mode: WorldMode): void {
-  if (p.mode === mode) return;
-  const toThree = mode === '3d';
-  for (const s of p.sprites) {
-    if (toThree) {
-      s.x = Math.round((s.x / 60) * 10) / 10;
-      s.z = Math.round((s.y / 60) * 10) / 10;
-      s.y = 0;
-      s.rotationStyle = 'all around';
-      s.direction = 0;
-    } else {
-      s.x = Math.round(s.x * 60);
-      s.y = Math.round(s.z * 60);
-      s.z = 0;
-      s.rotationStyle = 'left-right';
-      s.direction = 0;
-    }
-  }
-  if (toThree) {
-    // The default blank backdrop would hide the 3D sky.
-    p.stage.costumes = p.stage.costumes.filter((c) => !(c.kind === 'image' && c.mime === 'image/svg+xml' && c.dataUrl.length < 400));
-  } else if (!p.stage.costumes.length) {
-    p.stage.costumes = [blankBackdrop()];
-  }
-  p.stage.currentCostume = 0;
-  p.mode = mode;
-}
-
 export function MenuBar() {
   const title = useStore((s) => s.project.title);
-  const mode = useStore((s) => s.project.mode);
   const update = useStore((s) => s.update);
   const setProject = useStore((s) => s.setProject);
   const setDialog = useStore((s) => s.setDialog);
@@ -111,11 +79,8 @@ export function MenuBar() {
             {open === 'file' && (
               <div className="menubar-menu" role="menu">
                 <div className="menubar-menu-section">
-                  <button role="menuitem" onClick={act(async () => void ((await confirmReplace()) && setProject(blankProject('2d'))))}>
-                    New 2D game
-                  </button>
-                  <button role="menuitem" onClick={act(async () => void ((await confirmReplace()) && setProject(blankProject('3d'))))}>
-                    New 3D game
+                  <button role="menuitem" onClick={act(async () => void ((await confirmReplace()) && setProject(blankProject())))}>
+                    New game
                   </button>
                 </div>
                 <div className="menubar-menu-section">
@@ -209,26 +174,6 @@ export function MenuBar() {
           aria-label="Project title"
           placeholder="Untitled game"
         />
-        <div className="mode-switch" role="radiogroup" aria-label="World">
-          {(['2d', '3d'] as const).map((m) => (
-            <button
-              key={m}
-              role="radio"
-              aria-checked={mode === m}
-              className={mode === m ? 'on' : ''}
-              onClick={() => {
-                if (mode === m) return;
-                void confirmUser({
-                  title: `Switch to ${m.toUpperCase()}`,
-                  message: `Switch this project to ${m.toUpperCase()}? Sprite positions are converted, and your blocks build again.`,
-                  confirmLabel: 'Switch',
-                }).then((ok) => ok && update((p) => switchMode(p, m)));
-              }}
-            >
-              {m.toUpperCase()}
-            </button>
-          ))}
-        </div>
       </div>
       <div className="menubar-account">
         {/* Signing in works when Amble runs on your computer and Codex is installed there. */}

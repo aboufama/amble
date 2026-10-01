@@ -5,7 +5,7 @@ const num = (description?: string) => ({ type: 'number', ...(description ? { des
 
 export interface AssetRequest {
   target: string;
-  kind: 'costume' | 'backdrop' | 'model' | 'sound';
+  kind: 'costume' | 'backdrop' | 'sound';
   name: string;
   description: string;
   width: number;
@@ -16,7 +16,7 @@ export interface AssetRequest {
 /** The reply to a compile request: code for each piece, plus any characters and art they need. */
 export interface PiecesReply {
   pieces: Array<{ id: string; code: string }>;
-  sprites: Array<{ name: string; description: string; x: number; y: number; z: number; size: number; direction: number; visible: boolean; code: string }>;
+  sprites: Array<{ name: string; description: string; x: number; y: number; size: number; direction: number; visible: boolean; code: string }>;
   assets: AssetRequest[];
   warnings: string[];
   /** Questions about words you had to guess at, each for one piece (shown on its block). */
@@ -47,15 +47,14 @@ export const PIECES_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['name', 'description', 'x', 'y', 'z', 'size', 'direction', 'visible', 'code'],
+        required: ['name', 'description', 'x', 'y', 'size', 'direction', 'visible', 'code'],
         properties: {
           name: str(),
           description: str('What it is and what it does.'),
           x: num(),
           y: num(),
-          z: num('0 in 2D.'),
           size: num('Percent, usually 100.'),
-          direction: num('2D angle or 3D heading in degrees.'),
+          direction: num('Angle in degrees, counter-clockwise (0 = facing right).'),
           visible: { type: 'boolean' },
           code: str('JavaScript: its whole class, `class <Name> extends Sprite { ... }`.'),
         },
@@ -63,18 +62,18 @@ export const PIECES_SCHEMA = {
     },
     assets: {
       type: 'array',
-      description: 'Art, 3D models and sounds your code uses that do not exist yet, plus earlier compiled ones to keep (reuse = true).',
+      description: 'Art and sounds your code uses that do not exist yet, plus earlier compiled ones to keep (reuse = true).',
       items: {
         type: 'object',
         additionalProperties: false,
         required: ['target', 'kind', 'name', 'description', 'width', 'height', 'reuse'],
         properties: {
           target: str('Sprite name, or "Stage" for backdrops/stage sounds.'),
-          kind: { type: 'string', enum: ['costume', 'backdrop', 'model', 'sound'] },
+          kind: { type: 'string', enum: ['costume', 'backdrop', 'sound'] },
           name: str('Name used in code.'),
           description: str('Vivid, specific description of how it looks or sounds.'),
-          width: num('Pixels for images, meters for models, 0 for sounds.'),
-          height: num('Pixels for images, meters for models, 0 for sounds.'),
+          width: num('Pixels for images, 0 for sounds.'),
+          height: num('Pixels for images, 0 for sounds.'),
           reuse: { type: 'boolean', description: 'true to keep a previously compiled asset unchanged.' },
         },
       },
@@ -105,33 +104,6 @@ export const SVG_SCHEMA = {
   additionalProperties: false,
   required: ['svg'],
   properties: { svg: str('A complete <svg> document.') },
-} as const;
-
-export const MODEL_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['parts'],
-  properties: {
-    parts: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['shape', 'size', 'position', 'rotation', 'color', 'roughness', 'metalness', 'emissive', 'opacity'],
-        properties: {
-          shape: { type: 'string', enum: ['box', 'sphere', 'cylinder', 'cone', 'torus', 'capsule'] },
-          size: { type: 'array', items: { type: 'number' }, description: '[width, height, depth] bounding size in meters' },
-          position: { type: 'array', items: { type: 'number' }, description: '[x, y, z] center in meters; y=0 is the ground/feet' },
-          rotation: { type: 'array', items: { type: 'number' }, description: '[x, y, z] degrees' },
-          color: str('#rrggbb'),
-          roughness: num('0 shiny .. 1 matte'),
-          metalness: num('0..1'),
-          emissive: num('0..1 glow'),
-          opacity: num('0..1'),
-        },
-      },
-    },
-  },
 } as const;
 
 export const SOUND_SCHEMA = {

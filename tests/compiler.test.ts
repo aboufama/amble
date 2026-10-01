@@ -10,11 +10,10 @@ import { PIECES_SCHEMA } from '../src/compiler/schema';
 import { instrumentTargetCode } from '../src/compiler/transform';
 import { encodeWav, renderSynth, SOUND_PRESETS, SAMPLE_RATE } from '../src/audio/synth';
 import { DEFAULT_SETTINGS, effectiveSettings, isReasoningModel, parseJsonReply, type Transport } from '../src/compiler/openai';
-import { cleanRecipe } from '../src/compiler/assets';
 import { buildRunPackage } from '../src/player/package';
 import { BLOCKS, type BlockSpec } from '../src/blocks/spec';
 import { block, character, newProject, newSprite, variable, workspace, type JsonBlock } from '../src/project/defaults';
-import { coinHills, starCatcher } from '../src/project/examples';
+import { starCatcher } from '../src/project/examples';
 import { Sprite, Stage } from '../src/engine/sprite';
 import { Game } from '../src/engine/game';
 import { CameraRig } from '../src/engine/camera';
@@ -45,12 +44,12 @@ function sample(spec: BlockSpec): JsonBlock {
   return block(spec.type, args, inner, spec.shape === 'e' ? [block('lo_hide')] : undefined);
 }
 
-function everyBlockProject(mode: '2d' | '3d'): Project {
-  const p = newProject(mode);
+function everyBlockProject(): Project {
+  const p = newProject();
   p.variables = ['score'];
   const amble = p.sprites[0];
   amble.variables = ['my speed'];
-  p.sprites.push(newSprite('Fox', mode));
+  p.sprites.push(newSprite('Fox'));
   const stage: Array<JsonBlock | JsonBlock[]> = [];
   const sprite: Array<JsonBlock | JsonBlock[]> = [];
   const add = (spec: BlockSpec, out: Array<JsonBlock | JsonBlock[]>) => {
@@ -74,7 +73,7 @@ function everyBlockProject(mode: '2d' | '3d'): Project {
     }
   };
   for (const spec of BLOCKS) {
-    if (spec.hidden || (spec.modes && !spec.modes.includes(mode))) continue;
+    if (spec.hidden) continue;
     if (!spec.targets || spec.targets.includes('stage')) add(spec, stage);
     if (!spec.targets || spec.targets.includes('sprite')) add(spec, sprite);
   }
@@ -120,18 +119,16 @@ function engineUses(source: string): { self: Set<string>; game: Set<string>; cam
 
 describe('the compiler (exact blocks)', () => {
   it('compiles the starter project instantly, with no words to compile', () => {
-    for (const mode of ['2d', '3d'] as const) {
-      const p = newProject(mode);
-      for (const plan of plans(p)) {
-        expect(plan.pieces).toEqual([]);
-        expect(plan.warnings).toEqual([]);
-      }
-      expect(compileNeedsRequest(p)).toBe(false);
+    const p = newProject();
+    for (const plan of plans(p)) {
+      expect(plan.pieces).toEqual([]);
+      expect(plan.warnings).toEqual([]);
     }
+    expect(compileNeedsRequest(p)).toBe(false);
   });
 
   it('turns scripts into coroutines started by the right hooks', () => {
-    const [stage, amble] = rendered(newProject('2d'));
+    const [stage, amble] = rendered(newProject());
     expect(stage).toContain('class StageScript extends Stage {');
     expect(stage).toContain('this.game.vars["my variable"] = 0;');
     expect(amble).toContain(
@@ -156,14 +153,10 @@ describe('the compiler (exact blocks)', () => {
     );
   });
 
-  it('measures steps in pixels in 2D and in hundredths of a meter in 3D', () => {
-    const script = (mode: '2d' | '3d') => {
-      const p = newProject(mode);
-      p.sprites[0].blocks = workspace([block('ev_start'), block('mv_move', { DIR: 'forward', STEPS: 250 }), block('mv_move', { DIR: 'left', STEPS: 50 }), block('mv_turn', { DIR: 'right', DEGREES: 90 })]);
-      return rendered(p)[1];
-    };
-    expect(script('2d')).toContain('this.moveForward(250);\n    this.x -= 50;\n    this.turn(-(90));');
-    expect(script('3d')).toContain('this.moveForward(2.5);\n    this.moveSideways(-0.5);\n    this.turn(90);');
+  it('measures steps in pixels', () => {
+    const p = newProject();
+    p.sprites[0].blocks = workspace([block('ev_start'), block('mv_move', { DIR: 'forward', STEPS: 250 }), block('mv_move', { DIR: 'left', STEPS: 50 }), block('mv_turn', { DIR: 'right', DEGREES: 90 })]);
+    expect(rendered(p)[1]).toContain('this.moveForward(250);\n    this.x -= 50;\n    this.turn(-(90));');
   });
 
   it('keeps loops to one round per frame and scripts to one run at a time', () => {
@@ -179,50 +172,54 @@ describe('the compiler (exact blocks)', () => {
   });
 
   it('turns the brief into the game rules: you win / you lose', () => {
-    const stage = rendered(coinHills())[0];
+    const p = newProject();
+    p.variables = ['coins'];
+    p.stage.blocks = workspace(
+      block('br_win', { COND: block('cd_compare', { A: variable('coins'), OP: '=', B: '10' }) }),
+      block('br_lose', { COND: block('cd_compare', { A: block('nm_timer'), OP: '>', B: '60' }) }),
+    );
+    const stage = rendered(p)[0];
     expect(stage).toContain('if (this._compare(this.game.vars["coins"], "=", 10)) this.game.win();');
     expect(stage).toContain('if (this._compare(this.game.time, ">", 60)) this.game.over();');
   });
 
   it('keeps variables for one sprite on each copy, and for all sprites on the game', () => {
-    const p = everyBlockProject('2d');
+    const p = everyBlockProject();
     const amble = rendered(p)[1];
     expect(amble).toContain('this.vars["my speed"] = 0;');
     expect(amble).toContain('this.vars["my speed"] = this.game.vars["score"];');
   });
 
   it('runs skills where they are used', () => {
-    const amble = rendered(everyBlockProject('2d'))[1];
+    const amble = rendered(everyBlockProject())[1];
     expect(amble).toMatch(/\/\/ skill \[hop\]\n {2}\*_k1\(\) \{\n {4}this\.y \+= 20;\n {2}\}/);
     expect(amble).toContain('yield* this._k1();');
   });
 
-  for (const mode of ['2d', '3d'] as const) {
-    it(`compiles every block to valid code that only uses the engine (${mode.toUpperCase()})`, () => {
-      const p = everyBlockProject(mode);
-      const spriteApi = new Set([...memberNames(Sprite), 'isClone', 'name', 'vars', 'game']);
-      const stageApi = new Set([...memberNames(Stage), 'name', 'game', 'isClone']);
-      const gameApi = new Set([...memberNames(Game), 'vars', 'input', 'ui', 'camera', 'effects', 'time', 'lastAnswer', 'dt', 'mode', 'world']);
-      const cameraApi = memberNames(CameraRig);
-      const all = plans(p);
-      for (const plan of all) {
-        const source = plan.render(new Map());
-        const result = instrumentTargetCode(source, plan.kind);
-        expect(result.errors, `${plan.targetName}:\n${source}`).toEqual([]);
-        const uses = engineUses(source);
-        const api = plan.kind === 'stage' ? stageApi : spriteApi;
-        expect([...uses.self].filter((n) => !api.has(n)), `${plan.targetName} uses unknown this.*`).toEqual([]);
-        expect([...uses.game].filter((n) => !gameApi.has(n)), `${plan.targetName} uses unknown this.game.*`).toEqual([]);
-        expect([...uses.camera].filter((n) => !cameraApi.has(n))).toEqual([]);
-      }
-      // The words blocks became pieces; nothing else needed the compile request.
-      const kinds = all.flatMap((plan) => plan.pieces.map((r) => r.kind)).sort();
-      expect(new Set(kinds)).toEqual(new Set(['action', 'timed', 'condition', 'value', 'message', 'behavior', 'rule']));
-    });
-  }
+  it('compiles every block to valid code that only uses the engine', () => {
+    const p = everyBlockProject();
+    const spriteApi = new Set([...memberNames(Sprite), 'isClone', 'name', 'vars', 'game']);
+    const stageApi = new Set([...memberNames(Stage), 'name', 'game', 'isClone']);
+    const gameApi = new Set([...memberNames(Game), 'vars', 'input', 'ui', 'camera', 'effects', 'time', 'lastAnswer', 'dt']);
+    const cameraApi = memberNames(CameraRig);
+    const all = plans(p);
+    for (const plan of all) {
+      const source = plan.render(new Map());
+      const result = instrumentTargetCode(source, plan.kind);
+      expect(result.errors, `${plan.targetName}:\n${source}`).toEqual([]);
+      const uses = engineUses(source);
+      const api = plan.kind === 'stage' ? stageApi : spriteApi;
+      expect([...uses.self].filter((n) => !api.has(n)), `${plan.targetName} uses unknown this.*`).toEqual([]);
+      expect([...uses.game].filter((n) => !gameApi.has(n)), `${plan.targetName} uses unknown this.game.*`).toEqual([]);
+      expect([...uses.camera].filter((n) => !cameraApi.has(n))).toEqual([]);
+    }
+    // The words blocks became pieces; nothing else needed the compile request.
+    const kinds = all.flatMap((plan) => plan.pieces.map((r) => r.kind)).sort();
+    expect(new Set(kinds)).toEqual(new Set(['action', 'timed', 'condition', 'value', 'message', 'behavior', 'rule']));
+  });
 
   it('warns about blocks that need something in a slot, and skips them', () => {
-    const p = newProject('2d');
+    const p = newProject();
     p.sprites[0].blocks = workspace([block('ev_start'), block('mv_goto', { WHO: character('Nobody') })], block('ru_check'), [block('ev_when'), block('lo_hide')]);
     const [, amble] = plans(p);
     expect(amble.warnings).toEqual([
@@ -241,12 +238,6 @@ describe('pieces (blocks in the author\'s own words)', () => {
       ['Stage', 'rule', 'a cute night sky with glowing yellow stars', false],
       ['Amble', 'action', 'a small burst of yellow sparkles', false],
       ['Star', 'behavior', 'twinkle and spin slowly as I fall', false],
-    ]);
-    const coins = plans(coinHills()).flatMap((plan) => plan.pieces.map((r) => [r.targetName, r.kind, r.words]));
-    expect(coins).toEqual([
-      ['Stage', 'rule', 'bright, friendly low-poly'],
-      ['Stage', 'action', 'build a few rolling green hills, some low-poly trees and rocks around the edges'],
-      ['Coin', 'behavior', 'spin and bob gently up and down'],
     ]);
   });
 
@@ -275,7 +266,7 @@ describe('pieces (blocks in the author\'s own words)', () => {
   });
 
   it('says when an if with words is checked only once', () => {
-    const p = newProject('3d');
+    const p = newProject();
     const ifWords = (words: string) => block('fl_if', { COND: block('cd_words', { TEXT: words }) }, [block('ga_do', { ACTION: 'turn into a big snake' })]);
     p.sprites[0].blocks = workspace(
       [block('ev_start'), ifWords('killed 5 enemies')],
@@ -288,7 +279,7 @@ describe('pieces (blocks in the author\'s own words)', () => {
   });
 
   it('marks pieces that run every frame', () => {
-    const p = newProject('2d');
+    const p = newProject();
     p.sprites[0].blocks = workspace([block('ev_start'), block('co_forever', {}, [block('ga_do', { ACTION: 'drift toward the mouse' })])], [block('ev_hold', { KEY: 'up arrow' }), block('ga_do', { ACTION: 'fly up' })]);
     const [, amble] = plans(p);
     expect(amble.pieces.map((r) => [r.words, r.inLoop])).toEqual([
@@ -423,15 +414,13 @@ describe('compileProject', () => {
 
   it('compiles exact blocks without any request, the same way every time', async () => {
     const { fetch } = fakeServer([]);
-    for (const mode of ['2d', '3d'] as const) {
-      const p = newProject(mode);
-      const game = await compileProject(p, { settings: DEFAULT_SETTINGS });
-      expect(game.warnings).toEqual([]);
-      expect(game.code.map((c) => c.targetName)).toEqual(['Stage', 'Amble']);
-      expect(game.pieces).toEqual([]);
-      const again = await compileProject({ ...p, compiled: game }, { settings: DEFAULT_SETTINGS });
-      expect(again.code).toEqual(game.code);
-    }
+    const p = newProject();
+    const game = await compileProject(p, { settings: DEFAULT_SETTINGS });
+    expect(game.warnings).toEqual([]);
+    expect(game.code.map((c) => c.targetName)).toEqual(['Stage', 'Amble']);
+    expect(game.pieces).toEqual([]);
+    const again = await compileProject({ ...p, compiled: game }, { settings: DEFAULT_SETTINGS });
+    expect(again.code).toEqual(game.code);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -539,7 +528,7 @@ describe('compileProject', () => {
       vi.fn(async () => new Response('{}', { status: 404 })),
     );
     await expect(compileProject(starCatcher(), { settings: DEFAULT_SETTINGS })).rejects.toThrow(/^Some blocks use your own words, and compiling them needs an account/);
-    await expect(compileProject(newProject('2d'), { settings: DEFAULT_SETTINGS })).resolves.toMatchObject({ warnings: [] });
+    await expect(compileProject(newProject(), { settings: DEFAULT_SETTINGS })).resolves.toMatchObject({ warnings: [] });
   });
 
   it('can play without an account: words that are not compiled yet do nothing', async () => {
@@ -621,7 +610,7 @@ describe('compileProject', () => {
   it('makes the compiled art again in a new art style', async () => {
     const p = starCatcher();
     const svg = (fill: string) => () => ({ svg: `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><circle cx="30" cy="30" r="26" fill="${fill}"/></svg>` });
-    const moon = { name: 'Moon', description: 'a sleepy moon', x: 170, y: 130, z: 0, size: 100, direction: 0, visible: true, code: 'class Moon extends Sprite {}' };
+    const moon = { name: 'Moon', description: 'a sleepy moon', x: 170, y: 130, size: 100, direction: 0, visible: true, code: 'class Moon extends Sprite {}' };
     const art = { target: 'Moon', kind: 'costume', name: 'moon', description: 'a smiling crescent moon', width: 60, height: 60, reuse: false };
     const server = fakeServer([
       replyTo({ 'art style:': STYLE, 'particles:': SPARKLES, 'always:': TWINKLE }, {}, { sprites: [moon], assets: [art] }),
@@ -671,7 +660,7 @@ describe('compileProject', () => {
   });
 
   it('points at the block each warning is about, and at the block each script starts at', async () => {
-    const p = newProject('2d');
+    const p = newProject();
     const sprite = p.sprites[0];
     const when = block('ev_when');
     when.x = 24;
@@ -700,8 +689,8 @@ describe('compileProject', () => {
 
 describe('prompts', () => {
   it('gives every target a unique, safe class name', () => {
-    const p = newProject('2d');
-    p.sprites.push({ ...newSprite('amble', '2d') }, { ...newSprite('Sprite', '2d') }, { ...newSprite('3 cats', '2d') });
+    const p = newProject();
+    p.sprites.push({ ...newSprite('amble') }, { ...newSprite('Sprite') }, { ...newSprite('3 cats') });
     const names = [...classNames(p).values()];
     expect(names).toEqual(['StageScript', 'Amble', 'Amble2', 'SpriteScript', 'S3Cats']);
   });
@@ -762,40 +751,17 @@ describe('misc', () => {
     expect(parseJsonReply<{ a: number }>('Here you go: {"a": 2}').a).toBe(2);
   });
 
-  it('cleans model recipes', () => {
-    const r = cleanRecipe({ parts: [{ shape: 'blob', size: [-2], position: 'x', color: 'red', opacity: 9 }] });
-    expect(r.parts[0]).toEqual({
-      shape: 'box',
-      size: [2, 1, 1],
-      position: [0, 0, 0],
-      rotation: [0, 0, 0],
-      color: '#cccccc',
-      roughness: 0.7,
-      metalness: 0,
-      emissive: 0,
-      opacity: 1,
-    });
-    expect(cleanRecipe({}).parts).toHaveLength(1);
-  });
-
   it('builds a run package with compiled code, sprites and assets', async () => {
     const p = starCatcher();
     fakeServer([starReply({ 'particles:': 'this.turn(5);' })]);
     p.compiled = await compileProject(p, { settings });
     vi.unstubAllGlobals();
-    p.compiled.sprites.push({ id: 'c1', name: 'Moon', description: 'a moon', x: 10, y: 20, z: 0, size: 100, direction: 0, visible: true, rotationStyle: 'all around' });
+    p.compiled.sprites.push({ id: 'c1', name: 'Moon', description: 'a moon', x: 10, y: 20, size: 100, direction: 0, visible: true, rotationStyle: 'all around' });
     p.compiled.code.push({ targetId: 'c1', targetName: 'Moon', className: 'Moon', source: 'class Moon extends Sprite {}', runSource: 'class Moon extends Sprite {}' });
     const pkg = buildRunPackage(p);
     expect(pkg.targets.map((t) => t.name)).toEqual(['Stage', 'Amble', 'Star', 'Moon']);
     expect(pkg.targets[2].className).toBe('Star');
     expect(pkg.targets[2].code).toContain('class Star extends Sprite');
     expect(pkg.targets[1].code).toContain('this.turn(5);');
-  });
-
-  it('ignores compiled code when the world mode changed', () => {
-    const p = starCatcher();
-    p.compiled = { createdAt: 0, model: '', mode: '3d', inputHash: 'x', summary: '', howToPlay: '', warnings: [], code: [{ targetId: p.sprites[0].id, targetName: 'Amble', className: 'Amble', source: '', runSource: 'class Amble extends Sprite {}' }], sprites: [], assets: [], pieces: [] };
-    const pkg = buildRunPackage(p);
-    expect(pkg.targets[1].code).toBeNull();
   });
 });

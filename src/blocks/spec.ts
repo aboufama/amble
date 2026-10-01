@@ -34,7 +34,6 @@ export interface Category {
   colour: string;
   secondary: string;
   tertiary: string;
-  modes?: Array<'2d' | '3d'>;
 }
 
 /**
@@ -183,8 +182,6 @@ export interface BlockSpec {
   inputs?: Record<string, InputSpec>;
   /** What a reporter gives. */
   output?: OutputKind;
-  /** Only offered in these world modes (default: both). */
-  modes?: Array<'2d' | '3d'>;
   /** Only offered when editing these (default: both). */
   targets?: Array<'sprite' | 'stage'>;
   /** Leave a bigger gap after this block in the palette. */
@@ -204,7 +201,6 @@ const cond: InputSpec = { kind: 'condition' };
 
 const SPRITE: Array<'sprite' | 'stage'> = ['sprite'];
 const STAGE: Array<'sprite' | 'stage'> = ['stage'];
-const TWO_D: Array<'2d' | '3d'> = ['2d'];
 
 export const BLOCKS: BlockSpec[] = [
   // ---- Brief: what you're making, for whom, and what "done" means
@@ -239,11 +235,11 @@ export const BLOCKS: BlockSpec[] = [
   { type: 'mv_move', category: 'motion', shape: 'stack', label: 'move {DIR} {STEPS} steps', inputs: { DIR: menu('direction'), STEPS: num(10) }, targets: SPRITE, tooltip: 'Moves a little. Forward and backward follow the way the sprite faces.' },
   { type: 'mv_turn', category: 'motion', shape: 'stack', label: 'turn {DIR} {DEGREES} degrees', inputs: { DIR: menu('turn'), DEGREES: num(15) }, targets: SPRITE, groupEnd: true, tooltip: 'Rotates the sprite.' },
   { type: 'mv_goto', category: 'motion', shape: 'stack', label: 'go to {WHO}', inputs: { WHO: who('random', ['random', 'mouse', 'center']) }, targets: SPRITE, tooltip: 'Jumps to a character or a place.' },
-  { type: 'mv_goto_xy', category: 'motion', shape: 'stack', label: 'go to x: {X} y: {Y}', inputs: { X: num(0), Y: num(0) }, targets: SPRITE, modes: TWO_D, tooltip: 'Jumps to a spot. 0, 0 is the middle; x goes right, y goes up.' },
+  { type: 'mv_goto_xy', category: 'motion', shape: 'stack', label: 'go to x: {X} y: {Y}', inputs: { X: num(0), Y: num(0) }, targets: SPRITE, tooltip: 'Jumps to a spot. 0, 0 is the middle; x goes right, y goes up.' },
   { type: 'mv_toward', category: 'motion', shape: 'stack', label: 'move toward {WHO} by {STEPS} steps', inputs: { WHO: who('mouse', ['mouse', 'center']), STEPS: num(5) }, targets: SPRITE, tooltip: 'Takes a step toward a character. Put it in "forever" to chase.' },
   { type: 'mv_point', category: 'motion', shape: 'stack', label: 'point toward {WHO}', inputs: { WHO: who('mouse', ['mouse', 'center']) }, targets: SPRITE, groupEnd: true, tooltip: 'Faces a character.' },
-  { type: 'mv_bounce', category: 'motion', shape: 'stack', label: 'bounce off the edges', targets: SPRITE, modes: TWO_D, tooltip: 'Turns around at the edge of the screen.' },
-  { type: 'mv_stay', category: 'motion', shape: 'stack', label: 'stay on the screen', targets: SPRITE, modes: TWO_D, tooltip: "Keeps the sprite from leaving the screen." },
+  { type: 'mv_bounce', category: 'motion', shape: 'stack', label: 'bounce off the edges', targets: SPRITE, tooltip: 'Turns around at the edge of the screen.' },
+  { type: 'mv_stay', category: 'motion', shape: 'stack', label: 'stay on the screen', targets: SPRITE, tooltip: "Keeps the sprite from leaving the screen." },
 
   // ---- Game: ready-made game pieces, and blocks for anything you can describe
   { type: 'ga_do', category: 'game', shape: 'stack', label: 'do {ACTION}', inputs: { ACTION: text('spin around once') }, tooltip: 'Anything, in your own words.' },
@@ -272,7 +268,7 @@ export const BLOCKS: BlockSpec[] = [
   { type: 'lk_grow', category: 'looks', shape: 'stack', label: 'change size by {SIZE}', inputs: { SIZE: num(10) }, targets: SPRITE, groupEnd: true, tooltip: 'Bigger (or smaller with a minus number).' },
   { type: 'lo_show', category: 'looks', shape: 'stack', label: 'show', targets: SPRITE, tooltip: 'Makes the sprite visible.' },
   { type: 'lo_hide', category: 'looks', shape: 'stack', label: 'hide', targets: SPRITE, tooltip: 'Makes the sprite invisible. Hidden sprites touch nothing.' },
-  { type: 'lo_layer', category: 'looks', shape: 'stack', label: 'go to {LAYER} layer', inputs: { LAYER: menu('layer') }, targets: SPRITE, modes: TWO_D, tooltip: 'Draws in front of or behind the other sprites.' },
+  { type: 'lo_layer', category: 'looks', shape: 'stack', label: 'go to {LAYER} layer', inputs: { LAYER: menu('layer') }, targets: SPRITE, tooltip: 'Draws in front of or behind the other sprites.' },
 
   // ---- Sound
   { type: 'so_play', category: 'sound', shape: 'stack', label: 'play sound {SOUND}', inputs: { SOUND: menu('sound', 'pop') }, tooltip: 'Plays a sound and keeps going.' },
@@ -339,11 +335,7 @@ export function menuOf(type: string, input: string): MenuKind | undefined {
   return spec?.kind === 'menu' ? spec.menu : undefined;
 }
 
-export function blocksForMode(mode: '2d' | '3d'): BlockSpec[] {
-  return BLOCKS.filter((b) => !b.modes || b.modes.includes(mode));
-}
-
-/** Blocks offered when editing a sprite or the stage in a world mode. */
-export function blocksFor(mode: '2d' | '3d', target: 'sprite' | 'stage'): BlockSpec[] {
-  return blocksForMode(mode).filter((b) => !b.targets || b.targets.includes(target));
+/** Blocks offered when editing a sprite or the stage. */
+export function blocksFor(target: 'sprite' | 'stage'): BlockSpec[] {
+  return BLOCKS.filter((b) => !b.targets || b.targets.includes(target));
 }

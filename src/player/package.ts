@@ -15,9 +15,6 @@ function toRunCostume(c: CostumeAsset | CompiledAsset): RunCostume | null {
       height: c.height,
     };
   }
-  if (c.kind === 'model') {
-    return { name: c.name, kind: 'model', url: c.dataUrl ?? '', isVector: false, resolution: 1, centerX: 0, centerY: 0, width: 0, height: 0, recipe: c.recipe };
-  }
   return null;
 }
 
@@ -25,24 +22,17 @@ function toRunSound(s: SoundAsset | CompiledAsset): RunSound | null {
   return s.kind === 'sound' ? { name: s.name, url: s.dataUrl } : null;
 }
 
-/** Is the compiled game usable for the project as it is now? */
-export function compiledMatchesMode(project: Project): boolean {
-  return Boolean(project.compiled && project.compiled.mode === project.mode);
-}
-
 /**
  * Everything the player needs to run the game: the author's sprites and assets as they are now,
  * plus compiled code, compiled sprites and compiled assets from the last build.
  */
 export function buildRunPackage(project: Project): RunPackage {
-  const compiled = compiledMatchesMode(project) ? project.compiled : null;
+  const compiled = project.compiled;
   const assetsFor = (targetId: string) => (compiled?.assets ?? []).filter((a) => a.targetId === targetId);
   const codeFor = (targetId: string) => compiled?.code.find((c) => c.targetId === targetId) ?? null;
-  const modelsAllowed = project.mode === '3d';
 
   const costumesOf = (own: CostumeAsset[], id: string) =>
     [...own, ...assetsFor(id).filter((a) => a.kind !== 'sound')]
-      .filter((c) => modelsAllowed || c.kind !== 'model')
       .map(toRunCostume)
       .filter((c): c is RunCostume => c !== null);
   const soundsOf = (own: SoundAsset[], id: string) =>
@@ -67,7 +57,7 @@ export function buildRunPackage(project: Project): RunPackage {
     layerOrder: 0,
   };
 
-  const sprite = (s: SpriteTarget | (Omit<SpriteTarget, 'costumes' | 'sounds' | 'blocks' | 'currentCostume' | 'kind'> & { costumes: CostumeAsset[]; sounds: SoundAsset[]; currentCostume: number }), layer: number): RunTarget => {
+  const sprite = (s: SpriteTarget | (Omit<SpriteTarget, 'costumes' | 'sounds' | 'blocks' | 'currentCostume' | 'kind' | 'z'> & { costumes: CostumeAsset[]; sounds: SoundAsset[]; currentCostume: number }), layer: number): RunTarget => {
     const code = codeFor(s.id);
     return {
       kind: 'sprite',
@@ -79,7 +69,7 @@ export function buildRunPackage(project: Project): RunPackage {
       costumeNumber: s.currentCostume + 1,
       x: s.x,
       y: s.y,
-      z: project.mode === '3d' ? s.z : 0,
+      z: 0,
       size: s.size,
       direction: s.direction,
       visible: s.visible,
@@ -95,7 +85,7 @@ export function buildRunPackage(project: Project): RunPackage {
     .filter((s) => !userNames.has(s.name))
     .forEach((s, i) => targets.push(sprite({ ...s, costumes: [], sounds: [], currentCostume: 0 }, project.sprites.length + i + 1)));
 
-  return { mode: project.mode, title: project.title, targets };
+  return { mode: '2d', title: project.title, targets };
 }
 
 /**
@@ -104,22 +94,21 @@ export function buildRunPackage(project: Project): RunPackage {
  */
 export function packageKey(project: Project): string {
   const asset = (a: { id: string; name: string; kind: string } & Record<string, unknown>) =>
-    [a.id, a.name, a.kind, typeof a.dataUrl === 'string' ? `${(a.dataUrl as string).length}${(a.dataUrl as string).slice(-24)}` : 0, a.centerX ?? '', a.centerY ?? '', a.recipe ? JSON.stringify(a.recipe).length : 0].join(':');
+    [a.id, a.name, a.kind, typeof a.dataUrl === 'string' ? `${(a.dataUrl as string).length}${(a.dataUrl as string).slice(-24)}` : 0, a.centerX ?? '', a.centerY ?? ''].join(':');
   const target = (t: Project['stage'] | Project['sprites'][number]) =>
     [
       t.id,
       t.name,
       t.currentCostume,
-      t.kind === 'sprite' ? [t.x, t.y, t.z, t.size, t.direction, t.visible, t.rotationStyle].join(',') : '',
+      t.kind === 'sprite' ? [t.x, t.y, t.size, t.direction, t.visible, t.rotationStyle].join(',') : '',
       t.costumes.map((c) => asset(c as never)).join('|'),
       t.sounds.map((c) => asset(c as never)).join('|'),
     ].join(';');
   const c = project.compiled;
   return [
-    project.mode,
     project.title,
     target(project.stage),
     ...project.sprites.map(target),
-    c ? [c.createdAt, c.mode, c.code.map((x) => x.targetId + x.runSource.length).join(','), c.sprites.map((x) => x.id).join(','), c.assets.map((x) => asset(x as never)).join('|')].join('#') : 'none',
+    c ? [c.createdAt, c.code.map((x) => x.targetId + x.runSource.length).join(','), c.sprites.map((x) => x.id).join(','), c.assets.map((x) => asset(x as never)).join('|')].join('#') : 'none',
   ].join('\n');
 }

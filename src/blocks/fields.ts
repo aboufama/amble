@@ -323,7 +323,7 @@ export function characterPicture(ctx: MenuContext | null, name: string): { url: 
   const sprite = name === 'me' ? (ctx?.target?.kind === 'sprite' ? ctx.target : null) : project?.sprites.find((s) => s.name === name);
   if (sprite) {
     const c = sprite.costumes[sprite.currentCostume] ?? sprite.costumes[0];
-    const url = c?.kind === 'image' ? c.dataUrl : c?.kind === 'model' ? c.thumbnail : undefined;
+    const url = c?.kind === 'image' ? c.dataUrl : undefined;
     if (url) return { url, icon: false };
   }
   if (name === 'me') return { url: SPECIAL_ICONS.me, icon: true };

@@ -135,7 +135,6 @@ class TargetCompiler {
   private readonly defined = new Set<string>();
   private readonly locals: Set<string>;
   private readonly characterNames: Set<string>;
-  private readonly is3d: boolean;
   private readonly isStage: boolean;
   private scriptCount = 0;
   private edgeCount = 0;
@@ -151,7 +150,6 @@ class TargetCompiler {
     private readonly target: Target,
     private readonly className: string,
   ) {
-    this.is3d = project.mode === '3d';
     this.isStage = target.kind === 'stage';
     this.locals = new Set(target.kind === 'sprite' ? (target.variables ?? []) : []);
     this.characterNames = new Set([...project.sprites.map((s) => s.name), ...(project.compiled?.sprites ?? []).map((s) => s.name)]);
@@ -292,10 +290,6 @@ class TargetCompiler {
       this.warn(`"${blockText(b)}" only works on ${spec.targets.includes('sprite') ? 'sprites' : 'the stage'}.`);
       return [];
     }
-    if (spec.modes && !spec.modes.includes(this.project.mode)) {
-      this.warn(`"${blockText(b)}" only works in ${spec.modes.join(' and ').toUpperCase()}.`);
-      return [];
-    }
     const field = (name: string) => oneLine(b.fields?.[name]);
     switch (b.type) {
       // ---- Triggers (messages)
@@ -317,13 +311,12 @@ class TargetCompiler {
 
       // ---- Motion
       case 'mv_move':
-        return line(this.move(field('DIR'), this.steps(this.number(b, 'STEPS'))));
+        return line(this.move(field('DIR'), this.number(b, 'STEPS')));
       case 'mv_turn': {
         const degrees = this.number(b, 'DEGREES');
         const right = field('DIR') !== 'left';
-        // 2D angles go counter-clockwise; in 3D positive turns right.
-        const negative = this.is3d ? !right : right;
-        return line(`this.turn(${negative ? `-(${degrees})` : degrees});`);
+        // Angles go counter-clockwise, so turning right is negative.
+        return line(`this.turn(${right ? `-(${degrees})` : degrees});`);
       }
       case 'mv_goto': {
         const who = this.who(b, 'WHO');
@@ -333,7 +326,7 @@ class TargetCompiler {
         return line(`this.setPosition(${this.number(b, 'X')}, ${this.number(b, 'Y')});`);
       case 'mv_toward': {
         const who = this.who(b, 'WHO');
-        return who.kind === 'me' || who.kind === 'none' ? [] : line(`this.moveTowards(${who.expr}, ${this.steps(this.number(b, 'STEPS'))});`);
+        return who.kind === 'me' || who.kind === 'none' ? [] : line(`this.moveTowards(${who.expr}, ${this.number(b, 'STEPS')});`);
       }
       case 'mv_point': {
         const who = this.who(b, 'WHO');
@@ -364,7 +357,7 @@ class TargetCompiler {
       case 'kit_follow':
         return line('this.game.camera.follow(this);');
       case 'kit_shake':
-        return line(`this.game.camera.shake(${this.is3d ? 0.3 : 8}, 0.3);`);
+        return line('this.game.camera.shake(8, 0.3);');
       case 'ga_win':
       case 'ga_over':
         return line(`this.game.${b.type === 'ga_win' ? 'win' : 'over'}(${this.bannerMessage(b)});`);
@@ -471,9 +464,9 @@ class TargetCompiler {
     const neg = isNumberLiteral(steps) ? String(-Number(steps)) : `-(${steps})`;
     switch (direction) {
       case 'right':
-        return this.is3d ? `this.moveSideways(${steps});` : `this.x += ${steps};`;
+        return `this.x += ${steps};`;
       case 'left':
-        return this.is3d ? `this.moveSideways(${neg});` : `this.x -= ${steps};`;
+        return `this.x -= ${steps};`;
       case 'up':
         return `this.y += ${steps};`;
       case 'down':
@@ -483,12 +476,6 @@ class TargetCompiler {
       default:
         return `this.moveForward(${steps});`;
     }
-  }
-
-  /** Blocks count steps: pixels in 2D, and 100 steps to a meter in 3D. */
-  private steps(expr: string): string {
-    if (!this.is3d) return expr;
-    return isNumberLiteral(expr) ? String(Number(expr) / 100) : `(${expr}) / 100`;
   }
 
   // ---------------------------------------------------------------------------
@@ -690,7 +677,7 @@ class TargetCompiler {
       case 'nm_distance': {
         const who = this.who(v, 'WHO');
         if (who.kind === 'me' || who.kind === 'none') return '0';
-        return this.is3d ? `(this.distanceTo(${who.expr}) * 100)` : `this.distanceTo(${who.expr})`;
+        return `this.distanceTo(${who.expr})`;
       }
       case 'nm_my':
         return this.myProperty(oneLine(v.fields?.PROP));
@@ -716,14 +703,14 @@ class TargetCompiler {
     if (this.isStage) return '0';
     switch (prop) {
       case 'x':
-        return this.is3d ? '(this.x * 100)' : 'this.x';
+        return 'this.x';
       case 'y':
-        return this.is3d ? '(this.y * 100)' : 'this.y';
+        return 'this.y';
       case 'size':
         return 'this.size';
       case 'direction':
         // Scratch-style direction: 90 = right, 0 = up.
-        return this.is3d ? 'this.heading' : '((((90 - this.angle) % 360) + 540) % 360 - 180)';
+        return '((((90 - this.angle) % 360) + 540) % 360 - 180)';
       case 'costume number':
         return '(this.costumes.indexOf(this.costume) + 1)';
       default:

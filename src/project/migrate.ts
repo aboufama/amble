@@ -1,9 +1,9 @@
 import { BLOCK_BY_TYPE } from '../blocks/spec';
-import { block, character, type JsonBlock } from './defaults';
-import type { BlocksState, Project } from './types';
+import { ambleCostumes, blankBackdrop, block, character, type JsonBlock } from './defaults';
+import type { BlocksState, CostumeAsset, ImageAsset, Project, SpriteTarget, Target } from './types';
 
 /**
- * Brings projects saved with older block sets up to date. Every project that is loaded
+ * Brings projects saved by older versions of Amble up to date. Every project that is loaded
  * (autosave, file, restore) goes through this.
  *
  * Projects made before Amble's own block language used Scratch-style blocks with free-text
@@ -11,6 +11,8 @@ import type { BlocksState, Project } from './types';
  * ("move [10 steps]" -> move forward (10) steps), otherwise a block in the author's own words
  * ("glide [to the top over 1 second]" -> do [glide to the top] for (1) seconds). Nothing the
  * author wrote is lost.
+ *
+ * Projects made when Amble also made 3D games open as 2D ones (see `to2d`).
  */
 
 type Old = JsonBlock & { x?: number; y?: number; icons?: unknown; enabled?: boolean; disabledReasons?: string[] };
@@ -179,7 +181,45 @@ export function migrateBlocks(state: BlocksState | null | undefined, sprites: Se
   return { ...state, blocks: { ...(state.blocks as object), blocks: top.map((b) => convert(b, sprites)) } };
 }
 
-export function migrateProject(project: Project): Project {
+const isModel = (asset: { kind: string }) => asset.kind === 'model';
+
+/** A target without its 3D models, still showing its costume if that stays; one with no costume left gets `none()`. */
+function withoutModels<T extends Target>(t: T, none: () => ImageAsset[]): T {
+  const images = t.costumes.filter((c) => !isModel(c));
+  const costumes: CostumeAsset[] = images.length ? images : none();
+  return { ...t, costumes, currentCostume: Math.max(0, costumes.indexOf(t.costumes[t.currentCostume])) };
+}
+
+/**
+ * Amble makes 2D games. A project saved as a 3D game opens as a 2D one: positions convert the way
+ * the old 2D/3D switch converted them (60 pixels to a meter, and the depth z becomes the height y),
+ * 3D models go, a sprite with no costume left gets Amble's (the stage, a blank backdrop), and a game
+ * built for 3D builds again. 3D models and builds that the switch left in 2D projects go too.
+ */
+function to2d(project: Project): Project {
+  const was3d = project.mode === '3d';
+  const compiled = project.compiled?.mode === '2d' ? project.compiled : null;
+  const assets = [...[project.stage, ...project.sprites].flatMap((t) => t.costumes), ...(compiled?.assets ?? [])];
+  if (!was3d && compiled === project.compiled && !assets.some(isModel)) return project;
+  return {
+    ...project,
+    mode: '2d',
+    stage: withoutModels(project.stage, () => [blankBackdrop()]),
+    sprites: project.sprites.map((s): SpriteTarget => {
+      const sprite = withoutModels(s, ambleCostumes);
+      return was3d ? { ...sprite, x: Math.round(s.x * 60), y: Math.round(s.z * 60), z: 0, direction: 0, rotationStyle: 'left-right' } : sprite;
+    }),
+    compiled: compiled && { ...compiled, assets: compiled.assets.filter((a) => !isModel(a)) },
+  };
+}
+
+/** A sprite read from a file, which may come from a 3D project: without its 3D models. */
+export function migrateSprite(sprite: SpriteTarget): SpriteTarget {
+  return sprite.costumes.some(isModel) ? withoutModels(sprite, ambleCostumes) : sprite;
+}
+
+export function migrateProject(saved: Project): Project {
+  const project = to2d(saved);
   const targets = [project.stage, ...project.sprites];
   if (!targets.some((t) => hasOld(t.blocks))) return project;
   const sprites = new Set(project.sprites.map((s) => s.name));
