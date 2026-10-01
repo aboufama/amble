@@ -1,0 +1,1334 @@
+diff --git a/public/blockly-media/delete-icon.svg b/public/blockly-media/delete-icon.svg
+index 7fe4c36..846d24c 100644
+--- a/public/blockly-media/delete-icon.svg
++++ b/public/blockly-media/delete-icon.svg
+@@ -1 +1 @@
+-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M11.6 11.6l8.8 8.8M20.4 11.6l-8.8 8.8" fill="none" stroke="#575e75" stroke-width="2.6" stroke-linecap="round"/></svg>
++<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M11.6 11.6l8.8 8.8M20.4 11.6l-8.8 8.8" fill="none" stroke="#525f71" stroke-width="2.6" stroke-linecap="round"/></svg>
+diff --git a/public/blockly-media/foldout-icon.svg b/public/blockly-media/foldout-icon.svg
+index 3769da9..e762d86 100644
+--- a/public/blockly-media/foldout-icon.svg
++++ b/public/blockly-media/foldout-icon.svg
+@@ -1 +1 @@
+-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M12.3 14.2h7.4c.6 0 .9.7.5 1.1l-3.7 3.6c-.3.3-.7.3-1 0l-3.7-3.6c-.4-.4-.1-1.1.5-1.1z" fill="#575e75" stroke="#575e75" stroke-width="1" stroke-linejoin="round"/></svg>
++<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M12.3 14.2h7.4c.6 0 .9.7.5 1.1l-3.7 3.6c-.3.3-.7.3-1 0l-3.7-3.6c-.4-.4-.1-1.1.5-1.1z" fill="#525f71" stroke="#525f71" stroke-width="1" stroke-linejoin="round"/></svg>
+diff --git a/src/blocks/blockly.ts b/src/blocks/blockly.ts
+index 51c3428..a364f61 100644
+--- a/src/blocks/blockly.ts
++++ b/src/blocks/blockly.ts
+@@ -141,7 +141,7 @@ export function registerBlockly(): void {
+ 
+ const blockStyles: Record<string, Partial<Blockly.Theme.BlockStyle>> = {
+   // Typed-in numbers and words: white ovals (zelos fills a shadow with its secondary colour).
+-  shadow_blocks: { colourPrimary: '#ffffff', colourSecondary: '#ffffff', colourTertiary: '#c6c6c6', hat: '' },
++  shadow_blocks: { colourPrimary: '#ffffff', colourSecondary: '#ffffff', colourTertiary: '#c0c8c3', hat: '' },
+ };
+ for (const c of CATEGORIES) {
+   const colours = { colourPrimary: c.colour, colourSecondary: c.secondary, colourTertiary: c.tertiary };
+@@ -157,13 +157,13 @@ export const AMBLE_THEME = Blockly.Theme.defineTheme('amble', {
+   blockStyles,
+   categoryStyles: Object.fromEntries(CATEGORIES.map((c) => [`${c.id}_category`, { colour: c.colour }])),
+   componentStyles: {
+-    workspaceBackgroundColour: '#f9f9f9',
++    workspaceBackgroundColour: '#f4fbf7',
+     toolboxBackgroundColour: '#ffffff',
+-    toolboxForegroundColour: '#575e75',
+-    flyoutBackgroundColour: '#f9f9f9',
+-    flyoutForegroundColour: '#575e75',
++    toolboxForegroundColour: '#525f71',
++    flyoutBackgroundColour: '#f4fbf7',
++    flyoutForegroundColour: '#525f71',
+     flyoutOpacity: 0.8,
+-    scrollbarColour: '#cecdce',
++    scrollbarColour: '#c8cfcb',
+     scrollbarOpacity: 1,
+     insertionMarkerColour: '#000000',
+     insertionMarkerOpacity: 0.2,
+diff --git a/src/blocks/icons.ts b/src/blocks/icons.ts
+index 79c6afa..0a148ca 100644
+--- a/src/blocks/icons.ts
++++ b/src/blocks/icons.ts
+@@ -14,8 +14,8 @@ export const FLAG_ICON = svgUri(
+ export const REPEAT_ICON = svgUri(
+   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' +
+     '<g fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+-    '<path d="M5.6 15.4c2.9 3.1 8.2 2.6 10.1-1.4.5-1 .7-2.2.6-3.3" stroke="#cf8b17" stroke-width="4.4"/>' +
+-    '<path d="M12.6 11.3l3.8-4.4 3.8 4.4z" fill="#cf8b17" stroke="#cf8b17" stroke-width="2.6"/>' +
++    '<path d="M5.6 15.4c2.9 3.1 8.2 2.6 10.1-1.4.5-1 .7-2.2.6-3.3" stroke="#cd8219" stroke-width="4.4"/>' +
++    '<path d="M12.6 11.3l3.8-4.4 3.8 4.4z" fill="#cd8219" stroke="#cd8219" stroke-width="2.6"/>' +
+     '<path d="M5.6 15.4c2.9 3.1 8.2 2.6 10.1-1.4.5-1 .7-2.2.6-3.3" stroke="#fff" stroke-width="2"/>' +
+     '<path d="M12.6 11.3l3.8-4.4 3.8 4.4z" fill="#fff" stroke="#fff" stroke-width=".4"/>' +
+     '</g></svg>',
+@@ -24,9 +24,9 @@ export const REPEAT_ICON = svgUri(
+ const zoomButton = (glyph: string) =>
+   svgUri(
+     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">' +
+-      '<circle cx="18" cy="18" r="18" fill="#000" fill-opacity=".15"/>' +
++      '<circle cx="18" cy="18" r="18" fill="#11301e" fill-opacity=".176"/>' +
+       '<circle cx="18" cy="18" r="16.5" fill="#fff"/>' +
+-      `<g fill="none" stroke="#575e75" stroke-opacity=".8" stroke-width="1.5" stroke-linecap="round">${glyph}</g>` +
++      `<g fill="none" stroke="#525f71" stroke-opacity=".8" stroke-width="1.5" stroke-linecap="round">${glyph}</g>` +
+       '</svg>',
+   );
+ 
+diff --git a/src/blocks/renderer.ts b/src/blocks/renderer.ts
+index d4a9721..e83c0fe 100644
+--- a/src/blocks/renderer.ts
++++ b/src/blocks/renderer.ts
+@@ -6,20 +6,66 @@ import * as Blockly from 'blockly/core';
+  * - no glowing outline on the selected block (Scratch shows none),
+  * - label text in regular weight (500) instead of bold,
+  * - "define" blocks get Scratch's rounded "bowler hat" top,
+- * - no connection highlight; insertion markers show where a block will go.
++ * - no connection highlight; insertion markers show where a block will go,
++ * - Amble's own touch: block corners (and square menus) are a little crisper than Scratch's.
+  */
+ 
+ export const BLOCK_FONT_FAMILY = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+ 
++/** Amble's text gray (Scratch's #575e75, tinted mint). */
++const TEXT_COLOUR = '#525f71';
++
++/**
++ * Radius the block corners are drawn with: one unit tighter than zelos's 4. The corners keep
++ * zelos's 4-unit footprint (a short straight run makes up the difference), so blocks keep their
++ * exact sizes and their notches stay where they snap.
++ */
++const DRAWN_CORNER_RADIUS = 3;
++
+ type BlockWithHat = Blockly.BlockSvg & { hat?: string };
+ 
+ class AmbleConstants extends Blockly.zelos.ConstantProvider {
+   override SELECTED_GLOW_COLOUR = '#ffffff';
+   override FIELD_TEXT_FONTWEIGHT = '500';
+   override FIELD_TEXT_FONTFAMILY = BLOCK_FONT_FAMILY;
++  /** Square menus on blocks ("space", "left and right arrows"): as crisp as the block corners. */
++  override FIELD_BORDER_RECT_RADIUS = DRAWN_CORNER_RADIUS;
+   /** Height of the rounded top of "define" blocks. */
+   BOWLER_HAT_HEIGHT = 20;
+ 
++  /** The four outside corners: a radius-3 arc in each 4 x 4 corner, ends unchanged. */
++  protected override makeOutsideCorners() {
++    const { arc, lineOnAxis: line, moveBy, point } = Blockly.utils.svgPaths;
++    const R = this.CORNER_RADIUS;
++    const r = Math.min(R, DRAWN_CORNER_RADIUS);
++    const d = R - r;
++    return {
++      topLeft: moveBy(0, R) + line('v', -d) + arc('a', '0 0,1', r, point(r, -r)) + line('h', d),
++      topRight: line('h', d) + arc('a', '0 0,1', r, point(r, r)) + line('v', d),
++      bottomRight: line('v', d) + arc('a', '0 0,1', r, point(-r, r)) + line('h', -d),
++      bottomLeft: line('h', -d) + arc('a', '0 0,1', r, point(-r, -r)) + line('v', -d),
++      rightHeight: R,
++    };
++  }
++
++  /** The inside corners of C blocks, drawn the same way. */
++  override makeInsideCorners() {
++    const { arc, lineOnAxis: line, point } = Blockly.utils.svgPaths;
++    const R = this.CORNER_RADIUS;
++    const r = Math.min(R, DRAWN_CORNER_RADIUS);
++    const d = R - r;
++    return {
++      width: R,
++      height: R,
++      pathTop: line('h', -d) + arc('a', '0 0,0', r, point(-r, r)) + line('v', d),
++      pathBottom: line('v', d) + arc('a', '0 0,0', r, point(r, r)) + line('h', d),
++      rightWidth: R,
++      rightHeight: R,
++      pathTopRight: line('v', d) + arc('a', '0 0,1', r, point(-r, r)) + line('h', -d),
++      pathBottomRight: line('h', d) + arc('a', '0 0,1', r, point(r, r)) + line('v', d),
++    };
++  }
++
+   override createDom(svg: SVGElement, selector: string, injectionDivIfIsParent?: HTMLElement) {
+     super.createDom(svg, selector, injectionDivIfIsParent);
+     this.selectedGlowFilterId = '';
+@@ -45,7 +91,17 @@ class AmbleConstants extends Blockly.zelos.ConstantProvider {
+       `}`,
+       `${selector} .blocklyFlyoutLabelText {`,
+       `font: bold 14pt ${BLOCK_FONT_FAMILY};`,
+-      `fill: #575E75;`,
++      `fill: ${TEXT_COLOUR};`,
++      `}`,
++      // Typed-in words and numbers: Amble's text gray instead of zelos's.
++      `${selector} .blocklyNonEditableField>text,`,
++      `${selector} .blocklyEditableField>text,`,
++      `${selector} .blocklyNonEditableField>g>text,`,
++      `${selector} .blocklyEditableField>g>text {`,
++      `fill: ${TEXT_COLOUR};`,
++      `}`,
++      `${selector} .blocklyHtmlInput {`,
++      `color: ${TEXT_COLOUR};`,
+       `}`,
+     ];
+   }
+diff --git a/src/blocks/spec.ts b/src/blocks/spec.ts
+index 5349613..dd4ebd4 100644
+--- a/src/blocks/spec.ts
++++ b/src/blocks/spec.ts
+@@ -38,18 +38,18 @@ export interface Category {
+ }
+ 
+ export const CATEGORIES: Category[] = [
+-  { id: 'brief', name: 'Brief', colour: '#5C6BC0', secondary: '#5160B0', tertiary: '#3F4E9E' },
+-  { id: 'events', name: 'Triggers', colour: '#FFBF00', secondary: '#E6AC00', tertiary: '#CC9900' },
+-  { id: 'characters', name: 'Characters', colour: '#29A3A3', secondary: '#238F8F', tertiary: '#1E7A7A' },
+-  { id: 'motion', name: 'Motion', colour: '#4C97FF', secondary: '#4280D7', tertiary: '#3373CC' },
+-  { id: 'game', name: 'Game', colour: '#0FBD8C', secondary: '#0DA57A', tertiary: '#0B8E69' },
+-  { id: 'looks', name: 'Looks', colour: '#9966FF', secondary: '#855CD6', tertiary: '#774DCB' },
+-  { id: 'sound', name: 'Sound', colour: '#CF63CF', secondary: '#C94FC9', tertiary: '#BD42BD' },
+-  { id: 'control', name: 'Flow', colour: '#FFAB19', secondary: '#EC9C13', tertiary: '#CF8B17' },
+-  { id: 'logic', name: 'Logic', colour: '#59C059', secondary: '#46B946', tertiary: '#389438' },
+-  { id: 'variables', name: 'Memory', colour: '#FF8C1A', secondary: '#FF8000', tertiary: '#DB6E00' },
+-  { id: 'myblocks', name: 'Skills', colour: '#FF6680', secondary: '#FF4D6A', tertiary: '#FF3355' },
+-  { id: 'rules', name: 'Rules', colour: '#E0584B', secondary: '#CC4B3F', tertiary: '#B33F34' },
++  { id: 'brief', name: 'Brief', colour: '#536DBB', secondary: '#4C63A5', tertiary: '#3B5191' },
++  { id: 'events', name: 'Triggers', colour: '#FCB303', secondary: '#E4A102', tertiary: '#CA9002' },
++  { id: 'characters', name: 'Characters', colour: '#2AA29C', secondary: '#248E89', tertiary: '#1F7974' },
++  { id: 'motion', name: 'Motion', colour: '#3C99FD', secondary: '#3782D3', tertiary: '#3175BE' },
++  { id: 'game', name: 'Game', colour: '#11BB7F', secondary: '#0FA36F', tertiary: '#0C8D60' },
++  { id: 'looks', name: 'Looks', colour: '#8C68FD', secondary: '#7A5DD5', tertiary: '#6B4ECA' },
++  { id: 'sound', name: 'Sound', colour: '#C064CE', secondary: '#BA50C8', tertiary: '#AD43BC' },
++  { id: 'control', name: 'Flow', colour: '#FDA01B', secondary: '#EA9215', tertiary: '#CD8219' },
++  { id: 'logic', name: 'Logic', colour: '#6FBD56', secondary: '#64B546', tertiary: '#509138' },
++  { id: 'variables', name: 'Memory', colour: '#FD801C', secondary: '#FC7303', tertiary: '#D96202' },
++  { id: 'myblocks', name: 'Skills', colour: '#FD668C', secondary: '#FD4D77', tertiary: '#FD3465' },
++  { id: 'rules', name: 'Rules', colour: '#DF4C4F', secondary: '#CB4042', tertiary: '#B23538' },
+ ];
+ 
+ export type BlockShape =
+diff --git a/src/blocks/workspaceUi.ts b/src/blocks/workspaceUi.ts
+index 85e8f9a..f4f8969 100644
+--- a/src/blocks/workspaceUi.ts
++++ b/src/blocks/workspaceUi.ts
+@@ -219,10 +219,10 @@ const CSS = `
+   width: 60px;
+   padding: 0;
+   background: #fff;
+-  border-right: 1px solid rgba(0, 0, 0, 0.15);
+-  border-bottom: 1px solid rgba(0, 0, 0, 0.15);
++  border-right: 1px solid rgba(17, 48, 30, 0.176);
++  border-bottom: 1px solid rgba(17, 48, 30, 0.176);
+   box-sizing: content-box;
+-  color: #575e75;
++  color: #525f71;
+   font-family: ${BLOCK_FONT_FAMILY};
+   overflow-x: hidden;
+   scrollbar-width: none;
+@@ -234,12 +234,12 @@ const CSS = `
+   margin: 0;
+   padding: 0.375rem 0;
+   line-height: 22px;
+-  color: #575e75;
++  color: #525f71;
+   cursor: pointer;
+   white-space: nowrap;
+ }
+-.blocklyToolbox .blocklyToolboxCategory:hover { color: #4c97ff; }
+-.blocklyToolbox .blocklyToolboxSelected { background-color: #e9eef2; }
++.blocklyToolbox .blocklyToolboxCategory:hover { color: #727df4; }
++.blocklyToolbox .blocklyToolboxSelected { background-color: #e4f0f0; }
+ .blocklyToolbox .blocklyToolboxCategoryLabel {
+   width: 60px;
+   margin: 0;
+@@ -264,21 +264,21 @@ const CSS = `
+ }
+ 
+ /* Palette */
+-.blocklyFlyout { border-right: 1px solid rgba(0, 0, 0, 0.15); box-sizing: content-box; }
+-.blocklyFlyoutBackground { fill: #f9f9f9; fill-opacity: 0.8; }
++.blocklyFlyout { border-right: 1px solid rgba(17, 48, 30, 0.176); box-sizing: content-box; }
++.blocklyFlyoutBackground { fill: #f4fbf7; fill-opacity: 0.8; }
+ .blocklyFlyoutLabel { cursor: default; }
+ .blocklyFlyoutLabelBackground { opacity: 0; }
+ .blocklyFlyoutButton { fill: none; cursor: pointer; }
+ .blocklyFlyoutButton:hover { fill: #fff; }
+-.blocklyFlyoutButton:active { fill: #e9eef2; }
++.blocklyFlyoutButton:active { fill: #e4f0f0; }
+ .blocklyFlyoutButtonShadow { fill: transparent; }
+-.blocklyFlyoutButtonBackground { stroke: #c6c6c6; }
+-.injectionDiv .blocklyFlyout .blocklyFlyoutButton .blocklyText { fill: #575e75; font: 500 12pt ${BLOCK_FONT_FAMILY}; }
+-.blocklyFlyout .blocklyScrollbarHandle { fill: #cecdce; }
++.blocklyFlyoutButtonBackground { stroke: #c0c8c3; }
++.injectionDiv .blocklyFlyout .blocklyFlyoutButton .blocklyText { fill: #525f71; font: 500 12pt ${BLOCK_FONT_FAMILY}; }
++.blocklyFlyout .blocklyScrollbarHandle { fill: #c8cfcb; }
+ 
+ /* Workspace */
+ .blocklyMainBackground { stroke: none; }
+-.blocklyScrollbarHandle { fill: #cecdce; }
++.blocklyScrollbarHandle { fill: #c8cfcb; }
+ .blocklyScrollbarBackground { opacity: 0; }
+ .blocklyZoom > image { opacity: 1; cursor: pointer; }
+ .blocklyZoom > image:hover { opacity: 0.75; }
+@@ -291,7 +291,7 @@ const CSS = `
+ .blocklyWidgetDiv textarea.ambleTextInput {
+   font-family: ${BLOCK_FONT_FAMILY};
+   font-weight: 500;
+-  color: #575e75;
++  color: #525f71;
+   background: #fff;
+   box-sizing: border-box;
+   resize: none;
+@@ -303,7 +303,7 @@ const CSS = `
+ 
+ /* Dropdown menus (colored like the block, like Scratch) */
+ .blocklyDropDownDiv {
+-  border-radius: 4px;
++  border-radius: 6px;
+   box-shadow: 0 0 8px 1px rgba(0, 0, 0, 0.3);
+   padding: 4px;
+ }
+@@ -325,8 +325,8 @@ const CSS = `
+   padding: 4px 0;
+   background: #fff;
+   border: 1px solid;
+-  border-color: #ccc #666 #666 #ccc;
+-  border-radius: 4px;
++  border-color: #c6cec9 #616864 #616864 #c6cec9;
++  border-radius: 6px;
+   box-shadow: none;
+   font: 13px ${BLOCK_FONT_FAMILY};
+ }
+@@ -340,8 +340,8 @@ const CSS = `
+   color: #000;
+   line-height: normal;
+ }
+-.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItem.blocklyMenuItemHighlight { background-color: rgba(77, 151, 255, 0.25); }
+-.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItemDisabled { color: #ccc; }
++.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItem.blocklyMenuItemHighlight { background-color: rgba(114, 125, 244, 0.25); }
++.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItemDisabled { color: #c6cec9; }
+ .blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItemDisabled.blocklyMenuItemHighlight { background: none; }
+ .blocklyWidgetDiv .blocklyContextMenu:focus { box-shadow: none; }
+ .blocklyWidgetDiv .blocklyContextMenu .blocklyShortcut { display: none; }
+@@ -353,7 +353,7 @@ const CSS = `
+   border: none;
+   padding: 12px;
+   background: #fef49c;
+-  color: #575e75;
++  color: #525f71;
+   font: 400 12pt ${BLOCK_FONT_FAMILY};
+ }
+ .blocklyComment .blocklyTextarea::placeholder { color: rgba(0, 0, 0, 0.5); font-style: italic; }
+@@ -363,17 +363,17 @@ const CSS = `
+ .blocklyComment .blocklyFoldoutIcon { width: 32px; height: 32px; transform-origin: 16px 16px; }
+ .blocklyComment.blocklyCollapsed .blocklyFoldoutIcon { transform: rotate(-90deg); }
+ .blocklyComment .blocklyResizeHandle { width: 20px; height: 20px; }
+-.blocklyComment .blocklyCommentPreview.blocklyText { fill: #575e75; font: 400 12pt ${BLOCK_FONT_FAMILY}; }
++.blocklyComment .blocklyCommentPreview.blocklyText { fill: #525f71; font: 400 12pt ${BLOCK_FONT_FAMILY}; }
+ .blocklySelected .blocklyCommentHighlight { stroke: #bca903; stroke-width: 1px; }
+ .ambleCommentLine { stroke-width: 1px; }
+ 
+ .blocklyTooltipDiv {
+   font: 12px ${BLOCK_FONT_FAMILY};
+-  color: #575e75;
++  color: #525f71;
+   background: #fff;
+-  border: 1px solid rgba(0, 0, 0, 0.15);
+-  border-radius: 4px;
+-  box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.15);
++  border: 1px solid rgba(17, 48, 30, 0.176);
++  border-radius: 6px;
++  box-shadow: 0 0 5px 1px rgba(17, 48, 30, 0.176);
+   padding: 6px 8px;
+   opacity: 1;
+ }
+diff --git a/src/components/BlocksEditor.tsx b/src/components/BlocksEditor.tsx
+index 9b926f9..62a9037 100644
+--- a/src/components/BlocksEditor.tsx
++++ b/src/components/BlocksEditor.tsx
+@@ -233,7 +233,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
+       trashcan: false,
+       sounds: false,
+       comments: true,
+-      grid: { spacing: 40, length: 2, colour: '#ddd', snap: false },
++      grid: { spacing: 40, length: 2, colour: '#d7dfda', snap: false },
+     });
+     wsRef.current = ws;
+     loadedId.current = null;
+diff --git a/src/components/icons.tsx b/src/components/icons.tsx
+index 28f27a4..06ccad1 100644
+--- a/src/components/icons.tsx
++++ b/src/components/icons.tsx
+@@ -176,22 +176,22 @@ export const WrenchIcon = (p: P) => (
+ /** Stacked blocks (Code tab). */
+ export const BlocksTabIcon = (p: P) => (
+   <svg {...base(p)} stroke="none">
+-    <path d="M3 5.5a1.5 1.5 0 0 1 1.5-1.5H7l1 1.2h3L12 4h7.5A1.5 1.5 0 0 1 21 5.5v3A1.5 1.5 0 0 1 19.5 10H12l-1 1.2H8L7 10H4.5A1.5 1.5 0 0 1 3 8.5z" fill="#9966ff" />
+-    <path d="M3 14.5a1.5 1.5 0 0 1 1.5-1.5H7l1 1.2h3L12 13h4.5a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5H12l-1 1.2H8L7 19H4.5A1.5 1.5 0 0 1 3 17.5z" fill="#855cd6" />
++    <path d="M3 5.5a1.5 1.5 0 0 1 1.5-1.5H7l1 1.2h3L12 4h7.5A1.5 1.5 0 0 1 21 5.5v3A1.5 1.5 0 0 1 19.5 10H12l-1 1.2H8L7 10H4.5A1.5 1.5 0 0 1 3 8.5z" fill="#b643d2" />
++    <path d="M3 14.5a1.5 1.5 0 0 1 1.5-1.5H7l1 1.2h3L12 13h4.5a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5H12l-1 1.2H8L7 19H4.5A1.5 1.5 0 0 1 3 17.5z" fill="#9a3fb0" />
+   </svg>
+ );
+ /** Paintbrush (Costumes tab). */
+ export const BrushTabIcon = (p: P) => (
+   <svg {...base(p)} stroke="none">
+-    <path d="M20.6 3.4a1.6 1.6 0 0 0-2.3 0l-8.1 8.4 2 2 8.4-8.1a1.6 1.6 0 0 0 0-2.3z" fill="#855cd6" />
+-    <path d="M9.3 12.9c-1.9-.4-3.7.7-4.3 2.6-.4 1.3-.8 2.6-2.4 3.2 2.6 1.9 7 1.6 8.3-1.2.6-1.2.3-2.4-.3-3.2z" fill="#855cd6" />
++    <path d="M20.6 3.4a1.6 1.6 0 0 0-2.3 0l-8.1 8.4 2 2 8.4-8.1a1.6 1.6 0 0 0 0-2.3z" fill="#9a3fb0" />
++    <path d="M9.3 12.9c-1.9-.4-3.7.7-4.3 2.6-.4 1.3-.8 2.6-2.4 3.2 2.6 1.9 7 1.6 8.3-1.2.6-1.2.3-2.4-.3-3.2z" fill="#9a3fb0" />
+   </svg>
+ );
+ /** Speaker (Sounds tab). */
+ export const SpeakerTabIcon = (p: P) => (
+   <svg {...base(p)} stroke="none">
+-    <path d="M3.5 9.3h3.3L11.4 5c.6-.5 1.6-.1 1.6.7v12.6c0 .8-1 1.2-1.6.7l-4.6-4.3H3.5a1 1 0 0 1-1-1V10.3a1 1 0 0 1 1-1z" fill="#855cd6" />
+-    <path d="M15.6 9c1.6 1.6 1.6 4.4 0 6M18.4 6.6c2.9 2.9 2.9 7.9 0 10.8" fill="none" stroke="#855cd6" strokeWidth="1.9" strokeLinecap="round" />
++    <path d="M3.5 9.3h3.3L11.4 5c.6-.5 1.6-.1 1.6.7v12.6c0 .8-1 1.2-1.6.7l-4.6-4.3H3.5a1 1 0 0 1-1-1V10.3a1 1 0 0 1 1-1z" fill="#9a3fb0" />
++    <path d="M15.6 9c1.6 1.6 1.6 4.4 0 6M18.4 6.6c2.9 2.9 2.9 7.9 0 10.8" fill="none" stroke="#9a3fb0" strokeWidth="1.9" strokeLinecap="round" />
+   </svg>
+ );
+ /** Small stage layout. */
+@@ -254,16 +254,16 @@ export const CaretDownIcon = (p: P) => (
+ export const FileIcon = (p: P) => (
+   <svg {...base(p)} stroke="none">
+     <path d="M6.5 2.5h7.6c.5 0 1 .2 1.4.6l3.4 3.4c.4.4.6.9.6 1.4v11.6a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2z" fill="currentColor" />
+-    <path d="M8 11h8M8 14.5h8M8 18h5" stroke="#855cd6" strokeWidth="1.8" strokeLinecap="round" />
++    <path d="M8 11h8M8 14.5h8M8 18h5" stroke="#9a3fb0" strokeWidth="1.8" strokeLinecap="round" />
+   </svg>
+ );
+ /** A friendly character with a plus: add a sprite or costume. */
+ export const AddCharacterIcon = (p: P) => (
+   <svg {...base(p)} stroke="none">
+     <path d="M10.5 6.5c4.4 0 7.5 3.3 7.5 7.4 0 4-3.1 6.6-7.5 6.6S3 17.9 3 13.9c0-4.1 3.1-7.4 7.5-7.4z" fill="currentColor" />
+-    <circle cx="8" cy="13" r="1.3" fill="#855cd6" />
+-    <circle cx="13" cy="13" r="1.3" fill="#855cd6" />
+-    <path d="M8.5 16.4c1.2.9 2.8.9 4 0" fill="none" stroke="#855cd6" strokeWidth="1.3" strokeLinecap="round" />
++    <circle cx="8" cy="13" r="1.3" fill="#9a3fb0" />
++    <circle cx="13" cy="13" r="1.3" fill="#9a3fb0" />
++    <path d="M8.5 16.4c1.2.9 2.8.9 4 0" fill="none" stroke="#9a3fb0" strokeWidth="1.3" strokeLinecap="round" />
+     <path d="M19 2.5v6M16 5.5h6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+   </svg>
+ );
+@@ -271,8 +271,8 @@ export const AddCharacterIcon = (p: P) => (
+ export const AddPictureIcon = (p: P) => (
+   <svg {...base(p)} stroke="none">
+     <rect x="2.5" y="6" width="16" height="14" rx="2.5" fill="currentColor" />
+-    <path d="M4.5 17.5l4-4.4c.4-.4 1-.4 1.4 0l2 2.1 1.6-1.6c.4-.4 1-.4 1.4 0l1.6 1.8v2.1z" fill="#855cd6" />
+-    <circle cx="13.5" cy="10" r="1.4" fill="#855cd6" />
++    <path d="M4.5 17.5l4-4.4c.4-.4 1-.4 1.4 0l2 2.1 1.6-1.6c.4-.4 1-.4 1.4 0l1.6 1.8v2.1z" fill="#9a3fb0" />
++    <circle cx="13.5" cy="10" r="1.4" fill="#9a3fb0" />
+     <path d="M19.5 2.5v6M16.5 5.5h6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+   </svg>
+ );
+diff --git a/src/engine/ui.ts b/src/engine/ui.ts
+index 84fc057..c6c30c8 100644
+--- a/src/engine/ui.ts
++++ b/src/engine/ui.ts
+@@ -33,9 +33,9 @@ interface ValueEntry {
+ export const UI_CSS = `
+ .amble-ui { position: absolute; left: 0; top: 0; width: ${STAGE_WIDTH}px; height: ${STAGE_HEIGHT}px; transform-origin: 0 0; pointer-events: none; overflow: hidden; font-family: "Trebuchet MS", "Helvetica Neue", Arial, sans-serif; user-select: none; }
+ .amble-ui__text { position: absolute; white-space: pre; line-height: 1.15; border-radius: 8px; text-shadow: 0 2px 0 rgba(0,0,0,0.35), 0 0 6px rgba(0,0,0,0.25); }
+-.amble-ui__value { position: absolute; display: flex; gap: 6px; align-items: center; padding: 3px 4px 3px 8px; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.15); border-radius: 7px; font-size: 12px; font-weight: 700; color: #575e75; }
+-.amble-ui__value span { min-width: 30px; padding: 1px 6px; border-radius: 5px; background: #ff8c1a; color: white; text-align: center; }
+-.amble-ui__button { position: absolute; pointer-events: auto; cursor: pointer; border: none; border-radius: 12px; padding: 8px 18px; font: inherit; font-weight: 700; color: white; background: #4c97ff; box-shadow: 0 4px 0 rgba(0,0,0,0.25); transform: translate(-50%, -50%); }
++.amble-ui__value { position: absolute; display: flex; gap: 6px; align-items: center; padding: 3px 4px 3px 8px; background: rgba(255,255,255,0.92); border: 1px solid rgba(17,48,30,0.176); border-radius: 7px; font-size: 12px; font-weight: 700; color: #525f71; }
++.amble-ui__value span { min-width: 30px; padding: 1px 6px; border-radius: 5px; background: #fd801c; color: white; text-align: center; }
++.amble-ui__button { position: absolute; pointer-events: auto; cursor: pointer; border: none; border-radius: 12px; padding: 8px 18px; font: inherit; font-weight: 700; color: white; background: #727df4; box-shadow: 0 4px 0 rgba(0,0,0,0.25); transform: translate(-50%, -50%); }
+ .amble-ui__button:active { transform: translate(-50%, calc(-50% + 3px)); box-shadow: 0 1px 0 rgba(0,0,0,0.25); }
+ .amble-ui__bubble { position: absolute; width: max-content; max-width: 170px; padding: 6px 10px; background: white; color: #333; border: 2px solid rgba(0,0,0,0.2); border-radius: 14px; font-size: 13px; line-height: 1.25; transform: translate(-50%, -100%); white-space: pre-wrap; word-break: break-word; }
+ .amble-ui__bubble::after { content: ""; position: absolute; left: var(--tail, 50%); bottom: -9px; width: 12px; height: 12px; background: white; border-right: 2px solid rgba(0,0,0,0.2); border-bottom: 2px solid rgba(0,0,0,0.2); transform: translateX(-50%) rotate(45deg); }
+@@ -43,7 +43,7 @@ export const UI_CSS = `
+ .amble-ui__ask b { font-size: 13px; color: #333; }
+ .amble-ui__ask form { display: flex; gap: 6px; }
+ .amble-ui__ask input { flex: 1; border: 1px solid #ccc; border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 13px; }
+-.amble-ui__ask button { border: none; border-radius: 6px; background: #4c97ff; color: white; font-weight: 700; padding: 0 12px; cursor: pointer; }
++.amble-ui__ask button { border: none; border-radius: 6px; background: #727df4; color: white; font-weight: 700; padding: 0 12px; cursor: pointer; }
+ .amble-ui__banner { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); padding: 18px 0; text-align: center; font-size: 34px; font-weight: 800; color: white; background: rgba(0,0,0,0.55); text-shadow: 0 3px 0 rgba(0,0,0,0.4); }
+ .amble-ui__banner small { display: block; margin-top: 4px; font-size: 13px; font-weight: 600; opacity: 0.85; }
+ .amble-ui__hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); padding: 4px 10px; font-size: 12px; color: white; background: rgba(0,0,0,0.45); border-radius: 10px; }
+diff --git a/src/styles.css b/src/styles.css
+index 5240193..af2f6db 100644
+--- a/src/styles.css
++++ b/src/styles.css
+@@ -5,34 +5,43 @@
+  */
+ 
+ :root {
+-  --ui-primary: #e5f0ff;
+-  --ui-secondary: #e9f1fc;
+-  --ui-tertiary: #d9e3f2;
+-  --ui-modal-overlay: hsla(215, 100%, 65%, 0.9);
++  --ui-primary: #eeeeff;
++  --ui-secondary: #f0effc;
++  --ui-tertiary: #e2e1f2;
++  --ui-modal-overlay: rgba(114, 125, 244, 0.9);
+   --ui-white: #ffffff;
+   --ui-white-dim: hsla(0, 100%, 100%, 0.75);
+   --ui-white-transparent: hsla(0, 100%, 100%, 0.25);
+-  --ui-black-transparent: hsla(0, 0%, 0%, 0.15);
+-  --ui-black-transparent-10: hsla(0, 0%, 0%, 0.1);
+-  --text-primary: #575e75;
+-  --text-primary-transparent: hsla(225, 15%, 40%, 0.75);
+-  --motion-primary: #4c97ff;
+-  --motion-tertiary: #3373cc;
+-  --looks-secondary: #855cd6;
+-  --looks-secondary-dark: #714eb6;
+-  --looks-transparent: hsla(260, 60%, 60%, 0.35);
+-  --looks-light-transparent: hsla(260, 60%, 60%, 0.15);
+-  --sound-primary: #cf63cf;
+-  --sound-tertiary: #bd42bd;
+-  --data-primary: #ff8c1a;
+-  --error-light: #ffb366;
+-  --extensions-primary: #0fbd8c;
+-  --extensions-tertiary: #0b8e69;
+-  --extensions-light: #c8f2e6;
+-  --drop-highlight: hsla(215, 100%, 77%, 1);
++  /* Lines and shades: a deep mint ink, so they read as the same mint-gray as the other neutrals. */
++  --ui-black-transparent: rgba(17, 48, 30, 0.176);
++  --ui-black-transparent-10: rgba(17, 48, 30, 0.118);
++  --text-primary: #525f71;
++  --text-primary-transparent: rgba(82, 95, 113, 0.75);
++  --motion-primary: #3c99fd;
++  --motion-tertiary: #3175be;
++  --looks-secondary: #9a3fb0;
++  --looks-secondary-dark: #823494;
++  /* The purple tints keep Scratch's lightness (the purple itself is deeper, so a little less of it). */
++  --looks-transparent: rgba(154, 63, 176, 0.309);
++  --looks-light-transparent: rgba(154, 63, 176, 0.132);
++  --sound-primary: #c064ce;
++  --sound-tertiary: #ad43bc;
++  --data-primary: #fd801c;
++  --error-light: #fdac68;
++  --extensions-primary: #11bb7f;
++  --extensions-tertiary: #0c8d60;
++  --extensions-light: #c8f2e3;
++  --drop-highlight: #a2a2f2;
+   --red: #e5484d;
+   /* The menu bar and the purple accents (Scratch's "looks-secondary"). */
+   --menu-bar: var(--looks-secondary);
++  /*
++   * Amble's panels are borderless and raised: a crisp 1px line just inside the edge, and a
++   * soft shadow under them. Controls (inputs, buttons, tiles) keep their full-strength lines.
++   */
++  --panel-line: rgba(17, 48, 30, 0.09);
++  --panel-raise: 0 1px 2px rgba(17, 48, 30, 0.07), 0 4px 14px -4px rgba(17, 48, 30, 0.16);
++  --float-raise: 0 2px 4px rgba(17, 48, 30, 0.08), 0 10px 24px -6px rgba(17, 48, 30, 0.24);
+   --font: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+   color-scheme: light;
+@@ -213,9 +222,9 @@ select {
+   max-width: 260px;
+   padding: 0;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 0 0 8px 8px;
++  border-radius: 0 0 12px 12px;
+   background: var(--looks-secondary);
+-  box-shadow: 0 8px 8px 0 var(--ui-black-transparent);
++  box-shadow: var(--float-raise);
+   overflow: hidden;
+   cursor: default;
+ }
+@@ -264,7 +273,7 @@ select {
+   margin: 0 4px;
+   padding: 0 8px;
+   border: 1px dashed var(--ui-black-transparent);
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-white-transparent);
+   background-clip: padding-box;
+   color: var(--ui-white);
+@@ -295,7 +304,7 @@ select {
+   display: inline-flex;
+   margin: 0 8px;
+   padding: 2px;
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-black-transparent);
+ }
+ 
+@@ -303,7 +312,7 @@ select {
+   height: 28px;
+   padding: 0 12px;
+   border: none;
+-  border-radius: 3px;
++  border-radius: 4px;
+   background: transparent;
+   color: var(--ui-white-dim);
+   font-size: 12px;
+@@ -371,8 +380,8 @@ select {
+   height: 80%;
+   margin-left: -8px;
+   padding: 2px 20px 0;
+-  border: 1px solid var(--ui-black-transparent);
+-  border-radius: 16px 16px 0 0;
++  border: 1px solid var(--panel-line);
++  border-radius: 23px 23px 0 0;
+   background: var(--ui-tertiary);
+   color: var(--text-primary-transparent);
+   font-size: 12px;
+@@ -426,9 +435,10 @@ select {
+   flex: 1;
+   position: relative;
+   min-height: 0;
+-  border: 1px solid var(--ui-black-transparent);
+-  border-radius: 0 8px 8px 0;
++  border: 1px solid var(--panel-line);
++  border-radius: 0 12px 12px 0;
+   background: var(--ui-white);
++  box-shadow: var(--panel-raise);
+   overflow: hidden;
+ }
+ 
+@@ -504,17 +514,17 @@ select {
+   z-index: 80;
+   display: grid;
+   place-items: center;
+-  background: hsla(215, 75%, 95%, 0.92);
++  background: rgba(240, 239, 252, 0.92);
+ }
+ 
+ .compiled-card {
+   max-width: 420px;
+   padding: 24px 28px;
+-  border: 1px solid var(--ui-black-transparent);
+-  border-radius: 8px;
++  border: 1px solid var(--panel-line);
++  border-radius: 12px;
+   background: var(--ui-white);
+   text-align: center;
+-  box-shadow: 0 0 0 4px var(--looks-light-transparent);
++  box-shadow: 0 0 0 4px var(--looks-light-transparent), var(--panel-raise);
+ }
+ 
+ .compiled-card h3 {
+@@ -536,7 +546,7 @@ select {
+   height: 32px;
+   padding: 0 12px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-white);
+   color: var(--text-primary);
+   font-size: 12px;
+@@ -575,7 +585,7 @@ select {
+   width: 28px;
+   height: 28px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-white);
+   color: var(--looks-secondary);
+   cursor: pointer;
+@@ -628,7 +638,7 @@ select {
+   height: 32px;
+   padding: 4px;
+   border: none;
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: none;
+   user-select: none;
+   cursor: pointer;
+@@ -664,7 +674,7 @@ select {
+   margin-left: 8px;
+   padding: 0 12px;
+   border: none;
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--looks-secondary);
+   color: var(--ui-white);
+   font-size: 12px;
+@@ -711,7 +721,7 @@ select {
+   margin-left: 8px;
+   padding: 3px 6px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 4px;
++  border-radius: 6px;
+   font-size: 10px;
+   font-weight: bold;
+   color: var(--text-primary-transparent);
+@@ -726,7 +736,7 @@ select {
+ .stage-size-toggle {
+   display: flex;
+   margin-right: 3px;
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-white);
+ }
+ 
+@@ -757,13 +767,13 @@ select {
+ .stage-size-toggle button:first-child,
+ .toggle-buttons button:first-child,
+ .show-toggle button:first-child {
+-  border-radius: 4px 0 0 4px;
++  border-radius: 6px 0 0 6px;
+ }
+ 
+ .stage-size-toggle button:last-child,
+ .toggle-buttons button:last-child,
+ .show-toggle button:last-child {
+-  border-radius: 0 4px 4px 0;
++  border-radius: 0 6px 6px 0;
+ }
+ 
+ .stage-size-toggle button svg,
+@@ -796,7 +806,7 @@ select {
+   height: 34px;
+   padding: 6px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-white);
+   color: var(--text-primary);
+   user-select: none;
+@@ -812,10 +822,11 @@ select {
+   flex: none;
+   width: 482px;
+   height: 362px;
+-  border: 1px solid var(--ui-black-transparent);
+-  border-radius: 8px;
++  border: 1px solid var(--panel-line);
++  border-radius: 12px;
+   overflow: hidden;
+   background: var(--ui-white);
++  box-shadow: var(--panel-raise);
+ }
+ 
+ .gui-body.stage-small .stage-shell {
+@@ -835,7 +846,7 @@ select {
+ .stage-panel.full-screen .stage-header {
+   align-self: stretch;
+   padding: 8px;
+-  background: #e8edf1;
++  background: #e3efef;
+ }
+ 
+ .stage-panel.full-screen .stage-size-toggle {
+@@ -846,6 +857,7 @@ select {
+   margin-top: 3px;
+   border: none;
+   border-radius: 0;
++  box-shadow: none;
+ }
+ 
+ .stage-frame,
+@@ -866,7 +878,7 @@ select {
+   max-width: 90%;
+   padding: 6px 12px;
+   border-radius: 16px;
+-  background: hsla(225, 15%, 40%, 0.85);
++  background: rgba(82, 95, 113, 0.85);
+   color: var(--ui-white);
+   font-size: 11.5px;
+   transform: translateX(-50%);
+@@ -882,7 +894,7 @@ select {
+   inset: 0;
+   display: grid;
+   place-items: center;
+-  background: hsla(260, 60%, 30%, 0.35);
++  background: rgba(74, 0, 90, 0.35);
+   backdrop-filter: blur(2px);
+ }
+ 
+@@ -894,7 +906,7 @@ select {
+   min-width: 200px;
+   max-width: 90%;
+   padding: 16px 20px;
+-  border-radius: 8px;
++  border-radius: 12px;
+   background: var(--ui-white);
+   box-shadow: 0 0 0 4px var(--looks-transparent);
+   text-align: center;
+@@ -926,10 +938,10 @@ select {
+   overflow: auto;
+   padding: 10px 14px;
+   border: 1px solid var(--data-primary);
+-  border-radius: 8px;
+-  background: #fff0df;
+-  box-shadow: 0 0 0 2px rgba(255, 140, 26, 0.25);
+-  color: #555;
++  border-radius: 12px;
++  background: #fff0e2;
++  box-shadow: 0 0 0 2px rgba(253, 128, 28, 0.25);
++  color: #505653;
+   font-size: 12px;
+   line-height: 1.4;
+ }
+@@ -944,9 +956,9 @@ select {
+   margin-left: 8px;
+   padding: 0 10px;
+   border: 1px solid var(--data-primary);
+-  border-radius: 4px;
+-  background: #fff0df;
+-  color: #b85c00;
++  border-radius: 6px;
++  background: #fff0e2;
++  color: #b65302;
+   font-size: 12px;
+   font-weight: bold;
+   cursor: pointer;
+@@ -957,7 +969,7 @@ select {
+ }
+ 
+ .problems-btn:hover {
+-  box-shadow: 0 0 0 2px rgba(255, 140, 26, 0.25);
++  box-shadow: 0 0 0 2px rgba(253, 128, 28, 0.25);
+ }
+ 
+ .problems-modal .modal-body {
+@@ -1031,12 +1043,12 @@ select {
+   margin-bottom: 6px;
+   padding: 6px 10px;
+   border: 1px solid;
+-  border-radius: 8px;
++  border-radius: 12px;
+ }
+ 
+ .problem.error {
+   border-color: var(--data-primary);
+-  background: #fff0df;
++  background: #fff0e2;
+ }
+ 
+ .problem.warning {
+@@ -1052,7 +1064,7 @@ select {
+   margin-top: 2px;
+   padding: 0 12px;
+   border: none;
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--looks-secondary);
+   color: var(--ui-white);
+   font-size: 12px;
+@@ -1078,7 +1090,7 @@ select {
+ }
+ 
+ .console .log.warn {
+-  color: #b85c00;
++  color: #b65302;
+ }
+ 
+ .console .log.error {
+@@ -1099,7 +1111,7 @@ select {
+   height: 28px;
+   padding: 0 8px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-white);
+   font-size: 11.5px;
+   font-weight: bold;
+@@ -1108,9 +1120,9 @@ select {
+ .code-view {
+   margin: 0;
+   padding: 8px 0;
+-  border-radius: 8px;
+-  background: #1e2130;
+-  color: #e3e6f3;
++  border-radius: 12px;
++  background: #1a222d;
++  color: #dee8f0;
+   font-family: var(--mono);
+   font-size: 11px;
+   line-height: 1.5;
+@@ -1127,7 +1139,7 @@ select {
+   width: 34px;
+   margin-right: 10px;
+   padding-right: 6px;
+-  color: #6c7390;
++  color: #67758c;
+   text-align: right;
+   user-select: none;
+ }
+@@ -1148,17 +1160,18 @@ select {
+   display: flex;
+   flex-direction: column;
+   margin-right: 4px;
+-  border: 1px solid var(--ui-black-transparent);
++  border: 1px solid var(--panel-line);
+   border-bottom: none;
+-  border-radius: 8px 8px 0 0;
++  border-radius: 12px 12px 0 0;
+   background: var(--ui-secondary);
++  box-shadow: var(--panel-raise);
+ }
+ 
+ .sprite-info {
+   flex: none;
+   padding: 12px;
+-  border-bottom: 1px solid var(--ui-black-transparent);
+-  border-radius: 8px 8px 0 0;
++  border-bottom: 1px solid var(--panel-line);
++  border-radius: 12px 12px 0 0;
+   background: var(--ui-white);
+   color: var(--text-primary);
+ }
+@@ -1207,7 +1220,7 @@ select {
+   min-width: 0;
+   padding: 0 12px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 32px;
++  border-radius: 6px;
+   outline: none;
+   background: var(--ui-white);
+   color: var(--text-primary);
+@@ -1268,7 +1281,7 @@ select {
+   height: auto;
+   min-height: 44px;
+   padding: 7px 12px;
+-  border-radius: 16px;
++  border-radius: 6px;
+   font-weight: normal;
+   line-height: 1.4;
+   resize: none;
+@@ -1277,13 +1290,13 @@ select {
+ /* The stage has no sprite fields: Scratch shows them empty and disabled. */
+ .info-input:disabled {
+   border-color: var(--ui-black-transparent);
+-  background: rgba(239, 239, 239, 0.3);
++  background: rgba(234, 241, 237, 0.3);
+   box-shadow: none;
+   cursor: default;
+ }
+ 
+ .info-input:disabled::placeholder {
+-  color: #757575;
++  color: #707673;
+ }
+ 
+ .show-toggle button:disabled {
+@@ -1313,10 +1326,10 @@ select {
+   align-items: center;
+   gap: 12px;
+   padding: 16px;
+-  border: 1px solid var(--ui-black-transparent);
+-  border-radius: 8px;
++  border: 1px solid var(--panel-line);
++  border-radius: 12px;
+   background: var(--ui-white);
+-  box-shadow: 0 0 8px 1px var(--ui-black-transparent);
++  box-shadow: var(--float-raise);
+ }
+ 
+ .direction-popover::after {
+@@ -1326,8 +1339,8 @@ select {
+   bottom: -7px;
+   width: 12px;
+   height: 12px;
+-  border-right: 1px solid var(--ui-black-transparent);
+-  border-bottom: 1px solid var(--ui-black-transparent);
++  border-right: 1px solid var(--panel-line);
++  border-bottom: 1px solid var(--panel-line);
+   background: var(--ui-white);
+   transform: rotate(45deg);
+ }
+@@ -1346,7 +1359,7 @@ select {
+ }
+ 
+ .dial-tick {
+-  stroke: hsla(225, 15%, 40%, 0.35);
++  stroke: rgba(82, 95, 113, 0.35);
+   stroke-width: 1.5;
+   stroke-linecap: round;
+ }
+@@ -1405,7 +1418,7 @@ select {
+   flex-direction: column;
+   justify-content: flex-start;
+   border: 2px solid var(--ui-black-transparent);
+-  border-radius: 8px;
++  border-radius: 12px;
+   color: var(--text-primary);
+   font-size: 12.8px;
+   text-align: center;
+@@ -1437,7 +1450,7 @@ select {
+ .sprite-tile.compiled,
+ .asset-tile.compiled {
+   border-style: dashed;
+-  border-color: hsla(260, 60%, 60%, 0.55);
++  border-color: rgba(154, 63, 176, 0.49);
+ }
+ 
+ .sprite-tile.compiled.selected,
+@@ -1487,7 +1500,7 @@ select {
+ .tile-info {
+   flex: none;
+   padding: 4px;
+-  border-radius: 0 0 4px 4px;
++  border-radius: 0 0 6px 6px;
+   font-size: 10px;
+ }
+ 
+@@ -1559,7 +1572,7 @@ select {
+   max-height: 80px;
+   padding: 4px;
+   border: 2px solid var(--looks-secondary);
+-  border-radius: 8px;
++  border-radius: 12px;
+   background: var(--ui-white);
+   box-shadow: 5px 5px 5px var(--ui-black-transparent);
+   pointer-events: none;
+@@ -1678,14 +1691,14 @@ body.reordering * {
+   right: calc(100% + 10px);
+   z-index: 30;
+   padding: 8px 14px;
+-  border: 1px solid hsla(0, 0%, 0%, 0.1);
+-  border-radius: 4px;
++  border: 1px solid var(--ui-black-transparent-10);
++  border-radius: 6px;
+   background: var(--extensions-primary);
+   color: var(--ui-white);
+   font-size: 13px;
+   font-weight: normal;
+   white-space: nowrap;
+-  box-shadow: 0 0 8px hsla(0, 0%, 0%, 0.25);
++  box-shadow: 0 0 8px rgba(17, 48, 30, 0.297);
+   transform: translateY(50%);
+   pointer-events: none;
+ }
+@@ -1698,9 +1711,9 @@ body.reordering * {
+   width: 8px;
+   height: 8px;
+   margin-top: -4px;
+-  border-top: 1px solid hsla(0, 0%, 0%, 0.1);
+-  border-right: 1px solid hsla(0, 0%, 0%, 0.1);
+-  border-radius: 2px;
++  border-top: 1px solid var(--ui-black-transparent-10);
++  border-right: 1px solid var(--ui-black-transparent-10);
++  border-radius: 3px;
+   background: var(--extensions-primary);
+   transform: rotate(45deg);
+ }
+@@ -1712,10 +1725,10 @@ body.reordering * {
+   min-width: 130px;
+   margin: 2px 0 0;
+   padding: 5px 0;
+-  border: 1px solid var(--ui-black-transparent);
+-  border-radius: 4px;
++  border: 1px solid var(--panel-line);
++  border-radius: 6px;
+   background: var(--ui-white);
+-  box-shadow: 0 0 5px 1px var(--ui-black-transparent);
++  box-shadow: var(--float-raise);
+   font-size: 13.6px;
+   text-align: left;
+ }
+@@ -1753,11 +1766,11 @@ body.reordering * {
+   flex-direction: column;
+   align-items: center;
+   margin-left: 4px;
+-  border: 1px solid var(--ui-black-transparent);
++  border: 1px solid var(--panel-line);
+   border-bottom: none;
+-  border-radius: 8px 8px 0 0;
++  border-radius: 12px 12px 0 0;
+   background: var(--ui-white);
+-  background-clip: padding-box;
++  box-shadow: var(--panel-raise);
+   color: var(--text-primary);
+   cursor: pointer;
+   transition: all 0.25s ease;
+@@ -1769,8 +1782,8 @@ body.reordering * {
+ 
+ .stage-selector.selected {
+   border-color: var(--looks-secondary);
+-  border-radius: 10px 10px 0 0;
+-  box-shadow: 0 0 0 4px var(--looks-transparent);
++  border-radius: 14px 14px 0 0;
++  box-shadow: 0 0 0 4px var(--looks-transparent), var(--panel-raise);
+ }
+ 
+ .stage-selector-header {
+@@ -1780,8 +1793,8 @@ body.reordering * {
+   flex: none;
+   width: 100%;
+   height: 42px;
+-  border-bottom: 1px solid var(--ui-black-transparent);
+-  border-radius: 8px 8px 0 0;
++  border-bottom: 1px solid var(--panel-line);
++  border-radius: 12px 12px 0 0;
+   background: var(--ui-white);
+   transition: background-color 0.25s ease;
+ }
+@@ -1809,7 +1822,7 @@ body.reordering * {
+   height: 48px;
+   margin-top: 4px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-white);
+   box-shadow: inset 0 0 4px var(--ui-black-transparent);
+   overflow: hidden;
+@@ -1904,7 +1917,7 @@ body.reordering * {
+   right: 0;
+   bottom: 0;
+   height: 100px;
+-  background: linear-gradient(rgba(232, 237, 241, 0), rgba(232, 237, 241, 1));
++  background: linear-gradient(rgba(236, 236, 242, 0), rgba(236, 236, 242, 1));
+   pointer-events: none;
+ }
+ 
+@@ -2038,11 +2051,11 @@ body.reordering * {
+ 
+ .group-button:first-child {
+   border-right: none;
+-  border-radius: 4px 0 0 4px;
++  border-radius: 6px 0 0 6px;
+ }
+ 
+ .group-button:last-child {
+-  border-radius: 0 4px 4px 0;
++  border-radius: 0 6px 6px 0;
+ }
+ 
+ .group-button:active {
+@@ -2073,7 +2086,7 @@ body.reordering * {
+   min-width: 56px;
+   padding: 4px 4px;
+   border: none;
+-  border-radius: 8px;
++  border-radius: 12px;
+   background: none;
+   color: var(--text-primary);
+   font-size: 10px;
+@@ -2124,8 +2137,8 @@ body.reordering * {
+   flex: none;
+   margin: 20px 0;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 5px;
+-  background: hsla(300, 53%, 60%, 0.15);
++  border-radius: 7px;
++  background: rgba(192, 100, 206, 0.15);
+   overflow: hidden;
+ }
+ 
+@@ -2137,7 +2150,7 @@ body.reordering * {
+ }
+ 
+ .waveform-path {
+-  fill: hsl(300, 54%, 72%);
++  fill: #d292dd;
+   stroke: var(--sound-tertiary);
+   stroke-width: 1;
+   vector-effect: non-scaling-stroke;
+@@ -2213,8 +2226,8 @@ body.reordering * {
+   max-height: 320px;
+   padding: 12px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 8px;
+-  background: repeating-conic-gradient(#eef0f5 0% 25%, #fff 0% 50%) 50% / 20px 20px;
++  border-radius: 12px;
++  background: repeating-conic-gradient(#f0f0f5 0% 25%, #fff 0% 50%) 50% / 20px 20px;
+ }
+ 
+ .model-preview {
+@@ -2223,7 +2236,7 @@ body.reordering * {
+   width: 200px;
+   height: 150px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 8px;
++  border-radius: 12px;
+   background: var(--ui-secondary);
+   color: var(--text-primary-transparent);
+ }
+@@ -2251,7 +2264,7 @@ body.reordering * {
+   height: 32px;
+   padding: 0;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-white);
+   overflow: hidden;
+   cursor: pointer;
+@@ -2270,7 +2283,7 @@ body.reordering * {
+ .color-caret {
+   width: 14px;
+   background: no-repeat center / 8px 8px
+-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M0 2h8L4 7z' fill='%23575e75'/%3E%3C/svg%3E");
++    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M0 2h8L4 7z' fill='%23525f71'/%3E%3C/svg%3E");
+ }
+ 
+ .color-popover {
+@@ -2280,10 +2293,10 @@ body.reordering * {
+   z-index: 60;
+   width: 256px;
+   padding: 12px 16px;
+-  border: 1px solid var(--ui-black-transparent);
+-  border-radius: 8px;
++  border: 1px solid var(--panel-line);
++  border-radius: 12px;
+   background: var(--ui-white);
+-  box-shadow: 0 0 8px 1px var(--ui-black-transparent);
++  box-shadow: var(--float-raise);
+ }
+ 
+ .color-popover::before {
+@@ -2293,8 +2306,8 @@ body.reordering * {
+   left: 38px;
+   width: 12px;
+   height: 12px;
+-  border-top: 1px solid var(--ui-black-transparent);
+-  border-left: 1px solid var(--ui-black-transparent);
++  border-top: 1px solid var(--panel-line);
++  border-left: 1px solid var(--panel-line);
+   background: var(--ui-white);
+   transform: rotate(45deg);
+ }
+@@ -2400,7 +2413,7 @@ body.reordering * {
+ 
+ .toggle-buttons {
+   display: flex;
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-white);
+ }
+ 
+@@ -2435,7 +2448,7 @@ body.reordering * {
+   place-items: center;
+   padding: 0;
+   border: none;
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: none;
+   color: var(--text-primary);
+   cursor: pointer;
+@@ -2464,9 +2477,9 @@ body.reordering * {
+   max-width: 640px;
+   aspect-ratio: 4 / 3;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 4px;
++  border-radius: 6px;
+   overflow: hidden;
+-  background: repeating-conic-gradient(#e8edf8 0% 25%, #fff 0% 50%) 50% / 16px 16px;
++  background: repeating-conic-gradient(#edecf8 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+ }
+ 
+ .paint-canvas canvas {
+@@ -2570,7 +2583,7 @@ body.reordering * {
+   margin: 8px;
+   padding: 16px 16px 0;
+   border: 2px solid var(--ui-black-transparent);
+-  border-radius: 8px;
++  border-radius: 12px;
+   background: var(--ui-white);
+   color: var(--text-primary);
+   font-size: 13.6px;
+@@ -2604,7 +2617,7 @@ body.reordering * {
+   width: 100%;
+   max-height: 96px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 4px;
++  border-radius: 6px;
+ }
+ 
+ .library-item-name {
+@@ -2630,7 +2643,7 @@ body.reordering * {
+   max-width: calc(100% - 32px);
+   margin: 100px auto;
+   border: 4px solid var(--ui-white-transparent);
+-  border-radius: 8px;
++  border-radius: 12px;
+   background: var(--ui-white);
+   background-clip: padding-box;
+   color: var(--text-primary);
+@@ -2712,7 +2725,7 @@ body.reordering * {
+   margin-bottom: 24px;
+   padding: 0 16px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 5px;
++  border-radius: 6px;
+   outline: none;
+   color: var(--text-primary);
+   font-size: 14px;
+@@ -2752,7 +2765,7 @@ body.reordering * {
+ .prompt-button {
+   padding: 12px 16px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-white);
+   color: var(--text-primary);
+   font-size: 13.6px;
+@@ -2824,7 +2837,7 @@ body.reordering * {
+ 
+ .record-meter-fill {
+   height: 100%;
+-  background: linear-gradient(to right, var(--extensions-primary) 70%, #ffbf00 85%, var(--red));
++  background: linear-gradient(to right, var(--extensions-primary) 70%, #fcb303 85%, var(--red));
+   transition: width 0.05s linear;
+ }
+ 
+@@ -2874,7 +2887,7 @@ body.reordering * {
+ 
+ .record-error {
+   margin: 0;
+-  color: #b85c00;
++  color: #b65302;
+   font-size: 12px;
+ }
+ 
+@@ -2907,7 +2920,7 @@ body.reordering * {
+   height: 36px;
+   padding: 0 12px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 5px;
++  border-radius: 6px;
+   outline: none;
+   background: var(--ui-white);
+   font-size: 13px;
+@@ -2932,7 +2945,7 @@ body.reordering * {
+   margin: 0;
+   padding: 8px 12px;
+   border: 1px solid var(--ui-black-transparent);
+-  border-radius: 8px;
++  border-radius: 12px;
+   background: var(--ui-secondary);
+   font-size: 12px;
+   line-height: 1.4;
+@@ -2940,20 +2953,20 @@ body.reordering * {
+ 
+ .note.ok {
+   border-color: var(--extensions-primary);
+-  background: #e5f8f2;
++  background: #e5f8f1;
+   color: var(--text-primary);
+ }
+ 
+ .note.bad {
+   border-color: var(--data-primary);
+-  background: #fff0df;
++  background: #fff0e2;
+   color: var(--text-primary);
+ }
+ 
+ .note code,
+ .settings small code {
+   padding: 1px 4px;
+-  border-radius: 4px;
++  border-radius: 6px;
+   background: var(--ui-black-transparent-10);
+   font-family: var(--mono);
+   font-size: 11px;
+@@ -2996,10 +3009,10 @@ details summary {
+   max-width: 548px;
+   padding: 14px 16px;
+   border: 1px solid var(--extensions-tertiary);
+-  border-radius: 8px;
++  border-radius: 12px;
+   background: var(--extensions-light);
+   box-shadow: 0 0 0 2px var(--extensions-light);
+-  color: #555;
++  color: #505653;
+   font-size: 13px;
+   font-weight: bold;
+   transform: translateX(-50%);
+@@ -3008,8 +3021,8 @@ details summary {
+ 
+ .toast.error {
+   border-color: var(--data-primary);
+-  background: #fff0df;
+-  box-shadow: 0 0 0 2px rgba(255, 140, 26, 0.25);
++  background: #fff0e2;
++  box-shadow: 0 0 0 2px rgba(253, 128, 28, 0.25);
+ }
+ 
+ .crash {
+@@ -3019,7 +3032,7 @@ details summary {
+   margin: 12px;
+   padding: 16px;
+   border: 1px solid var(--data-primary);
+-  border-radius: 8px;
+-  background: #fff0df;
+-  color: #555;
++  border-radius: 12px;
++  background: #fff0e2;
++  color: #505653;
+ }

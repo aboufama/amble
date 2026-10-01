@@ -1,0 +1,8 @@
+{
+  "order": 3,
+  "name": "Orchid Mint",
+  "seed": 2552057946,
+  "base": "5be6525adfcd13bd4e4e70af113ec8fd7108ec9e",
+  "summary": "The purple deepens to orchid, the light blues turn lavender, the blue turns periwinkle, and greys take a faint mint tint. Cards and panels get softer corners and float on a soft shadow; the sprite fields become square-ish inputs.",
+  "swatches": ["#9a3fb0", "#727df4", "#eeeeff", "#525f71", "#3c99fd", "#fcb303", "#fda01b"]
+}
