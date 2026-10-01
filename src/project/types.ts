@@ -1,4 +1,4 @@
-import type { ModelRecipe, RotationStyleName, WorldMode } from '../player/protocol';
+import type { RotationStyleName, WorldMode } from '../player/protocol';
 
 export type { RotationStyleName, WorldMode };
 
@@ -20,24 +20,8 @@ export interface ImageAsset {
   description?: string;
 }
 
-/**
- * A 3D model (an uploaded .glb or an AI-made primitive recipe), from when Amble also made 3D
- * games. Projects open without them (see migrate.ts).
- */
-export interface ModelAsset {
-  id: string;
-  name: string;
-  kind: 'model';
-  /** .glb as a data URL (uploaded models). */
-  dataUrl?: string;
-  /** Primitive parts (compiled models). */
-  recipe?: ModelRecipe;
-  /** Preview image (PNG data URL). */
-  thumbnail?: string;
-  description?: string;
-}
-
-export type CostumeAsset = ImageAsset | ModelAsset;
+/** A costume or backdrop. (Projects from when Amble also made 3D games had 3D models too; they open without them, see migrate.ts.) */
+export type CostumeAsset = ImageAsset;
 
 export interface SoundAsset {
   id: string;
@@ -89,7 +73,7 @@ export interface SpriteTarget extends TargetBase {
 export type Target = StageTarget | SpriteTarget;
 
 /** An asset the compiler (AI) made because the game needed it. */
-export type CompiledAsset = (ImageAsset | ModelAsset | SoundAsset) & {
+export type CompiledAsset = (ImageAsset | SoundAsset) & {
   /** Owner: a user sprite/stage id, or a compiled sprite id. */
   targetId: string;
   /** Owner name at compile time. */

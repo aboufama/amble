@@ -261,7 +261,7 @@ function describeCompiled(compiled: CompiledGame | null): string {
   if (compiled.assets.length) {
     lines.push('## Art and sounds made by earlier compiles (they exist)');
     for (const a of compiled.assets) {
-      const kind = a.kind === 'sound' ? 'sound' : a.kind === 'model' ? 'model' : 'costume';
+      const kind = a.kind === 'sound' ? 'sound' : 'costume';
       lines.push(`- ${kind} "${a.name}" of "${a.targetName}": ${a.request}`);
     }
   }
@@ -345,20 +345,6 @@ export function imagePrompt(opts: { kind: 'costume' | 'backdrop'; mode: WorldMod
     return `A colorful 2D video game background for "${opts.gameTitle}": ${opts.description}. Flat, friendly cartoon style like Scratch, clean shapes, no text, no characters in the foreground.`;
   }
   return `A single game sprite for "${opts.gameTitle}": ${opts.description}. Flat cartoon style like Scratch costumes, bold clean outlines, bright colors, centered, side view facing right, isolated on a transparent background, no text, no shadow on the ground.`;
-}
-
-export function modelPrompt(opts: { description: string; width: number; height: number; spriteName: string; gameTitle: string }): {
-  system: string;
-  user: string;
-} {
-  const system = `You design low-poly 3D models for a game by combining primitive shapes. Reply with JSON { "parts": [...] }.
-Each part: shape ("box" | "sphere" | "cylinder" | "cone" | "torus" | "capsule"), size [width, height, depth] in meters (the part's bounding box), position [x, y, z] of the part's center, rotation [x, y, z] in degrees, color "#rrggbb", roughness 0..1, metalness 0..1, emissive 0..1 (glow), opacity 0..1.
-Conventions: the model's origin is its feet/base (y = 0 is the bottom, nothing below it), centered on x = 0 and z = 0; the front faces +z. Use 4-40 parts; overlap parts so there are no gaps; use a cohesive palette; add small details (eyes, trim, windows) that make it readable from a distance.`;
-  const user = `Game: ${opts.gameTitle}
-Sprite: ${opts.spriteName}
-Model: ${opts.description}
-Approximate size: ${opts.width || 1} m wide, ${opts.height || 1} m tall.`;
-  return { system, user };
 }
 
 export function soundPrompt(description: string): { system: string; user: string } {

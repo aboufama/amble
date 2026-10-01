@@ -1,6 +1,6 @@
 # Amble
 
-Make real 2D games with blocks. Amble has its own block language: lots of **exact blocks** for the basics (move, walk, jump, touching, repeat, score...), and **blocks in your own words** for everything else (`do [spin around and shrink away]`, `always: [twinkle as I fall]`). Games run on [Babylon.js](https://www.babylonjs.com/).
+Make real 2D games with blocks. Amble has its own block language: lots of **exact blocks** for the basics (move, walk, jump, touching, repeat, score...), and **blocks in your own words** for everything else (`do [spin around and shrink away]`, `always: [twinkle as I fall]`). Games run on [Phaser](https://phaser.io/).
 
 **Try it:** https://aboufama.github.io/amble/ (exact blocks work right away; to compile blocks in your own words, open **Settings** and add an OpenAI API key, which stays in your browser). Running Amble on your own computer? You can **sign in with ChatGPT** instead.
 
@@ -42,7 +42,7 @@ The GitHub Pages demo has no server, so there it's API keys only.
 ## How it works
 
 ```
- Blocks  ──►  Amble's compiler  ──────────────────────────────►  Amble engine (Babylon.js + Havok)
+ Blocks  ──►  Amble's compiler  ──────────────────────────────►  Amble engine (Phaser)
               exact blocks: engine calls, instantly               runs in a sandboxed iframe
               your words: small pieces of code, in one request
               (new words, plus any written before that must change)
@@ -59,17 +59,17 @@ Old projects made with earlier versions of Amble are converted to the new blocks
 
 ### The engine
 
-The Amble engine (`src/engine/`) is a thin, consistent game layer over Babylon.js:
+The Amble engine (`src/engine/`) is a thin, consistent game layer over Phaser 3:
 
-- **Consistent timing.** Logic and physics run on Babylon's deterministic lockstep: exactly 60 ticks per second on every machine, independent of the monitor's refresh rate. `wait()`, timers and tweens use game time, not wall-clock time.
+- **Consistent timing.** Logic and physics run in fixed ticks: exactly 60 per second on every machine, independent of the monitor's refresh rate. `wait()`, timers and tweens use game time, not wall-clock time.
 - **Unity-style sprites.** `class Player extends Sprite { start() {} update(dt) {} onKeyDown(key) {} onClick() {} onMessage(name, data) {} onCollide(other) {} onSpawn() {} }`, plus coroutines (`*start() { yield* this.wait(1) }`).
-- **2D:** orthographic 480×360 stage in pixels (Scratch coordinates), costumes as textured sprites, scrolling camera, layers.
-- **Physics:** Havok (dynamic/static/kinematic bodies, collisions, sensors), constrained to the plane.
+- **2D:** a 480×360 stage in pixels (Scratch coordinates), drawn at the screen's own resolution, costumes as Phaser images, a scrolling camera, layers.
+- **Physics:** Matter (dynamic/static/kinematic bodies, shapes, collisions, sensors), stepped once per tick in stage units.
 - **Ready-made behaviors** for the exact Game blocks: walk with the arrow keys, jump, fall with gravity (the bottom of the screen is solid), be solid ground.
 - **Also:** input (keys, mouse, touch, pointer lock), Web Audio sounds, HUD text/values/buttons, speech bubbles, questions, particles.
-- **Full Babylon access:** compiled code can use the `BABYLON` namespace for anything the helpers don't cover.
+- **Full Phaser access:** compiled words can use the game's Phaser scene (`this.game.scene`), the `Phaser` namespace and each sprite's image for anything the helpers don't cover: drawing, particle emitters, post effects like glow and vignette, tweens, level geometry.
 
-Why Babylon.js? It's a full game engine (rendering, physics, particles, cameras, input). It has a built-in fixed-timestep mode, and it's famously backward compatible, so compiled code rarely breaks on version drift.
+Why Phaser? It's the most established 2D game engine for the web (rendering, physics, particles, cameras, tweens, input), and the compiler knows it well, so blocks in your own words can ask for elaborate games.
 
 ## Project layout
 
@@ -78,7 +78,7 @@ src/
   blocks/      the block language (spec.ts), menus, and the Blockly editor (renderer, fields, palette)
   compiler/    code generation for exact blocks, pieces for words, prompts, schemas, OpenAI client,
                code instrumentation, compiled assets
-  engine/      the game runtime that runs inside the player iframe (Babylon.js + Havok)
+  engine/      the game runtime that runs inside the player iframe (Phaser)
   player/      editor <-> player protocol, iframe host, run-package builder
   project/     data model, defaults and examples, migration of old projects, persistence, HTML export
   components/  React UI (blocks editor, paint editor, sounds, stage, problems, sprite pane)
@@ -108,7 +108,7 @@ dev/engine-test.html   a page for poking the engine directly (npm run dev → /d
 npm run typecheck
 npm test                 # unit tests (vitest)
 npm run test:e2e         # Playwright: the editor, instant compiles, and word compiles against a mocked API
-npm run build            # production build in dist/ (includes amble-player.js and amble-havok.wasm)
+npm run build            # production build in dist/ (includes amble-player.js)
 ```
 
 To point Playwright at an already-installed Chromium, set `PW_CHROMIUM_PATH`, e.g. `PW_CHROMIUM_PATH=/path/to/chrome npm run test:e2e`.

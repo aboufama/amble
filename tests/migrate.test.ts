@@ -5,7 +5,10 @@ import { buildRunPackage } from '../src/player/package';
 import { serializeBlocks } from '../src/compiler/serialize';
 import { newProject, newSprite } from '../src/project/defaults';
 import type { JsonBlock } from '../src/project/defaults';
-import type { ModelAsset, Project } from '../src/project/types';
+import type { CostumeAsset, Project } from '../src/project/types';
+
+/** A 3D model costume, as projects saved before Amble was 2D only had them. */
+const oldModel = (asset: { id: string; name: string; dataUrl?: string; recipe?: unknown }) => ({ ...asset, kind: 'model' }) as unknown as CostumeAsset;
 
 /** A project saved with the old, Scratch-style blocks (free-text fields). */
 function oldProject(): Project {
@@ -93,9 +96,9 @@ function saved3d(): Project {
   p.mode = '3d';
   p.stage.costumes = [];
   const amble = p.sprites[0];
-  const car: ModelAsset = { id: 'car', name: 'car', kind: 'model', dataUrl: 'data:model/gltf-binary;base64,Z2xURg==' };
+  const car = oldModel({ id: 'car', name: 'car', dataUrl: 'data:model/gltf-binary;base64,Z2xURg==' });
   Object.assign(amble, { x: 1.5, y: 0, z: -2, direction: 90, rotationStyle: 'all around', costumes: [...amble.costumes, car], currentCostume: 2 });
-  p.sprites.push(newSprite('Rock', [{ id: 'rock', name: 'rock', kind: 'model', recipe: { parts: [] } }]));
+  p.sprites.push(newSprite('Rock', [oldModel({ id: 'rock', name: 'rock', recipe: { parts: [] } })]));
   p.compiled = { createdAt: 0, model: 'm', mode: '3d', inputHash: 'x', summary: '', howToPlay: '', warnings: [], code: [], sprites: [], assets: [], pieces: [] };
   return p;
 }

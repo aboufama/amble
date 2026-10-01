@@ -7,35 +7,11 @@ export type WorldMode = '2d' | '3d';
 
 export type RotationStyleName = 'all around' | 'left-right' | "don't rotate";
 
-export type PartShape = 'box' | 'sphere' | 'cylinder' | 'cone' | 'torus' | 'capsule';
-
-/** One primitive of an AI-made ("compiled") 3D model. Sizes/positions are in world units (1 unit ≈ 1 meter). */
-export interface ModelPart {
-  shape: PartShape;
-  /** Bounding size of the part: [width (x), height (y), depth (z)]. */
-  size: [number, number, number];
-  /** Center of the part relative to the model origin. The origin is the model's feet (y = 0 is the bottom). */
-  position: [number, number, number];
-  /** Euler rotation in degrees [x, y, z]. */
-  rotation: [number, number, number];
-  color: string;
-  roughness: number;
-  metalness: number;
-  /** 0..1, how much the part glows in its own color. */
-  emissive: number;
-  /** 0..1 */
-  opacity: number;
-}
-
-export interface ModelRecipe {
-  parts: ModelPart[];
-}
-
 export interface RunCostume {
   name: string;
-  /** 'image' = bitmap/SVG costume (a flat cutout in 3D); 'model' = 3D model (3D mode only). */
-  kind: 'image' | 'model';
-  /** Data URL of the image, or of a .glb file for uploaded models. Empty for recipe models. */
+  /** A bitmap or SVG image. */
+  kind: 'image';
+  /** Data URL of the image. */
   url: string;
   isVector: boolean;
   /** Image pixels per stage unit (Scratch stores bitmaps at 2). */
@@ -45,7 +21,6 @@ export interface RunCostume {
   centerY: number;
   width: number;
   height: number;
-  recipe?: ModelRecipe;
 }
 
 export interface RunSound {

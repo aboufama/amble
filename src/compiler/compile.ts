@@ -274,7 +274,7 @@ function planAssets(
     for (const p of previous) {
       const owner = owners.get(p.targetId);
       if (p.kind === 'sound' || !owner) continue;
-      const group = assetGroup(p.kind === 'image' ? 'costume' : p.kind);
+      const group = assetGroup('costume');
       const key = `${p.targetId}|${group}|${p.name}`;
       if (replaced.has(key)) continue;
       replaced.add(key);
