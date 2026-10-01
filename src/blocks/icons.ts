@@ -1,59 +1,162 @@
-/** Icons drawn on blocks and on the workspace (Amble's own drawings, sized like Scratch's). */
+/**
+ * Icons drawn on blocks and in the code area, cut from paper like the rest of Amble's icons
+ * (src/components/icons.tsx): flat pieces of card, no outlines, each on a card of a deeper shade.
+ */
+
+type Part = { d: string; fill: string; opacity?: number; rule?: 'evenodd' };
 
 const svgUri = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+const svgOf = (viewBox: string, parts: readonly Part[]) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">` +
+  parts.map((p) => `<path d="${p.d}" fill="${p.fill}"${p.opacity === undefined ? '' : ` opacity="${p.opacity}"`}${p.rule ? ` fill-rule="${p.rule}"` : ''}/>`).join('') +
+  '</svg>';
+
+/**
+ * The green flag: a waving banner with a swallowtail and a star, on a pole with a sun-yellow knob.
+ * Drawn once, for "when [flag] clicked" here and for the button above the stage (FlagIcon).
+ */
+export const FLAG_PARTS: readonly Part[] = [
+  { d: 'M6.7 6.2C8.5 4.8 10.9 4.7 13.3 5.9C15.7 7.1 18.5 7.2 22 5.5L18.9 10.5L22 15.4C18.5 17.1 15.7 17 13.3 15.8C10.9 14.6 8.5 14.7 6.7 16.1Z', fill: '#2b8a3b' },
+  { d: 'M4.5 4L4.5 4A1.1 1.1 0 0 1 5.6 5.1L5.6 20.7A1.1 1.1 0 0 1 4.5 21.8L4.5 21.8A1.1 1.1 0 0 1 3.4 20.7L3.4 5.1A1.1 1.1 0 0 1 4.5 4Z', fill: '#2b8a3b' },
+  { d: 'M5.6 4.9C7.4 3.5 9.8 3.4 12.2 4.6C14.6 5.8 17.4 5.9 20.9 4.2L17.8 9.2L20.9 14.1C17.4 15.8 14.6 15.7 12.2 14.5C9.8 13.3 7.4 13.4 5.6 14.8Z', fill: '#4cbf56' },
+  { d: 'M11.17 7.43Q11.3 7.1 11.43 7.43L12.05 8.97Q12.12 9.17 12.33 9.18L13.99 9.29Q14.34 9.31 14.07 9.53L12.79 10.6Q12.63 10.73 12.68 10.94L13.09 12.55Q13.18 12.89 12.89 12.7L11.48 11.81Q11.3 11.7 11.12 11.81L9.71 12.7Q9.42 12.89 9.51 12.55L9.92 10.94Q9.97 10.73 9.81 10.6L8.53 9.53Q8.26 9.31 8.61 9.29L10.27 9.18Q10.48 9.17 10.55 8.97Z', fill: '#2b8a3b' },
+  { d: 'M10.47 6.63Q10.6 6.3 10.73 6.63L11.35 8.17Q11.42 8.37 11.63 8.38L13.29 8.49Q13.64 8.51 13.37 8.73L12.09 9.8Q11.93 9.93 11.98 10.14L12.39 11.75Q12.48 12.09 12.19 11.9L10.78 11.01Q10.6 10.9 10.42 11.01L9.01 11.9Q8.72 12.09 8.81 11.75L9.22 10.14Q9.27 9.93 9.11 9.8L7.83 8.73Q7.56 8.51 7.91 8.49L9.57 8.38Q9.78 8.37 9.85 8.17Z', fill: '#fff6dc' },
+  { d: 'M2.75 3.3A1.75 1.75 0 1 1 6.25 3.3A1.75 1.75 0 1 1 2.75 3.3Z', fill: '#ffc23d' },
+];
 
 /** The green flag in "when [flag] clicked". */
-export const FLAG_ICON = svgUri(
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' +
-    '<path d="M4.4 2.6v18.6" fill="none" stroke="#45993d" stroke-width="2.3" stroke-linecap="round"/>' +
-    '<path d="M5.5 4.1c2.4-1.7 5-1.6 7.2.2 2.2 1.8 4.9 1.9 7.3.1v9.4c-2.4 1.9-5.1 1.8-7.3 0-2.2-1.8-4.8-1.9-7.2-.1z" fill="#4cbf56" stroke="#45993d" stroke-width="1.3" stroke-linejoin="round"/>' +
-    '</svg>',
-);
+export const FLAG_ICON = svgUri(svgOf('0 0 24 24', FLAG_PARTS));
 
-/** The loop arrow at the bottom right of "repeat", "forever" and "repeat until". */
+/** The loop arrow at the bottom right of "repeat", "forever" and "repeat until": a white ribbon on a deep orange card. */
 export const REPEAT_ICON = svgUri(
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' +
-    '<g fill="none" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M5.6 15.4c2.9 3.1 8.2 2.6 10.1-1.4.5-1 .7-2.2.6-3.3" stroke="#c97f1d" stroke-width="4.4"/>' +
-    '<path d="M12.6 11.3l3.8-4.4 3.8 4.4z" fill="#c97f1d" stroke="#c97f1d" stroke-width="2.6"/>' +
-    '<path d="M5.6 15.4c2.9 3.1 8.2 2.6 10.1-1.4.5-1 .7-2.2.6-3.3" stroke="#fff" stroke-width="2"/>' +
-    '<path d="M12.6 11.3l3.8-4.4 3.8 4.4z" fill="#fff" stroke="#fff" stroke-width=".4"/>' +
-    '</g></svg>',
+  svgOf('0 0 24 24', [
+    { d: 'M19.62 11.64A7.1 7.1 0 1 1 9.91 7.11A1.8 1.8 0 0 1 11.38 10.4A3.5 3.5 0 1 0 16.16 12.64A1.8 1.8 0 0 1 19.62 11.64ZM15.52 6.09Q16.31 6.24 15.89 6.92L12.35 12.63Q11.98 13.23 11.69 12.59L8.5 5.42Q8.22 4.78 8.9 4.9Z', fill: '#c97f1d' },
+    { d: 'M18.62 10.64A7.1 7.1 0 1 1 8.91 6.11A1.8 1.8 0 0 1 10.38 9.4A3.5 3.5 0 1 0 15.16 11.64A1.8 1.8 0 0 1 18.62 10.64ZM14.52 5.09Q15.31 5.24 14.89 5.92L11.35 11.63Q10.98 12.23 10.69 11.59L7.5 4.42Q7.22 3.78 7.9 3.9Z', fill: '#fff' },
+  ]),
 );
 
-const zoomButton = (glyph: string) =>
-  svgUri(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">' +
-      '<circle cx="18" cy="18" r="18" fill="#545478" fill-opacity=".22"/>' +
-      '<circle cx="18" cy="18" r="16.5" fill="#fff"/>' +
-      `<g fill="none" stroke="#595c7a" stroke-opacity=".8" stroke-width="1.5" stroke-linecap="round">${glyph}</g>` +
-      '</svg>',
-  );
+/** The zoom buttons: a white paper disc on a lilac card, with a magnifier cut from iris card. */
+export const ZOOM_IN_ICON = svgUri(
+  svgOf('0 0 36 36', [
+    { d: 'M1.7 18.9A17 17 0 1 1 35.7 18.9A17 17 0 1 1 1.7 18.9Z', fill: '#d8d3f0' },
+    { d: 'M1.6 18A16.4 16.4 0 1 1 34.4 18A16.4 16.4 0 1 1 1.6 18Z', fill: '#fff' },
+    { d: 'M9.6 17.2A7.6 7.6 0 1 1 24.8 17.2A7.6 7.6 0 1 1 9.6 17.2ZM12.2 17.2A5 5 0 1 0 22.2 17.2A5 5 0 1 0 12.2 17.2ZM21.06 23.74L25.86 28.54A1.9 1.9 0 0 0 28.54 25.86L23.74 21.06A1.9 1.9 0 0 0 21.06 23.74Z', fill: '#d3cdf6' },
+    { d: 'M11.2 16.2A5 5 0 1 1 21.2 16.2A5 5 0 1 1 11.2 16.2Z', fill: '#ece9fd' },
+    { d: 'M20.06 22.74L24.86 27.54A1.9 1.9 0 0 0 27.54 24.86L22.74 20.06A1.9 1.9 0 0 0 20.06 22.74Z', fill: '#4c3fa3' },
+    { d: 'M8.6 16.2A7.6 7.6 0 1 1 23.8 16.2A7.6 7.6 0 1 1 8.6 16.2ZM11.2 16.2A5 5 0 1 0 21.2 16.2A5 5 0 1 0 11.2 16.2Z', fill: '#6f62cc' },
+    { d: 'M16.2 13.1L16.2 13.1A1.1 1.1 0 0 1 17.3 14.2L17.3 18.2A1.1 1.1 0 0 1 16.2 19.3L16.2 19.3A1.1 1.1 0 0 1 15.1 18.2L15.1 14.2A1.1 1.1 0 0 1 16.2 13.1ZM14.2 15.1L18.2 15.1A1.1 1.1 0 0 1 19.3 16.2L19.3 16.2A1.1 1.1 0 0 1 18.2 17.3L14.2 17.3A1.1 1.1 0 0 1 13.1 16.2L13.1 16.2A1.1 1.1 0 0 1 14.2 15.1Z', fill: '#6f62cc' },
+  ]),
+);
+export const ZOOM_OUT_ICON = svgUri(
+  svgOf('0 0 36 36', [
+    { d: 'M1.7 18.9A17 17 0 1 1 35.7 18.9A17 17 0 1 1 1.7 18.9Z', fill: '#d8d3f0' },
+    { d: 'M1.6 18A16.4 16.4 0 1 1 34.4 18A16.4 16.4 0 1 1 1.6 18Z', fill: '#fff' },
+    { d: 'M9.6 17.2A7.6 7.6 0 1 1 24.8 17.2A7.6 7.6 0 1 1 9.6 17.2ZM12.2 17.2A5 5 0 1 0 22.2 17.2A5 5 0 1 0 12.2 17.2ZM21.06 23.74L25.86 28.54A1.9 1.9 0 0 0 28.54 25.86L23.74 21.06A1.9 1.9 0 0 0 21.06 23.74Z', fill: '#d3cdf6' },
+    { d: 'M11.2 16.2A5 5 0 1 1 21.2 16.2A5 5 0 1 1 11.2 16.2Z', fill: '#ece9fd' },
+    { d: 'M20.06 22.74L24.86 27.54A1.9 1.9 0 0 0 27.54 24.86L22.74 20.06A1.9 1.9 0 0 0 20.06 22.74Z', fill: '#4c3fa3' },
+    { d: 'M8.6 16.2A7.6 7.6 0 1 1 23.8 16.2A7.6 7.6 0 1 1 8.6 16.2ZM11.2 16.2A5 5 0 1 0 21.2 16.2A5 5 0 1 0 11.2 16.2Z', fill: '#6f62cc' },
+    { d: 'M14.2 15.1L18.2 15.1A1.1 1.1 0 0 1 19.3 16.2L19.3 16.2A1.1 1.1 0 0 1 18.2 17.3L14.2 17.3A1.1 1.1 0 0 1 13.1 16.2L13.1 16.2A1.1 1.1 0 0 1 14.2 15.1Z', fill: '#6f62cc' },
+  ]),
+);
+export const ZOOM_RESET_ICON = svgUri(
+  svgOf('0 0 36 36', [
+    { d: 'M1.7 18.9A17 17 0 1 1 35.7 18.9A17 17 0 1 1 1.7 18.9Z', fill: '#d8d3f0' },
+    { d: 'M1.6 18A16.4 16.4 0 1 1 34.4 18A16.4 16.4 0 1 1 1.6 18Z', fill: '#fff' },
+    { d: 'M13.9 14.2L24.1 14.2A1.7 1.7 0 0 1 25.8 15.9L25.8 15.9A1.7 1.7 0 0 1 24.1 17.6L13.9 17.6A1.7 1.7 0 0 1 12.2 15.9L12.2 15.9A1.7 1.7 0 0 1 13.9 14.2ZM13.9 20.4L24.1 20.4A1.7 1.7 0 0 1 25.8 22.1L25.8 22.1A1.7 1.7 0 0 1 24.1 23.8L13.9 23.8A1.7 1.7 0 0 1 12.2 22.1L12.2 22.1A1.7 1.7 0 0 1 13.9 20.4Z', fill: '#d3cdf6' },
+    { d: 'M12.9 13.2L23.1 13.2A1.7 1.7 0 0 1 24.8 14.9L24.8 14.9A1.7 1.7 0 0 1 23.1 16.6L12.9 16.6A1.7 1.7 0 0 1 11.2 14.9L11.2 14.9A1.7 1.7 0 0 1 12.9 13.2ZM12.9 19.4L23.1 19.4A1.7 1.7 0 0 1 24.8 21.1L24.8 21.1A1.7 1.7 0 0 1 23.1 22.8L12.9 22.8A1.7 1.7 0 0 1 11.2 21.1L11.2 21.1A1.7 1.7 0 0 1 12.9 19.4Z', fill: '#6f62cc' },
+  ]),
+);
 
-const lens = '<circle cx="17.5" cy="17.5" r="6.5"/><path d="M22.3 22.3l3.4 3.4"/>';
+/** The arrow on menus in blocks (Blockly draws it at 12 x 12). */
+export const DROPDOWN_ARROW_ICON = svgUri(
+  svgOf('0 0 12 12', [
+    { d: 'M2.96 5.15Q2.3 4.4 3.3 4.4L10.1 4.4Q11.1 4.4 10.44 5.15L7.56 8.42Q6.7 9.4 5.84 8.42Z', fill: 'rgba(0,0,0,.18)' },
+    { d: 'M2.26 4.35Q1.6 3.6 2.6 3.6L9.4 3.6Q10.4 3.6 9.74 4.35L6.86 7.62Q6 8.6 5.14 7.62Z', fill: '#fff' },
+  ]),
+);
 
-export const ZOOM_IN_ICON = zoomButton(`${lens}<path d="M15 17.5h5M17.5 15v5"/>`);
-export const ZOOM_OUT_ICON = zoomButton(`${lens}<path d="M15 17.5h5"/>`);
-export const ZOOM_RESET_ICON = zoomButton('<path d="M13.5 15h9M13.5 21h9" stroke-width="2"/>');
-
-/** Little pictures for the special characters (white, drawn on the teal character blocks). */
-const specialIcon = (body: string) =>
-  svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`);
+/** Little pictures for the special characters: white card over a lighter card, on the teal character blocks. */
+const special = (parts: readonly Part[]) => svgUri(svgOf('0 0 24 24', parts));
 
 export const SPECIAL_ICONS: Record<string, string> = {
   // A face: the sprite running the script.
-  me: specialIcon('<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5q3.5 3 7 0"/><circle cx="9" cy="10" r=".6" fill="#fff"/><circle cx="15" cy="10" r=".6" fill="#fff"/>'),
+  me: special([
+    { d: 'M4.4 13A8.6 8.6 0 1 1 21.6 13A8.6 8.6 0 1 1 4.4 13ZM8.85 11.6A1.25 1.6 0 1 1 11.35 11.6A1.25 1.6 0 1 1 8.85 11.6ZM14.65 11.6A1.25 1.6 0 1 1 17.15 11.6A1.25 1.6 0 1 1 14.65 11.6ZM16.9 15.64A4.6 4.6 0 0 1 9.1 15.64A0.8 0.8 0 0 1 10.46 14.79A3 3 0 0 0 15.54 14.79A0.8 0.8 0 0 1 16.9 15.64Z', fill: '#fff', opacity: 0.4 },
+    { d: 'M3.4 12A8.6 8.6 0 1 1 20.6 12A8.6 8.6 0 1 1 3.4 12ZM7.85 10.6A1.25 1.6 0 1 1 10.35 10.6A1.25 1.6 0 1 1 7.85 10.6ZM13.65 10.6A1.25 1.6 0 1 1 16.15 10.6A1.25 1.6 0 1 1 13.65 10.6ZM15.9 14.64A4.6 4.6 0 0 1 8.1 14.64A0.8 0.8 0 0 1 9.46 13.79A3 3 0 0 0 14.54 13.79A0.8 0.8 0 0 1 15.9 14.64Z', fill: '#fff', rule: 'evenodd' },
+  ]),
   // A mouse pointer.
-  mouse: specialIcon('<path d="M6 3l12 9-5.2.9 3 6-2.6 1.2-3-6L6 17z" fill="#fff" fill-opacity=".25"/>'),
+  mouse: special([
+    { d: 'M7 4.7Q7 3.8 7.72 4.35L18.88 12.85Q19.6 13.4 18.71 13.56L14.4 14.35Q14.1 14.4 14.24 14.67L16.88 19.78Q17.2 20.4 16.57 20.7L14.83 21.5Q14.2 21.8 13.9 21.17L11.43 15.97Q11.3 15.7 11.08 15.9L7.67 19Q7 19.6 7 18.7Z', fill: '#fff', opacity: 0.4 },
+    { d: 'M6 3.7Q6 2.8 6.72 3.35L17.88 11.85Q18.6 12.4 17.71 12.56L13.4 13.35Q13.1 13.4 13.24 13.67L15.88 18.78Q16.2 19.4 15.57 19.7L13.83 20.5Q13.2 20.8 12.9 20.17L10.43 14.97Q10.3 14.7 10.08 14.9L6.67 18Q6 18.6 6 17.7Z', fill: '#fff', rule: 'evenodd' },
+  ]),
   // A die.
-  random: specialIcon('<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r=".8" fill="#fff"/><circle cx="15.5" cy="15.5" r=".8" fill="#fff"/><circle cx="12" cy="12" r=".8" fill="#fff"/>'),
-  // Crosshairs.
-  center: specialIcon('<circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>'),
-  // The screen's frame.
-  edge: specialIcon('<rect x="3" y="5" width="18" height="14" rx="2" stroke-dasharray="3 2.4"/>'),
+  random: special([
+    { d: 'M8.8 5L17.2 5A3.8 3.8 0 0 1 21 8.8L21 17.2A3.8 3.8 0 0 1 17.2 21L8.8 21A3.8 3.8 0 0 1 5 17.2L5 8.8A3.8 3.8 0 0 1 8.8 5ZM7.8 9.4A1.6 1.6 0 1 1 11 9.4A1.6 1.6 0 1 1 7.8 9.4ZM11.4 13A1.6 1.6 0 1 1 14.6 13A1.6 1.6 0 1 1 11.4 13ZM15 16.6A1.6 1.6 0 1 1 18.2 16.6A1.6 1.6 0 1 1 15 16.6Z', fill: '#fff', opacity: 0.4 },
+    { d: 'M7.8 4L16.2 4A3.8 3.8 0 0 1 20 7.8L20 16.2A3.8 3.8 0 0 1 16.2 20L7.8 20A3.8 3.8 0 0 1 4 16.2L4 7.8A3.8 3.8 0 0 1 7.8 4ZM6.8 8.4A1.6 1.6 0 1 1 10 8.4A1.6 1.6 0 1 1 6.8 8.4ZM10.4 12A1.6 1.6 0 1 1 13.6 12A1.6 1.6 0 1 1 10.4 12ZM14 15.6A1.6 1.6 0 1 1 17.2 15.6A1.6 1.6 0 1 1 14 15.6Z', fill: '#fff', rule: 'evenodd' },
+  ]),
+  // A target: the middle of the stage.
+  center: special([
+    { d: 'M4.8 13A8.2 8.2 0 1 1 21.2 13A8.2 8.2 0 1 1 4.8 13ZM7.6 13A5.4 5.4 0 1 1 18.4 13A5.4 5.4 0 1 1 7.6 13ZM10.6 13A2.4 2.4 0 1 1 15.4 13A2.4 2.4 0 1 1 10.6 13Z', fill: '#fff', opacity: 0.4 },
+    { d: 'M3.8 12A8.2 8.2 0 1 1 20.2 12A8.2 8.2 0 1 1 3.8 12ZM6.6 12A5.4 5.4 0 1 1 17.4 12A5.4 5.4 0 1 1 6.6 12ZM9.6 12A2.4 2.4 0 1 1 14.4 12A2.4 2.4 0 1 1 9.6 12Z', fill: '#fff', rule: 'evenodd' },
+  ]),
+  // The screen's frame, held by two photo corners.
+  edge: special([
+    { d: 'M6 5.6L20 5.6A2.4 2.4 0 0 1 22.4 8L22.4 18A2.4 2.4 0 0 1 20 20.4L6 20.4A2.4 2.4 0 0 1 3.6 18L3.6 8A2.4 2.4 0 0 1 6 5.6ZM7.8 9L18.2 9A0.8 0.8 0 0 1 19 9.8L19 16.2A0.8 0.8 0 0 1 18.2 17L7.8 17A0.8 0.8 0 0 1 7 16.2L7 9.8A0.8 0.8 0 0 1 7.8 9Z', fill: '#fff', opacity: 0.4 },
+    { d: 'M2.6 7Q2.6 4.6 5 4.6L7.6 4.6Q8 4.6 7.72 4.88L2.88 9.72Q2.6 10 2.6 9.6ZM21.4 17Q21.4 19.4 19 19.4L16.4 19.4Q16 19.4 16.28 19.12L21.12 14.28Q21.4 14 21.4 14.4Z', fill: '#fff', opacity: 0.55 },
+    { d: 'M5 4.6L19 4.6A2.4 2.4 0 0 1 21.4 7L21.4 17A2.4 2.4 0 0 1 19 19.4L5 19.4A2.4 2.4 0 0 1 2.6 17L2.6 7A2.4 2.4 0 0 1 5 4.6ZM6.8 8L17.2 8A0.8 0.8 0 0 1 18 8.8L18 15.2A0.8 0.8 0 0 1 17.2 16L6.8 16A0.8 0.8 0 0 1 6 15.2L6 8.8A0.8 0.8 0 0 1 6.8 8Z', fill: '#fff', rule: 'evenodd' },
+  ]),
   // Two people.
-  anyone: specialIcon('<circle cx="8.5" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3 19c.5-3.5 2.6-5.5 5.5-5.5s5 2 5.5 5.5M14.5 14c2.6-.4 5.3 1.2 6 4.5"/>'),
+  anyone: special([
+    { d: 'M12.68 7.1A2.92 2.92 0 1 1 18.52 7.1A2.92 2.92 0 1 1 12.68 7.1ZM10.096 17.42C10.268 12.604000000000001 12.504 10.884 15.6 10.884C18.695999999999998 10.884 20.932 12.604000000000001 21.104 17.42Z', fill: '#fff', opacity: 0.55 },
+    { d: 'M7 8.6A3.4 3.4 0 1 1 13.8 8.6A3.4 3.4 0 1 1 7 8.6ZM4 20.6C4.2 15 6.8 13 10.4 13C14 13 16.6 15 16.8 20.6Z', fill: '#fff', opacity: 0.4 },
+    { d: 'M6 7.6A3.4 3.4 0 1 1 12.8 7.6A3.4 3.4 0 1 1 6 7.6ZM3 19.6C3.2 14 5.800000000000001 12 9.4 12C13 12 15.600000000000001 14 15.8 19.6Z', fill: '#fff' },
+  ]),
 };
 
 /** A sprite without a picture (or one that no longer exists). */
-export const UNKNOWN_CHARACTER_ICON = specialIcon('<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.8-4.2 3.6-6.5 7.5-6.5s6.7 2.3 7.5 6.5"/>');
+export const UNKNOWN_CHARACTER_ICON = special([
+  { d: 'M9.6 8.4A3.4 3.4 0 1 1 16.4 8.4A3.4 3.4 0 1 1 9.6 8.4ZM6.6 20.4C6.8 14.8 9.4 12.8 13 12.8C16.6 12.8 19.2 14.8 19.4 20.4Z', fill: '#fff', opacity: 0.4 },
+  { d: 'M8.6 7.4A3.4 3.4 0 1 1 15.4 7.4A3.4 3.4 0 1 1 8.6 7.4ZM5.6 19.4C5.8 13.8 8.4 11.8 12 11.8C15.6 11.8 18.2 13.8 18.4 19.4Z', fill: '#fff', rule: 'evenodd' },
+]);
+
+// -----------------------------------------------------------------------------
+// Category markers: a squircle of the category's colour on a card of its deeper shade, with a
+// white glyph (and the glyph's own card in the deeper shade). Drawn on a 20 x 20 grid.
+// -----------------------------------------------------------------------------
+
+/**
+ * Each category's glyph. `deep` pieces are cut from the deeper card; `shine` is white again. `shadow` is a
+ * deeper card under the glyph where the white needs more edge (on Triggers' yellow).
+ */
+const GLYPHS: Record<string, { d: string; extra?: string; deep?: string; shine?: string; shadow?: string }> = {
+  brief: { d: 'M5.3 4.5Q5.3 3.6 6.2 3.6L10.9 3.6Q11.1 3.6 11.24 3.74L13.96 6.46Q14.1 6.6 14.1 6.8L14.1 14.7Q14.1 15.6 13.2 15.6L6.2 15.6Q5.3 15.6 5.3 14.7ZM7.9 8.8A0.7 0.7 0 0 0 7.2 9.5L7.2 9.5A0.7 0.7 0 0 0 7.9 10.2L11.5 10.2A0.7 0.7 0 0 0 12.2 9.5L12.2 9.5A0.7 0.7 0 0 0 11.5 8.8L7.9 8.8ZM7.9 11.6A0.7 0.7 0 0 0 7.2 12.3L7.2 12.3A0.7 0.7 0 0 0 7.9 13L11.5 13A0.7 0.7 0 0 0 12.2 12.3L12.2 12.3A0.7 0.7 0 0 0 11.5 11.6L7.9 11.6Z', deep: 'M11.1 3.8Q11.1 3.6 11.24 3.74L13.96 6.46Q14.1 6.6 13.9 6.6L11.7 6.6Q11.1 6.6 11.1 6Z' },
+  events: { d: 'M10.46 7.91Q10.4 8.2 10.7 8.2L14.2 8.2Q14.8 8.2 14.41 8.66L7.99 16.34Q7.6 16.8 7.74 16.22L8.93 11.19Q9 10.9 8.7 10.9L5.2 10.9Q4.6 10.9 4.99 10.44L11.21 3.06Q11.6 2.6 11.47 3.19Z', shadow: '#b78006' },
+  characters: { d: 'M9.6 6.6C13 6.6 15.1 9 15.1 11.8C15.1 14.7 12.8 16.2 9.6 16.2C6.4 16.2 4.1 14.7 4.1 11.8C4.1 9 6.2 6.6 9.6 6.6ZM6.75 11.5A0.95 1.2 0 1 0 8.65 11.5A0.95 1.2 0 1 0 6.75 11.5ZM10.55 11.5A0.95 1.2 0 1 0 12.45 11.5A0.95 1.2 0 1 0 10.55 11.5Z', extra: 'M9.4 6.8C9 5.2 7.8 4.1 6.1 4.2C6.6 5.6 7.8 6.6 9.4 6.8ZM9.9 6.8C10.4 5.4 11.6 4.7 13 5C12.5 6.2 11.4 6.8 9.9 6.8Z' },
+  motion: { d: 'M7.2 8.3Q7.2 7.9 7.6 7.9L10 7.9Q10.2 7.9 10.2 7.7L10.2 5.1Q10.2 4.4 10.71 4.88L15.34 9.19Q16 9.8 15.34 10.41L10.71 14.72Q10.2 15.2 10.2 14.5L10.2 11.9Q10.2 11.7 10 11.7L7.6 11.7Q7.2 11.7 7.2 11.3ZM3.75 6.9L5.45 6.9A0.75 0.75 0 0 1 6.2 7.65L6.2 7.65A0.75 0.75 0 0 1 5.45 8.4L3.75 8.4A0.75 0.75 0 0 1 3 7.65L3 7.65A0.75 0.75 0 0 1 3.75 6.9ZM3.75 11.2L5.45 11.2A0.75 0.75 0 0 1 6.2 11.95L6.2 11.95A0.75 0.75 0 0 1 5.45 12.7L3.75 12.7A0.75 0.75 0 0 1 3 11.95L3 11.95A0.75 0.75 0 0 1 3.75 11.2Z' },
+  game: { d: 'M6.6 6.4L12.6 6.4A3.4 3.4 0 0 1 16 9.8L16 9.8A3.4 3.4 0 0 1 12.6 13.2L6.6 13.2A3.4 3.4 0 0 1 3.2 9.8L3.2 9.8A3.4 3.4 0 0 1 6.6 6.4ZM3.3 12.4A2.5 2.5 0 1 1 8.3 12.4A2.5 2.5 0 1 1 3.3 12.4ZM10.9 12.4A2.5 2.5 0 1 1 15.9 12.4A2.5 2.5 0 1 1 10.9 12.4ZM6.2 8.25L6.2 8.95Q6.2 9.15 6 9.15L5.3 9.15Q5 9.15 5 9.45L5 10.25Q5 10.55 5.3 10.55L6 10.55Q6.2 10.55 6.2 10.75L6.2 11.45Q6.2 11.75 6.5 11.75L7.3 11.75Q7.6 11.75 7.6 11.45L7.6 10.75Q7.6 10.55 7.8 10.55L8.5 10.55Q8.8 10.55 8.8 10.25L8.8 9.45Q8.8 9.15 8.5 9.15L7.8 9.15Q7.6 9.15 7.6 8.95L7.6 8.25Q7.6 7.95 7.3 7.95L6.5 7.95Q6.2 7.95 6.2 8.25ZM11.4 8.9A0.9 0.9 0 1 0 13.2 8.9A0.9 0.9 0 1 0 11.4 8.9ZM13 10.6A0.9 0.9 0 1 0 14.8 10.6A0.9 0.9 0 1 0 13 10.6Z' },
+  looks: { d: 'M3.2 9.9C5.2 6.5 7.5 5.2 9.6 5.2C11.7 5.2 14 6.5 16 9.9C14 13.3 11.7 14.6 9.6 14.6C7.5 14.6 5.2 13.3 3.2 9.9Z', deep: 'M6.7 9.9A2.9 2.9 0 1 1 12.5 9.9A2.9 2.9 0 1 1 6.7 9.9Z', shine: 'M9.6 9A0.9 0.9 0 1 1 11.4 9A0.9 0.9 0 1 1 9.6 9Z' },
+  sound: { d: 'M4.61 15.01A2.15 1.6 -22 1 1 8.59 13.39A2.15 1.6 -22 1 1 4.61 15.01ZM10.91 13.41A2.15 1.6 -22 1 1 14.89 11.79A2.15 1.6 -22 1 1 10.91 13.41ZM7.5 5.6L9.1 5.6L9.1 14.4L7.5 14.4L7.5 5.6ZM13.8 4L15.4 4L15.4 12.8L13.8 12.8L13.8 4ZM7.5 5.9Q7.5 5.6 7.79 5.54L15.11 4.06Q15.4 4 15.4 4.3L15.4 6.6L7.5 8.2Z' },
+  control: { d: 'M14.45 8.72A5.1 5.1 0 1 1 7.53 5.64A1.3 1.3 0 0 1 8.58 8.02A2.5 2.5 0 1 0 11.98 9.53A1.3 1.3 0 0 1 14.45 8.72ZM11.65 4.73Q12.44 4.88 12.02 5.56L9.5 9.63Q9.13 10.22 8.84 9.58L6.54 4.4Q6.25 3.76 6.94 3.89Z' },
+  logic: { d: 'M6.6 6.1L12.6 6.1A3.8 3.8 0 0 1 16.4 9.9L16.4 9.9A3.8 3.8 0 0 1 12.6 13.7L6.6 13.7A3.8 3.8 0 0 1 2.8 9.9L2.8 9.9A3.8 3.8 0 0 1 6.6 6.1Z', deep: 'M10.1 9.9A2.5 2.5 0 1 1 15.1 9.9A2.5 2.5 0 1 1 10.1 9.9Z' },
+  variables: { d: 'M3.96 4.32L14.5 3.22A0.9 0.9 -6 0 1 15.49 4.02L15.64 5.41A0.9 0.9 -6 0 1 14.84 6.4L4.3 7.51A0.9 0.9 -6 0 1 3.31 6.7L3.16 5.31A0.9 0.9 -6 0 1 3.96 4.32ZM4.7 8.6L14.7 8.6A0.3 0.3 0 0 1 15 8.9L15 14.5A1.5 1.5 0 0 1 13.5 16L5.9 16A1.5 1.5 0 0 1 4.4 14.5L4.4 8.9A0.3 0.3 0 0 1 4.7 8.6ZM8.2 10.8A0.8 0.8 0 0 0 7.4 11.6L7.4 11.6A0.8 0.8 0 0 0 8.2 12.4L11.2 12.4A0.8 0.8 0 0 0 12 11.6L12 11.6A0.8 0.8 0 0 0 11.2 10.8L8.2 10.8Z' },
+  myblocks: { d: 'M5.4 6.8L11.8 6.8A1.2 1.2 0 0 1 13 8L13 14.4A1.2 1.2 0 0 1 11.8 15.6L5.4 15.6A1.2 1.2 0 0 1 4.2 14.4L4.2 8A1.2 1.2 0 0 1 5.4 6.8ZM6.4 6.2A2.2 2.2 0 1 1 10.8 6.2A2.2 2.2 0 1 1 6.4 6.2ZM11.6 11.2A2.2 2.2 0 1 1 16 11.2A2.2 2.2 0 1 1 11.6 11.2Z' },
+  rules: { d: 'M9.6 3.1L15.4 5.1L15.4 9.5C15.4 13 13 15.5 9.6 16.8C6.2 15.5 3.8 13 3.8 9.5L3.8 5.1ZM6.68 9.98L8.72 12.02Q9 12.3 9.28 12.02L12.92 8.38Q13.2 8.1 12.92 7.82L12.28 7.18Q12 6.9 11.72 7.18L9.14 9.76Q9 9.9 8.86 9.76L7.81 8.71Q7.6 8.5 7.39 8.71L6.68 9.42Q6.4 9.7 6.68 9.98Z' },
+};
+
+const BACK_SQUIRCLE = 'M10.5 1.4C18.14 1.4 19.6 2.86 19.6 10.5C19.6 18.14 18.14 19.6 10.5 19.6C2.86 19.6 1.4 18.14 1.4 10.5C1.4 2.86 2.86 1.4 10.5 1.4Z';
+const SQUIRCLE = 'M9.5 0.4C17.14 0.4 18.6 1.86 18.6 9.5C18.6 17.14 17.14 18.6 9.5 18.6C1.86 18.6 0.4 17.14 0.4 9.5C0.4 1.86 1.86 0.4 9.5 0.4Z';
+const shift = (d: string) => `<path d="${d}" transform="translate(0.8 0.8)"`;
+
+/** The marker beside a category's name in the toolbox (SVG markup, 20 x 20). */
+export function categoryMarker(id: string, colour: string, deep: string): string {
+  const glyph = GLYPHS[id];
+  let body = `<path d="${BACK_SQUIRCLE}" fill="${deep}"/><path d="${SQUIRCLE}" fill="${colour}"/>`;
+  if (glyph) {
+    body += `${shift(glyph.d)} fill="${glyph.shadow ?? deep}"/>`;
+    if (glyph.extra) body += `${shift(glyph.extra)} fill="${deep}"/><path d="${glyph.extra}" fill="#fff"/>`;
+    body += `<path d="${glyph.d}" fill="#fff"/>`;
+    if (glyph.deep) body += `<path d="${glyph.deep}" fill="${deep}"/>`;
+    if (glyph.shine) body += `<path d="${glyph.shine}" fill="#fff"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">${body}</svg>`;
+}

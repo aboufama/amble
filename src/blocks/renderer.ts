@@ -1,4 +1,5 @@
 import * as Blockly from 'blockly/core';
+import { DROPDOWN_ARROW_ICON } from './icons';
 
 /**
  * Amble's block renderer: Blockly's zelos renderer tuned to draw blocks the way Scratch 3
@@ -13,14 +14,14 @@ import * as Blockly from 'blockly/core';
 export const BLOCK_FONT_FAMILY = '"Helvetica Neue", Helvetica, Arial, sans-serif';
 
 /** Words on white inputs and in the palette: Scratch's text grey with Amble's lilac tint. */
-export const BLOCK_TEXT_COLOUR = '#595c7a';
+export const BLOCK_TEXT_COLOUR = '#585c78';
 
 /**
  * The outer corners of blocks (Scratch's are 4). Blocks are still measured with zelos's 4
  * (CORNER_RADIUS), so every block keeps its size and its connections: each corner is drawn
  * larger and ends exactly where the 4px corner ended.
  */
-const BLOCK_CORNER_RADIUS = 6;
+const BLOCK_CORNER_RADIUS = 5.76;
 
 type BlockWithHat = Blockly.BlockSvg & { hat?: string };
 
@@ -30,6 +31,8 @@ class AmbleConstants extends Blockly.zelos.ConstantProvider {
   override FIELD_TEXT_FONTFAMILY = BLOCK_FONT_FAMILY;
   /** Square menus on blocks round their corners like the blocks do. */
   override FIELD_BORDER_RECT_RADIUS = BLOCK_CORNER_RADIUS;
+  /** The arrow on menus in blocks: a paper triangle like Amble's other icons. */
+  override FIELD_DROPDOWN_SVG_ARROW_DATAURI = DROPDOWN_ARROW_ICON;
   /** Height of the rounded top of "define" blocks. */
   BOWLER_HAT_HEIGHT = 20;
 

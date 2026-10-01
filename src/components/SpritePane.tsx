@@ -306,6 +306,10 @@ export function directionToAngle(direction: number): number {
   return ((((90 - direction) % 360) + 360) % 360);
 }
 
+/** The handle's arrow: a paper arrowhead on a stem (drawn pointing up). */
+const DIAL_ARROW =
+  'M-0.7 -7.28Q0 -8 0.7 -7.28L5.77 -2.05Q6.4 -1.4 5.5 -1.4L-5.5 -1.4Q-6.4 -1.4 -5.77 -2.05ZM-2.3 -2L2.3 -2L2.3 4.8A1.4 1.4 0 0 1 0.9 6.2L-0.9 6.2A1.4 1.4 0 0 1 -2.3 4.8L-2.3 -2Z';
+
 /** The dial in Scratch's direction popover: drag the handle to point the sprite. */
 function DirectionDial({ direction, onChange }: { direction: number; onChange(direction: number): void }) {
   const size = 136;
@@ -342,7 +346,8 @@ function DirectionDial({ direction, onChange }: { direction: number; onChange(di
       <path className="dial-gauge" d={gauge} />
       <g className="dial-handle" transform={`translate(${hx.toFixed(2)} ${hy.toFixed(2)}) rotate(${direction})`}>
         <circle r={13} />
-        <path d="M0-7l6 7h-3.5v6h-5v-6H-6z" />
+        <path className="dial-arrow-back" d={DIAL_ARROW} transform="translate(0.8 0.8)" />
+        <path d={DIAL_ARROW} />
       </g>
     </svg>
   );

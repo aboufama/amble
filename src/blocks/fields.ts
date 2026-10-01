@@ -348,7 +348,7 @@ export class FieldCharacter extends Blockly.FieldLabelSerializable {
   override initView() {
     super.initView();
     const group = this.fieldGroup_ as SVGGElement;
-    this.backdrop = Blockly.utils.dom.createSvgElement(Blockly.utils.Svg.RECT, { width: PICTURE, height: PICTURE, rx: 6, ry: 6, fill: '#fff', 'fill-opacity': 0.9 }, group);
+    this.backdrop = Blockly.utils.dom.createSvgElement(Blockly.utils.Svg.RECT, { width: PICTURE, height: PICTURE, rx: 5.75, ry: 5.75, fill: '#fff', 'fill-opacity': 0.9 }, group);
     this.picture = Blockly.utils.dom.createSvgElement(Blockly.utils.Svg.IMAGE, { width: PICTURE, height: PICTURE }, group);
     group.insertBefore(this.picture, group.firstChild);
     group.insertBefore(this.backdrop, group.firstChild);

@@ -33,9 +33,9 @@ interface ValueEntry {
 export const UI_CSS = `
 .amble-ui { position: absolute; left: 0; top: 0; width: ${STAGE_WIDTH}px; height: ${STAGE_HEIGHT}px; transform-origin: 0 0; pointer-events: none; overflow: hidden; font-family: "Trebuchet MS", "Helvetica Neue", Arial, sans-serif; user-select: none; }
 .amble-ui__text { position: absolute; white-space: pre; line-height: 1.15; border-radius: 8px; text-shadow: 0 2px 0 rgba(0,0,0,0.35), 0 0 6px rgba(0,0,0,0.25); }
-.amble-ui__value { position: absolute; display: flex; gap: 6px; align-items: center; padding: 3px 4px 3px 8px; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.15); border-radius: 7px; font-size: 12px; font-weight: 700; color: #595c7a; }
+.amble-ui__value { position: absolute; display: flex; gap: 6px; align-items: center; padding: 3px 4px 3px 8px; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.15); border-radius: 7px; font-size: 12px; font-weight: 700; color: #585c78; }
 .amble-ui__value span { min-width: 30px; padding: 1px 6px; border-radius: 5px; background: #f87d21; color: white; text-align: center; }
-.amble-ui__button { position: absolute; pointer-events: auto; cursor: pointer; border: none; border-radius: 12px; padding: 8px 18px; font: inherit; font-weight: 700; color: white; background: #2a9dee; box-shadow: 0 4px 0 rgba(0,0,0,0.25); transform: translate(-50%, -50%); }
+.amble-ui__button { position: absolute; pointer-events: auto; cursor: pointer; border: none; border-radius: 12px; padding: 8px 18px; font: inherit; font-weight: 700; color: white; background: #149deb; box-shadow: 0 4px 0 rgba(0,0,0,0.25); transform: translate(-50%, -50%); }
 .amble-ui__button:active { transform: translate(-50%, calc(-50% + 3px)); box-shadow: 0 1px 0 rgba(0,0,0,0.25); }
 .amble-ui__bubble { position: absolute; width: max-content; max-width: 170px; padding: 6px 10px; background: white; color: #333; border: 2px solid rgba(0,0,0,0.2); border-radius: 14px; font-size: 13px; line-height: 1.25; transform: translate(-50%, -100%); white-space: pre-wrap; word-break: break-word; }
 .amble-ui__bubble::after { content: ""; position: absolute; left: var(--tail, 50%); bottom: -9px; width: 12px; height: 12px; background: white; border-right: 2px solid rgba(0,0,0,0.2); border-bottom: 2px solid rgba(0,0,0,0.2); transform: translateX(-50%) rotate(45deg); }
@@ -43,7 +43,7 @@ export const UI_CSS = `
 .amble-ui__ask b { font-size: 13px; color: #333; }
 .amble-ui__ask form { display: flex; gap: 6px; }
 .amble-ui__ask input { flex: 1; border: 1px solid #ccc; border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 13px; }
-.amble-ui__ask button { border: none; border-radius: 6px; background: #2a9dee; color: white; font-weight: 700; padding: 0 12px; cursor: pointer; }
+.amble-ui__ask button { border: none; border-radius: 6px; background: #149deb; color: white; font-weight: 700; padding: 0 12px; cursor: pointer; }
 .amble-ui__banner { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); padding: 18px 0; text-align: center; font-size: 34px; font-weight: 800; color: white; background: rgba(0,0,0,0.55); text-shadow: 0 3px 0 rgba(0,0,0,0.4); }
 .amble-ui__banner small { display: block; margin-top: 4px; font-size: 13px; font-weight: 600; opacity: 0.85; }
 .amble-ui__hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); padding: 4px 10px; font-size: 12px; color: white; background: rgba(0,0,0,0.45); border-radius: 10px; }

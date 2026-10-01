@@ -3,6 +3,7 @@ import type * as Blockly from 'blockly/core';
 import { fixProblems, signInWithChatGpt, startGame } from '../actions';
 import { planTarget } from '../compiler/codegen';
 import { findTarget, useStore } from '../store';
+import { NoteMark, XIcon } from './icons';
 
 /**
  * Notes pinned to the code, beside the block they are about: a question the compiler asked about
@@ -186,7 +187,7 @@ export function CodeNotes({
         >
           <div className="code-note" data-kind={n.kind} role="note" aria-label={n.kind === 'question' ? 'A question about these words' : 'A note about this block'}>
             <span className="code-note-mark" aria-hidden="true">
-              {n.kind === 'question' ? '?' : n.kind === 'waiting' ? 'i' : '!'}
+              <NoteMark mark={n.kind === 'question' ? 'question' : n.kind === 'waiting' ? 'info' : 'alert'} size={18} />
             </span>
             <div className="code-note-body">
               <p>{n.text}</p>
@@ -220,7 +221,7 @@ export function CodeNotes({
               )}
             </div>
             <button className="code-note-close" title="Close" aria-label="Close this note" onClick={() => close(n.id)}>
-              ×
+              <XIcon size={11} />
             </button>
           </div>
         </div>

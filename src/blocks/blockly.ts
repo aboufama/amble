@@ -141,7 +141,7 @@ export function registerBlockly(): void {
 
 const blockStyles: Record<string, Partial<Blockly.Theme.BlockStyle>> = {
   // Typed-in numbers and words: white ovals (zelos fills a shadow with its secondary colour).
-  shadow_blocks: { colourPrimary: '#ffffff', colourSecondary: '#ffffff', colourTertiary: '#c8c5cc', hat: '' },
+  shadow_blocks: { colourPrimary: '#ffffff', colourSecondary: '#ffffff', colourTertiary: '#c8c5ca', hat: '' },
 };
 for (const c of CATEGORIES) {
   const colours = { colourPrimary: c.colour, colourSecondary: c.secondary, colourTertiary: c.tertiary };
@@ -158,13 +158,13 @@ export const AMBLE_THEME = Blockly.Theme.defineTheme('amble', {
   categoryStyles: Object.fromEntries(CATEGORIES.map((c) => [`${c.id}_category`, { colour: c.colour }])),
   componentStyles: {
     // Scratch's greys with Amble's lilac tint.
-    workspaceBackgroundColour: '#fbf8ff',
+    workspaceBackgroundColour: '#fbf8fd',
     toolboxBackgroundColour: '#ffffff',
     toolboxForegroundColour: BLOCK_TEXT_COLOUR,
-    flyoutBackgroundColour: '#fbf8ff',
+    flyoutBackgroundColour: '#fbf8fd',
     flyoutForegroundColour: BLOCK_TEXT_COLOUR,
     flyoutOpacity: 0.8,
-    scrollbarColour: '#d0ccd4',
+    scrollbarColour: '#d0ccd2',
     scrollbarOpacity: 1,
     insertionMarkerColour: '#000000',
     insertionMarkerOpacity: 0.2,

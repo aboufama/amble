@@ -1,6 +1,6 @@
 import * as Blockly from 'blockly/core';
 import { ContinuousCategory, ContinuousFlyout, ContinuousToolbox, registerContinuousToolbox } from '@blockly/continuous-toolbox';
-import { ZOOM_IN_ICON, ZOOM_OUT_ICON, ZOOM_RESET_ICON } from './icons';
+import { ZOOM_IN_ICON, ZOOM_OUT_ICON, ZOOM_RESET_ICON, categoryMarker } from './icons';
 import { BLOCK_FONT_FAMILY, BLOCK_TEXT_COLOUR } from './renderer';
 
 /** Width of the block palette, like Scratch's. */
@@ -9,14 +9,16 @@ export const FLYOUT_WIDTH = 250;
 export const BLOCK_SCALE = 0.675;
 
 // -----------------------------------------------------------------------------
-// Category column: small colored circles with labels under them
+// Category column: a squircle of the category's colour with its own glyph, and the label under it
 // -----------------------------------------------------------------------------
 
 class AmbleCategory extends ContinuousCategory {
   override createIconDom_(): Element {
-    const icon = super.createIconDom_() as HTMLElement;
-    const border = (this.toolboxItemDef_ as { borderColour?: string }).borderColour;
-    if (border) icon.style.borderColor = border;
+    const icon = document.createElement('div');
+    icon.classList.add('categoryBubble');
+    const def = this.toolboxItemDef_ as { categorystyle?: string; borderColour?: string };
+    const id = (def.categorystyle ?? '').replace(/_category$/, '');
+    icon.innerHTML = categoryMarker(id, this.colour_, def.borderColour ?? this.colour_);
     return icon;
   }
 
@@ -226,11 +228,11 @@ function registerContextMenus() {
 // -----------------------------------------------------------------------------
 
 /** Dividers (Scratch's black 15%, with Amble's lilac tint), the panels' inner rim, and floating menus' shadow. */
-const LINE = 'hsla(240, 18%, 40%, 0.22)';
-const RIM = 'hsla(255, 55%, 62%, 0.2)';
-const FLOAT = '0 2px 4px hsla(250, 35%, 25%, 0.08), 0 8px 24px -4px hsla(250, 35%, 25%, 0.24)';
+const LINE = 'hsla(240, 12%, 38%, 0.22)';
+const RIM = 'hsla(252, 55%, 62%, 0.2)';
+const FLOAT = '0 2px 4px hsla(247, 35%, 25%, 0.08), 0 8px 24px -4px hsla(247, 35%, 25%, 0.24)';
 /** The selected category's row and pressed buttons (Scratch's light grey, tinted). */
-const SELECTED_ROW = '#ecedf8';
+const SELECTED_ROW = '#ebedf6';
 
 const CSS = `
 /* Category column */
@@ -257,7 +259,7 @@ const CSS = `
   cursor: pointer;
   white-space: nowrap;
 }
-.blocklyToolbox .blocklyToolboxCategory:hover { color: #2a9dee; }
+.blocklyToolbox .blocklyToolboxCategory:hover { color: #149deb; }
 .blocklyToolbox .blocklyToolboxSelected { background-color: ${SELECTED_ROW}; }
 .blocklyToolbox .blocklyToolboxCategoryLabel {
   width: 60px;
@@ -277,32 +279,33 @@ const CSS = `
   width: 1.25rem;
   height: 1.25rem;
   margin: 0 auto 0.125rem;
-  border: 1px solid;
-  border-radius: 100%;
+  border: none;
+  border-radius: 0;
   box-sizing: border-box;
 }
+.blocklyToolbox .categoryBubble > svg { display: block; width: 100%; height: 100%; }
 
 /* Palette */
 .blocklyFlyout { border-right: 1px solid ${LINE}; box-sizing: content-box; }
-.blocklyFlyoutBackground { fill: #fbf8ff; fill-opacity: 0.8; }
+.blocklyFlyoutBackground { fill: #fbf8fd; fill-opacity: 0.8; }
 .blocklyFlyoutLabel { cursor: default; }
 .blocklyFlyoutLabelBackground { opacity: 0; }
 .blocklyFlyoutButton { fill: none; cursor: pointer; }
 .blocklyFlyoutButton:hover { fill: #fff; }
 .blocklyFlyoutButton:active { fill: ${SELECTED_ROW}; }
 .blocklyFlyoutButtonShadow { fill: transparent; }
-.blocklyFlyoutButtonBackground { stroke: #c8c5cc; }
+.blocklyFlyoutButtonBackground { stroke: #c8c5ca; }
 .injectionDiv .blocklyFlyout .blocklyFlyoutButton .blocklyText { fill: ${BLOCK_TEXT_COLOUR}; font: 500 12pt ${BLOCK_FONT_FAMILY}; }
-.blocklyFlyout .blocklyScrollbarHandle { fill: #d0ccd4; }
+.blocklyFlyout .blocklyScrollbarHandle { fill: #d0ccd2; }
 
 /* Workspace */
 .blocklyMainBackground { stroke: none; }
-.blocklyScrollbarHandle { fill: #d0ccd4; }
+.blocklyScrollbarHandle { fill: #d0ccd2; }
 .blocklyScrollbarBackground { opacity: 0; }
 .blocklyZoom > image { opacity: 1; cursor: pointer; }
 .blocklyZoom > image:hover { opacity: 0.75; }
 .blocklyZoom > image:active { opacity: 0.6; }
-:not(.blocklyDragging) > .blocklyDragging { filter: drop-shadow(0 0 6px hsla(250, 35%, 12%, 0.6)); }
+:not(.blocklyDragging) > .blocklyDragging { filter: drop-shadow(0 0 6px hsla(247, 35%, 12%, 0.6)); }
 .blocklyInsertionMarker > .blocklyPath { stroke: none; }
 
 /* Inputs */
@@ -322,7 +325,7 @@ const CSS = `
 
 /* Dropdown menus (colored like the block, like Scratch) */
 .blocklyDropDownDiv {
-  border-radius: 6px;
+  border-radius: 5.75px;
   box-shadow: ${FLOAT};
   padding: 4px;
 }
@@ -344,7 +347,7 @@ const CSS = `
   padding: 4px 0;
   background: #fff;
   border: 1px solid ${RIM};
-  border-radius: 6px;
+  border-radius: 5.75px;
   box-shadow: ${FLOAT};
   font: 13px ${BLOCK_FONT_FAMILY};
 }
@@ -358,8 +361,8 @@ const CSS = `
   color: #000;
   line-height: normal;
 }
-.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItem.blocklyMenuItemHighlight { background-color: rgba(89, 179, 242, 0.25); }
-.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItemDisabled { color: #cdcad1; }
+.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItem.blocklyMenuItemHighlight { background-color: rgba(89, 187, 242, 0.25); }
+.blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItemDisabled { color: #cdcad0; }
 .blocklyWidgetDiv .blocklyContextMenu .blocklyMenuItemDisabled.blocklyMenuItemHighlight { background: none; }
 .blocklyWidgetDiv .blocklyContextMenu:focus { box-shadow: ${FLOAT}; }
 .blocklyWidgetDiv .blocklyContextMenu .blocklyShortcut { display: none; }
@@ -390,7 +393,7 @@ const CSS = `
   color: ${BLOCK_TEXT_COLOUR};
   background: #fff;
   border: 1px solid ${RIM};
-  border-radius: 6px;
+  border-radius: 5.75px;
   box-shadow: ${FLOAT};
   padding: 6px 8px;
   opacity: 1;
@@ -412,7 +415,7 @@ export function registerWorkspaceUi(): void {
   Blockly.FlyoutButton.TEXT_MARGIN_X = 40;
   Blockly.FlyoutButton.TEXT_MARGIN_Y = 10;
   // Soft-square buttons, like the rest of Amble's.
-  Blockly.FlyoutButton.BORDER_RADIUS = 6;
+  Blockly.FlyoutButton.BORDER_RADIUS = 5.75;
   Blockly.config.dragRadius = 3;
   Blockly.config.snapRadius = 48;
   Blockly.config.connectingSnapRadius = 68;

@@ -6,26 +6,26 @@
 
 :root {
   /*
-   * Amble's palette: Scratch's, turned 10 degrees cooler and a little softer (the UI blues and
-   * purple), with a faint lilac tint in the greys. Block colours move less (see src/blocks/spec.ts).
+   * Amble's palette: Scratch's, turned 13 degrees cooler and a little softer (the UI blues and
+   * purple), with a faint (2%) lilac tint in the greys. Block colours move less (see src/blocks/spec.ts).
    */
-  --ui-primary: #e7f4fd;
-  --ui-secondary: #eaf4fb;
-  --ui-tertiary: #dbe7f0;
-  --ui-modal-overlay: hsla(205, 86%, 65%, 0.9);
+  --ui-primary: #e7f5fd;
+  --ui-secondary: #eaf5fb;
+  --ui-tertiary: #dbe8f0;
+  --ui-modal-overlay: hsla(202, 86%, 65%, 0.9);
   --ui-white: #ffffff;
   --ui-white-dim: hsla(0, 100%, 100%, 0.75);
   --ui-white-transparent: hsla(0, 100%, 100%, 0.25);
   --ui-black-transparent: hsla(0, 0%, 0%, 0.15);
   --ui-black-transparent-10: hsla(0, 0%, 0%, 0.1);
-  --text-primary: #595c7a;
-  --text-primary-transparent: hsla(235, 16%, 41%, 0.75);
-  --motion-primary: #2a9dee;
-  --motion-tertiary: #3679a9;
-  --looks-secondary: #7462cc;
-  --looks-secondary-dark: #6455af;
-  --looks-transparent: hsla(250, 51%, 59%, 0.35);
-  --looks-light-transparent: hsla(250, 51%, 59%, 0.15);
+  --text-primary: #585c78;
+  --text-primary-transparent: hsla(232, 15%, 40%, 0.75);
+  --motion-primary: #149deb;
+  --motion-tertiary: #347aa3;
+  --looks-secondary: #6f62cc;
+  --looks-secondary-dark: #6055af;
+  --looks-transparent: hsla(247, 51%, 59%, 0.35);
+  --looks-light-transparent: hsla(247, 51%, 59%, 0.15);
   --sound-primary: #c266cc;
   --sound-tertiary: #ae46b9;
   --data-primary: #f87d21;
@@ -33,7 +33,7 @@
   --extensions-primary: #14b87a;
   --extensions-tertiary: #0f8a5c;
   --extensions-light: #c9f1e2;
-  --drop-highlight: hsla(205, 86%, 77%, 1);
+  --drop-highlight: hsla(202, 86%, 77%, 1);
   --red: #e5484d;
   /* The menu bar and the purple accents (Scratch's "looks-secondary"). */
   --menu-bar: var(--looks-secondary);
@@ -45,17 +45,17 @@
    * Edges. Panels have no outline: a soft lilac shadow lifts them off the page and a crisp
    * 1px line rims them from the inside. Lines inside panels (dividers, inputs) are lilac grey.
    */
-  --line: hsla(240, 18%, 40%, 0.22);
-  --rim: hsla(255, 55%, 62%, 0.2);
+  --line: hsla(240, 12%, 38%, 0.22);
+  --rim: hsla(252, 55%, 62%, 0.2);
   --rim-light: hsla(0, 0%, 100%, 0.85);
   --rim-on-color: hsla(0, 0%, 100%, 0.18);
-  --raise: 0 1px 2px hsla(250, 35%, 30%, 0.08), 0 2px 8px -1px hsla(250, 35%, 30%, 0.1);
-  --raise-sm: 0 1px 2px hsla(250, 35%, 30%, 0.12);
-  --float: 0 2px 4px hsla(250, 35%, 25%, 0.08), 0 8px 24px -4px hsla(250, 35%, 25%, 0.24);
-  /* Corners: Scratch's 4px, 8px and 16px, x1.53 and rounded. Buttons are soft squares; tabs round one corner. */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 24px;
+  --raise: 0 1px 2px hsla(247, 35%, 30%, 0.08), 0 2px 8px -1px hsla(247, 35%, 30%, 0.1);
+  --raise-sm: 0 1px 2px hsla(247, 35%, 30%, 0.12);
+  --float: 0 2px 4px hsla(247, 35%, 25%, 0.08), 0 8px 24px -4px hsla(247, 35%, 25%, 0.24);
+  /* Corners: Scratch's 4px, 8px and 16px, x1.47 (to the quarter pixel). Buttons are soft squares; tabs round one corner. */
+  --radius-sm: 5.75px;
+  --radius-md: 11.5px;
+  --radius-lg: 23px;
   --font: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: light;
@@ -150,7 +150,7 @@ select {
   flex: none;
   height: 48px;
   background: var(--menu-bar);
-  box-shadow: 0 1px 3px hsla(250, 40%, 25%, 0.2);
+  box-shadow: 0 1px 3px hsla(247, 40%, 25%, 0.2);
   color: var(--ui-white);
   font-size: 12px;
   font-weight: bold;
@@ -370,7 +370,7 @@ select {
   border: 1px solid var(--rim-light);
   border-radius: var(--radius-sm) var(--radius-lg) 0 0;
   background: var(--ui-tertiary);
-  box-shadow: 0 -1px 4px hsla(250, 35%, 30%, 0.1);
+  box-shadow: 0 -1px 4px hsla(247, 35%, 30%, 0.1);
   /* Tabs stand on the panel: their shadow stops at their bottom edge. */
   clip-path: inset(-8px -8px 0 -8px);
   color: var(--text-primary-transparent);
@@ -505,7 +505,7 @@ select {
   z-index: 80;
   display: grid;
   place-items: center;
-  background: hsla(205, 64%, 95%, 0.92);
+  background: hsla(202, 64%, 95%, 0.92);
 }
 
 .compiled-card {
@@ -847,7 +847,7 @@ select {
 .stage-panel.full-screen .stage-header {
   align-self: stretch;
   padding: 8px;
-  background: #ebecf7;
+  background: #eaecf5;
 }
 
 .stage-panel.full-screen .stage-size-toggle {
@@ -879,7 +879,7 @@ select {
   max-width: 90%;
   padding: 6px 12px;
   border-radius: 16px;
-  background: hsla(235, 16%, 40%, 0.85);
+  background: hsla(232, 15%, 38.8%, 0.85);
   color: var(--ui-white);
   font-size: 11.5px;
   transform: translateX(-50%);
@@ -1072,8 +1072,8 @@ select {
   margin: 0;
   padding: 8px 0;
   border-radius: var(--radius-md);
-  background: #201f36;
-  color: #e6e5f9;
+  background: #1f1f33;
+  color: #e5e5f7;
   font-family: var(--mono);
   font-size: 11px;
   line-height: 1.5;
@@ -1090,7 +1090,7 @@ select {
   width: 34px;
   margin-right: 10px;
   padding-right: 6px;
-  color: #6f7295;
+  color: #6e7295;
   text-align: right;
   user-select: none;
 }
@@ -1122,7 +1122,7 @@ select {
   flex: none;
   padding: 12px;
   border-bottom: 1px solid var(--line);
-  border-radius: 11px 11px 0 0;
+  border-radius: 10.5px 10.5px 0 0;
   background: var(--ui-white);
   color: var(--text-primary);
 }
@@ -1277,7 +1277,7 @@ select {
 }
 
 .dial-tick {
-  stroke: hsla(235, 16%, 40%, 0.35);
+  stroke: hsla(232, 15%, 40%, 0.35);
   stroke-width: 1.5;
   stroke-linecap: round;
 }
@@ -1296,6 +1296,10 @@ select {
 
 .dial-handle path {
   fill: var(--ui-white);
+}
+
+.dial-handle path.dial-arrow-back {
+  fill: hsla(247, 50%, 20%, 0.3);
 }
 
 .rotation-styles button {
@@ -1372,7 +1376,7 @@ select {
 .sprite-tile.compiled,
 .asset-tile.compiled {
   border-style: dashed;
-  border-color: hsla(250, 51%, 59%, 0.55);
+  border-color: hsla(247, 51%, 59%, 0.55);
 }
 
 .sprite-tile.compiled.selected,
@@ -1421,7 +1425,7 @@ select {
 .tile-info {
   flex: none;
   padding: 4px;
-  border-radius: 0 0 10px 10px;
+  border-radius: 0 0 9.5px 9.5px;
   font-size: 10px;
 }
 
@@ -1620,7 +1624,7 @@ body.reordering * {
   font-size: 13px;
   font-weight: normal;
   white-space: nowrap;
-  box-shadow: 0 0 8px hsla(250, 35%, 25%, 0.25);
+  box-shadow: 0 0 8px hsla(247, 35%, 25%, 0.25);
   transform: translateY(50%);
   pointer-events: none;
 }
@@ -1728,7 +1732,7 @@ body.reordering * {
 
 .stage-selector.selected {
   border-color: var(--looks-secondary);
-  border-radius: 15px 15px 0 0;
+  border-radius: 14.5px 14.5px 0 0;
   box-shadow: 0 0 0 4px var(--looks-transparent);
 }
 
@@ -1740,13 +1744,13 @@ body.reordering * {
   width: 100%;
   height: 42px;
   border-bottom: 1px solid var(--line);
-  border-radius: 11px 11px 0 0;
+  border-radius: 10.5px 10.5px 0 0;
   background: var(--ui-white);
   transition: background-color 0.25s ease;
 }
 
 .stage-selector.selected .stage-selector-header {
-  border-radius: 14px 14px 0 0;
+  border-radius: 13.5px 13.5px 0 0;
   background: var(--looks-secondary);
 }
 
@@ -1859,7 +1863,7 @@ body.reordering * {
   right: 0;
   bottom: 0;
   height: 100px;
-  background: linear-gradient(rgba(235, 236, 247, 0), rgba(235, 236, 247, 1));
+  background: linear-gradient(rgba(234, 236, 245, 0), rgba(234, 236, 245, 1));
   pointer-events: none;
 }
 
@@ -2066,7 +2070,7 @@ body.reordering * {
   flex: none;
   margin: 20px 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 7.75px;
   background: hsla(294, 50%, 60%, 0.15);
   overflow: hidden;
 }
@@ -2155,7 +2159,7 @@ body.reordering * {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  background: repeating-conic-gradient(#f0effb 0% 25%, #fff 0% 50%) 50% / 20px 20px;
+  background: repeating-conic-gradient(#f0eff9 0% 25%, #fff 0% 50%) 50% / 20px 20px;
 }
 
 /* ---------- Paint editor ---------- */
@@ -2200,7 +2204,7 @@ body.reordering * {
 .color-caret {
   width: 14px;
   background: no-repeat center / 8px 8px
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M0 2h8L4 7z' fill='%23595c7a'/%3E%3C/svg%3E");
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M1.46 2.88Q1.1 2.4 1.7 2.4L7.5 2.4Q8.1 2.4 7.74 2.88L5.02 6.44Q4.6 7 4.18 6.44Z' fill='%23585c78' opacity='.35'/%3E%3Cpath d='M0.86 2.28Q0.5 1.8 1.1 1.8L6.9 1.8Q7.5 1.8 7.14 2.28L4.42 5.84Q4 6.4 3.58 5.84Z' fill='%23585c78'/%3E%3C/svg%3E");
 }
 
 .color-popover {
@@ -2396,7 +2400,7 @@ body.reordering * {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  background: repeating-conic-gradient(#ebecfe 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+  background: repeating-conic-gradient(#eaecfc 0% 25%, #fff 0% 50%) 50% / 16px 16px;
 }
 
 .paint-canvas canvas {
@@ -2638,7 +2642,7 @@ body.reordering * {
   margin-bottom: 24px;
   padding: 0 16px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 7.75px;
   outline: none;
   color: var(--text-primary);
   font-size: 14px;
@@ -2847,7 +2851,7 @@ body.reordering * {
   height: 36px;
   padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 7.75px;
   outline: none;
   background: var(--ui-white);
   font-size: 13px;
@@ -2940,7 +2944,7 @@ details summary {
   border-radius: var(--radius-md);
   background: var(--extensions-light);
   box-shadow: 0 0 0 2px var(--extensions-light);
-  color: #56535a;
+  color: #565358;
   font-size: 13px;
   font-weight: bold;
   transform: translateX(-50%);
@@ -2962,7 +2966,7 @@ details summary {
   border: 1px solid var(--data-primary);
   border-radius: var(--radius-md);
   background: var(--warn-light);
-  color: #56535a;
+  color: #565358;
 }
 
 /* ---------- Words being built (src/blocks/assembly.ts): competent magic, never flashy ---------- */
@@ -3081,17 +3085,14 @@ details summary {
   }
 }
 
+/* The mark draws its own paper disc, in the note's colour. */
 .code-note-mark {
   flex: none;
   display: grid;
   place-items: center;
   width: 18px;
   height: 18px;
-  border-radius: 50%;
-  background: var(--note);
-  color: #fff;
-  font-size: 11px;
-  font-weight: bold;
+  color: var(--note);
 }
 
 .code-note-body {
@@ -3143,6 +3144,8 @@ details summary {
   position: absolute;
   top: 4px;
   right: 4px;
+  display: grid;
+  place-items: center;
   width: 20px;
   height: 20px;
   padding: 0;
