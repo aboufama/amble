@@ -3,6 +3,14 @@
   "name": "Iris Haze",
   "seed": 4138523179,
   "base": "5be6525adfcd13bd4e4e70af113ec8fd7108ec9e",
-  "summary": "The purple turns toward iris, greys get a faint lilac tint, and blocks soften slightly. Panels lose their outlines and float on a soft shadow; corners are rounder, with folder-style tabs and soft-square buttons.",
-  "swatches": ["#7462cc", "#2a9dee", "#e7f4fd", "#595c7a", "#3d99f9", "#f7ae08", "#f89d20"]
+  "summary": "Now the main site. The purple turns toward iris, greys get a faint lilac tint, and blocks soften slightly. Panels lose their outlines and float on a soft shadow; corners are rounder, with folder-style tabs and soft-square buttons.",
+  "swatches": [
+    "#7462cc",
+    "#2a9dee",
+    "#e7f4fd",
+    "#595c7a",
+    "#3d99f9",
+    "#f7ae08",
+    "#f89d20"
+  ]
 }

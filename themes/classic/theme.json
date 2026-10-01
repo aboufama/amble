@@ -3,6 +3,14 @@
   "name": "Scratch classic",
   "seed": null,
   "base": "5be6525adfcd13bd4e4e70af113ec8fd7108ec9e",
-  "summary": "The editor as it is on the main site today: Scratch's own colours and shapes, for comparison.",
-  "swatches": ["#855cd6", "#4c97ff", "#e5f0ff", "#575e75", "#4c97ff", "#ffbf00", "#ffab19"]
+  "summary": "Scratch's own colours and shapes, as Amble looked before Iris Haze, for comparison.",
+  "swatches": [
+    "#855cd6",
+    "#4c97ff",
+    "#e5f0ff",
+    "#575e75",
+    "#4c97ff",
+    "#ffbf00",
+    "#ffab19"
+  ]
 }
