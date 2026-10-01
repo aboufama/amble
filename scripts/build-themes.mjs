@@ -1,10 +1,10 @@
 // Builds every theme in themes/<slug>/ as its own copy of the app at dist/themes/<slug>/, and writes
 // dist/themes/index.html, a page that links them all. Run it after `npm run build`.
 //
-// A theme is the source files it changes, mirrored under themes/<slug>/files/ (every theme carries its own
-// version of every file any theme changes, so no theme picks up another's edits), plus theme.json: its
-// name, the seed it grew from, a line about it and a few swatches. The app's base path is './', so each
-// copy works from its own folder.
+// A theme is its exact edits, themes/<slug>/theme.patch, against the commit it was designed on (`base` in
+// theme.json, so later changes to the app never mix into it), plus theme.json: its name, the seed it grew
+// from, a line about it and a few swatches. A theme with no patch is the app as it was at `base`. The
+// app's base path is './', so each copy works from its own folder.
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -29,9 +29,10 @@ const themes = slugs
 for (const t of themes) {
   const tmp = mkdtempSync(join(tmpdir(), `amble-theme-${t.slug}-`));
   rmSync(tmp, { recursive: true, force: true });
-  execFileSync('git', ['worktree', 'add', '--detach', '--quiet', tmp, 'HEAD'], { cwd: root, stdio: 'inherit' });
+  execFileSync('git', ['worktree', 'add', '--detach', '--quiet', tmp, t.base ?? 'HEAD'], { cwd: root, stdio: 'inherit' });
   try {
-    cpSync(join(themesDir, t.slug, 'files'), tmp, { recursive: true });
+    const patch = join(themesDir, t.slug, 'theme.patch');
+    if (existsSync(patch)) execFileSync('git', ['apply', '--whitespace=nowarn', patch], { cwd: tmp, stdio: 'inherit' });
     symlinkSync(join(root, 'node_modules'), join(tmp, 'node_modules'), 'dir');
     execFileSync('npx', ['vite', 'build', '--logLevel', 'warn', '--outDir', join(out, t.slug), '--emptyOutDir'], { cwd: tmp, stdio: 'inherit' });
     const preview = join(themesDir, t.slug, 'preview.webp');
@@ -73,7 +74,7 @@ writeFileSync(
   main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
   .lede { margin: 0 0 20px; max-width: 70ch; }
   ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); }
-  .theme { background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: grid; }
+  .theme { background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: grid; align-content: start; }
   .shot img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--line); }
   .about { padding: 12px 16px 16px; display: grid; gap: 6px; }
   .about h2 { margin: 0; font-size: 18px; }

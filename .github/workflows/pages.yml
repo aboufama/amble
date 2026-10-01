@@ -17,7 +17,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # The whole history: each theme in themes/ is built from the commit it was designed on.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -29,6 +32,9 @@ jobs:
       - run: npm test
 
       - run: npm run build
+
+      # Each theme as its own working copy of the app at /themes/<name>/, and a page linking them.
+      - run: node scripts/build-themes.mjs
 
       - name: Publish dist/ to the gh-pages branch
         env:
