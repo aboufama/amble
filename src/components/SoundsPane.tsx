@@ -16,6 +16,7 @@ import { ActionMenu, AssetTile, ContextMenu } from './SpritePane';
 import {
   AddSoundIcon,
   CopyToNewIcon,
+  DiceIcon,
   FadeInIcon,
   FadeOutIcon,
   FasterIcon,
@@ -28,12 +29,10 @@ import {
   RedoIcon,
   ReverseIcon,
   RobotIcon,
-  SearchIcon,
   SlowerIcon,
   SofterIcon,
   SoundIcon,
   StopSquareIcon,
-  SurpriseIcon,
   TrashIcon,
   UndoIcon,
   UploadIcon,
@@ -434,11 +433,6 @@ export function SoundsPane() {
       <div className="asset-selector">
         <div className="asset-list" ref={reorder.containerRef}>
           {reorder.order(own.length).map((i, shown) => tile(own[i], i, true, shown))}
-          {compiled.length > 0 && (
-            <div className="compiled-heading">
-              Made by the compiler
-            </div>
-          )}
           {compiled.map((s) => tile(s, undefined, false))}
         </div>
         {target && (
@@ -449,9 +443,8 @@ export function SoundsPane() {
             onClick={() => setLibrary(true)}
             items={[
               { label: 'Upload Sound', icon: <UploadIcon size={20} strokeWidth={2.4} />, onClick: () => void upload() },
-              { label: 'Surprise', icon: <SurpriseIcon size={20} />, onClick: () => addPreset(presetNames[Math.floor(Math.random() * presetNames.length)]) },
+              { label: 'Surprise', icon: <DiceIcon size={20} strokeWidth={2.4} />, onClick: () => addPreset(presetNames[Math.floor(Math.random() * presetNames.length)]) },
               { label: 'Record', icon: <MicIcon size={20} strokeWidth={2.4} />, onClick: () => setRecording(true) },
-              { label: 'Choose a Sound', icon: <SearchIcon size={20} />, onClick: () => setLibrary(true) },
             ]}
           />
         )}
@@ -481,7 +474,7 @@ export function SoundsPane() {
         )}
       </div>
       <div className="asset-detail sound-editor">
-        {!sound && <div className="pane-empty">No sounds yet. Choose one, record one, or upload one.</div>}
+        {!sound && <div className="pane-empty">No sounds yet.{target ? ' Choose one, record one, or upload one.' : ''}</div>}
         {sound && (
           <>
             <div className="editor-row">
@@ -529,7 +522,7 @@ export function SoundsPane() {
                   <button className="btn primary small" onClick={() => keepCompiledAsset(sound.id)} title="Move it into your own sounds">
                     <KeepIcon size={14} /> Keep
                   </button>
-                  <button className="btn small" onClick={() => deleteCompiledAsset(sound.id)} title="Delete (the next compile may make a new one)">
+                  <button className="btn small" onClick={() => deleteCompiledAsset(sound.id)} title="Delete (a new one is made if your words still need it)">
                     <TrashIcon size={14} />
                   </button>
                 </>
@@ -552,11 +545,7 @@ export function SoundsPane() {
                 })}
               </div>
             </div>
-            {isCompiled && (
-              <p className="compiled-request">
-                <b>Made by the compiler:</b> {(sound as CompiledAsset).request}
-              </p>
-            )}
+            {isCompiled && target && <p className="compiled-hint muted small">Added so your words work. Keep it to change it.</p>}
           </>
         )}
       </div>

@@ -290,10 +290,17 @@ export const SearchIcon = (p: P) => (
     <path d="M15 15l5 5" />
   </svg>
 );
-export const SurpriseIcon = (p: P) => (
-  <svg {...base(p)} stroke="none">
-    <path d="M9 3l1.6 4.6L15 9l-4.4 1.5L9 15l-1.6-4.5L3 9l4.4-1.4z" fill="currentColor" />
-    <path d="M17 12l1 2.8 2.8 1-2.8 1-1 2.8-1-2.8-2.8-1 2.8-1z" fill="currentColor" />
+/** A die: Surprise picks one at random. */
+export const DiceIcon = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+    <g fill="currentColor" stroke="none">
+      <circle cx="8.6" cy="8.6" r="1.6" />
+      <circle cx="15.4" cy="8.6" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="8.6" cy="15.4" r="1.6" />
+      <circle cx="15.4" cy="15.4" r="1.6" />
+    </g>
   </svg>
 );
 /** A speaker with sound waves: sound tiles and the sound library. */
