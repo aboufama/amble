@@ -153,7 +153,7 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
     const revised = compiled.revised ?? [];
     if (revised.length) {
       const n = revised.length;
-      useStore.getState().notify(`To fit the change, the compiler also rewrote ${n} block${n > 1 ? 's' : ''} written before: ${revised.slice(0, 3).join('; ')}${n > 3 ? '…' : ''}`);
+      useStore.getState().notify(`To fit your change, ${n} other block${n > 1 ? 's now work' : ' now works'} a little differently: ${revised.slice(0, 3).join('; ')}${n > 3 ? '…' : ''}`);
     }
     // A quiet build only shows the new version on the stage, unless the flag was pressed meanwhile.
     if (playWhenBuilt) runGame();
