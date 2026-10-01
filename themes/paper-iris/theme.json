@@ -1,0 +1,16 @@
+{
+  "order": 1.4,
+  "name": "Paper Iris",
+  "seed": 460228954,
+  "base": "4d4030b8c31172e194c0a675313b9d498d104d13",
+  "summary": "Iris Haze with Amble's own icons cut from paper: flat pieces of card with no outlines, each on a back card a little down and to the right, with the details cut out. The green flag is a waving banner with a star, stop is a round button with two pause bars, and the toolbox's plain circles become coloured squircles, each with its own white glyph. The purple turns a hair, the greys take a little less lilac, and corners get a touch tighter.",
+  "swatches": [
+    "#6f62cc",
+    "#149deb",
+    "#e7f5fd",
+    "#585c78",
+    "#ffc23d",
+    "#ff7a6b",
+    "#4cbf56"
+  ]
+}
