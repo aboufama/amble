@@ -6,10 +6,10 @@ import { pickFile } from '../project/importers';
 import { EXAMPLES, blankProject } from '../project/examples';
 import { blankBackdrop } from '../project/defaults';
 import type { Project, WorldMode } from '../project/types';
-import { CHATGPT_MODEL_NAME } from '../compiler/openai';
 import { compile, signInWithChatGpt } from '../actions';
 import { confirmUser } from '../prompt';
 import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
+import { DEV_TOOLS } from './ProblemsDialog';
 
 /** Converts a project between 2D and 3D (positions are rescaled; the blank white backdrop is dropped in 3D). */
 export function switchMode(p: Project, mode: WorldMode): void {
@@ -97,7 +97,7 @@ export function MenuBar() {
           <AmbleMark size={28} />
           <span className="logo">amble</span>
         </div>
-        <button className="menubar-item" onClick={() => setDialog('settings')} title="Settings (ChatGPT sign-in, API key, models)">
+        <button className="menubar-item" onClick={() => setDialog('settings')} title="Settings (sign-in, API key)">
           <SettingsIcon size={20} />
           <span>Settings</span>
         </button>
@@ -174,25 +174,27 @@ export function MenuBar() {
                   </button>
                 </div>
                 <div className="menubar-menu-section">
-                  <button
-                    role="menuitem"
-                    disabled={!compiledCount}
-                    title={compiledCount ? 'The JavaScript your blocks compiled to' : 'Compile the game first'}
-                    onClick={act(() => {
-                      const s = useStore.getState();
-                      s.setOutputTab('code');
-                      s.setProblemsOpen(true);
-                    })}
-                  >
-                    Show compiled code
-                  </button>
+                  {DEV_TOOLS && (
+                    <button
+                      role="menuitem"
+                      disabled={!compiledCount}
+                      title={compiledCount ? 'The JavaScript your blocks compiled to' : 'Compile the game first'}
+                      onClick={act(() => {
+                        const s = useStore.getState();
+                        s.setOutputTab('code');
+                        s.setProblemsOpen(true);
+                      })}
+                    >
+                      Show compiled code
+                    </button>
+                  )}
                   <button
                     role="menuitem"
                     disabled={compiling}
-                    title={`Every block in your own words is written again and the compiled art is made again, so it can come out different${lastModel ? ` (last compiled with ${lastModel})` : ''}`}
+                    title={`Every block in your own words is built again and its art is made again, so it can come out different${lastModel ? ` (last built with ${lastModel})` : ''}`}
                     onClick={act(() => void compile(undefined, { fresh: true }))}
                   >
-                    Compile everything again
+                    Build everything again
                   </button>
                 </div>
               </div>
@@ -229,18 +231,19 @@ export function MenuBar() {
         </div>
       </div>
       <div className="menubar-account">
-        {codex &&
+        {/* Signing in works when Amble runs on your computer and Codex is installed there. */}
+        {codex?.installed &&
           (signedIn ? (
-            <button className="menu-btn account" onClick={() => setDialog('settings')} title={`Signed in with ChatGPT: compiling uses ${CHATGPT_MODEL_NAME} on your ChatGPT plan`}>
+            <button className="menu-btn account" onClick={() => setDialog('settings')} title="Signed in: blocks written in words get built">
               <span className="account-dot" aria-hidden="true" /> Signed in
             </button>
           ) : (
             <button
               className="menu-btn sign-in"
               onClick={() => (codex.login.pending ? setDialog('settings') : void signInWithChatGpt())}
-              title={`Compile with your ChatGPT plan (${CHATGPT_MODEL_NAME}) instead of an API key`}
+              title="Sign in to build blocks written in words"
             >
-              {codex.login.pending ? 'Signing in…' : 'Sign in with ChatGPT'}
+              {codex.login.pending ? 'Signing in…' : 'Sign in'}
             </button>
           ))}
       </div>

@@ -174,10 +174,10 @@ test('words are compiled once, in one request, and reused after', async ({ page 
   await page.waitForTimeout(500);
   expect(calls).toEqual(['amble_pieces', 'svg_art']);
 
-  // Edit > Compile everything again starts over: every block in words is written again, and the art made again.
+  // Edit > Build everything again starts over: every block in words is built again, and the art made again.
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  await expect(page.getByRole('menuitem', { name: 'Compile everything again' })).toHaveAttribute('title', /written again.*last compiled with gpt-5/);
-  await page.getByRole('menuitem', { name: 'Compile everything again' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Build everything again' })).toHaveAttribute('title', /built again.*last built with gpt-5/);
+  await page.getByRole('menuitem', { name: 'Build everything again' }).click();
   await expect.poll(() => calls.length, { timeout: 30_000 }).toBe(4);
   expect(calls).toEqual(['amble_pieces', 'svg_art', 'amble_pieces', 'svg_art']);
   // The new game plays (in a new player frame).
@@ -321,12 +321,16 @@ test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', 
   });
   await page.goto('/');
 
-  await page.getByRole('button', { name: 'Sign in with ChatGPT' }).click();
-  await expect(page.getByText('Finish signing in to ChatGPT in your browser')).toBeVisible();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByText('Continue in your browser to finish signing in')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open the sign-in page' })).toHaveAttribute('href', /auth\.openai\.com/);
   codex.finishSignIn();
   await expect(page.locator('.menu-btn.account')).toContainText('Signed in');
-  await expect(page.locator('.account-card')).toContainText('GPT-6 Astra Light');
+  // The account says so in plain words; the model is named only under Advanced.
+  await expect(page.locator('.account-card')).toContainText("You're signed in");
+  await expect(page.locator('.account-card')).not.toContainText('GPT');
+  await page.locator('.settings summary', { hasText: 'Advanced' }).click();
+  await expect(page.locator('.advanced-fields')).toContainText('GPT-6 Astra Light');
   await page.keyboard.press('Escape');
 
   await openExample(page, 'Star Catcher (2D)');
@@ -339,14 +343,14 @@ test('signs in with ChatGPT and compiles with GPT-6 Astra Light through Codex', 
   ]);
   expect(direct).toEqual([]);
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  await expect(page.getByRole('menuitem', { name: 'Compile everything again' })).toHaveAttribute('title', /last compiled with GPT-6 Astra Light/);
+  await expect(page.getByRole('menuitem', { name: 'Build everything again' })).toHaveAttribute('title', /last built with GPT-6 Astra Light/);
   await page.keyboard.press('Escape');
 
-  // Signing out goes back to the API key settings.
+  // Signing out offers to sign in again (an API key goes under Advanced).
   await page.locator('.menu-btn.account').click();
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page.getByRole('heading', { name: 'OpenAI API key' })).toBeVisible();
-  await expect(page.locator('.menu-btn.sign-in')).toHaveText('Sign in with ChatGPT');
+  await expect(page.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(page.locator('.menu-btn.sign-in')).toHaveText('Sign in');
 });
 
 test('3D world mode renders and runs', async ({ page }) => {

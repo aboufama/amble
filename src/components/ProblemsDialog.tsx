@@ -4,6 +4,9 @@ import { useStore, type OutputTab } from '../store';
 import { Modal } from './Dialogs';
 import { CodeIcon, CopyIcon, WrenchIcon } from './icons';
 
+/** Developer views (the console and the compiled code): on the dev server, or with ?dev in the URL. */
+export const DEV_TOOLS = import.meta.env.DEV || new URLSearchParams(window.location.search).has('dev');
+
 const TABS: Array<{ id: Exclude<OutputTab, 'game'>; label: string }> = [
   { id: 'problems', label: 'Problems' },
   { id: 'console', label: 'Console' },
@@ -19,8 +22,8 @@ export function useProblemCount(): { count: number; errors: number } {
 
 /**
  * What the compiler and the running game reported, in a Scratch-style dialog opened from
- * the warning button next to Compile: the problems (with "Fix"), the console, and
- * the compiled code (read-only).
+ * the warning button next to the green flag: the problems (with "Fix") and, for
+ * developers, the console and the compiled code (read-only).
  */
 export function ProblemsDialog() {
   const open = useStore((s) => s.problemsOpen);
@@ -33,20 +36,23 @@ export function ProblemsDialog() {
   const compiling = useStore((s) => s.compile.status === 'running');
   const { count } = useProblemCount();
   if (!open) return null;
-  const tab = stored === 'game' ? 'problems' : stored;
+  // Kids only see the problems: the other tabs are for developers.
+  const tab = !DEV_TOOLS || stored === 'game' ? 'problems' : stored;
   const title = tab === 'code' ? 'Compiled Code' : tab === 'console' ? 'Console' : 'Problems';
 
   return (
     <Modal title={title} onClose={() => setOpen(false)} wide className="problems-modal">
-      <div className="info-tabs" role="tablist" aria-label="Game info">
-        {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={`info-tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
-            {t.label}
-            {t.id === 'problems' && count > 0 && <span className={`count ${errors.length ? 'bad' : ''}`}>{count}</span>}
-            {t.id === 'console' && logs.length > 0 && <span className="count">{logs.length}</span>}
-          </button>
-        ))}
-      </div>
+      {DEV_TOOLS && (
+        <div className="info-tabs" role="tablist" aria-label="Game info">
+          {TABS.map((t) => (
+            <button key={t.id} role="tab" aria-selected={tab === t.id} className={`info-tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+              {t.label}
+              {t.id === 'problems' && count > 0 && <span className={`count ${errors.length ? 'bad' : ''}`}>{count}</span>}
+              {t.id === 'console' && logs.length > 0 && <span className="count">{logs.length}</span>}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="info-body">
         {tab === 'problems' && (
           <div className="problems">
