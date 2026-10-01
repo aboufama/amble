@@ -4,9 +4,11 @@
 // A theme is its exact edits, themes/<slug>/theme.patch, against the commit it was designed on (`base` in
 // theme.json, so later changes to the app never mix into it), plus theme.json: its name, the seed it grew
 // from, a line about it and a few swatches. A theme with no patch is the app as it was at `base`. The
-// app's base path is './', so each copy works from its own folder.
+// app's base path is './', so each copy works from its own folder. A theme designed on a commit with other
+// dependencies (say, an older game engine) gets them installed for it, once per distinct lockfile.
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { copyFileSync, cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +28,22 @@ const themes = slugs
   .map((slug) => ({ slug, ...JSON.parse(readFileSync(join(themesDir, slug, 'theme.json'), 'utf8')) }))
   .sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
 
+/** node_modules for a checkout: this repo's own when the lockfile matches, else a fresh install of its lockfile. */
+const installs = new Map();
+function nodeModulesFor(checkout) {
+  const lock = readFileSync(join(checkout, 'package-lock.json'), 'utf8');
+  if (lock === readFileSync(join(root, 'package-lock.json'), 'utf8')) return join(root, 'node_modules');
+  const key = createHash('sha1').update(lock).digest('hex');
+  if (!installs.has(key)) {
+    const dir = mkdtempSync(join(tmpdir(), 'amble-theme-deps-'));
+    copyFileSync(join(checkout, 'package.json'), join(dir, 'package.json'));
+    copyFileSync(join(checkout, 'package-lock.json'), join(dir, 'package-lock.json'));
+    execFileSync('npm', ['ci', '--no-audit', '--no-fund'], { cwd: dir, stdio: 'inherit' });
+    installs.set(key, join(dir, 'node_modules'));
+  }
+  return installs.get(key);
+}
+
 for (const t of themes) {
   const tmp = mkdtempSync(join(tmpdir(), `amble-theme-${t.slug}-`));
   rmSync(tmp, { recursive: true, force: true });
@@ -33,7 +51,7 @@ for (const t of themes) {
   try {
     const patch = join(themesDir, t.slug, 'theme.patch');
     if (existsSync(patch)) execFileSync('git', ['apply', '--whitespace=nowarn', patch], { cwd: tmp, stdio: 'inherit' });
-    symlinkSync(join(root, 'node_modules'), join(tmp, 'node_modules'), 'dir');
+    symlinkSync(nodeModulesFor(tmp), join(tmp, 'node_modules'), 'dir');
     execFileSync('npx', ['vite', 'build', '--logLevel', 'warn', '--outDir', join(out, t.slug), '--emptyOutDir'], { cwd: tmp, stdio: 'inherit' });
     const preview = join(themesDir, t.slug, 'preview.webp');
     if (existsSync(preview)) cpSync(preview, join(out, t.slug, 'preview.webp'));
@@ -42,6 +60,8 @@ for (const t of themes) {
     execFileSync('git', ['worktree', 'remove', '--force', tmp], { cwd: root, stdio: 'inherit' });
   }
 }
+
+for (const modules of installs.values()) rmSync(join(modules, '..'), { recursive: true, force: true });
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const card = (t) => `

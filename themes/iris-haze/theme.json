@@ -3,7 +3,7 @@
   "name": "Iris Haze",
   "seed": 4138523179,
   "base": "5be6525adfcd13bd4e4e70af113ec8fd7108ec9e",
-  "summary": "The main site's look. This copy still has the Compile button, from before the green flag built new blocks itself. The purple turns toward iris, greys get a faint lilac tint, and blocks soften slightly. Panels lose their outlines and float on a soft shadow; corners are rounder, with folder-style tabs and soft-square buttons.",
+  "summary": "The main site's look, in a copy from before the green flag built new blocks itself and games moved to Phaser. The purple turns toward iris, greys get a faint lilac tint, and blocks soften slightly. Panels lose their outlines and float on a soft shadow; corners are rounder, with folder-style tabs and soft-square buttons.",
   "swatches": [
     "#7462cc",
     "#2a9dee",
