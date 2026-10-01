@@ -188,7 +188,9 @@ test('words are compiled once, in one request, and reused after', async ({ page 
   await page.locator('.sprite-tile.compiled', { hasText: 'Moon' }).click();
   await page.getByRole('tab', { name: /Costumes/ }).click();
   await expect(page.locator('.asset-tile.compiled', { hasText: 'moon' })).toBeVisible();
-  await expect(page.locator('.compiled-preview')).toContainText('a smiling crescent moon');
+  await expect(page.locator('.compiled-preview img')).toHaveAttribute('alt', 'moon');
+  // What the art was asked for stays behind the scenes.
+  await expect(page.locator('.asset-panel')).not.toContainText('a smiling crescent moon');
 
   // Keep it: it becomes one of the author's sprites.
   await page.getByRole('tab', { name: /Code/ }).first().click();

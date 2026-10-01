@@ -12,7 +12,7 @@ import { ActionMenu, AssetTile, BackdropLibrary, ContextMenu, blankCostume, cost
 import { Library } from './Library';
 import { confirmDelete } from '../prompt';
 import { moveItem, useReorder } from './useReorder';
-import { AddCharacterIcon, AddPictureIcon, BrushIcon, CubeIcon, KeepIcon, SearchIcon, SurpriseIcon, TrashIcon, UploadIcon } from './icons';
+import { AddCharacterIcon, AddPictureIcon, BrushIcon, CubeIcon, DiceIcon, KeepIcon, TrashIcon, UploadIcon } from './icons';
 
 function sizeLabel(c: CostumeAsset | CompiledAsset): string {
   if (c.kind === 'image') return `${Math.round(c.width / (c.resolution || 1))}×${Math.round(c.height / (c.resolution || 1))}`;
@@ -155,11 +155,6 @@ export function CostumesPane() {
               />
             );
           })}
-          {compiled.length > 0 && (
-            <div className="compiled-heading">
-              Made by the compiler
-            </div>
-          )}
           {compiled.map((c) => (
             <AssetTile
               key={c.id}
@@ -182,9 +177,8 @@ export function CostumesPane() {
             items={[
               { label: `Upload ${Noun}`, icon: <UploadIcon size={20} strokeWidth={2.4} />, onClick: () => void upload() },
               ...(project.mode === '3d' && !isStage ? [{ label: 'Upload 3D Model', icon: <CubeIcon size={20} strokeWidth={2.2} />, onClick: () => void uploadModel() }] : []),
-              { label: 'Surprise', icon: <SurpriseIcon size={20} />, onClick: surprise },
+              { label: 'Surprise', icon: <DiceIcon size={20} strokeWidth={2.4} />, onClick: surprise },
               { label: 'Paint', icon: <BrushIcon size={20} strokeWidth={2.4} />, onClick: paint },
-              { label: `Choose a ${Noun}`, icon: <SearchIcon size={20} />, onClick: () => setLibrary(true) },
             ]}
           />
         )}
@@ -292,7 +286,7 @@ export function CostumesPane() {
                     <button className="btn primary small" onClick={() => keepCompiledAsset(current.id)} title="Move it into your own costumes">
                       <KeepIcon size={14} /> Keep
                     </button>
-                    <button className="btn small" onClick={() => deleteCompiledAsset(current.id)} title="Delete (the next compile may make a new one)">
+                    <button className="btn small" onClick={() => deleteCompiledAsset(current.id)} title="Delete (a new one is made if your words still need it)">
                       <TrashIcon size={14} />
                     </button>
                   </>
@@ -307,10 +301,7 @@ export function CostumesPane() {
                       <CubeIcon size={64} />
                     </div>
                   )}
-                  <p>
-                    <b>Made by the compiler:</b> {(current as CompiledAsset).request}
-                  </p>
-                  <p className="muted small">Keep it to make it yours (you can then edit it). Compiled assets are reused by later compiles.</p>
+                  {target && <p className="muted small">Added so your words work. Keep it to change it.</p>}
                 </div>
               ) : (
                 <div className="compiled-preview">

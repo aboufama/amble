@@ -1234,57 +1234,24 @@ select {
   width: 64px;
 }
 
-.info-about {
-  gap: 0;
+/* The stage has no sprite fields: a short summary takes their place, just as tall so the sprite list stays put. */
+.stage-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 101px;
 }
 
-.info-input.about {
-  flex: 1;
-  font-weight: normal;
+.stage-info-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
 }
 
-.info-input.about::placeholder,
-.info-input.notes::placeholder {
-  color: var(--text-primary-transparent);
-}
-
-.info-notes {
-  align-items: flex-start;
-}
-
-.info-notes .info-label {
-  margin-top: 9px;
-}
-
-.info-input.notes {
-  flex: 1;
-  height: auto;
-  min-height: 44px;
-  padding: 7px 12px;
-  border-radius: 24px;
-  font-weight: normal;
-  line-height: 1.4;
-  resize: none;
-}
-
-/* The stage has no sprite fields: Scratch shows them empty and disabled. */
-.info-input:disabled {
-  border-color: var(--line);
-  background: rgba(241, 238, 245, 0.3);
-  box-shadow: none;
-  cursor: default;
-}
-
-.info-input:disabled::placeholder {
-  color: #76737a;
-}
-
-.show-toggle button:disabled {
-  cursor: default;
-}
-
-.show-toggle button:disabled svg {
-  filter: grayscale(100%) opacity(0.5);
+.stage-info-note {
+  margin: 6px 0 0;
+  font-size: 11.5px;
 }
 
 .show-toggle {
@@ -1373,7 +1340,9 @@ select {
 .compiled-note {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
   font-size: 11.5px;
 }
 
@@ -1594,6 +1563,7 @@ body.reordering * {
 
 .sprite-selector > .action-menu {
   right: 16px;
+  transition: opacity 0.2s;
 }
 
 .stage-selector > .action-menu,
@@ -1698,6 +1668,29 @@ body.reordering * {
   border-radius: 3px;
   background: var(--extensions-primary);
   transform: rotate(45deg);
+}
+
+/* In the Costumes and Sounds tabs the add button is at the window's left edge: labels open to the right. */
+.asset-selector > .action-menu .action-tip {
+  right: auto;
+  left: calc(100% + 10px);
+}
+
+.asset-selector > .action-menu .action-tip::after {
+  right: auto;
+  left: -5px;
+  border: none;
+  border-bottom: 1px solid hsla(0, 0%, 0%, 0.1);
+  border-left: 1px solid hsla(0, 0%, 0%, 0.1);
+}
+
+/*
+ * The stage's add button has no free side for its own label (the window edge on the right, its
+ * menu above), so the label opens over the sprite pane and the add-sprite button steps aside.
+ */
+.target-pane:has(.add-backdrop .action-tip.main) .add-sprite {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Right-click menu on sprites, costumes and sounds. */
@@ -1851,7 +1844,7 @@ body.reordering * {
 }
 
 /* Scratch shows only the name and x, y next to a small stage. */
-.gui-body.stage-small .sprite-info .info-row:not(:first-child):not(.info-notes),
+.gui-body.stage-small .sprite-info .info-row:not(:first-child),
 .gui-body.stage-small .sprite-info .info-icon,
 .gui-body.stage-small .sprite-info .info-row:first-child > .info-group:first-child .info-label {
   display: none;
@@ -1859,6 +1852,10 @@ body.reordering * {
 
 .gui-body.stage-small .sprite-info .info-row:first-child > .info-group:first-child {
   flex-basis: 100%;
+}
+
+.gui-body.stage-small .compiled-note {
+  flex-wrap: wrap;
 }
 
 /* ---------- Costumes and Sounds tabs (Scratch's asset panel) ---------- */
@@ -1930,19 +1927,6 @@ body.reordering * {
 
 .asset-tile .tile-image {
   padding-top: 6px;
-}
-
-.compiled-heading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  margin: 8px 0 0;
-  color: var(--looks-secondary);
-  font-size: 10px;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .sound-tile-icon {
@@ -2182,9 +2166,8 @@ body.reordering * {
   margin-left: 6px;
 }
 
-.compiled-request {
+.compiled-hint {
   margin: 12px 0 0;
-  font-size: 12px;
 }
 
 .compiled-preview {
@@ -2492,12 +2475,6 @@ body.reordering * {
   border: 2px solid var(--looks-transparent);
   border-radius: 50%;
   pointer-events: none;
-}
-
-.paint-note {
-  margin: 8px 0 0;
-  color: var(--text-primary-transparent);
-  font-size: 11.5px;
 }
 
 /* ---------- Library (Choose a Sound...) ---------- */

@@ -97,7 +97,7 @@ function ColorPopover({ color, onChange, onPick, onClose }: { color: string; onC
     { label: 'Brightness', value: v, track: `linear-gradient(to right, #000, ${hsvToHex(h, sat, 100)})` },
   ];
   return (
-    <div className="color-popover" ref={ref} role="dialog" aria-label="Fill color">
+    <div className="color-popover" ref={ref} role="dialog" aria-label="Color">
       {sliders.map((sl, i) => (
         <label key={sl.label} className="color-slider-row">
           <span className="color-slider-label">
@@ -429,8 +429,8 @@ export function PaintEditor({ asset, isBackdrop, nameField, onChange }: PaintEdi
       </div>
       <div className="editor-row paint-mode-row">
         <div className="info-group color-field">
-          <span className="info-label">Fill</span>
-          <button className="color-button" aria-label="Fill color" aria-expanded={picker} onClick={() => setPicker((o) => !o)}>
+          <span className="info-label">Color</span>
+          <button className="color-button" aria-label="Color" aria-expanded={picker} onClick={() => setPicker((o) => !o)}>
             <span className="color-swatch" style={{ background: color }} />
             <span className="color-caret" aria-hidden="true" />
           </button>
@@ -492,7 +492,6 @@ export function PaintEditor({ asset, isBackdrop, nameField, onChange }: PaintEdi
             />
             {!isBackdrop && <div className="center-mark" title="Rotation center" />}
           </div>
-          {asset.mime === 'image/svg+xml' && asset.width > 2 && <p className="paint-note">Vector costume: painting on it turns it into a bitmap.</p>}
         </div>
       </div>
     </div>

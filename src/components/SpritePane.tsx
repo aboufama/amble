@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { findCompiledSprite, findTarget, useStore } from '../store';
-import { renameSprite } from '../actions';
+import { keepCompiledSprite, renameSprite } from '../actions';
 import { blankBackdrop, newSprite } from '../project/defaults';
 import { BACKDROP_LIBRARY, SPRITE_LIBRARY, type LibrarySprite } from '../project/library';
 import { importImageFile, importModelFile, pickFile } from '../project/importers';
@@ -18,11 +18,11 @@ import {
   DontRotateIcon,
   BrushIcon,
   CubeIcon,
+  DiceIcon,
   EyeIcon,
   EyeOffIcon,
   HorizontalArrowsIcon,
-  SearchIcon,
-  SurpriseIcon,
+  KeepIcon,
   TrashIcon,
   UploadIcon,
   VerticalArrowsIcon,
@@ -111,7 +111,7 @@ export function ActionMenu({ title, icon, onClick, items, className = '' }: { ti
       </div>
       {button(title, icon, 'action-main-button', 22, onClick)}
       {tip && (open || tip.y === 22) && (
-        <span className="action-tip" role="tooltip" style={{ bottom: tip.y }}>
+        <span className={`action-tip ${tip.y === 22 ? 'main' : ''}`} role="tooltip" style={{ bottom: tip.y }}>
           {tip.label}
         </span>
       )}
@@ -445,76 +445,23 @@ function SpriteInfo({ sprite }: { sprite: SpriteTarget }) {
           <DirectionField sprite={sprite} set={set} />
         )}
       </div>
-      <label className="info-row info-about">
-        <span className="info-label secondary">About</span>
-        <input
-          className="info-input about"
-          value={sprite.description}
-          placeholder="What is this sprite? (optional)"
-          onChange={(e) => set((t) => (t.description = e.target.value))}
-        />
-      </label>
     </div>
   );
 }
 
 /**
- * With the stage selected, Scratch keeps the sprite fields in place but disabled. Amble's
- * last row holds the game's description instead of a sprite's.
+ * With the stage selected, Scratch keeps the sprite fields in place, empty and disabled.
+ * Amble says what the stage holds instead.
  */
 function StageInfo() {
-  const notes = useStore((s) => s.project.notes);
-  const update = useStore((s) => s.update);
-  const blank = (label: string, placeholder = '', wide = false) => (
-    <label className="info-group">
-      <span className={`info-label ${['Size', 'Direction'].includes(label) ? 'secondary' : ''}`}>{label}</span>
-      <input className={`info-input ${label === 'Sprite' ? 'name' : 'small'} ${wide ? 'wide' : ''}`} placeholder={placeholder} aria-label={label} disabled />
-    </label>
-  );
+  const backdrops = useStore((s) => s.project.stage.costumes.length);
   return (
     <div className="sprite-info stage-info">
-      <div className="info-row info-disabled">
-        {blank('Sprite', 'Name')}
-        <div className="info-group">
-          <span className="info-icon">
-            <HorizontalArrowsIcon size={18} />
-          </span>
-          <span className="info-label">x</span>
-          <input className="info-input small" placeholder="x" aria-label="x" disabled />
-        </div>
-        <div className="info-group">
-          <span className="info-icon">
-            <VerticalArrowsIcon size={18} />
-          </span>
-          <span className="info-label">y</span>
-          <input className="info-input small" placeholder="y" aria-label="y" disabled />
-        </div>
+      <div className="stage-info-title">
+        <b>Stage</b>
+        <span className="muted">{backdrops === 0 ? 'No backdrops yet' : `${backdrops} ${backdrops === 1 ? 'backdrop' : 'backdrops'}`}</span>
       </div>
-      <div className="info-row info-disabled">
-        <div className="info-group">
-          <span className="info-label secondary">Show</span>
-          <div className="show-toggle" role="group" aria-label="Show">
-            <button disabled aria-label="Show">
-              <EyeIcon size={18} />
-            </button>
-            <button disabled aria-label="Hide">
-              <EyeOffIcon size={18} />
-            </button>
-          </div>
-        </div>
-        {blank('Size', '', true)}
-        {blank('Direction', '', true)}
-      </div>
-      <label className="info-row info-about info-notes">
-        <span className="info-label secondary">Game</span>
-        <textarea
-          className="info-input notes"
-          rows={2}
-          value={notes}
-          placeholder="Describe your game (optional). For example: a cozy platformer where a fox collects acorns before winter."
-          onChange={(e) => update((p) => void (p.notes = e.target.value))}
-        />
-      </label>
+      <p className="stage-info-note muted">Its code holds your game's brief: game, made for, art style.</p>
     </div>
   );
 }
@@ -638,9 +585,8 @@ export function SpritePane() {
   const spriteItems: ActionItem[] = [
     { label: 'Upload Sprite', icon: <UploadIcon size={20} strokeWidth={2.4} />, onClick: () => void upload() },
     ...(mode === '3d' ? [{ label: 'Upload 3D Model', icon: <CubeIcon size={20} strokeWidth={2.2} />, onClick: () => void uploadModel() }] : []),
-    { label: 'Surprise', icon: <SurpriseIcon size={20} />, onClick: () => addFromLibrary(surprise(SPRITE_LIBRARY)) },
+    { label: 'Surprise', icon: <DiceIcon size={20} strokeWidth={2.4} />, onClick: () => addFromLibrary(surprise(SPRITE_LIBRARY)) },
     { label: 'Paint', icon: <BrushIcon size={20} strokeWidth={2.4} />, onClick: paintNew },
-    { label: 'Choose a Sprite', icon: <SearchIcon size={20} />, onClick: () => setLibrary('sprite') },
   ];
 
   return (
@@ -650,7 +596,10 @@ export function SpritePane() {
         {selected?.kind === 'stage' && <StageInfo />}
         {compiledSel && (
           <div className="sprite-info compiled-note">
-            <b>{compiledSel.sprite.name}</b>&nbsp;was added by the compiler.
+            <span className="muted">Added so your words work. Keep it to change it.</span>
+            <button className="btn primary small" onClick={() => keepCompiledSprite(compiledSel.sprite.id)} title="Move it into your own sprites">
+              <KeepIcon size={14} /> Keep
+            </button>
           </div>
         )}
         <div className="sprite-scroll">
@@ -680,7 +629,7 @@ export function SpritePane() {
                   className="sprite-tile"
                   compiled
                   name={s.name}
-                  title={`${s.name} (made by the compiler)`}
+                  title="Added so your words work"
                   image={costumeThumb(look)}
                   selected={s.id === selectedId}
                   onSelect={() => select(s.id)}
@@ -729,9 +678,8 @@ export function SpritePane() {
           onClick={() => setLibrary('backdrop')}
           items={[
             { label: 'Upload Backdrop', icon: <UploadIcon size={20} strokeWidth={2.4} />, onClick: () => void uploadBackdrop() },
-            { label: 'Surprise', icon: <SurpriseIcon size={20} />, onClick: () => libraryBackdrop(surprise(BACKDROP_LIBRARY).name) },
+            { label: 'Surprise', icon: <DiceIcon size={20} strokeWidth={2.4} />, onClick: () => libraryBackdrop(surprise(BACKDROP_LIBRARY).name) },
             { label: 'Paint', icon: <BrushIcon size={20} strokeWidth={2.4} />, onClick: () => void paintBackdrop() },
-            { label: 'Choose a Backdrop', icon: <SearchIcon size={20} />, onClick: () => setLibrary('backdrop') },
           ]}
         />
       </div>
