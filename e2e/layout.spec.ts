@@ -62,3 +62,30 @@ for (const [width, height] of SIZES) {
     await expect(last).toHaveClass(/selected/);
   });
 }
+
+test('the scripts stay where they were after visiting the Costumes and Sounds tabs', async ({ page }) => {
+  await page.goto('/');
+  const firstScript = page.locator('svg.blocklySvg .blocklyBlockCanvas > g').first();
+  /** Where the first script sits once the code area has stopped moving. */
+  const settled = async () => {
+    let last = '';
+    for (;;) {
+      const box = (await firstScript.boundingBox())!;
+      const at = `${Math.round(box.x)},${Math.round(box.y)}`;
+      if (at === last) return box;
+      last = at;
+      await page.waitForTimeout(300);
+    }
+  };
+  await expect(firstScript).toBeVisible();
+  const before = await settled();
+  await page.getByRole('tab', { name: /Costumes/ }).click();
+  await expect(page.getByLabel('Costume name')).toBeVisible();
+  await page.getByRole('tab', { name: /Sounds/ }).click();
+  await expect(page.getByLabel('Sound name')).toBeVisible();
+  await page.getByRole('tab', { name: /Code/ }).click();
+  await expect(firstScript).toBeVisible();
+  const after = await settled();
+  expect(Math.abs(after.x - before.x)).toBeLessThan(1);
+  expect(Math.abs(after.y - before.y)).toBeLessThan(1);
+});

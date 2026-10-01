@@ -335,7 +335,11 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       const landed = prev.compile.status === 'running' && state.compile.status === 'done';
       syncAssembly(ws, loadedId.current, state.compile.status === 'running' ? state.compile.building : [], landed);
     });
-    const ro = new ResizeObserver(() => Blockly.svgResize(ws));
+    // While another tab is open the code area has no size, and fitting the scripts into nothing would
+    // scroll them under the palette. It fits itself again when it shows.
+    const ro = new ResizeObserver(() => {
+      if (divRef.current?.offsetWidth) Blockly.svgResize(ws);
+    });
     ro.observe(divRef.current!);
     // The palette follows the project: costumes, sounds, sprites, variables, the selected target.
     const unsubscribe = useStore.subscribe((state, prev) => {
