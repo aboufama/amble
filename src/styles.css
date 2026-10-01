@@ -950,6 +950,11 @@ select {
   padding: 12px 24px 24px;
 }
 
+/* Without the developer tabs, the problems sit as far from the top as from the sides. */
+.problems-modal .info-body:first-child {
+  margin-top: 12px;
+}
+
 .info-tabs {
   display: flex;
   gap: 4px;
@@ -2869,7 +2874,7 @@ body.reordering * {
   font-size: 12px;
 }
 
-/* Settings (ChatGPT sign-in, API key, models) */
+/* Settings: the account (sign-in or API key), then models and endpoints under Advanced */
 
 .settings {
   display: flex;
@@ -2878,10 +2883,22 @@ body.reordering * {
   font-size: 12.5px;
 }
 
-.settings h3 {
+.settings h3,
+.settings .advanced > summary {
   margin: 6px 0 0;
   font-size: 14px;
   font-weight: bold;
+}
+
+/* Headings inside Advanced sit below it. */
+.settings .advanced-fields h3 {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.settings small {
+  font-size: 11.5px;
+  line-height: 1.4;
 }
 
 .text-field {
@@ -2956,7 +2973,7 @@ body.reordering * {
   gap: 8px;
 }
 
-.key-fields {
+.advanced-fields {
   display: flex;
   flex-direction: column;
   gap: 12px;
