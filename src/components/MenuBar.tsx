@@ -9,6 +9,7 @@ import { confirmUser } from '../prompt';
 import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
 import { DEV_TOOLS } from './ProblemsDialog';
 import { ModeSwitch, SpendMeter } from './ModeSwitch';
+import { useServerConfig } from './useServerConfig';
 
 export function MenuBar() {
   const title = useStore((s) => s.project.title);
@@ -23,6 +24,9 @@ export function MenuBar() {
   const compiledCount = useStore((s) => s.project.compiled?.code.length ?? 0);
   const lastModel = useStore((s) => s.project.compiled?.model);
   const compiling = useStore((s) => s.compile.status === 'running');
+  // A site that builds with its own key has nothing to set up: no Settings (developers still get it).
+  const server = useServerConfig();
+  const showSettings = DEV_TOOLS || (server !== null && !server.serverKey);
   const [open, setOpen] = useState<'file' | 'edit' | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const signedIn = useChatGpt && codex?.auth === 'chatgpt';
@@ -66,10 +70,12 @@ export function MenuBar() {
           <AmbleMark size={28} />
           <span className="logo">amble</span>
         </div>
-        <button className="menubar-item" onClick={() => setDialog('settings')} title="Settings (sign-in, API key)">
-          <SettingsIcon size={20} />
-          <span>Settings</span>
-        </button>
+        {showSettings && (
+          <button className="menubar-item" onClick={() => setDialog('settings')} title="Settings (sign-in, API key)">
+            <SettingsIcon size={20} />
+            <span>Settings</span>
+          </button>
+        )}
         <div className="menubar-menus" ref={menuRef}>
           <div className={`menubar-item menubar-dropdown ${open === 'file' ? 'active' : ''}`}>
             <button className="menubar-button" aria-haspopup="menu" aria-expanded={open === 'file'} onClick={() => setOpen((o) => (o === 'file' ? null : 'file'))}>

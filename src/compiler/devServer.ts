@@ -10,6 +10,12 @@ export interface DevServerConfig {
 }
 
 let config: Promise<DevServerConfig> | null = null;
+/** The answer, once it's in (for rendering without waiting). */
+let known: DevServerConfig | null = null;
+
+export function knownServerConfig(): DevServerConfig | null {
+  return known;
+}
 
 export function devServerConfig(): Promise<DevServerConfig> {
   config ??= fetch('/api/config')
@@ -20,6 +26,7 @@ export function devServerConfig(): Promise<DevServerConfig> {
       hosted: Boolean(c.hosted),
       models: Array.isArray(c.models) ? c.models.filter((m): m is string => typeof m === 'string') : null,
     }))
-    .catch(() => ({ serverKey: false, codex: false, hosted: false, models: null }));
+    .catch(() => ({ serverKey: false, codex: false, hosted: false, models: null }))
+    .then((c) => (known = c));
   return config;
 }

@@ -5,6 +5,7 @@ import { MODES, modeOf, modeSettings, SUGGESTED_MODELS, type ModeId } from '../c
 import { cancelChatGptSignIn, refreshChatGpt, signInWithChatGpt, signOutOfChatGpt } from '../actions';
 import { answerPrompt } from '../prompt';
 import { XIcon } from './icons';
+import { DEV_TOOLS } from './ProblemsDialog';
 
 export function Modal({ title, onClose, children, wide, className = '' }: { title: string; onClose(): void; children: ReactNode; wide?: boolean; className?: string }) {
   useEffect(() => {
@@ -200,8 +201,8 @@ export function SettingsDialog() {
             </label>
           )}
         </div>
-        {/* Models, endpoints and how signing in works stay folded away. */}
-        <details className="advanced">
+        {/* Models, endpoints and how signing in works: only for developers (the dev server, or ?dev). */}
+        {DEV_TOOLS && <details className="advanced">
           <summary>Advanced</summary>
           <div className="advanced-fields">
             <CodexNote />
@@ -265,7 +266,7 @@ export function SettingsDialog() {
               {test && <span className={test.ok ? 'ok' : 'bad'}>{test.message}</span>}
             </div>
           </div>
-        </details>
+        </details>}
       </section>
     </Modal>
   );

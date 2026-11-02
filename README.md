@@ -119,7 +119,7 @@ Vercel runs the app and a small server function, `api/amble.ts`, that holds the 
 
 1. Import the repository in Vercel (**Add New → Project**). The settings come from `vercel.json`.
 2. In **Project → Settings → Environment Variables**, add `OPENAI_API_KEY` with your OpenAI API key (Production, and Preview if you want preview deployments to build too). Never commit the key.
-3. Deploy (or redeploy, so the variable takes effect). **Settings** in the app then says the site builds for you.
+3. Deploy (or redeploy, so the variable takes effect). With a key on the server there's nothing for visitors to set up, so the menu bar has no **Settings** (it shows on the dev server, or with `?dev` in the URL); the Best / Efficient switch stays.
 4. **Set a monthly budget** on the key's OpenAI project (platform.openai.com → Settings → Limits). The function only answers Amble's own page, but anyone can open that page.
 
 What the function allows, so the key can only be used the way Amble uses it:
