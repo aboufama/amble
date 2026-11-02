@@ -157,6 +157,18 @@ export interface CompiledGame {
   questions?: CompiledQuestion[];
   /** Blocks that don't work as placed (missing in older games). */
   issues?: CompiledIssue[];
+  /** Compiled art and sounds deleted since this build: the next build with an account makes them again. */
+  remake?: CompiledRemake[];
+}
+
+export interface CompiledRemake {
+  targetId: string;
+  kind: 'costume' | 'backdrop' | 'sound';
+  name: string;
+  /** What it was made from. */
+  description: string;
+  width: number;
+  height: number;
 }
 
 export interface Project {

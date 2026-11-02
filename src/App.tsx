@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { useStore, findTarget, type Tab } from './store';
 import { loadSavedProject, saveProject } from './project/persistence';
+import { flushBlocks } from './actions';
 import { MenuBar } from './components/MenuBar';
 import { BlocksEditor } from './components/BlocksEditor';
 import { CostumesPane } from './components/CostumesPane';
@@ -28,7 +29,10 @@ function useAutosave() {
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => void saveProject(useStore.getState().project), 800);
     });
-    const flush = () => void saveProject(useStore.getState().project);
+    const flush = () => {
+      flushBlocks();
+      void saveProject(useStore.getState().project);
+    };
     window.addEventListener('beforeunload', flush);
     return () => {
       unsub();

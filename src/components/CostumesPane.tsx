@@ -92,7 +92,9 @@ export function CostumesPane() {
     if (!removed) return;
     setOwn((list, t) => {
       list.splice(index, 1);
-      t.currentCostume = Math.max(0, Math.min(t.currentCostume, list.length - 1));
+      // The costume shown stays the same one, unless it's the one removed.
+      const current = index < t.currentCostume ? t.currentCostume - 1 : t.currentCostume;
+      t.currentCostume = Math.max(0, Math.min(current, list.length - 1));
     });
     const targetId = selectedId;
     useStore.getState().setRestore({

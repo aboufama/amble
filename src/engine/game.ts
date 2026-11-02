@@ -13,6 +13,9 @@ import { loadCostumes, parseColor, type Costume } from './visuals';
 import { reportError, warnOnce } from './bridge';
 import { beginFrame, evaluateClass, sandboxGlobals } from './sandbox';
 
+/** The most copies (clones and spawned sprites) that can exist at once, as in Scratch. */
+export const MAX_CLONES = 300;
+
 export interface TargetDef {
   name: string;
   kind: 'stage' | 'sprite';
@@ -497,6 +500,7 @@ export class Game {
       warnOnce(`spawn("${name}"): there is no sprite with that name. Sprites: ${[...this.defs.keys()].join(', ')}`);
       return null;
     }
+    if (this.atCloneLimit()) return null;
     let sprite: Sprite;
     try {
       sprite = withConstruction(this, def, () => new def.cls(this, def)) as Sprite;
@@ -513,6 +517,7 @@ export class Game {
 
   /** @internal */
   _cloneFrom(src: Sprite, props: Record<string, unknown>): Sprite | null {
+    if (this.atCloneLimit()) return null;
     const def = src._def;
     let sprite: Sprite;
     try {
@@ -546,6 +551,18 @@ export class Game {
     applyProps(sprite, props);
     this.afterCreate(sprite);
     return sprite;
+  }
+
+  /**
+   * Like Scratch, at most MAX_CLONES copies exist at once: "make a copy" does nothing until some are
+   * removed. Without it, a copy that makes a copy when it starts fills memory and freezes the page.
+   */
+  private atCloneLimit(): boolean {
+    let clones = 0;
+    for (const s of this.all) if (s.isClone && !s.destroyed) clones++;
+    if (clones < MAX_CLONES) return false;
+    warnOnce(`There are already ${MAX_CLONES} copies, the most there can be at once. New copies are made once some are removed.`);
+    return true;
   }
 
   private afterCreate(sprite: Sprite): void {

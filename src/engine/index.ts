@@ -10,7 +10,9 @@ import { Game, type GameHost, type GameState } from './game';
 import type { Sprite } from './sprite';
 import { UI_CSS } from './ui';
 
-const standalone = window.parent === window;
+// An exported game carries its package in the page, even when another site shows it in an iframe
+// (itch.io, a blog); the editor's player gets packages by message instead.
+const standalone = Boolean(document.getElementById('amble-package')) || window.parent === window;
 
 const style = document.createElement('style');
 style.textContent = `
@@ -149,7 +151,9 @@ async function load(pkg: RunPackage | null, start: boolean): Promise<void> {
     post({ type: 'loaded' });
     post({ type: 'status', state: 'idle' });
     if (start) {
-      canvas?.focus();
+      // Only when the editor gave the game the focus and it still has it: someone typing in the
+      // editor while the game loads keeps their place.
+      if (document.hasFocus()) canvas?.focus();
       game.start();
     }
   } catch (err) {

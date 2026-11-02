@@ -48,6 +48,9 @@ describe('Codex bridge', () => {
     expect(ok(req({ 'content-type': 'application/json', origin: 'https://evil.example' }))).toBe(false);
     expect(ok(req({ 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' }))).toBe(false);
     expect(ok(req({ 'content-type': 'text/plain' }))).toBe(false);
+    // A POST with no browser headers at all (a script, not a page).
+    expect(ok(req({ 'content-type': 'application/json' }))).toBe(false);
+    expect(ok(req({ 'content-type': 'application/json', 'sec-fetch-site': 'same-origin' }))).toBe(true);
     expect(ok(req({ 'sec-fetch-site': 'same-site' }, 'GET'))).toBe(false);
     // DNS rebinding: evil.example resolves to 127.0.0.1, so origin and host match but the host isn't allowed.
     expect(ok(req({ host: 'evil.example:5173', origin: 'http://evil.example:5173', 'content-type': 'application/json' }))).toBe(false);

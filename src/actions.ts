@@ -32,6 +32,8 @@ export function getPlayer(): PlayerHost | null {
  * after typing), the game starts as soon as they are done.
  */
 export function startGame(): void {
+  // Blocks changed in the last moment reach the project first (the editor saves them a little after each edit).
+  flushBlocks();
   if (controller) {
     playWhenBuilt = true;
     useStore.getState().setCompile({ forPlay: true });
@@ -52,7 +54,13 @@ function runGame(): void {
   clearRunOutput();
   lastPreviewKey = packageKey(project);
   player?.load(buildRunPackage(project), true);
-  player?.focus();
+  // The game takes the keys, unless someone is typing (an answer to a question, a block's words).
+  if (!isTyping()) player?.focus();
+}
+
+function isTyping(): boolean {
+  const el = document.activeElement as HTMLElement | null;
+  return Boolean(el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)));
 }
 
 /** Stop: stops the game, and a build the flag asked for (a quiet build carries on, without starting the game). */
@@ -126,6 +134,7 @@ export function needsCompile(project: Project): boolean {
  */
 export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean; fresh?: boolean; quiet?: boolean; play?: boolean } = {}): Promise<void> {
   if (controller) return;
+  flushBlocks();
   const store = useStore.getState();
   const project = store.project;
   controller = new AbortController();
@@ -143,6 +152,8 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
     forPlay: playWhenBuilt,
     failed: [],
   });
+  /** After this build: the flag was pressed for blocks that changed while it ran, so build those and play. */
+  let playAgain = false;
   const done = (compiled: CompiledGame) => {
     // Another project was opened meanwhile: this build was for the one before.
     if (useStore.getState().projectLoads !== loads) return;
@@ -156,7 +167,11 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
       useStore.getState().notify(`To fit your change, ${n} other block${n > 1 ? 's now work' : ' now works'} a little differently: ${revised.slice(0, 3).join('; ')}${n > 3 ? '…' : ''}`);
     }
     // A quiet build only shows the new version on the stage, unless the flag was pressed meanwhile.
-    if (playWhenBuilt) runGame();
+    // Blocks may have changed while it ran: then the flag builds those first, instead of playing the old ones.
+    flushBlocks();
+    const stale = needsCompile(useStore.getState().project);
+    if (playWhenBuilt && stale) playAgain = true;
+    else if (playWhenBuilt) runGame();
     else if (useStore.getState().run.state !== 'running') previewProject(useStore.getState().project, true);
     playWhenBuilt = false;
   };
@@ -192,14 +207,33 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
     controller = null;
     quietBuild = false;
   }
+  if (playAgain) startGame();
+  // Words typed while this build ran build quietly too (after a successful build only, so a failing one doesn't repeat).
+  else if (useStore.getState().compile.status === 'done' && useStore.getState().projectLoads === loads) scheduleQuietBuild();
+}
+
+let quietTimer: number | null = null;
+
+/** Builds new words quietly in a moment, if there are any by then. */
+function scheduleQuietBuild(): void {
+  if (quietTimer !== null) window.clearTimeout(quietTimer);
+  quietTimer = window.setTimeout(() => {
+    quietTimer = null;
+    buildQuietly();
+  }, 1200);
 }
 
 /** Builds what changed without starting the game (e.g. to export it), and returns the project as built. */
 export async function buildNow(): Promise<Project> {
+  flushBlocks();
   while (controller) await new Promise((r) => window.setTimeout(r, 100));
   const s = useStore.getState();
   if (needsCompile(s.project) || (compileNeedsRequest(s.project) && !s.needsAccount)) await compile(undefined, { play: false });
-  return useStore.getState().project;
+  const after = useStore.getState();
+  // Exporting a game that didn't build would quietly ship the last version (or nothing).
+  if (after.compile.status === 'error') throw new Error(`The game didn't build, so it wasn't exported: ${after.compile.error ?? 'unknown problem'}`);
+  if (needsCompile(after.project)) throw new Error("The game didn't finish building, so it wasn't exported. Try again.");
+  return after.project;
 }
 
 export function cancelCompile(): void {
@@ -346,9 +380,16 @@ export function keepCompiledAsset(assetId: string): void {
   notify('Kept. It is now one of your assets.');
 }
 
+/** Deletes a compiled asset. The code may still use it, so the next build makes a new one. */
 export function deleteCompiledAsset(assetId: string): void {
   useStore.getState().update((p) => {
-    if (p.compiled) p.compiled.assets = p.compiled.assets.filter((a) => a.id !== assetId);
+    const compiled = p.compiled;
+    const asset = compiled?.assets.find((a) => a.id === assetId);
+    if (!compiled || !asset) return;
+    compiled.assets = compiled.assets.filter((a) => a.id !== assetId);
+    const kind = asset.kind === 'sound' ? 'sound' : asset.targetId === p.stage.id ? 'backdrop' : 'costume';
+    const size = asset.kind === 'image' ? { width: Math.round(asset.width / (asset.resolution || 1)), height: Math.round(asset.height / (asset.resolution || 1)) } : { width: 0, height: 0 };
+    compiled.remake = [...(compiled.remake ?? []).filter((r) => !(r.targetId === asset.targetId && r.kind === kind && r.name === asset.name)), { targetId: asset.targetId, kind, name: asset.name, description: asset.request, ...size }];
   });
 }
 
@@ -405,6 +446,11 @@ let live: LiveBlocks | null = null;
 
 export function registerLiveBlocks(next: LiveBlocks | null): void {
   live = next;
+}
+
+/** Saves the blocks on screen into the project now (the editor otherwise does it a moment after each edit). */
+export function flushBlocks(): void {
+  live?.flush();
 }
 
 /** Applies a rename to the project (with `rename` changing the name itself) and to the blocks on screen. */

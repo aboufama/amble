@@ -90,6 +90,8 @@ function briefChanged(previous: CompiledGame | null, plans: TargetPlan[]): boole
  * offline (no key or sign-in needed).
  */
 export function compileNeedsRequest(project: Project): boolean {
+  // Compiled art or sounds were deleted: they're made again.
+  if (project.compiled?.remake?.length) return true;
   const plans = planProject(project);
   const inUse = piecesInUse(plans);
   if (project.compiled && !project.compiled.pieces) return inUse.length > 0;
@@ -239,6 +241,7 @@ function planAssets(
   previous: CompiledAsset[],
   warnings: string[],
   restyle: boolean,
+  remake: CompiledGame['remake'] = [],
 ): { kept: CompiledAsset[]; jobs: AssetJob[] } {
   const owners = new Map<string, { id: string; name: string; user: Project['stage'] | Project['sprites'][number] | null }>();
   owners.set(project.stage.id, { id: project.stage.id, name: project.stage.name, user: project.stage });
@@ -269,6 +272,16 @@ function planAssets(
     if (old && (a.reuse || old.request === description)) continue;
     replaced.add(key);
     jobs.push({ targetId: owner.id, targetName: owner.name, kind: a.kind, name, description, width: Number(a.width) || 0, height: Number(a.height) || 0 });
+  }
+  // Deleted ones the code may still use (unless the author has their own by that name now).
+  for (const r of remake ?? []) {
+    const owner = owners.get(r.targetId);
+    const group = assetGroup(r.kind);
+    const key = `${r.targetId}|${group}|${r.name}`;
+    if (!owner || replaced.has(key)) continue;
+    if (owner.user && (group === 'sound' ? owner.user.sounds : owner.user.costumes).some((x) => x.name === r.name)) continue;
+    replaced.add(key);
+    jobs.push({ targetId: owner.id, targetName: owner.name, kind: r.kind, name: r.name, description: r.description || r.name, width: r.width, height: r.height });
   }
   if (restyle) {
     for (const p of previous) {
@@ -306,32 +319,34 @@ function planAssets(
 }
 
 async function runJobs(jobs: AssetJob[], project: Project, style: string, transport: Transport, settings: AiSettings, opts: CompileOptions, warnings: string[]): Promise<CompiledAsset[]> {
-  const results: CompiledAsset[] = [];
+  // By job, not by name: a costume and a sound may share a name.
+  const results: Array<CompiledAsset | undefined> = new Array(jobs.length);
   let done = 0;
   const report = (current?: string) =>
     opts.onProgress?.({ stage: 'assets', message: current ? `Making ${current}` : 'Making art and sounds', assetsDone: done, assetsTotal: jobs.length });
   report();
-  const queue = [...jobs];
+  const queue = jobs.map((job, index) => ({ job, index }));
   // The art style blocks, wherever they are (the same ones that decide when the art is made again).
   const styleHint = style.split('\n').filter(Boolean).join(' ').slice(0, 300);
   const worker = async () => {
     for (;;) {
-      const job = queue.shift();
-      if (!job) return;
+      const next = queue.shift();
+      if (!next) return;
+      const { job, index } = next;
       report(`${job.kind} "${job.name}"`);
       try {
-        results.push(await generateAsset(job, { transport, settings, gameTitle: project.title, styleHint, signal: opts.signal }));
+        results[index] = await generateAsset(job, { transport, settings, gameTitle: project.title, styleHint, signal: opts.signal });
       } catch (err) {
         if (opts.signal?.aborted) throw err;
         warnings.push(`Couldn't make ${job.kind} "${job.name}" (${(err as Error).message}); used a placeholder.`);
-        results.push(placeholderAsset(job));
+        results[index] = placeholderAsset(job);
       }
       done++;
       report();
     }
   };
   await Promise.all([worker(), worker(), worker()]);
-  return jobs.map((j) => results.find((r) => r.targetId === j.targetId && r.name === j.name)!).filter(Boolean);
+  return results.filter((r): r is CompiledAsset => Boolean(r));
 }
 
 /**
@@ -439,12 +454,17 @@ export async function compileProject(project: Project, options: CompileOptions):
 
   // A new art style remakes the compiler's own art (not without an account: the old art stays until then).
   const restyle = !fresh && !opts.offline && previous?.style !== undefined && previous.style !== style;
-  const { kept, jobs } = planAssets(project, reply?.assets ?? [], sprites, fresh ? [] : (previous?.assets ?? []), warnings, restyle);
+  // Deleted compiled art waits for an account, like the words do.
+  const remake = fresh ? [] : (previous?.remake ?? []);
+  const { kept, jobs } = planAssets(project, reply?.assets ?? [], sprites, fresh ? [] : (previous?.assets ?? []), warnings, restyle, opts.offline ? [] : remake);
   let made: CompiledAsset[] = [];
   if (jobs.length && opts.offline && !transport) {
     made = jobs.map((j) => placeholderAsset(j));
   } else if (jobs.length) {
-    transport ??= await requireTransport(opts.settings);
+    if (!transport) {
+      transport = await requireTransport(opts.settings);
+      settings = effectiveSettings(opts.settings, transport);
+    }
     made = await runJobs(jobs, project, style, transport, settings, opts, warnings);
   }
 
@@ -501,5 +521,6 @@ export async function compileProject(project: Project, options: CompileOptions):
     revised,
     questions,
     issues: plans.flatMap((p) => p.issues.map((i) => ({ targetId: p.targetId, ...i }))),
+    ...(opts.offline && remake.length ? { remake } : {}),
   };
 }

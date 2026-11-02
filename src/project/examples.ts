@@ -113,7 +113,15 @@ export function neonDrift(): Project {
     block('ru_always', { RULE: 'glide smoothly toward the mouse, tilting the way I move, with a long glowing cyan trail behind me' }),
     block('ga_rule', { RULE: 'the comet has 3 lives, shown as little glowing hearts at the top right' }),
     block('ru_never', { RULE: 'leave the screen' }),
-    [block('ev_touch', { WHO: character('Asteroid') }), block('so_play', { SOUND: 'hit' }), block('kit_shake'), block('ga_effect', { HOW: 'a burst of hot pink sparks' }), block('ga_do', { ACTION: "lose a life and blink for 1 second; asteroids can't hurt me while I blink" })],
+    [
+      block('ev_touch', { WHO: character('Asteroid') }),
+      block('fl_if', { COND: block('cd_words', { TEXT: "I'm not blinking" }) }, [
+        block('so_play', { SOUND: 'hit' }),
+        block('kit_shake'),
+        block('ga_effect', { HOW: 'a burst of hot pink sparks' }),
+        block('ga_do', { ACTION: "lose a life, then blink for 1 second (asteroids can't hurt me while I blink)" }),
+      ]),
+    ],
   );
 
   const asteroid = newSprite(

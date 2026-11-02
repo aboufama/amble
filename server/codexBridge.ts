@@ -357,6 +357,9 @@ export function isSameOrigin(req: IncomingMessage, allowed: AllowedHosts): boole
     }
   }
   if (req.method === 'POST' && !String(req.headers['content-type'] ?? '').includes('application/json')) return false;
+  // Browsers send Origin with every POST: a POST without it (or Sec-Fetch-Site) isn't from Amble's page,
+  // e.g. a script on the network when the server runs with --host.
+  if (req.method === 'POST' && !origin && !site) return false;
   return true;
 }
 

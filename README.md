@@ -86,6 +86,7 @@ The Amble engine (`src/engine/`) is a thin, consistent game layer over Phaser 3:
 - **Physics:** Matter (dynamic/static/kinematic bodies, shapes, collisions, sensors), stepped once per tick in stage units.
 - **Ready-made behaviors** for the exact Game blocks: walk with the arrow keys, jump, fall with gravity (the bottom of the screen is solid), be solid ground.
 - **Also:** input (keys, mouse, touch, pointer lock), Web Audio sounds, HUD text/values/buttons, speech bubbles, questions, particles.
+- **At most 300 copies** (clones and spawned sprites) at once, like Scratch: a copy that makes a copy of itself stops there instead of freezing the page.
 - **Full Phaser access:** compiled words can use the game's Phaser scene (`this.game.scene`), the `Phaser` namespace and each sprite's image for anything the helpers don't cover: drawing, particle emitters, post effects like glow and vignette, tweens, level geometry.
 
 Why Phaser? It's the most established 2D game engine for the web (rendering, physics, particles, cameras, tweens, input), and the compiler knows it well, so blocks in your own words can ask for elaborate games.
@@ -110,7 +111,7 @@ dev/engine-test.html   a page for poking the engine directly (npm run dev → /d
 
 - Projects autosave in your browser (IndexedDB).
 - **File → Save to your computer** writes a `.amble` file; **Open** reads it back.
-- **File → Export playable web page** produces a single `.html` file with the engine, physics and your game inside. It runs anywhere, with no server.
+- **File → Export playable web page** produces a single `.html` file with the engine, physics and your game inside. It runs anywhere, with no server, on its own or inside another page's iframe (itch.io, a blog). Export builds what changed first, and says so instead of exporting when the build fails.
 
 ## Deploying to Vercel
 
@@ -138,7 +139,7 @@ Vercel builds Production from the repository's default branch; other branches ge
 
 ## Security notes
 
-- The API key lives in `localStorage` (or on the server with `OPENAI_API_KEY`: the dev server, or Vercel's environment variables). Compiled games can't read it: the player iframe is sandboxed without `allow-same-origin`, and its CSP has no network access (`connect-src data: blob:`).
+- The API key lives in `localStorage` (or on the server with `OPENAI_API_KEY`: the dev server, or Vercel's environment variables). Compiled games can't read it: the player iframe is sandboxed without `allow-same-origin`, and its CSP blocks fetches, sockets and remote images or scripts (`default-src 'none'`, `connect-src data: blob:`). Exported pages carry the same CSP. (A CSP can't stop a page from navigating its own frame; the editor only ever sends that frame the game itself, never the key.)
 - Compiled SVG art is sanitized (no scripts, event handlers, or external references) before use.
 - The compile endpoints (`/api/openai`, `/api/codex`) only answer Amble's own page: they reject requests from other origins and require JSON, so other sites open in your browser can't use your key or your ChatGPT sign-in. The hosted function also limits models, tokens and request rate (see [Deploying to Vercel](#deploying-to-vercel)).
 

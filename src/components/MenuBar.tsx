@@ -4,7 +4,7 @@ import { downloadProject, readProjectFile } from '../project/persistence';
 import { exportGameHtml } from '../project/exportHtml';
 import { pickFile } from '../project/importers';
 import { EXAMPLES, blankProject } from '../project/examples';
-import { buildNow, compile, signInWithChatGpt } from '../actions';
+import { buildNow, compile, flushBlocks, signInWithChatGpt } from '../actions';
 import { confirmUser } from '../prompt';
 import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
 import { DEV_TOOLS } from './ProblemsDialog';
@@ -96,7 +96,13 @@ export function MenuBar() {
                   >
                     Load from your computer
                   </button>
-                  <button role="menuitem" onClick={act(() => downloadProject(useStore.getState().project))}>
+                  <button
+                    role="menuitem"
+                    onClick={act(() => {
+                      flushBlocks();
+                      downloadProject(useStore.getState().project);
+                    })}
+                  >
                     Save to your computer
                   </button>
                   <button
