@@ -24,15 +24,17 @@ Then either:
 - open **Settings** and paste an OpenAI API key (stored only in your browser), or
 - put `OPENAI_API_KEY=sk-...` in a `.env` file (see `.env.example`). The dev server then proxies OpenAI calls, and the key never reaches the browser (the same way the Vercel deployment does).
 
-Press the green flag: the starter project uses only exact blocks, so it compiles instantly and needs no account. Then open one of the demos under **File → Examples**. They're written mostly in words, so the first green flag builds them (that takes a little while in Best mode), and later flags play at once:
+Press the green flag: the starter project uses only exact blocks, so it compiles instantly and needs no account. Then open one of the demos under **File → Examples**. They're written mostly in words, and they ship already built, so they play the moment you press the flag:
 
 | Demo | What the words do |
 |---|---|
-| **Neon Drift** | Steer a comet with the mouse through waves of asteroids. Waves, lives, the score, the golden power-up and the synthwave look are all rules in words. |
-| **Lantern Cave** | A platformer in the dark. The whole level, the flickering lantern light, the bats and the 5 crystals are words; walking and jumping are exact blocks. |
-| **Sky Whale** | Hold space to swim up. A sky that turns from sunset to night, parallax clouds, stars to eat and storm clouds that cost hearts. |
-| **Pocket Planet** | A physics toy: click to drop cats, rocks, trees and houses onto a tiny planet whose gravity pulls toward its center. |
-| **Star Catcher** | The exact-blocks one: almost everything compiles instantly, with three blocks in words. |
+| **Neon Drift** | Steer a comet with the mouse and blast asteroids with space. Waves, lives, combos, a golden shockwave power-up, synthwave music, and at wave 4 the Mothership boss: all rules in words. |
+| **Lantern Cave** | A platformer in the dark. The whole level, the flickering lantern light, bouncy mushrooms, bats, the 5 crystals and the cave collapsing behind you are words; walking and jumping are exact blocks. |
+| **Sky Whale** | Hold space to swim up. Sunset turns into an aurora night, with parallax clouds, stars to eat, shooting stars that leave a rainbow trail, and storm clouds that cost hearts. |
+| **Pocket Planet** | A physics toy: click to drop cats, trees, houses, ducks and balloons onto a tiny planet whose gravity pulls toward its center, with day and night. |
+| **Star Catcher** | The exact-blocks one: almost everything compiles instantly, and its three blocks in words build the first time you press the flag. |
+
+Change a demo's blocks and only those words build again; **Edit → Build everything again** rebuilds all of it with your model. The shipped builds are in `public/demos/`: after changing a demo in `src/project/examples.ts`, build them again with GPT-6.1 Terra by running the dev server with a key and `node scripts/precompile-demos.mjs` (it plays each one and only writes those that build and run without problems).
 
 ### Models: Best and Efficient
 

@@ -74,7 +74,7 @@ async function openExample(page: Page, title: string, sprite: string) {
   await expect(page.locator('.sprite-tile', { hasText: sprite })).toBeVisible();
 }
 
-test('on a hosted Amble, a demo written in words builds and plays with no key or sign-in', async ({ page }) => {
+test('on a hosted Amble, demos play at once, and words build with no key or sign-in', async ({ page }) => {
   const sent: Sent[] = [];
   await mockHostedServer(page, sent);
   await page.goto('/');
@@ -84,10 +84,21 @@ test('on a hosted Amble, a demo written in words builds and plays with no key or
   await expect(page.locator('.mode-switch').getByRole('radio', { name: 'Best' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('.spend-total')).toHaveText('$0.00');
 
+  // The demo ships built: the flag plays it at once, with no request at all.
   await openExample(page, 'Neon Drift', 'Asteroid');
   await page.locator('.green-flag').click();
+  const shipped = await gameFrame(page);
+  await expect.poll(async () => (await played(shipped)).state, { timeout: 20_000 }).toBe('running');
+  await page.waitForTimeout(1500);
+  expect(sent).toEqual([]);
+  await expect(page.locator('.spend-total')).toHaveText('$0.00');
+
+  // Building it again goes through the site's server.
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Build everything again' }).click();
+  await expect.poll(() => sent.length, { timeout: 30_000 }).toBe(1);
   const frame = await gameFrame(page);
-  await expect.poll(async () => (await played(frame)).behaviors, { timeout: 40_000 }).toBeGreaterThan(10);
+  await expect.poll(async () => (await played(frame).catch(() => ({ behaviors: 0 }))).behaviors, { timeout: 40_000 }).toBeGreaterThan(10);
   expect((await played(frame)).state).toBe('running');
   expect((await played(frame)).rules).toBeGreaterThan(0);
 
@@ -121,8 +132,13 @@ test('Efficient builds with GPT-6 Luna at high reasoning, and the spend counter 
 
   await openExample(page, 'Sky Whale', 'Whale');
   await page.locator('.green-flag').click();
+  await expect.poll(async () => (await played(await gameFrame(page))).state, { timeout: 20_000 }).toBe('running');
+  expect(sent).toEqual([]);
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Build everything again' }).click();
+  await expect.poll(() => sent.length, { timeout: 30_000 }).toBe(1);
   const frame = await gameFrame(page);
-  await expect.poll(async () => (await played(frame)).behaviors, { timeout: 40_000 }).toBeGreaterThan(10);
+  await expect.poll(async () => (await played(frame).catch(() => ({ behaviors: 0 }))).behaviors, { timeout: 40_000 }).toBeGreaterThan(10);
   expect(sent.map((s) => [s.model, s.reasoning])).toEqual([['gpt-6-luna', 'high']]);
   await expect(page.locator('.spend-total')).toHaveText('$0.0045');
 
