@@ -137,7 +137,7 @@ test('the Edit menu shows the JavaScript the blocks compiled to', async ({ page 
 test('words are compiled once, in one request, and reused after', async ({ page }) => {
   const calls: string[] = [];
   await page.addInitScript(() => {
-    localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test', model: 'gpt-5', assetModel: 'gpt-5-mini' }));
+    localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test' }));
   });
   await mockOpenAI(page, calls);
   await page.goto('/');
@@ -176,7 +176,7 @@ test('words are compiled once, in one request, and reused after', async ({ page 
 
   // Edit > Build everything again starts over: every block in words is built again, and the art made again.
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  await expect(page.getByRole('menuitem', { name: 'Build everything again' })).toHaveAttribute('title', /built again.*last built with gpt-5/);
+  await expect(page.getByRole('menuitem', { name: 'Build everything again' })).toHaveAttribute('title', /built again.*last built with gpt-6\.1-terra/);
   await page.getByRole('menuitem', { name: 'Build everything again' }).click();
   await expect.poll(() => calls.length, { timeout: 30_000 }).toBe(4);
   expect(calls).toEqual(['amble_pieces', 'svg_art', 'amble_pieces', 'svg_art']);
@@ -201,7 +201,7 @@ test('words are compiled once, in one request, and reused after', async ({ page 
 test('words build quietly a moment after typing, without starting the game', async ({ page }) => {
   const calls: string[] = [];
   await page.addInitScript(() => {
-    localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test', model: 'gpt-5', assetModel: 'gpt-5-mini' }));
+    localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test' }));
   });
   await mockOpenAI(page, calls);
   await page.goto('/');
@@ -240,7 +240,7 @@ test('words build quietly a moment after typing, without starting the game', asy
 test('catching a star runs "when I touch Star", and every burst shows and clears', async ({ page }) => {
   const calls: string[] = [];
   await page.addInitScript(() => {
-    localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test', model: 'gpt-5', assetModel: 'gpt-5-mini' }));
+    localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test' }));
   });
   await mockOpenAI(page, calls);
   await page.goto('/');

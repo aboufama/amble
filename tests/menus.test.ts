@@ -22,7 +22,7 @@ import {
 } from '../src/blocks/menus';
 import { serializeBlocks } from '../src/compiler/serialize';
 import { block, character, newProject, variable, workspace } from '../src/project/defaults';
-import { starCatcher } from '../src/project/examples';
+import { EXAMPLES } from '../src/project/examples';
 import type { ImageAsset, Project, SoundAsset } from '../src/project/types';
 
 const image = (name: string): ImageAsset => ({
@@ -266,7 +266,7 @@ describe('dropdowns for the compiler', () => {
 
 describe('starter projects', () => {
   it('only use dropdown values that are options', () => {
-    for (const p of [newProject(), starCatcher()]) {
+    for (const p of [newProject(), ...EXAMPLES.map((e) => e.make())]) {
       for (const t of [p.stage, ...p.sprites]) {
         forEachBlock(t.blocks, (b) => {
           for (const [field, input] of Object.entries(BLOCK_BY_TYPE.get(b.type)?.inputs ?? {})) {

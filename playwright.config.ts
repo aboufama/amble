@@ -2,6 +2,8 @@ import { defineConfig } from '@playwright/test';
 
 // Set PW_CHROMIUM_PATH to use an existing Chromium binary instead of Playwright's download.
 const executablePath = process.env.PW_CHROMIUM_PATH || undefined;
+// Set PW_PORT to run the dev server for the tests on another port.
+const port = Number(process.env.PW_PORT) || 5199;
 
 export default defineConfig({
   testDir: 'e2e',
@@ -11,7 +13,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5199',
+    baseURL: `http://localhost:${port}`,
     viewport: { width: 1440, height: 900 },
     launchOptions: {
       executablePath,
@@ -20,8 +22,8 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: 'npx vite --port 5199 --strictPort',
-    url: 'http://localhost:5199',
+    command: `npx vite --port ${port} --strictPort`,
+    url: `http://localhost:${port}`,
     reuseExistingServer: true,
     timeout: 60_000,
     env: { OPENAI_API_KEY: '' },

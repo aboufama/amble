@@ -49,7 +49,7 @@ async function mockOpenAI(page: Page, calls: string[], next: () => Reply) {
 
 const withKey = (page: Page) =>
   page.addInitScript(() => {
-    localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test', model: 'gpt-5', assetModel: 'gpt-5-mini' }));
+    localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test' }));
   });
 
 async function openExample(page: Page, title: string) {
@@ -192,7 +192,7 @@ test('without an account words wait with a note; adding a key builds them, witho
   // A key arrives (as from Settings): the waiting words build on their own.
   await page.evaluate(() => {
     const store = (window as unknown as { __ambleStore: { getState(): { setSettings(p: Record<string, unknown>): void } } }).__ambleStore;
-    store.getState().setSettings({ apiKey: 'sk-test', model: 'gpt-5' });
+    store.getState().setSettings({ apiKey: 'sk-test' });
   });
   await expect.poll(() => calls.filter((c) => c === 'amble_pieces').length, { timeout: 20_000 }).toBe(1);
   await expect(waiting).toHaveCount(0);

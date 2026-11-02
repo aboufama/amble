@@ -2,7 +2,7 @@
 
 Make real 2D games with blocks. Amble has its own block language: lots of **exact blocks** for the basics (move, walk, jump, touching, repeat, score...), and **blocks in your own words** for everything else (`do [spin around and shrink away]`, `always: [twinkle as I fall]`). Games run on [Phaser](https://phaser.io/).
 
-**Try it:** https://aboufama.github.io/amble/ (exact blocks work right away; to compile blocks in your own words, open **Settings** and add an OpenAI API key, which stays in your browser). Running Amble on your own computer? You can **sign in with ChatGPT** instead.
+**Try it:** on Vercel, with the OpenAI key set on the server, blocks in your own words build for every visitor with no account ([Deploying to Vercel](#deploying-to-vercel)). The GitHub Pages copy at https://aboufama.github.io/amble/ has no server, so there you add your own OpenAI API key in **Settings** (it stays in your browser). Running Amble on your own computer? You can **sign in with ChatGPT** instead.
 
 ![The Amble editor](docs/editor-2d.png)
 
@@ -22,11 +22,30 @@ Then either:
 
 - press **Sign in** (top right; it shows when Codex is installed). This needs the [Codex CLI](https://github.com/openai/codex) (`npm install -g @openai/codex`). Compiles then run on your ChatGPT plan with GPT-6 Astra Light, and no API key is needed ([details](#signing-in-with-chatgpt)), or
 - open **Settings** and paste an OpenAI API key (stored only in your browser), or
-- put `OPENAI_API_KEY=sk-...` in a `.env` file (see `.env.example`). The dev server then proxies OpenAI calls, and the key never reaches the browser.
+- put `OPENAI_API_KEY=sk-...` in a `.env` file (see `.env.example`). The dev server then proxies OpenAI calls, and the key never reaches the browser (the same way the Vercel deployment does).
 
-Press the green flag: the starter project uses only exact blocks, so it compiles instantly and needs no account. Try **File → Examples → Star Catcher**: it has a couple of blocks in your own words: with an account, the green flag builds them first and then plays.
+Press the green flag: the starter project uses only exact blocks, so it compiles instantly and needs no account. Then open one of the demos under **File → Examples**. They're written mostly in words, so the first green flag builds them (that takes a little while in Best mode), and later flags play at once:
 
-Defaults: `gpt-5` with low reasoning compiles blocks in your own words; `gpt-5-mini` makes compiled art and sounds. Any model your key can use can be picked in Settings, and any OpenAI-compatible endpoint works via the base URL. Signed in with ChatGPT, everything uses GPT-6 Astra Light (`gpt-6-astra` with low reasoning).
+| Demo | What the words do |
+|---|---|
+| **Neon Drift** | Steer a comet with the mouse through waves of asteroids. Waves, lives, the score, the golden power-up and the synthwave look are all rules in words. |
+| **Lantern Cave** | A platformer in the dark. The whole level, the flickering lantern light, the bats and the 5 crystals are words; walking and jumping are exact blocks. |
+| **Sky Whale** | Hold space to swim up. A sky that turns from sunset to night, parallax clouds, stars to eat and storm clouds that cost hearts. |
+| **Pocket Planet** | A physics toy: click to drop cats, rocks, trees and houses onto a tiny planet whose gravity pulls toward its center. |
+| **Star Catcher** | The exact-blocks one: almost everything compiles instantly, with three blocks in words. |
+
+### Models: Best and Efficient
+
+The switch in the menu bar picks how blocks in your own words are built:
+
+- **Best** (the default): `gpt-6.1-terra` with high reasoning writes the code, and draws compiled art and designs sounds (at low reasoning).
+- **Efficient**: `gpt-6-luna` with high reasoning, for both. About a tenth of the price of Best, and quicker. (OpenAI's newest Luna is GPT-6 Luna; there is no GPT-6.1 Luna yet. When one ships, change it in `src/compiler/models.ts`.)
+
+Any other model your key can use can be typed in under **Settings → Advanced** (the switch then says *Custom*), and any OpenAI-compatible endpoint works via the base URL. Settings saved by earlier versions with models OpenAI is retiring (`gpt-5`, `gpt-5-mini`) move to Best when they load, and `gpt-image-1` (shut down in October 2026) becomes `gpt-image-2.5-flare`. Signed in with ChatGPT, everything uses GPT-6 Astra Light (`gpt-6-astra` with low reasoning) on your ChatGPT plan, whichever mode is picked.
+
+### Spend (debug)
+
+Next to the switch, a dashed **debug** chip shows what the requests from this browser have cost so far, estimated from the token usage OpenAI reports (`stream_options.include_usage`) at the standard prices in `src/compiler/spend.ts`. Click it for a breakdown by model (calls, input/cached tokens, output/reasoning tokens, cost) and a **Reset** button. It counts this browser only, not the whole OpenAI account; requests stopped partway report no usage and are listed as missing. Set `SPEND_DEBUG = false` in `src/compiler/spend.ts` to hide it.
 
 ### Signing in with ChatGPT
 
@@ -82,6 +101,7 @@ src/
   player/      editor <-> player protocol, iframe host, run-package builder
   project/     data model, defaults and examples, migration of old projects, persistence, HTML export
   components/  React UI (blocks editor, paint editor, sounds, stage, problems, sprite pane)
+api/           the server function (Vercel, and the dev server): /api/config and the guarded OpenAI proxy
 server/        dev-server bridge for "Sign in with ChatGPT" (runs the Codex CLI)
 dev/engine-test.html   a page for poking the engine directly (npm run dev → /dev/engine-test.html)
 ```
@@ -92,15 +112,35 @@ dev/engine-test.html   a page for poking the engine directly (npm run dev → /d
 - **File → Save to your computer** writes a `.amble` file; **Open** reads it back.
 - **File → Export playable web page** produces a single `.html` file with the engine, physics and your game inside. It runs anywhere, with no server.
 
-## Deploying
+## Deploying to Vercel
 
-`.github/workflows/pages.yml` builds the app on every push and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves (Settings → Pages → Deploy from a branch → `gh-pages`, `/ (root)`). The build uses relative paths, so it works from any sub-path. On a static host there's no server key and no ChatGPT sign-in: exact blocks work for everyone, and each visitor uses their own OpenAI key from Settings to compile blocks in their own words.
+Vercel runs the app and a small server function, `api/amble.ts`, that holds the OpenAI key, so blocks in your own words build for every visitor with no account and the key never reaches the browser. `vercel.json` already has everything: the Vite build, the rewrites that send `/api/config` and `/api/openai/*` to the function, a 300 s limit for long builds, and cancellation (stopping a build in the editor stops the OpenAI request too).
+
+1. Import the repository in Vercel (**Add New → Project**). The settings come from `vercel.json`.
+2. In **Project → Settings → Environment Variables**, add `OPENAI_API_KEY` with your OpenAI API key (Production, and Preview if you want preview deployments to build too). Never commit the key.
+3. Deploy (or redeploy, so the variable takes effect). **Settings** in the app then says the site builds for you.
+4. **Set a monthly budget** on the key's OpenAI project (platform.openai.com → Settings → Limits). The function only answers Amble's own page, but anyone can open that page.
+
+What the function allows, so the key can only be used the way Amble uses it:
+
+- only `chat/completions`, `images/generations` and `models`, only from Amble's own page (same origin, from a browser), only JSON;
+- only the models Amble builds with: `gpt-6.1-terra` and `gpt-6-luna` (`AMBLE_MODELS`, comma-separated, to change), and `gpt-image-2.5-flare` for image art (`AMBLE_IMAGE_MODELS`); a visitor with their own key in Settings can use any model, since their requests go straight to OpenAI;
+- at most 64,000 generated tokens per request (`AMBLE_MAX_OUTPUT_TOKENS`), one image per request, and only the request fields Amble sends (no `n`, `tools` or `service_tier`);
+- 120 requests per visitor per 10 minutes (`AMBLE_RATE_LIMIT`; 0 turns it off). The count is kept per server instance, so it's a speed bump, not a wall: for a hard limit, add a rate-limit rule in Vercel's Firewall too.
+
+`OPENAI_BASE_URL` points it at another OpenAI-compatible endpoint. The local dev server runs the same handler (`vite.config.ts`), without the limits: it's your own key on your own computer. To try exactly what Vercel runs, start it with `AMBLE_HOSTED=1` as well as `OPENAI_API_KEY`.
+
+Vercel builds Production from the repository's default branch; other branches get Preview deployments, which only build words if `OPENAI_API_KEY` is also enabled for Preview.
+
+## Deploying to GitHub Pages
+
+`.github/workflows/pages.yml` builds the app on every push to the default branch (and `main`) and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves (Settings → Pages → Deploy from a branch → `gh-pages`, `/ (root)`). The build uses relative paths, so it works from any sub-path. On a static host there's no server key and no ChatGPT sign-in: exact blocks work for everyone, and each visitor uses their own OpenAI key from Settings to compile blocks in their own words.
 
 ## Security notes
 
-- The API key lives in `localStorage` (or on the dev server with `OPENAI_API_KEY`). Compiled games can't read it: the player iframe is sandboxed without `allow-same-origin`, and its CSP has no network access (`connect-src data: blob:`).
+- The API key lives in `localStorage` (or on the server with `OPENAI_API_KEY`: the dev server, or Vercel's environment variables). Compiled games can't read it: the player iframe is sandboxed without `allow-same-origin`, and its CSP has no network access (`connect-src data: blob:`).
 - Compiled SVG art is sanitized (no scripts, event handlers, or external references) before use.
-- The dev server's compile endpoints (`/api/openai`, `/api/codex`) only answer Amble's own page: they reject requests from other origins and require JSON, so other sites open in your browser can't use your key or your ChatGPT sign-in.
+- The compile endpoints (`/api/openai`, `/api/codex`) only answer Amble's own page: they reject requests from other origins and require JSON, so other sites open in your browser can't use your key or your ChatGPT sign-in. The hosted function also limits models, tokens and request rate (see [Deploying to Vercel](#deploying-to-vercel)).
 
 ## Development
 

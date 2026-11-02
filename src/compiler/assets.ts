@@ -50,6 +50,7 @@ async function makeSvgImage(job: AssetJob, ctx: AssetContext): Promise<CompiledA
     schema: SVG_SCHEMA as unknown as Record<string, unknown>,
     schemaName: 'svg_art',
     reasoningEffort: 'low',
+    kind: 'art',
     signal: ctx.signal,
   });
   const svg = sanitizeSvg(reply.svg, size.width, size.height);
@@ -123,6 +124,7 @@ async function makeSound(job: AssetJob, ctx: AssetContext): Promise<CompiledAsse
     schema: SOUND_SCHEMA as unknown as Record<string, unknown>,
     schemaName: 'sound_recipe',
     reasoningEffort: 'low',
+    kind: 'sound',
     signal: ctx.signal,
   });
   const { dataUrl, duration } = synthToDataUrl(recipe);

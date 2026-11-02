@@ -8,6 +8,7 @@ import { buildNow, compile, signInWithChatGpt } from '../actions';
 import { confirmUser } from '../prompt';
 import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
 import { DEV_TOOLS } from './ProblemsDialog';
+import { ModeSwitch, SpendMeter } from './ModeSwitch';
 
 export function MenuBar() {
   const title = useStore((s) => s.project.title);
@@ -108,10 +109,12 @@ export function MenuBar() {
                     Export playable web page
                   </button>
                 </div>
-                <div className="menubar-menu-section">
+                <div className="menubar-menu-section examples">
+                  <div className="menubar-menu-label">Examples</div>
                   {EXAMPLES.map((ex) => (
-                    <button key={ex.id} role="menuitem" title={ex.description} onClick={act(async () => void ((await confirmReplace()) && setProject(ex.make())))}>
-                      Example: {ex.title}
+                    <button key={ex.id} role="menuitem" className="example-item" aria-label={`Example: ${ex.title}`} onClick={act(async () => void ((await confirmReplace()) && setProject(ex.make())))}>
+                      <span className="example-title">{ex.title}</span>
+                      <span className="example-desc">{ex.description}</span>
                     </button>
                   ))}
                 </div>
@@ -174,6 +177,10 @@ export function MenuBar() {
           aria-label="Project title"
           placeholder="Untitled game"
         />
+      </div>
+      <div className="menubar-build">
+        <ModeSwitch />
+        <SpendMeter />
       </div>
       <div className="menubar-account">
         {/* Signing in works when Amble runs on your computer and Codex is installed there. */}

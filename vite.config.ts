@@ -5,6 +5,7 @@ import { build } from 'esbuild';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
+import { devOptions, handleAmbleApi, hostedOptions } from './api/amble.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -67,67 +68,58 @@ function playerRuntime(): Plugin {
 }
 
 /**
- * Optional server-side key: if OPENAI_API_KEY is set, `/api/openai/*` is
- * proxied to OpenAI with the key attached so it never reaches the browser.
- * The same servers also host `/api/codex/*`, the "Sign in with ChatGPT" bridge
- * (server/codexBridge.ts).
+ * Optional server-side key: if OPENAI_API_KEY is set, `/api/openai/*` is proxied to OpenAI with
+ * the key attached so it never reaches the browser. It's the same handler Vercel runs
+ * (api/amble.ts), in its dev mode: your own key, any model. The same servers also host
+ * `/api/codex/*`, the "Sign in with ChatGPT" bridge (server/codexBridge.ts).
  */
 function openaiProxy(env: Record<string, string>): Plugin {
-  const key = env.OPENAI_API_KEY || process.env.OPENAI_API_KEY || '';
-  const baseUrl = (env.OPENAI_BASE_URL || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+  const vars = { ...process.env, ...Object.fromEntries(Object.entries(env).filter(([, v]) => v)) };
+  // AMBLE_HOSTED=1 runs the server side exactly as Vercel does (its limits, no ChatGPT sign-in), to try a deployment locally.
+  const hosted = vars.AMBLE_HOSTED === '1';
+  const options = hosted ? hostedOptions(vars) : devOptions(vars);
 
   const handler = (allowed: AllowedHosts): Connect.NextHandleFunction => (req, res, next) => {
-    const url = req.url ?? '';
-    if (url === '/api/config') {
-      res.setHeader('content-type', 'application/json');
-      res.end(JSON.stringify({ serverKey: Boolean(key), codex: true }));
-      return;
-    }
-    if (!url.startsWith('/api/openai/')) {
+    const url = (req.url ?? '').split('?')[0];
+    if (url !== '/api/config' && !url.startsWith('/api/openai/')) {
       next();
       return;
     }
-    if (!isSameOrigin(req, allowed)) {
+    if (url !== '/api/config' && !isSameOrigin(req, allowed)) {
       res.statusCode = 403;
       res.end();
       return;
     }
+    const controller = new AbortController();
+    res.on('close', () => {
+      if (!res.writableFinished) controller.abort();
+    });
     void (async () => {
-      if (!key) {
-        res.statusCode = 401;
-        res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ error: { message: 'OPENAI_API_KEY is not set on the server.' } }));
-        return;
-      }
-      const chunks: Buffer[] = [];
-      for await (const chunk of req) chunks.push(chunk as Buffer);
-      const controller = new AbortController();
-      res.on('close', () => controller.abort());
       try {
-        const upstream = await fetch(baseUrl + url.slice('/api/openai'.length), {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) chunks.push(chunk as Buffer);
+        const headers = new Headers();
+        for (const [name, value] of Object.entries(req.headers)) {
+          if (typeof value === 'string' && !['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'content-length', 'expect'].includes(name)) headers.set(name, value);
+        }
+        const request = new Request(`http://${req.headers.host ?? 'localhost'}${req.url}`, {
           method: req.method,
-          headers: {
-            'content-type': String(req.headers['content-type'] ?? 'application/json'),
-            authorization: `Bearer ${key}`,
-          },
+          headers,
           body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks),
           signal: controller.signal,
         });
-        res.statusCode = upstream.status;
-        upstream.headers.forEach((value, name) => {
-          if (!['content-encoding', 'content-length', 'transfer-encoding', 'connection'].includes(name)) {
-            res.setHeader(name, value);
-          }
-        });
+        const response = await handleAmbleApi(request, options);
+        res.statusCode = response.status;
+        response.headers.forEach((value, name) => res.setHeader(name, value));
         res.flushHeaders();
-        if (upstream.body) {
-          for await (const chunk of upstream.body) res.write(chunk);
-        }
+        if (response.body) for await (const chunk of response.body) res.write(chunk);
         res.end();
       } catch (err) {
         if (controller.signal.aborted) return;
-        res.statusCode = 502;
-        res.setHeader('content-type', 'application/json');
+        if (!res.headersSent) {
+          res.statusCode = 502;
+          res.setHeader('content-type', 'application/json');
+        }
         res.end(JSON.stringify({ error: { message: `Proxy error: ${(err as Error).message}` } }));
       }
     })();
@@ -138,12 +130,12 @@ function openaiProxy(env: Record<string, string>): Plugin {
     configureServer(server) {
       const allowed = allowedHostsOf(server.config.server);
       server.middlewares.use(handler(allowed));
-      server.middlewares.use(codexBridge(allowed));
+      if (!hosted) server.middlewares.use(codexBridge(allowed));
     },
     configurePreviewServer(server) {
       const allowed = allowedHostsOf(server.config.preview);
       server.middlewares.use(handler(allowed));
-      server.middlewares.use(codexBridge(allowed));
+      if (!hosted) server.middlewares.use(codexBridge(allowed));
     },
   };
 }

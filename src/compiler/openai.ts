@@ -7,8 +7,10 @@
 import { fetchCodexStatus } from './chatgpt';
 import type { CodexRunEvent } from './codexTypes';
 import { devServerConfig } from './devServer';
+import { DEFAULT_IMAGE_MODEL, DEFAULT_MODE, modeSettings } from './models';
+import { chatTokens, imageTokens, recordPlanCall, recordUsage, type ChatUsage, type ImageUsage, type SpendKind } from './spend';
 
-export type ReasoningEffort = 'default' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+export type ReasoningEffort = 'default' | 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface AiSettings {
   /** Compile with your ChatGPT sign-in (Codex on this computer) instead of an API key. */
@@ -24,15 +26,14 @@ export interface AiSettings {
   imageModel: string;
 }
 
+/** New settings start in the Best mode (GPT-6.1 Terra, high reasoning): see src/compiler/models.ts. */
 export const DEFAULT_SETTINGS: AiSettings = {
   useChatGpt: false,
   apiKey: '',
   baseUrl: 'https://api.openai.com/v1',
-  model: 'gpt-5',
-  reasoningEffort: 'low',
-  assetModel: 'gpt-5-mini',
+  ...modeSettings(DEFAULT_MODE),
   artMode: 'svg',
-  imageModel: 'gpt-image-1',
+  imageModel: DEFAULT_IMAGE_MODEL,
 };
 
 /** Signed-in compiles use GPT-6 Astra with low reasoning: the preset ChatGPT calls "Astra Light". */
@@ -43,7 +44,7 @@ export const CHATGPT_MODEL_NAME = 'GPT-6 Astra Light';
 export interface Transport {
   baseUrl: string;
   headers: Record<string, string>;
-  /** "chatgpt" = your ChatGPT sign-in via Codex; "browser" = key in this browser; "server" = dev server key. */
+  /** "chatgpt" = your ChatGPT sign-in via Codex; "browser" = key in this browser; "server" = the server's key (dev server or hosted). */
   via: 'chatgpt' | 'browser' | 'server';
 }
 
@@ -54,7 +55,7 @@ export function effectiveSettings(settings: AiSettings, t: Transport): AiSetting
   return { ...settings, model: CHATGPT_MODEL, reasoningEffort: CHATGPT_REASONING, assetModel: CHATGPT_MODEL, artMode: 'svg' };
 }
 
-/** Does the dev/preview server have OPENAI_API_KEY configured? */
+/** Does the server (dev, preview or hosted) have OPENAI_API_KEY configured? */
 export function hasServerKey(): Promise<boolean> {
   return devServerConfig().then((c) => c.serverKey);
 }
@@ -106,9 +107,11 @@ export interface ChatJsonRequest {
   reasoningEffort?: ReasoningEffort;
   signal?: AbortSignal;
   onProgress?(progress: { phase: 'waiting' | 'writing'; chars: number }): void;
+  /** What the request makes, for the spend counter. */
+  kind?: SpendKind;
 }
 
-async function readError(res: Response): Promise<AiError> {
+async function readError(res: Response, t: Transport): Promise<AiError> {
   let message = `${res.status} ${res.statusText}`;
   let code: string | undefined;
   try {
@@ -118,7 +121,14 @@ async function readError(res: Response): Promise<AiError> {
   } catch {
     /* not JSON */
   }
-  if (res.status === 401) message = `Your OpenAI API key was rejected (${message}). Check it in Settings.`;
+  // The server's own refusals (a model it doesn't run, too many builds) already say what to do.
+  if (code?.startsWith('amble_')) return new AiError(message, res.status, code);
+  if (res.status === 401) {
+    message =
+      t.via === 'server'
+        ? `This site's OpenAI key was rejected (${message}). Add your own key in Settings, or ask whoever runs the site.`
+        : `Your OpenAI API key was rejected (${message}). Check it in Settings.`;
+  }
   if (res.status === 429 && !/quota/i.test(message)) message = `Rate limited by OpenAI: ${message}`;
   return new AiError(message, res.status, code);
 }
@@ -142,6 +152,8 @@ export function parseJsonReply<T>(text: string): T {
 
 interface Options {
   stream: boolean;
+  /** Ask for token usage at the end of the stream (for the spend counter). */
+  usage: boolean;
   format: 'json_schema' | 'json_object';
   effort: boolean;
 }
@@ -149,15 +161,16 @@ interface Options {
 /** Sends a chat request and returns the parsed JSON reply. Retries without features a model/account rejects. */
 export async function chatJson<T>(t: Transport, req: ChatJsonRequest): Promise<T> {
   if (t.via === 'chatgpt') return parseJsonReply<T>(await codexOnce(req));
-  const opts: Options = { stream: true, format: 'json_schema', effort: Boolean(req.reasoningEffort && req.reasoningEffort !== 'default') };
-  for (let attempt = 0; attempt < 4; attempt++) {
+  const opts: Options = { stream: true, usage: true, format: 'json_schema', effort: Boolean(req.reasoningEffort && req.reasoningEffort !== 'default') };
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const text = await chatOnce(t, req, opts);
       return parseJsonReply<T>(text);
     } catch (err) {
       if (!(err instanceof AiError) || err.status !== 400) throw err;
       const m = err.message.toLowerCase();
-      if (opts.stream && m.includes('stream')) opts.stream = false;
+      if (opts.stream && opts.usage && (m.includes('stream_options') || m.includes('include_usage'))) opts.usage = false;
+      else if (opts.stream && m.includes('stream')) opts.stream = false;
       else if (opts.effort && m.includes('reasoning')) opts.effort = false;
       else if (opts.format === 'json_schema' && (m.includes('response_format') || m.includes('json_schema') || m.includes('schema'))) opts.format = 'json_object';
       else throw err;
@@ -179,6 +192,7 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
         : { type: 'json_object' },
     stream: opts.stream,
   };
+  if (opts.stream && opts.usage) body.stream_options = { include_usage: true };
   if (opts.effort && isReasoningModel(req.model)) body.reasoning_effort = req.reasoningEffort;
 
   req.onProgress?.({ phase: 'waiting', chars: 0 });
@@ -188,12 +202,23 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
     body: JSON.stringify(body),
     signal: req.signal,
   });
-  if (!res.ok) throw await readError(res);
+  if (!res.ok) throw await readError(res, t);
+  // The request is billed from here on: the spend counter hears about it however it ends.
+  const got: { usage: ChatUsage | null } = { usage: null };
+  try {
+    return await readChat(res, req, opts, (u) => (got.usage = u));
+  } finally {
+    recordUsage(req.model, req.kind ?? 'code', got.usage ? chatTokens(got.usage) : null);
+  }
+}
 
+async function readChat(res: Response, req: ChatJsonRequest, opts: Options, onUsage: (u: ChatUsage) => void): Promise<string> {
   if (!opts.stream) {
     const json = (await res.json()) as {
       choices?: Array<{ message?: { content?: string | null; refusal?: string | null }; finish_reason?: string }>;
+      usage?: ChatUsage | null;
     };
+    if (json.usage) onUsage(json.usage);
     const choice = json.choices?.[0];
     if (choice?.message?.refusal) throw new AiError(`The compile request was refused: ${choice.message.refusal}`);
     if (choice?.finish_reason === 'length') throw new AiError('The compile ran out of room before finishing. Try fewer or shorter blocks in your own words, or a model with a larger output limit.');
@@ -223,12 +248,14 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
       let chunk: {
         error?: { message?: string };
         choices?: Array<{ delta?: { content?: string | null; refusal?: string | null }; finish_reason?: string | null }>;
+        usage?: ChatUsage | null;
       };
       try {
         chunk = JSON.parse(data);
       } catch {
         continue;
       }
+      if (chunk.usage) onUsage(chunk.usage);
       if (chunk.error) throw new AiError(chunk.error.message ?? 'The compile request stopped partway.');
       const choice = chunk.choices?.[0];
       if (choice?.delta?.content) {
@@ -261,6 +288,7 @@ async function codexOnce(req: ChatJsonRequest): Promise<string> {
     signal: req.signal,
   });
   if (!res.ok || !res.body) throw new AiError(`The ChatGPT bridge failed (${res.status} ${res.statusText}).`, res.status);
+  recordPlanCall(req.model, req.kind ?? 'code');
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -313,8 +341,13 @@ export async function generateImage(t: Transport, req: ImageRequest): Promise<st
     body: JSON.stringify(body),
     signal: req.signal,
   });
-  if (!res.ok) throw await readError(res);
-  const json = (await res.json()) as { data?: Array<{ b64_json?: string; url?: string }> };
+  if (!res.ok) throw await readError(res, t);
+  let json: { data?: Array<{ b64_json?: string; url?: string }>; usage?: ImageUsage | null } = {};
+  try {
+    json = (await res.json()) as typeof json;
+  } finally {
+    recordUsage(req.model, 'image', json.usage ? imageTokens(json.usage) : null);
+  }
   const b64 = json.data?.[0]?.b64_json;
   if (!b64) throw new AiError('The image model returned no image.');
   return `data:image/png;base64,${b64}`;
@@ -323,7 +356,7 @@ export async function generateImage(t: Transport, req: ImageRequest): Promise<st
 /** Model ids available to this key (for the Settings dropdown). */
 export async function listModels(t: Transport): Promise<string[]> {
   const res = await fetch(`${t.baseUrl}/models`, { headers: t.headers });
-  if (!res.ok) throw await readError(res);
+  if (!res.ok) throw await readError(res, t);
   const json = (await res.json()) as { data?: Array<{ id: string }> };
   return (json.data ?? []).map((m) => m.id).sort();
 }

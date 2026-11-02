@@ -2,6 +2,7 @@ import { get, set } from 'idb-keyval';
 import { uid } from './ids';
 import type { Project, SpriteTarget } from './types';
 import { DEFAULT_SETTINGS, type AiSettings } from '../compiler/openai';
+import { DEFAULT_IMAGE_MODEL, DEFAULT_MODE, modeSettings, RETIRED_IMAGE_MODELS, RETIRED_MODELS } from '../compiler/models';
 import { migrateProject, migrateSprite } from './migrate';
 
 const PROJECT_KEY = 'amble:project';
@@ -108,10 +109,22 @@ export async function readSpriteFile(file: File): Promise<SpriteTarget> {
   });
 }
 
+/**
+ * Settings saved by earlier versions may name models OpenAI has shut down (the old defaults were
+ * gpt-5 and gpt-5-mini): those move to the default mode, and a retired image model to the current one.
+ */
+export function upgradeSettings(saved: Partial<AiSettings>): AiSettings {
+  const s: AiSettings = { ...DEFAULT_SETTINGS, ...saved };
+  if (RETIRED_MODELS.has(s.model.trim())) Object.assign(s, modeSettings(DEFAULT_MODE));
+  if (RETIRED_MODELS.has(s.assetModel.trim())) s.assetModel = modeSettings(DEFAULT_MODE).assetModel;
+  if (RETIRED_IMAGE_MODELS.has(s.imageModel.trim())) s.imageModel = DEFAULT_IMAGE_MODEL;
+  return s;
+}
+
 export function loadSettings(): AiSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<AiSettings>) };
+    if (raw) return upgradeSettings(JSON.parse(raw) as Partial<AiSettings>);
   } catch {
     /* ignore */
   }

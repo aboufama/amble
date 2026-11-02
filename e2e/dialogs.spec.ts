@@ -77,18 +77,18 @@ test('Settings shows the account first and keeps the rest under Advanced', async
   await expect(model).toBeHidden();
   await expect(install).toBeHidden();
   await settings.locator('summary', { hasText: 'Advanced' }).click();
-  await expect(model).toHaveValue('gpt-5');
+  await expect(model).toHaveValue('gpt-6.1-terra');
   await expect(install).toBeVisible();
   await expect(settings.getByRole('button', { name: 'Test connection' })).toBeVisible();
   // Nor does the menu bar offer to sign in.
   await expect(page.locator('.menubar-account button')).toHaveCount(0);
 
   // Every setting still saves.
-  await model.fill('gpt-5-mini');
+  await model.fill('gpt-6-luna');
   await settings.getByLabel(/^API base URL/).fill('https://example.test/v1');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('amble:settings') ?? '{}'))).toMatchObject({
     apiKey: 'sk-test',
-    model: 'gpt-5-mini',
+    model: 'gpt-6-luna',
     baseUrl: 'https://example.test/v1',
   });
 });

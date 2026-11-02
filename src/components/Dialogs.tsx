@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useStore } from '../store';
 import { CHATGPT_MODEL_NAME, hasServerKey, listModels, resolveTransport, type ReasoningEffort } from '../compiler/openai';
+import { MODES, modeOf, modeSettings, SUGGESTED_MODELS, type ModeId } from '../compiler/models';
 import { cancelChatGptSignIn, refreshChatGpt, signInWithChatGpt, signOutOfChatGpt } from '../actions';
 import { answerPrompt } from '../prompt';
 import { XIcon } from './icons';
@@ -26,7 +27,6 @@ export function Modal({ title, onClose, children, wide, className = '' }: { titl
   );
 }
 
-const SUGGESTED = ['gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5', 'gpt-5-mini', 'gpt-5.1', 'gpt-4.1', 'gpt-4.1-mini', 'o4-mini'];
 
 /** Signing in, in plain words. It works when Amble runs on your computer and Codex is installed there. */
 function SignInCard() {
@@ -155,7 +155,8 @@ export function SettingsDialog() {
     }
   };
 
-  const modelOptions = [...new Set([...models, ...SUGGESTED])];
+  const modelOptions = [...new Set([...SUGGESTED_MODELS, ...models])];
+  const mode = modeOf(settings);
 
   const keyField = (
     <label className="text-field">
@@ -173,7 +174,9 @@ export function SettingsDialog() {
           {showKey ? 'Hide' : 'Show'}
         </button>
       </div>
-      <small className="muted">A key lets Amble build blocks written in your own words. It stays in this browser.</small>
+      <small className="muted">
+        {server ? 'Optional here: this site builds with its own key. Your key, if you add one, is used instead and stays in this browser.' : 'A key lets Amble build blocks written in your own words. It stays in this browser.'}
+      </small>
     </label>
   );
 
@@ -181,15 +184,33 @@ export function SettingsDialog() {
     <Modal title="Settings" onClose={() => setDialog(null)}>
       <section className="settings">
         <h3>Account</h3>
+        {server && !settings.apiKey.trim() && !(settings.useChatGpt && canSignIn) && <p className="note ok">This site builds blocks written in your own words for you. No account or key needed.</p>}
         {canSignIn ? <SignInCard /> : keyField}
+        <h3>Build mode</h3>
+        <div className="radio-row mode-choices">
+          {(Object.keys(MODES) as ModeId[]).map((id) => (
+            <label key={id}>
+              <input type="radio" name="build-mode" checked={mode === id} onChange={() => setSettings(modeSettings(id))} />{' '}
+              <b>{MODES[id].label}</b> <span className="muted">{MODES[id].description}</span>
+            </label>
+          ))}
+          {!mode && (
+            <label>
+              <input type="radio" name="build-mode" checked readOnly /> <b>Custom</b> <span className="muted">The models you picked under Advanced.</span>
+            </label>
+          )}
+        </div>
         {/* Models, endpoints and how signing in works stay folded away. */}
         <details className="advanced">
           <summary>Advanced</summary>
           <div className="advanced-fields">
             <CodexNote />
             {canSignIn && keyField}
-            {server && <p className="note ok">The dev server has OPENAI_API_KEY set, so you can leave the key empty.</p>}
+            {server && <p className="note ok">The server has OPENAI_API_KEY set, so you can leave the key empty.</p>}
             <small className="muted">Your API key is sent only to OpenAI, and games run in a sandbox that can't read it. Create one at platform.openai.com → API keys.</small>
+            <p className="note">
+              {(Object.keys(MODES) as ModeId[]).map((id) => `${MODES[id].label} runs ${MODES[id].model} (${MODES[id].reasoningEffort} reasoning)`).join('; ')}. Pick other models here and the mode becomes Custom.
+            </p>
             <div className="row wrap">
               <label className="text-field grow">
                 <span>Model (builds the blocks in your own words)</span>
@@ -199,7 +220,8 @@ export function SettingsDialog() {
                 <span>Reasoning</span>
                 <select value={settings.reasoningEffort} onChange={(e) => setSettings({ reasoningEffort: e.target.value as ReasoningEffort })}>
                   <option value="default">default</option>
-                  <option value="minimal">minimal (fastest)</option>
+                  <option value="none">none (fastest)</option>
+                  {settings.reasoningEffort === 'minimal' && <option value="minimal">minimal</option>}
                   <option value="low">low</option>
                   <option value="medium">medium</option>
                   <option value="high">high</option>
