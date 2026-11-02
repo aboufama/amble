@@ -155,3 +155,61 @@ describe('dev server proxy', () => {
     expect(config).toEqual({ serverKey: true, codex: true, hosted: false, models: null });
   });
 });
+
+describe('waiting for a model that thinks for a long time', () => {
+  const slow = (respond: (body: Record<string, unknown>) => Response, ms = 60) =>
+    vi.fn(async (_url: string, init: RequestInit) => {
+      await new Promise((r) => setTimeout(r, ms));
+      return respond(JSON.parse(String(init.body)));
+    });
+
+  it('starts answering at once, with heartbeats, then passes the stream through', async () => {
+    const upstream = slow(() => new Response('data: {"choices":[{"delta":{"content":"hi"}}]}\n\ndata: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } }));
+    const { opts } = hosted({ fetch: upstream as unknown as typeof fetch, heartbeatMs: 10 });
+    const t0 = Date.now();
+    const res = await handleAmbleApi(own('/api/openai/chat/completions', chat()), opts);
+    // The headers are out before OpenAI has said anything.
+    expect(Date.now() - t0).toBeLessThan(50);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    const text = await res.text();
+    expect(text.startsWith(': keep-alive\n\n')).toBe(true);
+    expect(text.match(/: keep-alive/g)!.length).toBeGreaterThan(2);
+    expect(text).toContain('data: {"choices":[{"delta":{"content":"hi"}}]}');
+  });
+
+  it("puts OpenAI's error in the stream, with its status", async () => {
+    const upstream = slow(() => Response.json({ error: { message: 'Unsupported parameter: stream_options', code: 'unsupported_parameter' } }, { status: 400 }), 5);
+    const { opts } = hosted({ fetch: upstream as unknown as typeof fetch });
+    const text = await (await handleAmbleApi(own('/api/openai/chat/completions', chat()), opts)).text();
+    expect(text).toContain('data: {"error":{"message":"Unsupported parameter: stream_options","status":400,"code":"unsupported_parameter"}}');
+  });
+
+  it('pads a JSON reply (images) with spaces, which JSON readers skip', async () => {
+    const upstream = slow(() => Response.json({ data: [{ b64_json: 'AAAA' }] }));
+    const { opts } = hosted({ fetch: upstream as unknown as typeof fetch, heartbeatMs: 10 });
+    const res = await handleAmbleApi(own('/api/openai/images/generations', { model: 'gpt-image-2.5-flare', prompt: 'a fox' }), opts);
+    expect(res.headers.get('content-type')).toBe('application/json');
+    expect(await res.json()).toEqual({ data: [{ b64_json: 'AAAA' }] });
+  });
+
+  it('works with the editor: a slow compile, and a rejected option still retried without it', async () => {
+    const { chatJson } = await import('../src/compiler/openai');
+    const sent: Array<Record<string, unknown>> = [];
+    const upstream = slow((body) => {
+      sent.push(body);
+      if (body.stream_options) return Response.json({ error: { message: 'Unrecognized request argument supplied: stream_options' } }, { status: 400 });
+      return new Response(`data: ${JSON.stringify({ choices: [{ delta: { content: '{"ok":true}' }, finish_reason: 'stop' }] })}\n\ndata: [DONE]\n\n`, { status: 200 });
+    }, 30);
+    const { opts } = hosted({ fetch: upstream as unknown as typeof fetch, heartbeatMs: 5 });
+    // The editor's fetch reaches the handler, as it would on Vercel.
+    vi.stubGlobal('fetch', (url: string, init: RequestInit) => handleAmbleApi(own(String(url), JSON.parse(String(init.body))), opts));
+    try {
+      const reply = await chatJson<{ ok: boolean }>({ baseUrl: '/api/openai', headers: {}, via: 'server' }, { model: 'gpt-6.1-terra', system: 's', user: 'u', schema: { type: 'object' }, schemaName: 'x', reasoningEffort: 'high' });
+      expect(reply).toEqual({ ok: true });
+      expect(sent.map((b) => Boolean(b.stream_options))).toEqual([true, false]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

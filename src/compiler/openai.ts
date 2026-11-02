@@ -121,16 +121,29 @@ async function readError(res: Response, t: Transport): Promise<AiError> {
   } catch {
     /* not JSON */
   }
+  return errorFrom(res.status, message, code, t);
+}
+
+/** An error the server put in the body after answering 200 (see keepWarm in api/amble.ts). */
+interface BodyError {
+  message?: string;
+  code?: string | null;
+  status?: number;
+}
+
+function bodyError(e: BodyError, t: Transport): AiError {
+  const message = e.message || 'The compile request stopped partway.';
+  return typeof e.status === 'number' ? errorFrom(e.status, message, e.code ?? undefined, t) : new AiError(message, undefined, e.code ?? undefined);
+}
+
+function errorFrom(status: number, message: string, code: string | undefined, t: Transport): AiError {
   // The server's own refusals (a model it doesn't run, too many builds) already say what to do.
-  if (code?.startsWith('amble_')) return new AiError(message, res.status, code);
-  if (res.status === 401) {
-    message =
-      t.via === 'server'
-        ? `This site's OpenAI key was rejected (${message}). Add your own key in Settings, or ask whoever runs the site.`
-        : `Your OpenAI API key was rejected (${message}). Check it in Settings.`;
+  if (code?.startsWith('amble_')) return new AiError(message, status, code);
+  if (status === 401) {
+    message = t.via === 'server' ? `This site's OpenAI key was rejected (${message}). Ask whoever runs the site to check it.` : `Your OpenAI API key was rejected (${message}). Check it in Settings.`;
   }
-  if (res.status === 429 && !/quota/i.test(message)) message = `Rate limited by OpenAI: ${message}`;
-  return new AiError(message, res.status, code);
+  if (status === 429 && !/quota/i.test(message)) message = `Rate limited by OpenAI: ${message}`;
+  return new AiError(message, status, code);
 }
 
 /** Pulls the JSON object out of a reply (tolerates code fences from non-strict providers). */
@@ -204,20 +217,26 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
   });
   if (!res.ok) throw await readError(res, t);
   // The request is billed from here on: the spend counter hears about it however it ends.
-  const got: { usage: ChatUsage | null } = { usage: null };
+  const got: { usage: ChatUsage | null; rejected: boolean } = { usage: null, rejected: false };
   try {
-    return await readChat(res, req, opts, (u) => (got.usage = u));
+    return await readChat(res, t, req, opts, (u) => (got.usage = u));
+  } catch (err) {
+    // OpenAI turned the request down (an error with a status): nothing was billed.
+    if (err instanceof AiError && err.status !== undefined) got.rejected = true;
+    throw err;
   } finally {
-    recordUsage(req.model, req.kind ?? 'code', got.usage ? chatTokens(got.usage) : null);
+    if (!got.rejected) recordUsage(req.model, req.kind ?? 'code', got.usage ? chatTokens(got.usage) : null);
   }
 }
 
-async function readChat(res: Response, req: ChatJsonRequest, opts: Options, onUsage: (u: ChatUsage) => void): Promise<string> {
+async function readChat(res: Response, t: Transport, req: ChatJsonRequest, opts: Options, onUsage: (u: ChatUsage) => void): Promise<string> {
   if (!opts.stream) {
     const json = (await res.json()) as {
       choices?: Array<{ message?: { content?: string | null; refusal?: string | null }; finish_reason?: string }>;
       usage?: ChatUsage | null;
+      error?: BodyError;
     };
+    if (json.error) throw bodyError(json.error, t);
     if (json.usage) onUsage(json.usage);
     const choice = json.choices?.[0];
     if (choice?.message?.refusal) throw new AiError(`The compile request was refused: ${choice.message.refusal}`);
@@ -246,7 +265,7 @@ async function readChat(res: Response, req: ChatJsonRequest, opts: Options, onUs
       const data = line.slice(5).trim();
       if (data === '[DONE]') continue;
       let chunk: {
-        error?: { message?: string };
+        error?: BodyError;
         choices?: Array<{ delta?: { content?: string | null; refusal?: string | null }; finish_reason?: string | null }>;
         usage?: ChatUsage | null;
       };
@@ -256,7 +275,7 @@ async function readChat(res: Response, req: ChatJsonRequest, opts: Options, onUs
         continue;
       }
       if (chunk.usage) onUsage(chunk.usage);
-      if (chunk.error) throw new AiError(chunk.error.message ?? 'The compile request stopped partway.');
+      if (chunk.error) throw bodyError(chunk.error, t);
       const choice = chunk.choices?.[0];
       if (choice?.delta?.content) {
         content += choice.delta.content;
@@ -342,12 +361,13 @@ export async function generateImage(t: Transport, req: ImageRequest): Promise<st
     signal: req.signal,
   });
   if (!res.ok) throw await readError(res, t);
-  let json: { data?: Array<{ b64_json?: string; url?: string }>; usage?: ImageUsage | null } = {};
+  let json: { data?: Array<{ b64_json?: string; url?: string }>; usage?: ImageUsage | null; error?: BodyError } = {};
   try {
     json = (await res.json()) as typeof json;
   } finally {
-    recordUsage(req.model, 'image', json.usage ? imageTokens(json.usage) : null);
+    if (!json.error) recordUsage(req.model, 'image', json.usage ? imageTokens(json.usage) : null);
   }
+  if (json.error) throw bodyError(json.error, t);
   const b64 = json.data?.[0]?.b64_json;
   if (!b64) throw new AiError('The image model returned no image.');
   return `data:image/png;base64,${b64}`;

@@ -34,6 +34,8 @@ export interface AmbleApiOptions {
   rateWindowMs: number;
   /** The "Sign in with ChatGPT" bridge is there (dev server only). */
   codex: boolean;
+  /** How often a waiting compile sends a heartbeat (ms). */
+  heartbeatMs?: number;
   /** For tests. */
   fetch?: typeof fetch;
   now?: () => number;
@@ -163,7 +165,7 @@ async function proxy(request: Request, path: string, opts: AmbleApiOptions): Pro
   if (!opts.key) return fail(401, 'OPENAI_API_KEY is not set on the server.');
   if (opts.hosted && !isOwnPage(request)) return fail(403, 'Not allowed.');
   if (request.method === 'POST' && !(request.headers.get('content-type') ?? '').includes('application/json')) return fail(415, 'Send JSON.');
-  if (rateLimited(request, opts)) return fail(429, 'Lots of builds from here in the last few minutes. Wait a little, then try again (or add your own OpenAI API key in Settings).', 'amble_rate_limit');
+  if (rateLimited(request, opts)) return fail(429, 'Lots of builds from here in the last few minutes. Wait a little, then try again.', 'amble_rate_limit');
 
   let body: string | undefined;
   if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -183,14 +185,28 @@ async function proxy(request: Request, path: string, opts: AmbleApiOptions): Pro
     }
   }
 
-  let upstream: Response;
-  try {
-    upstream = await (opts.fetch ?? fetch)(`${opts.baseUrl}/${path}`, {
+  const send = () =>
+    (opts.fetch ?? fetch)(`${opts.baseUrl}/${path}`, {
       method: request.method,
       headers: { 'content-type': request.headers.get('content-type') ?? 'application/json', authorization: `Bearer ${opts.key}` },
       body,
       signal: request.signal,
     });
+
+  // Compiles and images: answer at once and keep the line warm while the model thinks (see keepWarm).
+  if (request.method === 'POST' && (path === 'chat/completions' || path === 'images/generations')) {
+    let stream = false;
+    try {
+      stream = (JSON.parse(body ?? '{}') as { stream?: unknown }).stream === true;
+    } catch {
+      /* not JSON: the upstream says so */
+    }
+    return keepWarm(send, stream, request.signal, opts.heartbeatMs ?? 5000);
+  }
+
+  let upstream: Response;
+  try {
+    upstream = await send();
   } catch (err) {
     if (request.signal.aborted) return new Response(null, { status: 499 });
     return fail(502, `Proxy error: ${(err as Error).message}`);
@@ -210,6 +226,67 @@ async function proxy(request: Request, path: string, opts: AmbleApiOptions): Pro
   });
   headers.set('cache-control', 'no-store');
   return new Response(upstream.body, { status: upstream.status, headers });
+}
+
+/**
+ * GPT-6 sends nothing while it reasons, and a big compile can reason for minutes, but a hosting
+ * gateway gives up on a function that hasn't started its response within about 30 seconds (Vercel
+ * answers 502). So the reply starts right away (200) and carries a heartbeat until OpenAI answers:
+ * an SSE comment line for streams (readers skip lines that aren't `data:`), a space for JSON (which
+ * JSON.parse skips). The status is settled by then, so an error from OpenAI comes in the body, as
+ * `{ error: { message, code, status } }`, a `data:` event for streams.
+ */
+function keepWarm(send: () => Promise<Response>, stream: boolean, signal: AbortSignal, heartbeatMs: number): Response {
+  const encoder = new TextEncoder();
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const writer = writable.getWriter();
+  const beat = encoder.encode(stream ? ': keep-alive\n\n' : ' ');
+  const write = (chunk: Uint8Array) => writer.write(chunk).catch(() => undefined);
+  void write(beat);
+  const timer = setInterval(() => void write(beat), heartbeatMs);
+  const error = (status: number, message: string, code?: string) => {
+    const payload = JSON.stringify({ error: { message, status, ...(code ? { code } : {}) } });
+    return encoder.encode(stream ? `data: ${payload}\n\n` : payload);
+  };
+  void (async () => {
+    try {
+      const upstream = await send();
+      clearInterval(timer);
+      if (!upstream.ok) {
+        const text = await upstream.text();
+        let message = `${upstream.status} ${upstream.statusText}`.trim();
+        let code: string | undefined;
+        try {
+          const parsed = JSON.parse(text) as { error?: { message?: string; code?: string } };
+          message = parsed.error?.message || message;
+          code = parsed.error?.code ?? undefined;
+        } catch {
+          if (text.trim()) message = text.trim().slice(0, 500);
+        }
+        await write(error(upstream.status, message, code));
+      } else if (upstream.body) {
+        const reader = upstream.body.getReader();
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          await write(value);
+        }
+      }
+    } catch (err) {
+      if (!signal.aborted) await write(error(502, `Proxy error: ${(err as Error).message}`));
+    } finally {
+      clearInterval(timer);
+      await writer.close().catch(() => undefined);
+    }
+  })();
+  return new Response(readable, {
+    status: 200,
+    headers: {
+      'content-type': stream ? 'text/event-stream; charset=utf-8' : 'application/json',
+      'cache-control': 'no-store',
+      'x-accel-buffering': 'no',
+    },
+  });
 }
 
 /** Which Amble endpoint a request is for: from the rewrite's query (Vercel) or from the path. */
