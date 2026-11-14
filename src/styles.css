@@ -179,7 +179,24 @@ select {
   height: 48px;
   margin: 0 4px;
   padding: 0 12px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-weight: bold;
   user-select: none;
+  cursor: pointer;
+}
+
+/* The logo is the way home. */
+.menubar-brand:hover {
+  background: var(--ui-black-transparent);
+}
+
+.menubar-brand:focus-visible,
+.menubar-button:focus-visible,
+.menu-btn:focus-visible {
+  outline: 2px solid var(--ui-white);
+  outline-offset: -4px;
 }
 
 .menubar-brand .logo {
@@ -400,6 +417,506 @@ select {
   font-size: 11px;
   font-style: italic;
   opacity: 0.85;
+}
+
+/*
+ * The dial: how much of the game Amble makes, in five stops. In the top bar it is a small pill
+ * (white on purple) with the stop's name beside it; on the home screen it is wide, with every
+ * stop's name under it.
+ */
+.dial {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.dial-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+/* The line through the stops, and the part of it the dial has passed. */
+.dial-track::before,
+.dial-track::after {
+  content: '';
+  position: absolute;
+  top: calc(var(--dial-row) / 2 - var(--dial-line) / 2);
+  left: 10%;
+  height: var(--dial-line);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.dial-track::before {
+  right: 10%;
+  background: var(--dial-rail);
+}
+
+.dial-track::after {
+  width: calc(var(--dial) * 20%);
+  background: var(--dial-fill);
+  transition: width 0.14s ease-out;
+}
+
+.dial-stop {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* A stop is a small dot on the line; the one the dial stands on is the knob. */
+.dial-dot {
+  box-sizing: content-box;
+  width: var(--dial-dot);
+  height: var(--dial-dot);
+  margin: calc((var(--dial-row) - var(--dial-dot)) / 2) 0;
+  border-radius: 50%;
+  background: var(--dial-rail-dot);
+  transition: transform 0.1s ease-out;
+}
+
+.dial-stop.past .dial-dot {
+  background: var(--dial-fill);
+}
+
+.dial-stop.on .dial-dot {
+  width: var(--dial-knob);
+  height: var(--dial-knob);
+  margin: calc((var(--dial-row) - var(--dial-knob)) / 2) 0;
+  background: var(--dial-knob-color);
+  box-shadow: var(--dial-knob-shadow);
+}
+
+.dial-stop:hover:not(.on) .dial-dot {
+  transform: scale(1.5);
+}
+
+.dial-stop:focus-visible {
+  outline: none;
+}
+
+.dial-stop:focus-visible .dial-dot {
+  box-shadow: var(--dial-knob-shadow), 0 0 0 3px var(--dial-focus);
+}
+
+.dial-bar {
+  --dial-row: 30px;
+  --dial-line: 2px;
+  --dial-dot: 5px;
+  --dial-knob: 14px;
+  --dial-rail: hsla(0, 100%, 100%, 0.35);
+  --dial-rail-dot: hsla(0, 100%, 100%, 0.6);
+  --dial-fill: var(--ui-white);
+  --dial-knob-color: var(--ui-white);
+  --dial-knob-shadow: var(--raise-sm);
+  --dial-focus: hsla(0, 100%, 100%, 0.55);
+  height: 30px;
+  margin: 0 6px;
+  padding: 0 4px 0 6px;
+  border-radius: 999px;
+  background: var(--ui-black-transparent);
+}
+
+.dial-bar .dial-track {
+  width: 95px;
+}
+
+.dial-name {
+  /* As wide as the longest name ("My blocks"), so the bar stays put as the dial moves. */
+  min-width: 76px;
+  padding: 0 8px 0 5px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* What the stop being pointed at means. */
+.dial-card {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 256px;
+  padding: 9px 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--ui-white);
+  box-shadow: var(--float);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: normal;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.dial-card small {
+  font-size: 10.5px;
+  font-weight: bold;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-primary-transparent);
+}
+
+.dial-card b {
+  font-size: 13px;
+  color: var(--looks-secondary-dark);
+}
+
+.dial-note {
+  color: var(--text-primary-transparent);
+}
+
+.dial-page {
+  --dial-row: 24px;
+  --dial-line: 4px;
+  --dial-dot: 8px;
+  --dial-knob: 18px;
+  --dial-rail: var(--ui-tertiary);
+  --dial-rail-dot: hsl(203, 30%, 78%);
+  --dial-fill: var(--looks-secondary);
+  --dial-knob-color: var(--looks-secondary);
+  --dial-knob-shadow: 0 0 0 3px var(--ui-white), 0 0 0 4px var(--looks-transparent), var(--raise);
+  --dial-focus: var(--looks-transparent);
+}
+
+.dial-page .dial-track {
+  width: 360px;
+  max-width: 100%;
+}
+
+.dial-page .dial-stop.on .dial-dot {
+  box-shadow: var(--dial-knob-shadow);
+}
+
+.dial-page .dial-stop:focus-visible .dial-dot {
+  box-shadow: 0 0 0 3px var(--ui-white), 0 0 0 6px var(--looks-transparent);
+}
+
+.dial-label {
+  padding: 1px 0 0;
+  color: var(--text-primary-transparent);
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.dial-stop:hover .dial-label {
+  color: var(--text-primary);
+}
+
+.dial-stop.on .dial-label {
+  color: var(--looks-secondary-dark);
+}
+
+/* The style knob: the art style, from a few presets, your own words, or none. */
+.style-knob {
+  position: relative;
+  flex: none;
+}
+
+.style-knob-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  border: none;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.style-knob-name {
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+.style-knob-button .dropdown-caret {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.style-knob-bar .style-knob-button {
+  /* One width for every style (long ones are cut short), so the bar stays put. */
+  width: 142px;
+  margin: 0 6px;
+  padding: 0 6px 0 9px;
+  border-radius: 999px;
+  background: var(--ui-black-transparent);
+  color: var(--ui-white);
+}
+
+.style-knob-bar .style-knob-button:hover,
+.style-knob-bar .style-knob-button.open {
+  background: hsla(0, 0%, 0%, 0.26);
+}
+
+.style-knob-bar .style-knob-button:focus-visible {
+  outline: 2px solid var(--ui-white);
+  outline-offset: 1px;
+}
+
+.style-knob-page .style-knob-button {
+  justify-content: space-between;
+  width: 190px;
+  height: 34px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--ui-white);
+  box-shadow: var(--raise-sm);
+  color: var(--text-primary);
+}
+
+.style-knob-page .style-knob-button:hover,
+.style-knob-page .style-knob-button.open {
+  border-color: var(--looks-secondary);
+}
+
+.style-knob-page .style-knob-button:focus-visible {
+  outline: none;
+  border-color: var(--looks-secondary);
+  box-shadow: 0 0 0 4px var(--looks-light-transparent);
+}
+
+/* Its list: placed on the window, under the knob (or over it). */
+.style-list {
+  position: fixed;
+  z-index: 60;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--ui-white);
+  box-shadow: var(--float);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: normal;
+  overflow-y: auto;
+  cursor: default;
+}
+
+.style-list:focus {
+  outline: none;
+}
+
+.style-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 4px;
+}
+
+.style-more {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.style-list [role='menuitemradio'] {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  height: 38px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-primary);
+  font-weight: bold;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.style-more [role='menuitemradio'] {
+  height: 34px;
+}
+
+.style-more [role='menuitemradio'] > svg {
+  flex: none;
+  width: 24px;
+  color: var(--looks-secondary);
+}
+
+.style-list [role='menuitemradio']:hover {
+  background: var(--looks-light-transparent);
+}
+
+.style-list [role='menuitemradio'].on {
+  border-color: var(--looks-secondary);
+  background: var(--looks-light-transparent);
+  color: var(--looks-secondary-dark);
+}
+
+.style-list [role='menuitemradio']:focus-visible {
+  outline: 2px solid var(--looks-secondary);
+  outline-offset: -1px;
+}
+
+.style-custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0 3px;
+}
+
+.style-custom input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--looks-secondary);
+  border-radius: var(--radius-sm);
+  background: var(--ui-white);
+  font-size: 12.5px;
+}
+
+.style-custom input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--looks-light-transparent);
+}
+
+.style-custom .btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A little picture of each preset's look. */
+.style-swatch {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: linear-gradient(150deg, hsl(250, 55%, 58%), hsl(300, 50%, 62%));
+}
+
+.style-knob-button .style-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.style-knob-bar .style-knob-button .style-swatch {
+  box-shadow: 0 0 0 1.5px hsla(0, 100%, 100%, 0.85);
+}
+
+.style-swatch.none {
+  border: 2px dashed var(--line);
+  background: none;
+}
+
+.style-swatch[data-style='cartoon'] {
+  border: 2.5px solid #2d2a45;
+  background: radial-gradient(circle at 50% 56%, #ff5d5d 0 34%, #2d2a45 36% 46%, transparent 48%), #ffd84d;
+}
+
+.style-swatch[data-style='pixel'] {
+  border-radius: 0;
+  background:
+    conic-gradient(#ffcf4a 25%, #3fa34d 0 50%, #ffcf4a 0 75%, #3fa34d 0) 0 0 / 50% 50%,
+    #3fa34d;
+  box-shadow: inset 0 0 0 2px #1f2a44;
+}
+
+.style-knob-button .style-swatch[data-style='pixel'] {
+  border-radius: 0;
+}
+
+.style-swatch[data-style='paper'] {
+  background:
+    radial-gradient(circle at 34% 40%, #e07a5f 0 26%, transparent 27%),
+    radial-gradient(circle at 39% 46%, hsla(20, 30%, 25%, 0.28) 0 26%, transparent 27%),
+    linear-gradient(170deg, #f2cc8f 0 58%, #81b29a 58%);
+}
+
+.style-swatch[data-style='neon'] {
+  background: radial-gradient(circle at 50% 50%, transparent 0 28%, #ff3df2 30% 38%, hsla(304, 100%, 62%, 0.35) 40% 52%, transparent 54%), #160d33;
+  box-shadow: inset 0 0 0 1.5px #22e6ff;
+}
+
+.style-swatch[data-style='storybook'] {
+  background:
+    radial-gradient(circle at 70% 30%, hsla(0, 100%, 100%, 0.75) 0 16%, transparent 34%),
+    linear-gradient(160deg, #f9c9d8, #cbe4fb 55%, #d5f0cb);
+}
+
+.style-swatch[data-style='doodle'] {
+  border: 2px solid #33334d;
+  border-radius: 9px 5px 8px 4px;
+  background: repeating-linear-gradient(115deg, transparent 0 3px, #8fb8ff 3px 5px), #fffdf2;
+}
+
+.style-swatch[data-style='clay'] {
+  border-radius: 46% 54% 50% 50%;
+  background: radial-gradient(circle at 34% 28%, hsla(0, 100%, 100%, 0.9) 0 7%, transparent 9%), radial-gradient(circle at 40% 35%, #ffa25e, #d9480f 78%);
+}
+
+.style-swatch[data-style='minimal'] {
+  background:
+    radial-gradient(circle at 32% 36%, #e63946 0 22%, transparent 23%),
+    linear-gradient(#1d3557, #1d3557) 82% 80% / 42% 42% no-repeat,
+    #f1faee;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/*
+ * Narrow windows (the bar is full from about 1200px down, with the sign-in button and the debug
+ * counter there): the two controls give up their names first (the knob keeps its picture, the
+ * dial its stops; pointing at them still says everything), so nothing in the bar overlaps.
+ */
+@media (max-width: 1199px) {
+  .style-knob-bar .style-knob-button {
+    width: auto;
+  }
+
+  .style-knob-bar .style-knob-name {
+    display: none;
+  }
+}
+
+@media (max-width: 1114px) {
+  .dial-name {
+    display: none;
+  }
+
+  .dial-bar {
+    margin: 0 3px;
+    padding: 0 5px;
+  }
+
+  .dial-bar .dial-track {
+    width: 80px;
+  }
+
+  .style-knob-bar .style-knob-button {
+    margin: 0 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dial-track::after,
+  .dial-dot {
+    transition: none;
+  }
 }
 
 /* Debug spend counter */
@@ -3572,38 +4089,40 @@ details summary {
 .start-row {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
 }
 
-.start-spacer {
+/* How long it takes (or what it needs), next to the button that starts it. */
+.start-note {
   flex: 1;
+  min-width: 0;
+  padding: 0 6px;
+  color: var(--text-primary-transparent);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: right;
 }
 
-.start-levels {
+/* The dial and the style knob, each under its name. */
+.start-knobs {
   display: flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 999px;
-  background: var(--ui-tertiary);
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px 36px;
+  margin-top: 6px;
 }
 
-.start-levels button {
-  height: 28px;
-  padding: 0 13px;
-  border: none;
-  border-radius: 999px;
-  background: none;
-  color: var(--text-primary);
+.start-knob {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.start-knob-label {
   font-size: 12.5px;
   font-weight: bold;
-  cursor: pointer;
-}
-
-.start-levels button.on {
-  background: var(--looks-secondary);
-  color: var(--ui-white);
-  box-shadow: var(--raise-sm);
+  color: var(--text-primary);
 }
 
 .btn.start-make {
@@ -3613,9 +4132,16 @@ details summary {
 }
 
 .start-hint {
+  /* Room for two lines (the longest), so pointing along the dial doesn't move what is below. */
+  min-height: 2.8em;
   margin: 0;
   color: var(--text-primary-transparent);
   font-size: 12px;
+  line-height: 1.4;
+}
+
+.start-hint b {
+  color: var(--looks-secondary-dark);
 }
 
 .start-heading {
@@ -3678,8 +4204,16 @@ details summary {
 }
 
 .start-foot {
-  margin-top: 12px;
-  font-size: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.start-foot .btn svg {
+  color: var(--looks-secondary);
 }
 
 @media (max-width: 560px) {

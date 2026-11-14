@@ -146,7 +146,7 @@ const OUTPUT_RULES = `# Characters, art and sound
 /**
  * Directing: the game piece. The author gave a sentence or two (and maybe a cast, a look and some
  * rules) and the compiler makes the whole game. The structure they gave is kept; what it leaves
- * open is the compiler's to invent, as far as the imagination dial says.
+ * open is the compiler's to invent, as far as the dial says (see FREEDOM below).
  */
 const DIRECTOR = `# Directing a game (the "game" piece)
 The author gave you the idea and trusts you to make the game. Their game: line, the rest of the brief (art style, made for, rules, you win when...) and their sprites are the script you were handed; everything they left open is yours to decide. Make a complete, polished game that someone plays for a few minutes and then shows a friend.
@@ -174,11 +174,31 @@ The author gave you the idea and trusts you to make the game. Their game: line, 
 ## Keep it fast
 School laptops and phones play this, so: at most about 120 sprites and 300 particles alive (remove what leaves the screen; there can only be 300 copies at once); draw scenery once and move it (a tileSprite's tilePosition, tweens, a few objects) instead of clearing and redrawing a Graphics every frame; at most one camera post effect, and no blur.`;
 
+/**
+ * The dial: how much the compiler invents and, a little, how big the game is. One section for each
+ * stop past "My blocks" (which makes no game piece). Each says what to invent and then the size in
+ * the same terms (cast, acts, length of a play, pictures, sounds), so the stops are plainly different.
+ */
 const FREEDOM: Record<Exclude<Freedom, 'just what I say'>, string> = {
+  small: `## How much to invent: small
+Make a small, simple game: the one thing the author's idea is about, done well, and nothing more. Invent only what that needs to work: no extra mechanics, characters, power-ups, twists or story. It still feels good to play (snappy controls, a goal you see at a glance, a score or a counter, a little juice, a win and a lose), but it is one scene with one idea, and it gets a little faster or busier as it goes instead of changing.
+Size (where the notes above ask for more, this wins): a cast of 2 to 4 characters; one scene, no acts and no boss; a full play lasts about a minute; 3 to 6 images, one costume each (two for the player); 3 to 5 sounds, one of them a short looping tune.`,
   'fill in the gaps': `## How much to invent: fill in the gaps
-Stay close to what the author wrote. Build the game they describe, complete and polished as above, and invent only what it needs to work and feel good. No mechanics, characters or twists they didn't ask for.`,
+Stay close to what the author wrote. Build the game they describe, complete and polished as above, and invent only what it needs to work and feel good. No mechanics, characters or twists they didn't ask for: the arc comes from their own idea getting harder and richer, not from new ideas of yours.
+Size: a cast of 4 to 7 characters; one world, whose arc builds in three or four steps to a finale; a full play lasts two to three minutes; 6 to 14 images; 6 to 8 sounds (one for every moment that matters) and one looping tune.`,
   'go wild': `## How much to invent: go wild
-The author wants to be amazed, and to laugh. Keep their idea at the heart of the game, then take it somewhere they didn't see coming. Think like a designer showing off: a second act where the rules flip (gravity turns over, the hunter becomes the hunted, the floor starts to move), something that grows, multiplies or transforms as you play, weather and a world that changes scene, an absurd boss with a name, a title and phases, power-ups with personality that change how the game plays for a few seconds, a secret for the curious, a running joke in the on-screen text, and an ending that is a spectacle. Choose three bold ideas and commit to them completely rather than ten half-made ones; each new act should look different at a glance (new colors, new scenery, new music cue). Be playful and specific, never random for its own sake: every surprise makes the game more fun to play, and the author's idea is still what the game is about.`,
+The author wants to be amazed, and to laugh. Keep their idea at the heart of the game, then take it somewhere they didn't see coming. Think like a designer showing off: a second act where the rules flip (gravity turns over, the hunter becomes the hunted, the floor starts to move), something that grows, multiplies or transforms as you play, weather and a world that changes scene, an absurd boss with a name and a title, power-ups with personality that change how the game plays for a few seconds, a secret for the curious, a running joke in the on-screen text, and an ending that is a spectacle. Choose three bold ideas and commit to them completely rather than ten half-made ones; each new act should look different at a glance (new colors, new scenery, new music cue). Be playful and specific, never random for its own sake: every surprise makes the game more fun to play, and the author's idea is still what the game is about.
+Size: a cast of 6 to 9 characters; two or three acts and a boss; a full play lasts about three minutes; 10 to 16 images; 8 to 10 sounds and one or two looping tunes (the second for the boss or the last act).`,
+  grand: `## How much to invent: grand
+The author turned the dial all the way up: make the grandest game this idea can be, one they will remember. Everything that makes a wild game belongs here too: their idea stays at the heart, and you take it somewhere they didn't see coming (rules that flip, things that grow or transform, power-ups with personality, a secret for the curious, a running joke in the on-screen text). On top of that this game is big, and it has all of these:
+- An opening: a title card with the game's name, then a few seconds that set the scene (who the hero is and what they want) before play starts. A key or a click skips it.
+- Three to five acts or levels. Each is a different place that looks different at a glance (its own scenery, colors and music cue), brings its own enemies or obstacles, and adds one new idea to how the game plays. Name each one on screen as it starts ("Act 2: The Frozen Disco"), with a short breather between them (a banner, the score so far).
+- A boss at the end with a name, a title, a health bar and three phases that each fight differently. A smaller boss or a set piece on the way, if it fits.
+- An ending: after the finale, a closing scene that looks back on the play (what was collected, the score, a last joke) before \`this.game.win(text)\`.
+- More life in the world: a bigger cast, helpers as well as enemies, and things in the background that react to the play.
+A game this long has to be kind: losing costs a life or sends the player back to the start of the act they reached, never to the start of the game, and the first act is still gentle.
+Size (where the notes above ask for less, this wins): a cast of 8 to 12 characters; 3 to 5 acts, with an opening and an ending; a full play lasts four to six minutes; 14 to 24 images (scenery for every act, drawn or as backdrops); 10 to 14 sounds and three or four looping tunes (the acts', the boss's, the ending's).
+It is a lot of game, so write it compactly: describe the acts and waves as data (lists of what appears when) run by a few shared helpers instead of repeating code for each act, build an act when it starts and remove the one before, and stay within "Keep it fast".`,
 };
 
 /** The compile request's system prompt. Every game is 2D now; `mode` is left over from 3D projects. */

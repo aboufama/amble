@@ -327,8 +327,8 @@ export interface Example {
 }
 
 /**
- * A demo that is nothing but an idea: one sentence on the stage with the imagination dial on
- * "go wild". The compiler made everything else: the cast, the art, the sounds, the rules, the acts.
+ * A demo that is nothing but an idea: one sentence on the stage with the dial on "Wild" (go wild).
+ * The compiler made everything else: the cast, the art, the sounds, the rules, the acts.
  */
 function fromIdea(id: string, title: string, idea: string): Example {
   return {

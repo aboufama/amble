@@ -9,10 +9,10 @@
  * the next, unless a compile rewrites them to fit other changes (words anywhere can change how
  * the whole game works, so a compile request sees every piece and may revise any of them).
  */
-import { BLOCK_BY_TYPE, FREEDOM_LEVELS, type CharacterSpecial, type Freedom } from '../blocks/spec';
+import { BLOCK_BY_TYPE, FREEDOM_LEVELS, freedomOf, type CharacterSpecial, type Freedom } from '../blocks/spec';
 import { hashString } from '../project/ids';
 import type { Project, Target } from '../project/types';
-import { blockText, characterLabel, inputBlock, isDisabled, oneLine, topBlocks, type JsonBlock } from './serialize';
+import { MENU_MARK, blockText, characterLabel, inputBlock, isDisabled, oneLine, topBlocks, type JsonBlock } from './serialize';
 
 /**
  * - action: runs where the block is; the script waits for it (a generator).
@@ -22,7 +22,7 @@ import { blockText, characterLabel, inputBlock, isDisabled, oneLine, topBlocks, 
  * - message: the text on the win / game over banner (a plain method that returns it).
  * - behavior: starts with each copy of the sprite and keeps running in the background (a generator).
  * - rule: starts once when the game starts and keeps running in the background (a generator).
- * - game: the whole game, made from the `game:` line when the imagination dial is on. Starts once
+ * - game: the whole game, made from the `game:` line when the dial is past "My blocks". Starts once
  *   when the game starts, on the stage (a generator); its characters come with it as sprites.
  */
 export type PieceKind = 'action' | 'timed' | 'condition' | 'value' | 'message' | 'behavior' | 'rule' | 'game';
@@ -57,7 +57,7 @@ export interface TargetPlan {
   issues: Array<{ blockId: string; text: string }>;
   /** The block each script and standalone line starts at, by its text (to show run problems on it). */
   scripts: ReadonlyMap<string, string>;
-  /** Brief blocks (game, made for, art style) in this target, as text. */
+  /** Brief blocks (game, made for, art style) in this target, as text; on the stage, the dial too. */
   brief: string[];
   /** Which piece each block (by id) became, to point at it in the compile request. */
   markers: ReadonlyMap<string, string>;
@@ -122,10 +122,12 @@ interface Who {
 }
 
 /**
- * The imagination dial: the first `imagination:` block (the stage's, else a sprite's). Without
- * one, the `game:` line only says what the game is about, as it always did.
+ * How much of the game the compiler makes from the `game:` line: the project's dial. Projects from
+ * before the dial say it with an `imagination:` block (the first one: the stage's, else a sprite's).
+ * With neither, the `game:` line only says what the game is about, as it always did.
  */
 export function projectFreedom(project: Project): Freedom {
+  if (project.dial !== undefined) return freedomOf(project.dial);
   for (const t of [project.stage, ...project.sprites]) {
     for (const b of topBlocks(t.blocks)) {
       if (b.type !== 'br_freedom' || isDisabled(b)) continue;
@@ -520,9 +522,12 @@ class TargetCompiler {
     switch (b.type) {
       case 'br_game':
         this.brief.push(label);
-        // With the imagination dial on, the stage's game line is the whole game: one piece (and the characters it brings).
+        // With the dial past "My blocks", the stage's game line is the whole game: one piece (and the characters it brings).
         if (this.isStage && !this.directed && this.freedom !== 'just what I say' && oneLine(b.fields?.WHAT)) {
           this.directed = true;
+          // The dial is part of the brief, in the words of the imagination: block that said it before the
+          // dial (so a game made back then is the game at that stop, and a new stop is a new brief).
+          if (this.project.dial !== undefined) this.brief.push(`imagination: [${this.freedom} ${MENU_MARK}]`);
           const method = this.piece(b, 'game', 'WHAT');
           this.starts.push(`this._script(${lit(method)}, false, ${lit(label)});`);
         }
@@ -531,8 +536,12 @@ class TargetCompiler {
         this.brief.push(label);
         return;
       case 'br_freedom':
-        this.brief.push(label);
-        if (!this.isStage) this.warn(`"${label}" belongs on the stage, next to the game: line.`);
+        // The block from before the dial. Once the project has a dial, the dial says it.
+        if (this.project.dial !== undefined) this.warn(`"${label}" isn't used any more: the dial at the top says how much of the game Amble makes.`);
+        else {
+          this.brief.push(label);
+          if (!this.isStage) this.warn(`"${label}" belongs on the stage, next to the game: line.`);
+        }
         return;
       case 'br_style': {
         // The look of the whole game: set up once, when the game starts (and a guide for new art).
