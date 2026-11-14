@@ -15,7 +15,7 @@ import { StyleKnob } from './StyleKnob';
 
 /** Ideas to start from: one sentence is all a game needs. (Not the demos' own: those are already built.) */
 export const IDEA_STARTERS = [
-  'a hamster in a tiny mech suit defends the cheese from invading cats',
+  'a chameleon ninja sneaks past guard dogs by changing colour to match the floor',
   'a snowman surfs an avalanche and collects carrots before he melts',
   'a robot chef juggles flying ingredients into a giant bubbling soup',
   'a bee with a jetpack races wasps through a field of giant sunflowers',

@@ -1,8 +1,10 @@
 import { ambleCostumes, block, character, newProject, newSprite, svgAsset, synthSound, variable, workspace } from './defaults';
 import { ideaProject } from './idea';
+import { STYLE_PRESETS } from './styles';
 import { uid } from './ids';
 import { migrateProject } from './migrate';
 import { isProject } from './persistence';
+import type { Dial } from '../blocks/spec';
 import type { Project } from './types';
 
 const nightSky = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360">
@@ -330,15 +332,18 @@ export interface Example {
  * A demo that is nothing but an idea: one sentence on the stage with the dial on "Wild" (go wild).
  * The compiler made everything else: the cast, the art, the sounds, the rules, the acts.
  */
-function fromIdea(id: string, title: string, idea: string): Example {
+function fromIdea(id: string, title: string, idea: string, opts: { dial?: Dial; style?: string } = {}): Example {
+  const dial = opts.dial ?? 3;
+  const style = opts.style ? (STYLE_PRESETS.find((p) => p.id === opts.style)?.words ?? opts.style) : '';
+  const how = [dial === 4 ? 'the dial on Grand' : '', opts.style ? `${STYLE_PRESETS.find((p) => p.id === opts.style)?.label ?? opts.style} style` : ''].filter(Boolean).join(', ');
   return {
     id,
     title,
     idea,
-    description: `Made from one sentence: “${idea}”`,
+    description: `Made from one sentence${how ? ` (${how})` : ''}: “${idea}”`,
     prebuilt: true,
     make: () => {
-      const p = ideaProject(idea, 'go wild');
+      const p = ideaProject(idea, dial, style);
       p.title = title;
       return p;
     },
@@ -348,13 +353,13 @@ function fromIdea(id: string, title: string, idea: string): Example {
 /** Blank projects and examples offered on the start screen and in the File menu. */
 export const EXAMPLES: Example[] = [
   fromIdea('disco-rex', 'Meteor Disco Rex', 'a T-rex on roller skates dodges meteors at a disco'),
+  fromIdea('jelly-knight', 'Jelly Knight', 'a knight made of jelly bounces up a castle made of cake', { dial: 4, style: 'clay' }),
+  fromIdea('ghost-library', 'Candle Ghost', 'a ghost who is scared of the dark collects candles in a haunted library', { style: 'pixel' }),
   fromIdea('pizza-planets', 'Pizza Planet Express', 'a cat on a rocket scooter delivers pizzas between tiny planets before they get cold'),
-  fromIdea('jelly-knight', 'Jelly Knight', 'a knight made of jelly bounces up a castle made of cake'),
-  fromIdea('penguin-dj', 'Penguin DJ', 'a penguin DJ keeps the dance floor from melting'),
-  fromIdea('ghost-library', 'Candle Ghost', 'a ghost who is scared of the dark collects candles in a haunted library'),
-  fromIdea('broom-chase', 'Runaway Broom', "a wizard's broom has escaped: chase it through a thunderstorm"),
-  fromIdea('snail-garden', 'Snail Garden', 'grow a garden while greedy snails try to eat it'),
-  fromIdea('sub-cave', 'Shy Monsters', 'a tiny submarine explores a glowing sea cave full of shy monsters'),
+  fromIdea('mech-hamster', 'Mecha Hamster', 'a hamster in a tiny mech suit defends the cheese from invading cats', { style: 'doodle' }),
+  fromIdea('penguin-dj', 'Penguin DJ', 'a penguin DJ keeps the dance floor from melting', { style: 'neon' }),
+  fromIdea('snail-garden', 'Snail Garden', 'grow a garden while greedy snails try to eat it', { style: 'paper' }),
+  fromIdea('sub-cave', 'Shy Monsters', 'a tiny submarine explores a glowing sea cave full of shy monsters', { style: 'storybook' }),
   { id: 'neon-drift', title: 'Neon Drift', description: 'Rules and blocks: steer a comet through a neon asteroid storm, blast waves of rocks, then take on the Mothership.', make: neonDrift, prebuilt: true },
   { id: 'lantern-cave', title: 'Lantern Cave', description: 'Rules and blocks: a platformer in the dark. Find 5 crystals by lantern light, then escape the collapsing cave.', make: lanternCave, prebuilt: true },
   { id: 'sky-whale', title: 'Sky Whale', description: 'Rules and blocks: hold space to swim up. Eat stars, catch shooting stars, dodge storms as night falls.', make: skyWhale, prebuilt: true },

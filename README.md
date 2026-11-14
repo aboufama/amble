@@ -36,7 +36,7 @@ The first visit opens the start screen: type an idea and press **Make my game** 
 
 | Demos | What they are |
 |---|---|
-| **Meteor Disco Rex**, **Pizza Planet Express**, **Jelly Knight**, **Penguin DJ**, **Candle Ghost**, **Runaway Broom**, **Snail Garden**, **Shy Monsters** | Each is one sentence and the dial on *go wild*, nothing else: open the stage's code to see the two blocks. The compiler invented the cast, the acts, the bosses, the art and the music. |
+| **Meteor Disco Rex**, **Pizza Planet Express**, **Jelly Knight**, **Penguin DJ**, **Candle Ghost**, **Mecha Hamster**, **Snail Garden**, **Shy Monsters** | Each is one sentence and the dial on *go wild*, nothing else: open the stage's code to see the two blocks. The compiler invented the cast, the acts, the bosses, the art and the music. |
 | **Neon Drift**, **Lantern Cave**, **Sky Whale**, **Pocket Planet** | Rules and blocks: a few exact blocks for the controls, and a dozen sentences (`rule:`, `always:`, `never:`) for everything else. |
 | **Star Catcher** | Almost all exact blocks, with three blocks in words that build the first time you press the flag. |
 

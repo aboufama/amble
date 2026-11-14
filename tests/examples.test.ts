@@ -101,17 +101,22 @@ describe('the demos', () => {
     }
   });
 
-  it('made from an idea are a sentence and the dial, and nothing else', () => {
+  it('made from an idea are a sentence, the dial and maybe a style, and nothing else', () => {
     const ideas = EXAMPLES.filter((x) => x.idea);
     expect(ideas.length).toBeGreaterThanOrEqual(6);
     for (const e of ideas) {
       const p = e.make();
       const { words, exact } = census(p);
-      // game: [the sentence], and the dial on "Wild" (no block for it).
-      expect([words, exact], e.title).toEqual([1, 0]);
-      expect(p.dial, e.title).toBe(3);
+      // game: [the sentence] and, for some, art style: [a preset's words]; the dial has no block.
+      expect(exact, e.title).toBe(0);
+      expect([1, 2], e.title).toContain(words);
+      expect([3, 4], e.title).toContain(p.dial);
       expect(p.sprites, e.title).toEqual([]);
       expect(p.title).toBe(e.title);
     }
+    // Between them they show the dial's top stop and several of the style knob's presets.
+    expect(ideas.some((e) => e.make().dial === 4)).toBe(true);
+    const styled = ideas.filter((e) => census(e.make()).words === 2);
+    expect(styled.length).toBeGreaterThanOrEqual(4);
   });
 });
