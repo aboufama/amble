@@ -1,13 +1,16 @@
 import { expect, test, type Frame, type Page } from '@playwright/test';
 
 /**
- * The start screen, the simple palette (one board with every block in view), and a game made
- * from an idea: say what you want in a sentence and Amble makes the whole game (answered here by
- * a mock of the OpenAI API), then change it by saying so.
+ * Home (a page of its own, where a first visit starts), the simple palette (one board with every
+ * block in view), and a game made from an idea: say what you want in a sentence and Amble makes
+ * the whole game (answered here by a mock of the OpenAI API), then change it by saying so.
  */
 
-// A first visit: nothing in this browser yet (the other tests start past the start screen, with every block).
+// A first visit: nothing in this browser yet (the other tests start in the editor, with every block).
 test.use({ storageState: { cookies: [], origins: [] } });
+
+/** Home: the page with "What do you want to make?", the demos, a saved game and an empty project. */
+const homePage = (page: Page) => page.getByRole('region', { name: 'Home' });
 
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><circle cx="30" cy="30" r="26" fill="#58c66a"/></svg>';
 
@@ -70,29 +73,84 @@ const paletteBlocks = (page: Page) =>
       .map((b) => b.type);
   });
 
-test('a first visit starts with "What do you want to make?" and the demos, once', async ({ page }) => {
+test('a first visit starts on Home, a page of its own, once', async ({ page }) => {
   await page.goto('/');
-  const start = page.getByRole('dialog', { name: 'Make a game' });
-  await expect(start).toBeVisible();
-  await expect(start.getByLabel('What do you want to make?')).toBeFocused();
-  // Every demo is there, the ones made from one sentence first, each with its sentence.
-  await expect(start.getByRole('button', { name: /^Demo: / })).toHaveCount(13);
-  await expect(start.getByRole('button', { name: 'Demo: Meteor Disco Rex' })).toContainText('a T-rex on roller skates dodges meteors at a disco');
+  const home = homePage(page);
+  await expect(home).toBeVisible();
+  // A page, not a dialog over the editor: the editor is out of sight and out of reach, with its blocks as they are.
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.menubar')).toBeHidden();
+  await expect(page.locator('.blocklyMainBackground')).toBeHidden();
+  await expect(page.locator('.app')).toHaveAttribute('inert');
+  await expect(async () => expect(await codeBlocks(page)).not.toHaveLength(0)).toPass();
+  // Its own top bar: the logo and the way back.
+  await expect(home.getByRole('heading', { level: 1 })).toHaveText('amble');
+  await expect(home.getByRole('button', { name: 'Back to editor' })).toBeVisible();
+
+  // What to make: an empty box. No idea is put in it and none is on offer.
+  const idea = home.getByLabel('What do you want to make?');
+  await expect(idea).toBeFocused();
+  await expect(idea).toHaveValue('');
+  await expect(idea).not.toHaveAttribute('placeholder');
+  await expect(home.getByRole('button', { name: /idea/i })).toHaveCount(0);
   // Nothing to make yet.
-  await expect(start.getByRole('button', { name: 'Make my game' })).toBeDisabled();
-  await start.getByRole('button', { name: 'Give me an idea' }).click();
-  await expect(start.getByLabel('What do you want to make?')).not.toHaveValue('');
-  await expect(start.getByRole('button', { name: 'Make my game' })).toBeEnabled();
+  await expect(home.getByRole('button', { name: 'Make my game' })).toBeDisabled();
+  await idea.fill('a game of my own');
+  await expect(home.getByRole('button', { name: 'Make my game' })).toBeEnabled();
+  // Every demo is there, the ones made from one sentence first: a picture, a title and one line each.
+  await expect(home.getByRole('button', { name: /^Demo: / })).toHaveCount(13);
+  await expect(home.getByRole('button', { name: 'Demo: Meteor Disco Rex' })).toContainText('a T-rex on roller skates dodges meteors at a disco');
+  await expect.poll(() => home.getByRole('button', { name: 'Demo: Meteor Disco Rex' }).locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  await expect(home.getByRole('button', { name: 'Open a saved game' })).toBeVisible();
+  await expect(home.getByRole('button', { name: 'Empty project' })).toBeVisible();
 
   // It doesn't come back by itself; File > New game opens it again.
-  await page.keyboard.press('Escape');
-  await expect(start).toHaveCount(0);
+  await home.getByRole('button', { name: 'Back to editor' }).click();
+  await expect(home).toHaveCount(0);
+  await expect(page.locator('.blocklyMainBackground')).toBeVisible();
   await page.reload();
   await expect(page.locator('.blocklyMainBackground')).toBeVisible();
-  await expect(start).toHaveCount(0);
+  await expect(home).toHaveCount(0);
   await page.getByRole('button', { name: /File/ }).click();
   await page.getByRole('menuitem', { name: 'New game' }).click();
-  await expect(start).toBeVisible();
+  await expect(home).toBeVisible();
+  await expect(page.locator('.menubar')).toBeHidden();
+});
+
+test('Home fits a desktop, a laptop and a phone: the page scrolls down, never sideways', async ({ page }) => {
+  await page.goto('/');
+  const home = homePage(page);
+  await expect(home).toBeVisible();
+  for (const [width, height] of [
+    [1440, 900],
+    [1280, 720],
+    [390, 844],
+  ]) {
+    await page.setViewportSize({ width, height });
+    const fit = () =>
+      home.evaluate((el) => ({
+        // Neither the window nor the page in it is wider than the screen; the page is longer, and scrolls.
+        window: document.documentElement.scrollWidth,
+        sideways: el.scrollWidth - el.clientWidth,
+        scrolls: el.scrollHeight > el.clientHeight && getComputedStyle(el).overflowY === 'auto',
+        // The bar, the box, every card and every control are inside the screen.
+        cut: [...el.querySelectorAll('.home-bar > *, .home-make, .home-make textarea, .dial, .style-knob, .home-make-button, .home-demo, .home-foot > *')].filter((c) => {
+          const r = c.getBoundingClientRect();
+          return r.width === 0 || r.left < 0 || r.right > window.innerWidth + 0.5;
+        }).length,
+      }));
+    await expect.poll(fit, { message: `${width}x${height}` }).toEqual({ window: width, sideways: 0, scrolls: true, cut: 0 });
+    // The demos are a grid of cards (two across on a phone, more on a wider screen), each with a large picture.
+    const cards = await home.locator('.home-demo').evaluateAll((els) => els.map((c) => ({ top: Math.round(c.getBoundingClientRect().top), picture: c.querySelector('.home-thumb')!.getBoundingClientRect().width })));
+    const across = cards.filter((c) => c.top === cards[0].top).length;
+    expect(across).toBe(width < 600 ? 2 : 4);
+    expect(Math.min(...cards.map((c) => c.picture))).toBeGreaterThanOrEqual(width < 600 ? 160 : 240);
+    // The end of the page is reached by scrolling down; the top bar stays.
+    await home.getByRole('button', { name: 'Empty project' }).scrollIntoViewIfNeeded();
+    await expect(home.getByRole('button', { name: 'Empty project' })).toBeInViewport({ ratio: 1 });
+    await expect(home.getByRole('button', { name: 'Back to editor' })).toBeInViewport({ ratio: 1 });
+    await home.evaluate((el) => el.scrollTo(0, 0));
+  }
 });
 
 interface PaletteItem {
@@ -156,11 +214,11 @@ const codeBlocks = (page: Page) =>
       .sort();
   });
 
-/** A first visit, past the start screen: the editor as it opens, in a 1280 x 720 window. */
+/** A first visit, past Home: the editor as it opens, in a 1280 x 720 window. */
 async function openEditor(page: Page) {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/');
-  const start = page.getByRole('dialog', { name: 'Make a game' });
+  const start = homePage(page);
   await expect(start).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(start).toHaveCount(0);
@@ -338,7 +396,7 @@ test('a sentence makes a whole game, and "Change something" changes it', async (
   await page.addInitScript(() => localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test' })));
   await mockModel(page, calls);
   await page.goto('/');
-  const start = page.getByRole('dialog', { name: 'Make a game' });
+  const start = homePage(page);
   await start.getByLabel('What do you want to make?').fill('a T-rex on roller skates dodges meteors at a disco');
   // The dial starts on "Wild" (go wild).
   await expect(start.getByRole('radio', { name: 'Wild' })).toHaveAttribute('aria-checked', 'true');
@@ -412,7 +470,7 @@ test('the dial and the style knob say how the game is made, on the home screen a
   await page.addInitScript(() => localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test' })));
   await mockModel(page, calls);
   await page.goto('/');
-  const start = page.getByRole('dialog', { name: 'Make a game' });
+  const start = homePage(page);
   await start.getByLabel('What do you want to make?').fill('a T-rex on roller skates dodges meteors at a disco');
 
   // The dial: five stops, each explained as you point at it. The arrow keys move it; a click sets it.
@@ -534,14 +592,23 @@ test('the dial and the style knob say how the game is made, on the home screen a
   expect(games()[2].user).toContain('- art style: [claymation: chunky rounded shapes with soft shading and shiny highlights]');
 });
 
-test('the logo opens the home screen: make a game, play a demo, open a saved game or start empty', async ({ page }) => {
+/** The block editor as it stands: its workspace (another one would mean the editor was started again), where its scripts are, the game on the stage, and the build. */
+const editorState = (page: Page) =>
+  page.evaluate(() => {
+    type Ws = { id: string; scrollX: number; scrollY: number };
+    const w = window as unknown as { __ambleWorkspace: Ws; __ambleStore: { getState(): { run: { state: string }; compile: { status: string } } } };
+    const s = w.__ambleStore.getState();
+    return { workspace: w.__ambleWorkspace.id, at: `${Math.round(w.__ambleWorkspace.scrollX)},${Math.round(w.__ambleWorkspace.scrollY)}`, run: s.run.state, build: s.compile.status };
+  });
+
+test('the logo opens Home, and the editor is as it was on the way back', async ({ page }) => {
   await page.goto('/');
-  const start = page.getByRole('dialog', { name: 'Make a game' });
+  const home = homePage(page);
   const replace = page.getByRole('dialog', { name: 'Replace Project' });
   // The first visit starts there, with nothing to lose: starting empty asks nothing.
-  await expect(start).toBeVisible();
-  await start.getByRole('button', { name: 'Empty project' }).click();
-  await expect(start).toHaveCount(0);
+  await expect(home).toBeVisible();
+  await home.getByRole('button', { name: 'Empty project' }).click();
+  await expect(home).toHaveCount(0);
   await expect(replace).toHaveCount(0);
   await expect(page.locator('.sprite-tile', { hasText: 'Amble' })).toBeVisible();
   await expect(page.locator('.blocklyMainBackground')).toBeVisible();
@@ -550,44 +617,173 @@ test('the logo opens the home screen: make a game, play a demo, open a saved gam
   await expect(bar.getByRole('radio', { name: 'My blocks' })).toHaveAttribute('aria-checked', 'true');
   await expect(bar.getByRole('button', { name: 'Art style: none' })).toBeVisible();
 
-  // The logo is the way home: the idea box with the dial and the style knob, the demos, and the two ways to start without an idea.
-  await page.getByRole('button', { name: 'Amble: home' }).click();
-  await expect(start).toBeVisible();
-  await expect(start.getByLabel('What do you want to make?')).toBeFocused();
-  await expect(start.getByRole('radiogroup', { name: /^Dial/ }).getByRole('radio', { name: 'Wild' })).toHaveAttribute('aria-checked', 'true');
-  await expect(start.getByRole('button', { name: 'Art style: none' })).toBeVisible();
-  await expect(start.getByRole('button', { name: 'Make my game' })).toBeDisabled();
-  await expect(start.getByRole('button', { name: /^Demo: / })).toHaveCount(13);
-  await expect(start.getByRole('button', { name: 'Empty project' })).toBeVisible();
+  // Something to find again: a name, a block added to the code, the scripts moved aside, and the game playing on the stage.
+  await page.getByLabel('Project title').fill('Kept as it was');
+  const before = await codeBlocks(page);
+  await page.evaluate(() => {
+    type Block = { initSvg(): void; render(): void; moveBy(x: number, y: number): void };
+    type Ws = { newBlock(type: string): Block; scroll(x: number, y: number): void };
+    const ws = (window as unknown as { __ambleWorkspace: Ws }).__ambleWorkspace;
+    const block = ws.newBlock('fl_wait');
+    block.initSvg();
+    block.render();
+    block.moveBy(420, 520);
+    ws.scroll(-37, -53);
+  });
+  const blocks = [...before, 'fl_wait'].sort();
+  await expect.poll(() => codeBlocks(page)).toEqual(blocks);
+  await page.locator('.green-flag').click();
+  await expect.poll(async () => (await editorState(page)).run, { timeout: 30_000 }).toBe('running');
+  const { workspace, at } = await editorState(page);
 
-  // Open a saved game: what File > Load from your computer does. There is a project now, so it asks first.
+  // The logo is the way home: a page with its own address, in place of the editor. The game stops.
+  await page.getByRole('button', { name: 'Amble: home' }).click();
+  await expect(home).toBeVisible();
+  await expect(page).toHaveURL(/#home$/);
+  await expect(page.locator('.menubar')).toBeHidden();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect.poll(async () => (await editorState(page)).run).toBe('stopped');
+  // The idea box with the dial and the style knob, the demos, and the two ways to start without an idea.
+  await expect(home.getByLabel('What do you want to make?')).toBeFocused();
+  await expect(home.getByLabel('What do you want to make?')).toHaveValue('');
+  await expect(home.getByRole('radiogroup', { name: /^Dial/ }).getByRole('radio', { name: 'Wild' })).toHaveAttribute('aria-checked', 'true');
+  await expect(home.getByRole('button', { name: 'Art style: none' })).toBeVisible();
+  await expect(home.getByRole('button', { name: 'Make my game' })).toBeDisabled();
+  await expect(home.getByRole('button', { name: /^Demo: / })).toHaveCount(13);
+  await expect(home.getByRole('button', { name: 'Empty project' })).toBeVisible();
+
+  // Three plain ways back, choosing nothing: the button in the top bar, Escape, and the browser's Back button.
+  // Each time the editor is the one that was left: the same workspace with the same blocks, the same project.
+  const backInEditor = async () => {
+    await expect(home).toHaveCount(0);
+    await expect(page).not.toHaveURL(/#home$/);
+    await expect(page.locator('.blocklyMainBackground')).toBeVisible();
+    await expect(page.getByLabel('Project title')).toHaveValue('Kept as it was');
+    expect(await editorState(page)).toMatchObject({ workspace, at });
+    expect(await codeBlocks(page)).toEqual(blocks);
+  };
+  await home.getByRole('button', { name: 'Back to editor' }).click();
+  await backInEditor();
+  await page.getByRole('button', { name: 'Amble: home' }).click();
+  await expect(home).toBeVisible();
+  await page.keyboard.press('Escape');
+  await backInEditor();
+  await page.getByRole('button', { name: 'Amble: home' }).click();
+  await expect(home).toBeVisible();
+  await page.goBack();
+  await backInEditor();
+  // Forward is Home again, and a page loaded at Home's address starts there.
+  await page.goForward();
+  await expect(home).toBeVisible();
+  await expect(page).toHaveURL(/#home$/);
+  await page.reload();
+  await expect(home).toBeVisible();
+  await expect(page.locator('.menubar')).toBeHidden();
+  await home.getByRole('button', { name: 'Back to editor' }).click();
+  await expect(home).toHaveCount(0);
+  await expect(page).not.toHaveURL(/#home$/);
+  await expect(page.getByLabel('Project title')).toHaveValue('Kept as it was');
+});
+
+test('Home opens a demo, a saved game or an empty project, and asks before replacing a game', async ({ page }) => {
+  await page.goto('/');
+  const home = homePage(page);
+  const replace = page.getByRole('dialog', { name: 'Replace Project' });
+  const logo = page.getByRole('button', { name: 'Amble: home' });
+  // A first visit has nothing to lose: a demo opens at once, in the editor.
+  await expect(home).toBeVisible();
+  await home.getByRole('button', { name: 'Demo: Star Catcher' }).click();
+  await expect(home).toHaveCount(0);
+  await expect(replace).toHaveCount(0);
+  await expect(page.getByLabel('Project title')).toHaveValue('Star Catcher');
+  await expect(page.locator('.sprite-tile', { hasText: 'Star' })).toBeVisible();
+  await expect(page.locator('.blocklyMainBackground')).toBeVisible();
+  await expect(page).not.toHaveURL(/#home$/);
+
+  // From the editor there is a game to keep: an empty project asks first. Cancel (or Escape) keeps the game, and Home.
+  await logo.click();
+  await expect(home).toBeVisible();
+  await home.getByRole('button', { name: 'Empty project' }).click();
+  await expect(replace).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(replace).toHaveCount(0);
+  await expect(home).toBeVisible();
+  await home.getByRole('button', { name: 'Empty project' }).click();
+  await replace.getByRole('button', { name: 'Replace' }).click();
+  await expect(home).toHaveCount(0);
+  await expect(page.getByLabel('Project title')).toHaveValue('Untitled game');
+  await expect(page.locator('.sprite-tile', { hasText: 'Amble' })).toBeVisible();
+  // An empty project is on "My blocks", with no style: the two controls in the top bar say so.
+  const bar = page.locator('.menubar');
+  await expect(bar.getByRole('radio', { name: 'My blocks' })).toHaveAttribute('aria-checked', 'true');
+  await expect(bar.getByRole('button', { name: 'Art style: none' })).toBeVisible();
+
+  // Open a saved game: what File > Load from your computer does. It asks first too.
+  await logo.click();
   const saved = await page.evaluate(() => JSON.stringify({ ...(window as unknown as StoreWindow).__ambleStore.getState().project, title: 'My saved game', dial: 2 }));
   const pick = async () => {
-    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), start.getByRole('button', { name: 'Open a saved game' }).click()]);
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), home.getByRole('button', { name: 'Open a saved game' }).click()]);
     await chooser.setFiles({ name: 'saved.amble', mimeType: 'application/json', buffer: Buffer.from(saved) });
   };
   await pick();
   await expect(replace).toBeVisible();
   await replace.getByRole('button', { name: 'Cancel' }).click();
-  await expect(start).toBeVisible();
-  await expect(page.getByLabel('Project title')).toHaveValue('Untitled game');
+  await expect(home).toBeVisible();
   await pick();
   await replace.getByRole('button', { name: 'Replace' }).click();
-  await expect(start).toHaveCount(0);
+  await expect(home).toHaveCount(0);
   await expect(page.getByLabel('Project title')).toHaveValue('My saved game');
   // The saved game's dial came with it.
   await expect(bar.getByRole('radio', { name: 'Full' })).toHaveAttribute('aria-checked', 'true');
 
-  // A file that isn't a game says so, and the home screen stays.
-  await page.getByRole('button', { name: 'Amble: home' }).click();
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), start.getByRole('button', { name: 'Open a saved game' }).click()]);
+  // A file that isn't a game says so, and Home stays.
+  await logo.click();
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), home.getByRole('button', { name: 'Open a saved game' }).click()]);
   await chooser.setFiles({ name: 'notes.amble', mimeType: 'application/json', buffer: Buffer.from('{"hello": 1}') });
   await expect(page.locator('.toast')).toContainText('not an Amble project');
-  await expect(start).toBeVisible();
-  // Escape closes it, and the game is still there.
+  await expect(home).toBeVisible();
+  // Escape goes back, and the game is still there.
   await page.keyboard.press('Escape');
-  await expect(start).toHaveCount(0);
+  await expect(home).toHaveCount(0);
   await expect(page.getByLabel('Project title')).toHaveValue('My saved game');
+});
+
+test('a game being made carries on under Home, and waits there for the flag', async ({ page }) => {
+  const calls: Call[] = [];
+  await page.addInitScript(() => localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test' })));
+  await mockModel(page, calls);
+  // The model takes its time: its answers wait until they are let go.
+  let letGo = () => {};
+  const waiting = new Promise<void>((resolve) => (letGo = resolve));
+  await page.route('https://api.openai.com/v1/**', async (route) => {
+    await waiting;
+    await route.fallback();
+  });
+  await page.goto('/');
+  const home = homePage(page);
+  await home.getByLabel('What do you want to make?').fill('a T-rex on roller skates dodges meteors at a disco');
+  await home.getByRole('button', { name: 'Make my game' }).click();
+  await expect(home).toHaveCount(0);
+  await expect(page.locator('.making-game')).toBeVisible();
+
+  // A look at Home meanwhile: the game is still made (nothing is asked for twice), but it doesn't play out of sight.
+  await page.getByRole('button', { name: 'Amble: home' }).click();
+  await expect(home).toBeVisible();
+  expect((await editorState(page)).build).toBe('running');
+  letGo();
+  await expect.poll(async () => (await editorState(page)).build, { timeout: 40_000 }).toBe('done');
+  await expect.poll(async () => (await editorState(page)).run, { timeout: 30_000 }).toBe('stopped');
+  expect(calls.map((c) => c.name)).toEqual(['amble_pieces', 'svg_art']);
+
+  // Back in the editor the game is there, and the flag plays it.
+  await home.getByRole('button', { name: 'Back to editor' }).click();
+  await expect(home).toHaveCount(0);
+  await expect(page.locator('.sprite-tile.compiled', { hasText: 'Rex' })).toBeVisible();
+  await expect(page.getByLabel('Project title')).toHaveValue('Meteor Disco Rex');
+  await page.locator('.green-flag').click();
+  await expect.poll(async () => (await flags(await gameFrame(page))).state, { timeout: 30_000 }).toBe('running');
+  expect(await flags(await gameFrame(page))).toMatchObject({ game: true, rex: true });
+  expect(calls).toHaveLength(2);
 });
 
 test('the dial and the style knob fit the top bar of a 1280-wide window', async ({ page }) => {
@@ -595,9 +791,9 @@ test('the dial and the style knob fit the top bar of a 1280-wide window', async 
   // The fullest the bar gets: Settings, the sign-in button (Codex is on this computer) and the debug counter.
   await page.route('**/api/codex/status', (route) => route.fulfill({ json: { installed: true, version: '1.0.0', auth: 'none', login: { pending: false, url: null, error: null } } }));
   await page.goto('/');
-  await expect(page.getByRole('dialog', { name: 'Make a game' })).toBeVisible();
+  await expect(homePage(page)).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'Make a game' })).toHaveCount(0);
+  await expect(homePage(page)).toHaveCount(0);
   await expect(page.locator('.blocklyMainBackground')).toBeVisible();
   const bar = page.locator('.menubar');
   await expect(bar.getByRole('button', { name: 'Sign in' })).toBeVisible();

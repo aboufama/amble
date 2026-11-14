@@ -349,7 +349,7 @@ function fromIdea(id: string, title: string, idea: string, opts: { dial?: Dial; 
   };
 }
 
-/** Blank projects and examples offered on the start screen and in the File menu. */
+/** The demos offered on Home and in the File menu. */
 export const EXAMPLES: Example[] = [
   fromIdea('disco-rex', 'Meteor Disco Rex', 'a T-rex on roller skates dodges meteors at a disco'),
   fromIdea('jelly-knight', 'Jelly Knight', 'a knight made of jelly bounces up a castle made of cake', { dial: 4, style: 'clay' }),

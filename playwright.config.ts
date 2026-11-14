@@ -14,8 +14,8 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: `http://localhost:${port}`,
-    // The tests start in the editor with every block in the palette. (The start screen that opens on
-    // a first visit, and the simple palette, have their own tests: e2e/start.spec.ts.)
+    // The tests start in the editor with every block in the palette. (Home, where a first visit
+    // starts, and the simple palette have their own tests: e2e/start.spec.ts.)
     storageState: {
       cookies: [],
       origins: [

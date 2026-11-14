@@ -32,7 +32,7 @@ Then either:
 - open **Settings** and paste an OpenAI API key (stored only in your browser), or
 - put `OPENAI_API_KEY=sk-...` in a `.env` file (see `.env.example`). The dev server then proxies OpenAI calls, and the key never reaches the browser (the same way the Vercel deployment does).
 
-The first visit opens the start screen: type an idea and press **Make my game** (a whole game takes two or three minutes, and about 10 cents of GPT-6.1 Terra), or open a demo. The demos ship already built, so they play the moment you open them:
+The first visit opens Home, a page of its own (the logo in the editor's top bar goes back to it): type an idea and press **Make my game** (a whole game takes two or three minutes, and about 10 cents of GPT-6.1 Terra), or open a demo. The demos ship already built, so they play the moment you open them:
 
 | Demos | What they are |
 |---|---|
@@ -114,7 +114,7 @@ src/
   player/      editor <-> player protocol, iframe host, run-package builder
   project/     data model, defaults, the idea project (idea.ts) and the demos (examples.ts), migration
                of old projects, persistence, HTML export
-  components/  React UI (start screen, blocks editor, paint editor, sounds, stage, problems, sprite pane)
+  components/  React UI (Home, blocks editor, paint editor, sounds, stage, problems, sprite pane)
 api/           the server function (Vercel, and the dev server): /api/config and the guarded OpenAI proxy
 server/        dev-server bridge for "Sign in with ChatGPT" (runs the Codex CLI)
 dev/engine-test.html   a page for poking the engine directly (npm run dev → /dev/engine-test.html)
@@ -161,7 +161,7 @@ Vercel builds Production from the repository's default branch; other branches ge
 ```bash
 npm run typecheck
 npm test                 # unit tests (vitest)
-npm run test:e2e         # Playwright: the start screen, a game from an idea, the editor, and word compiles, against a mocked API
+npm run test:e2e         # Playwright: Home, a game from an idea, the editor, and word compiles, against a mocked API
 npm run build            # production build in dist/ (includes amble-player.js)
 ```
 

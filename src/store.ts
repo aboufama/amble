@@ -76,9 +76,11 @@ export interface EditorState {
   /** Words can't build without a sign-in or a key: found on the last try, until the settings or the sign-in change. */
   needsAccount: boolean;
   run: { state: RunState; errors: PlayerError[]; logs: LogEntry[] };
-  dialog: null | 'settings' | 'new' | 'about';
-  /** The start screen was opened from File > New game (so there may be a project to keep). */
-  startFromMenu: boolean;
+  dialog: null | 'settings' | 'about';
+  /** Home is shown: a page of its own, in place of the editor (which stays as it is underneath). */
+  home: boolean;
+  /** Home was opened from the editor (the logo, File > New game), so there may be a project to keep. */
+  homeFromEditor: boolean;
   prompt: PromptRequest | null;
   /** The tab shown in the problems dialog ('game' is an old name for 'problems'). */
   outputTab: OutputTab;
@@ -107,8 +109,10 @@ export interface EditorState {
   addLog(level: LogEntry['level'], message: string): void;
   clearRunOutput(): void;
   setDialog(dialog: EditorState['dialog']): void;
-  /** Opens the start screen: on the first visit, or from the menu. */
-  openStart(fromMenu: boolean): void;
+  /** Shows Home: on the first visit, or from the editor. */
+  openHome(fromEditor: boolean): void;
+  /** Back to the editor, as it was. */
+  closeHome(): void;
   setPrompt(prompt: PromptRequest | null): void;
   setOutputTab(tab: OutputTab): void;
   setProblemsOpen(open: boolean): void;
@@ -136,7 +140,8 @@ export const useStore = create<EditorState>()(
     needsAccount: false,
     run: { state: 'loading', errors: [], logs: [] },
     dialog: null,
-    startFromMenu: false,
+    home: false,
+    homeFromEditor: false,
     prompt: null,
     outputTab: 'game',
     problemsOpen: false,
@@ -231,10 +236,14 @@ export const useStore = create<EditorState>()(
       set((s) => {
         s.dialog = dialog;
       }),
-    openStart: (fromMenu) =>
+    openHome: (fromEditor) =>
       set((s) => {
-        s.dialog = 'new';
-        s.startFromMenu = fromMenu;
+        s.home = true;
+        s.homeFromEditor = fromEditor;
+      }),
+    closeHome: () =>
+      set((s) => {
+        s.home = false;
       }),
     setPrompt: (prompt) =>
       set((s) => {
