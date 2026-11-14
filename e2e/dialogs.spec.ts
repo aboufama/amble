@@ -37,13 +37,19 @@ test("confirmations use Amble's dialog, never the browser's", async ({ page }) =
   await deleteDialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(amble).toBeVisible();
 
-  // Replacing the project asks; Cancel keeps everything.
+  // New game opens the start screen; choosing something there asks before replacing the project. Cancel keeps everything.
   await page.getByRole('button', { name: /File/ }).click();
   await page.getByRole('menuitem', { name: 'New game' }).click();
+  const start = page.getByRole('dialog', { name: 'Make a game' });
+  await expect(start).toBeVisible();
+  await start.getByRole('button', { name: 'Start with an empty project and blocks' }).click();
   const replace = page.getByRole('dialog', { name: 'Replace Project' });
   await expect(replace).toBeVisible();
   await expect(replace.getByRole('button', { name: 'Replace' })).toHaveClass(/danger/);
   await replace.getByRole('button', { name: 'Cancel' }).click();
+  await expect(start).toBeVisible();
+  await start.getByRole('button', { name: 'Close' }).click();
+  await expect(start).toBeHidden();
   await expect(amble).toBeVisible();
 
   // Blockly's own "Delete all 7 blocks?" as well.

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { AMBLE_THEME, Blockly, MAKE_SKILL, MAKE_VARIABLE, registerBlockly, toolboxFor, type PaletteContext } from '../blocks/blockly';
+import { AMBLE_THEME, Blockly, MAKE_SKILL, MAKE_VARIABLE, TOGGLE_PALETTE, registerBlockly, toolboxFor, type PaletteContext } from '../blocks/blockly';
 import { FieldAmbleMenu, FieldAmbleText, FieldCharacter, setMenuHost } from '../blocks/fields';
 import { syncAssembly } from '../blocks/assembly';
 import { BLOCK_SCALE, addZoomControls } from '../blocks/workspaceUi';
@@ -115,7 +115,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
 
   const paletteContext = (): PaletteContext => {
     const s = useStore.getState();
-    return { isStage: findTarget(s.project, s.selectedId)?.kind === 'stage', menus: menuContext() };
+    return { isStage: findTarget(s.project, s.selectedId)?.kind === 'stage', menus: menuContext(), simple: s.palette === 'simple' };
   };
 
   /** Rebuilds the palette when something it shows changed (costumes, sounds, variables, skills, characters...). */
@@ -248,6 +248,10 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     const removeZoom = addZoomControls(ws);
     ws.registerButtonCallback(MAKE_VARIABLE, () => void makeVariable());
     ws.registerButtonCallback(MAKE_SKILL, () => void makeSkill());
+    ws.registerButtonCallback(TOGGLE_PALETTE, () => {
+      const st = useStore.getState();
+      st.setPalette(st.palette === 'simple' ? 'all' : 'simple');
+    });
 
     setMenuHost({
       context: menuContext,
@@ -293,6 +297,12 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       flush: flushSave,
       targetId: () => loadedId.current,
       renameMenus,
+      append: (block) => {
+        // Below everything that's there, where a new standalone block would be dropped.
+        const bottom = ws.getTopBlocks(false).reduce((y, b) => Math.max(y, b.getRelativeToSurfaceXY().y + b.getHeightWidth().height), 0);
+        Blockly.serialization.blocks.append({ ...block, x: 24, y: bottom + 28 } as Blockly.serialization.blocks.State, ws);
+        flushSave();
+      },
     });
 
     ws.addChangeListener((e: Blockly.Events.Abstract) => {
@@ -347,6 +357,8 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
         schedulePalette();
         refreshPictures();
       }
+      // More blocks / Fewer blocks.
+      if (state.palette !== prev.palette) refreshPalette();
     });
     return () => {
       unsubscribe();

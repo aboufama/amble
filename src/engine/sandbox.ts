@@ -5,6 +5,11 @@ import { sourceUrlFor, warnOnce } from './bridge';
  * at the top of every loop inside generator functions, and `__ambleGuardThrow()`
  * inside loops of normal functions. A loop that hogs a frame is forced to pause
  * (or, where it can't pause, is stopped) instead of freezing the page.
+ *
+ * The clock starts each time game code is entered (a hook is called, a coroutine goes on), so it
+ * measures one script running without a pause. Measured from the start of the tick instead, a
+ * slow computer, or a busy game with many small scripts, used up the time before a script even
+ * began, and its ordinary loops were cut into pieces a frame apart.
  */
 let frameStart = typeof performance !== 'undefined' ? performance.now() : 0;
 let forcedYields = 0;
@@ -12,6 +17,9 @@ let forcedYields = 0;
 export function beginFrame(): void {
   frameStart = performance.now();
 }
+
+/** Game code is about to run (a hook, or the next step of a coroutine): its time starts now. */
+export const beginStep = beginFrame;
 
 export function guardYield(): boolean {
   if (performance.now() - frameStart < 60) return false;

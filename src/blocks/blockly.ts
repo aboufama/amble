@@ -3,6 +3,8 @@ import * as En from 'blockly/msg/en';
 import {
   BLOCKS,
   CATEGORIES,
+  SIMPLE_GROUPS,
+  coreBlocksFor,
   CHARACTER_SPECIAL_LABELS,
   SHADOW_TYPES,
   blocksFor,
@@ -178,12 +180,16 @@ export const AMBLE_THEME = Blockly.Theme.defineTheme('amble', {
 
 export const MAKE_VARIABLE = 'MAKE_VARIABLE';
 export const MAKE_SKILL = 'MAKE_SKILL';
+/** The palette's "More blocks" / "Fewer blocks" button. */
+export const TOGGLE_PALETTE = 'TOGGLE_PALETTE';
 
 export interface PaletteContext {
   /** Editing the stage (it has no motion blocks, and only stage blocks). */
   isStage: boolean;
   /** The project and edited sprite, for menu defaults and the character and variable blocks. */
   menus: MenuContext | null;
+  /** The simple palette (the few blocks most games need) instead of every block by category. */
+  simple?: boolean;
 }
 
 /** Gap after a group of blocks, and between categories (Scratch's `<sep gap="36"/>`). */
@@ -243,8 +249,33 @@ function characterBlocks(ctx: PaletteContext): Blockly.utils.toolbox.FlyoutItemI
   return items;
 }
 
+/** The simple palette: five groups with the blocks most games need, then the way to all of them. */
+function simpleToolbox(ctx: PaletteContext): Blockly.utils.toolbox.ToolboxInfo {
+  const core = coreBlocksFor(ctx.isStage ? 'stage' : 'sprite');
+  const variables = ctx.menus ? variablesFor(ctx.menus.project, ctx.menus.target) : [];
+  const groups = SIMPLE_GROUPS.map((g) => {
+    const contents: Blockly.utils.toolbox.FlyoutItemInfoArray = [];
+    // The brief (game, imagination, art style, win and lose) is the Stage's, as in the full palette.
+    const blocks = core.filter((b) => b.core === g.id && (ctx.isStage || b.category !== 'brief'));
+    if (g.id === 'memory') {
+      contents.push({ kind: 'button', text: 'Make a Variable', callbackkey: MAKE_VARIABLE });
+      variables.forEach((v, i) => contents.push({ kind: 'block', type: 'mem_var', fields: { VARIABLE: v }, ...(i === variables.length - 1 ? { gap: GROUP_GAP } : {}) }));
+      if (variables.length) for (const b of blocks) contents.push(paletteBlock(b, ctx));
+      contents.push({ kind: 'sep', gap: GROUP_GAP });
+      contents.push({ kind: 'button', text: 'More blocks', callbackkey: TOGGLE_PALETTE });
+    } else {
+      for (const b of blocks) contents.push(paletteBlock(b, ctx));
+    }
+    contents.push({ kind: 'sep', gap: GROUP_GAP });
+    const style = CATEGORIES.find((c) => c.id === g.style)!;
+    return { kind: 'category', name: g.name, categorystyle: `${style.id}_category`, borderColour: style.tertiary, contents } as unknown as Blockly.utils.toolbox.CategoryInfo;
+  });
+  return { kind: 'categoryToolbox', contents: groups };
+}
+
 /** The block palette for the sprite or stage being edited. */
 export function toolboxFor(ctx: PaletteContext): Blockly.utils.toolbox.ToolboxInfo {
+  if (ctx.simple) return simpleToolbox(ctx);
   const available = blocksFor(ctx.isStage ? 'stage' : 'sprite').filter((b) => !b.hidden);
   const variables = ctx.menus ? variablesFor(ctx.menus.project, ctx.menus.target) : [];
   const skills = ctx.menus ? procedureNames(ctx.menus) : [];
@@ -273,6 +304,7 @@ export function toolboxFor(ctx: PaletteContext): Blockly.utils.toolbox.ToolboxIn
           for (const b of blocks) contents.push(paletteBlock(b, ctx));
       }
       contents.push({ kind: 'sep', gap: GROUP_GAP });
+      if (c.id === 'rules') contents.push({ kind: 'button', text: 'Fewer blocks', callbackkey: TOGGLE_PALETTE }, { kind: 'sep', gap: GROUP_GAP });
       return {
         kind: 'category',
         name: c.name,

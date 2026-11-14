@@ -215,7 +215,8 @@ describe('the compiler (exact blocks)', () => {
     }
     // The words blocks became pieces; nothing else needed the compile request.
     const kinds = all.flatMap((plan) => plan.pieces.map((r) => r.kind)).sort();
-    expect(new Set(kinds)).toEqual(new Set(['action', 'timed', 'condition', 'value', 'message', 'behavior', 'rule']));
+    // (Every block is there, the imagination dial too: so the game: line is a piece, the whole game.)
+    expect(new Set(kinds)).toEqual(new Set(['action', 'timed', 'condition', 'value', 'message', 'behavior', 'rule', 'game']));
   });
 
   it('warns about blocks that need something in a slot, and skips them', () => {

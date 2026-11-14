@@ -56,6 +56,27 @@ export const CATEGORIES: Category[] = [
   { id: 'rules', name: 'Rules', colour: '#DC4F51', secondary: '#C84345', tertiary: '#AF3839' },
 ];
 
+/**
+ * The simple palette: a handful of groups holding the blocks most games need (about a third of
+ * the language), since words do the rest. The full palette, by category, is one click away.
+ */
+export type SimpleGroupId = 'idea' | 'when' | 'do' | 'check' | 'memory';
+
+export interface SimpleGroup {
+  id: SimpleGroupId;
+  name: string;
+  /** The category whose colour and icon it wears. */
+  style: CategoryId;
+}
+
+export const SIMPLE_GROUPS: SimpleGroup[] = [
+  { id: 'idea', name: 'Idea', style: 'brief' },
+  { id: 'when', name: 'When', style: 'events' },
+  { id: 'do', name: 'Do', style: 'game' },
+  { id: 'check', name: 'Check', style: 'logic' },
+  { id: 'memory', name: 'Memory', style: 'variables' },
+];
+
 export type BlockShape =
   /** Starts a script (nothing above it). */
   | 'hat'
@@ -103,7 +124,17 @@ export type MenuKind =
   | 'compare'
   | 'math'
   | 'prop'
-  | 'layer';
+  | 'layer'
+  | 'freedom';
+
+/**
+ * How much the compiler may invent when it makes the game from the `game:` line.
+ * - just what I say: the line only says what the game is about (the blocks make the game).
+ * - fill in the gaps: the compiler builds the whole game the line describes, and nothing more.
+ * - go wild: the same, and it adds its own surprises.
+ */
+export const FREEDOM_LEVELS = ['just what I say', 'fill in the gaps', 'go wild'] as const;
+export type Freedom = (typeof FREEDOM_LEVELS)[number];
 
 /** Choices of the fixed menus. The first one is the default. */
 export const MENU_CHOICES: Partial<Record<MenuKind, string[]>> = {
@@ -114,6 +145,7 @@ export const MENU_CHOICES: Partial<Record<MenuKind, string[]>> = {
   math: ['+', '-', '×', '÷'],
   prop: ['x', 'y', 'size', 'direction', 'costume number'],
   layer: ['front', 'back'],
+  freedom: [...FREEDOM_LEVELS],
 };
 
 /**
@@ -188,6 +220,8 @@ export interface BlockSpec {
   groupEnd?: boolean;
   /** Not in the static palette (made another way: Make a Skill, variable and character blocks). */
   hidden?: boolean;
+  /** In the simple palette (the few blocks most games need), under this group. Every block is in the full one. */
+  core?: SimpleGroupId;
   /** Shown on hover. Say what the block does and how to use it, in plain words. */
   tooltip: string;
 }
@@ -204,21 +238,22 @@ const STAGE: Array<'sprite' | 'stage'> = ['stage'];
 
 export const BLOCKS: BlockSpec[] = [
   // ---- Brief: what you're making, for whom, and what "done" means
-  { type: 'br_game', category: 'brief', shape: 'rule', label: 'game: {WHAT}', inputs: { WHAT: text('Amble collects stars and dodges spikes') }, tooltip: 'Say what the game is, in a sentence. A clear goal makes everything else fit together.' },
+  { type: 'br_game', core: 'idea', category: 'brief', shape: 'rule', label: 'game: {WHAT}', inputs: { WHAT: text('Amble collects stars and dodges spikes') }, tooltip: 'Say what the game is, in a sentence or two. With "imagination:" on, Amble builds the whole game from it.' },
+  { type: 'br_freedom', core: 'idea', category: 'brief', shape: 'rule', label: 'imagination: {LEVEL}', inputs: { LEVEL: menu('freedom', 'fill in the gaps') }, tooltip: 'How much Amble may invent. "fill in the gaps" builds the whole game your game: line describes. "go wild" adds its own surprises. "just what I say" leaves the game to your blocks.' },
   { type: 'br_audience', category: 'brief', shape: 'rule', label: 'made for: {WHO}', inputs: { WHO: text('kids who are new to games') }, tooltip: 'Who will play it. This decides how hard, fast and wordy the game is.' },
-  { type: 'br_style', category: 'brief', shape: 'rule', label: 'art style: {STYLE}', inputs: { STYLE: text('bright cartoon with thick outlines') }, groupEnd: true, tooltip: 'How the game looks. The world is set up in this style, and new art is made to match.' },
-  { type: 'br_win', category: 'brief', shape: 'rule', label: 'you win when {COND}', inputs: { COND: cond }, tooltip: 'The goal. The game is won the moment this becomes true.' },
-  { type: 'br_lose', category: 'brief', shape: 'rule', label: 'you lose when {COND}', inputs: { COND: cond }, tooltip: 'The game is over the moment this becomes true.' },
+  { type: 'br_style', core: 'idea', category: 'brief', shape: 'rule', label: 'art style: {STYLE}', inputs: { STYLE: text('bright cartoon with thick outlines') }, groupEnd: true, tooltip: 'How the game looks. The world is set up in this style, and new art is made to match.' },
+  { type: 'br_win', core: 'idea', category: 'brief', shape: 'rule', label: 'you win when {COND}', inputs: { COND: cond }, tooltip: 'The goal. The game is won the moment this becomes true.' },
+  { type: 'br_lose', core: 'idea', category: 'brief', shape: 'rule', label: 'you lose when {COND}', inputs: { COND: cond }, tooltip: 'The game is over the moment this becomes true.' },
 
   // ---- Triggers: when things happen
-  { type: 'ev_start', category: 'events', shape: 'hat', label: 'when {FLAG} clicked', tooltip: 'Runs when the game starts.' },
-  { type: 'ev_key', category: 'events', shape: 'hat', label: 'when {KEY} key pressed', inputs: { KEY: menu('key', 'space') }, tooltip: 'Runs once each time the key goes down.' },
+  { type: 'ev_start', core: 'when', category: 'events', shape: 'hat', label: 'when {FLAG} clicked', tooltip: 'Runs when the game starts.' },
+  { type: 'ev_key', core: 'when', category: 'events', shape: 'hat', label: 'when {KEY} key pressed', inputs: { KEY: menu('key', 'space') }, tooltip: 'Runs once each time the key goes down.' },
   { type: 'ev_hold', category: 'events', shape: 'hat', label: 'while {KEY} key is held', inputs: { KEY: menu('key', 'right arrow') }, tooltip: 'Runs every frame while the key is down. Good for smooth movement.' },
-  { type: 'ev_click', category: 'events', shape: 'hat', label: "when I'm clicked", targets: SPRITE, tooltip: 'Runs when this sprite is clicked or tapped.' },
-  { type: 'ev_stage_click', category: 'events', shape: 'hat', label: 'when the stage is clicked', targets: STAGE, tooltip: 'Runs when the background is clicked or tapped.' },
-  { type: 'ev_touch', category: 'events', shape: 'hat', label: 'when I touch {WHO}', inputs: { WHO: who('anyone', ['anyone', 'edge', 'mouse']) }, targets: SPRITE, tooltip: 'Runs each time this sprite starts touching someone.' },
+  { type: 'ev_click', core: 'when', category: 'events', shape: 'hat', label: "when I'm clicked", targets: SPRITE, tooltip: 'Runs when this sprite is clicked or tapped.' },
+  { type: 'ev_stage_click', core: 'when', category: 'events', shape: 'hat', label: 'when the stage is clicked', targets: STAGE, tooltip: 'Runs when the background is clicked or tapped.' },
+  { type: 'ev_touch', core: 'when', category: 'events', shape: 'hat', label: 'when I touch {WHO}', inputs: { WHO: who('anyone', ['anyone', 'edge', 'mouse']) }, targets: SPRITE, tooltip: 'Runs each time this sprite starts touching someone.' },
   { type: 'ev_when', category: 'events', shape: 'hat', label: 'when {COND}', inputs: { COND: cond }, tooltip: 'Runs each time the condition becomes true.' },
-  { type: 'ev_every', category: 'events', shape: 'hat', label: 'every {SECONDS} seconds', inputs: { SECONDS: num(2) }, groupEnd: true, tooltip: 'Runs again and again, on a timer.' },
+  { type: 'ev_every', core: 'when', category: 'events', shape: 'hat', label: 'every {SECONDS} seconds', inputs: { SECONDS: num(2) }, groupEnd: true, tooltip: 'Runs again and again, on a timer.' },
   { type: 'ev_receive', category: 'events', shape: 'hat', label: 'when I hear {MESSAGE}', inputs: { MESSAGE: menu('message', 'message1') }, tooltip: 'Runs when someone tells everyone this message.' },
   { type: 'ev_broadcast', category: 'events', shape: 'stack', label: 'tell everyone {MESSAGE}', inputs: { MESSAGE: menu('message', 'message1') }, tooltip: 'Sends a message to every sprite and the stage, then keeps going.' },
   { type: 'ev_broadcast_wait', category: 'events', shape: 'stack', label: 'tell everyone {MESSAGE} and wait', inputs: { MESSAGE: menu('message', 'message1') }, tooltip: 'Sends a message and waits until everyone who heard it is done.' },
@@ -242,11 +277,11 @@ export const BLOCKS: BlockSpec[] = [
   { type: 'mv_stay', category: 'motion', shape: 'stack', label: 'stay on the screen', targets: SPRITE, tooltip: "Keeps the sprite from leaving the screen." },
 
   // ---- Game: ready-made game pieces, and blocks for anything you can describe
-  { type: 'ga_do', category: 'game', shape: 'stack', label: 'do {ACTION}', inputs: { ACTION: text('spin around once') }, tooltip: 'Anything, in your own words.' },
-  { type: 'ga_do_for', category: 'game', shape: 'stack', label: 'do {ACTION} for {SECONDS} seconds', inputs: { ACTION: text('grow big, then back'), SECONDS: num(1) }, groupEnd: true, tooltip: 'Anything that takes time, in your own words. The script waits until it is done.' },
-  { type: 'kit_walk', category: 'game', shape: 'stack', label: 'walk with {KEYS} at speed {SPEED}', inputs: { KEYS: menu('controls'), SPEED: num(200) }, targets: SPRITE, tooltip: 'From now on the player steers this sprite. Speed is steps per second.' },
-  { type: 'kit_jump', category: 'game', shape: 'stack', label: 'jump with {KEY} strength {POWER}', inputs: { KEY: menu('key', 'space'), POWER: num(600) }, targets: SPRITE, tooltip: 'From now on the key makes this sprite jump when it stands on something. Turns on gravity.' },
-  { type: 'kit_gravity', category: 'game', shape: 'stack', label: 'fall with gravity', targets: SPRITE, tooltip: 'Falls and lands on solid things (and on the bottom of the screen).' },
+  { type: 'ga_do', core: 'do', category: 'game', shape: 'stack', label: 'do {ACTION}', inputs: { ACTION: text('spin around once') }, tooltip: 'Anything, in your own words.' },
+  { type: 'ga_do_for', core: 'do', category: 'game', shape: 'stack', label: 'do {ACTION} for {SECONDS} seconds', inputs: { ACTION: text('grow big, then back'), SECONDS: num(1) }, groupEnd: true, tooltip: 'Anything that takes time, in your own words. The script waits until it is done.' },
+  { type: 'kit_walk', core: 'do', category: 'game', shape: 'stack', label: 'walk with {KEYS} at speed {SPEED}', inputs: { KEYS: menu('controls'), SPEED: num(200) }, targets: SPRITE, tooltip: 'From now on the player steers this sprite. Speed is steps per second.' },
+  { type: 'kit_jump', core: 'do', category: 'game', shape: 'stack', label: 'jump with {KEY} strength {POWER}', inputs: { KEY: menu('key', 'space'), POWER: num(600) }, targets: SPRITE, tooltip: 'From now on the key makes this sprite jump when it stands on something. Turns on gravity.' },
+  { type: 'kit_gravity', core: 'do', category: 'game', shape: 'stack', label: 'fall with gravity', targets: SPRITE, tooltip: 'Falls and lands on solid things (and on the bottom of the screen).' },
   { type: 'kit_solid', category: 'game', shape: 'stack', label: 'be solid ground', targets: SPRITE, tooltip: 'Others can stand on this sprite, like a floor or a platform.' },
   { type: 'mo_physics', category: 'game', shape: 'stack', label: 'physics: {HOW}', inputs: { HOW: text('bouncy ball that rolls around') }, targets: SPRITE, groupEnd: true, tooltip: 'Any physics, in your own words.' },
   { type: 'kit_follow', category: 'game', shape: 'stack', label: 'camera follows me', targets: SPRITE, tooltip: 'The view scrolls to keep this sprite in sight.' },
@@ -258,7 +293,7 @@ export const BLOCKS: BlockSpec[] = [
 
   // ---- Looks
   { type: 'lk_say', category: 'looks', shape: 'stack', label: 'say {TEXT}', inputs: { TEXT: value('Hello!') }, targets: SPRITE, tooltip: 'Shows a speech bubble until the next say.' },
-  { type: 'lk_say_for', category: 'looks', shape: 'stack', label: 'say {TEXT} for {SECONDS} seconds', inputs: { TEXT: value('Hello!'), SECONDS: num(2) }, targets: SPRITE, groupEnd: true, tooltip: 'Shows a speech bubble for a while. The script waits.' },
+  { type: 'lk_say_for', core: 'do', category: 'looks', shape: 'stack', label: 'say {TEXT} for {SECONDS} seconds', inputs: { TEXT: value('Hello!'), SECONDS: num(2) }, targets: SPRITE, groupEnd: true, tooltip: 'Shows a speech bubble for a while. The script waits.' },
   { type: 'lo_costume', category: 'looks', shape: 'stack', label: 'switch costume to {COSTUME}', inputs: { COSTUME: menu('costume', 'costume1') }, tooltip: 'Changes how the sprite looks (the stage: its backdrop).' },
   { type: 'lo_next_costume', category: 'looks', shape: 'stack', label: 'next costume', tooltip: 'Switches to the next costume (the stage: the next backdrop).' },
   { type: 'lk_animate', category: 'looks', shape: 'stack', label: 'animate costumes at {FPS} per second', inputs: { FPS: num(8) }, targets: SPRITE, tooltip: 'Keeps flipping through the costumes.' },
@@ -266,48 +301,48 @@ export const BLOCKS: BlockSpec[] = [
   { type: 'lo_backdrop', category: 'looks', shape: 'stack', label: 'switch backdrop to {BACKDROP}', inputs: { BACKDROP: menu('switchBackdrop', 'backdrop1') }, groupEnd: true, tooltip: 'Changes the background.' },
   { type: 'lk_size', category: 'looks', shape: 'stack', label: 'set size to {SIZE} %', inputs: { SIZE: num(100) }, targets: SPRITE, tooltip: '100 is the normal size.' },
   { type: 'lk_grow', category: 'looks', shape: 'stack', label: 'change size by {SIZE}', inputs: { SIZE: num(10) }, targets: SPRITE, groupEnd: true, tooltip: 'Bigger (or smaller with a minus number).' },
-  { type: 'lo_show', category: 'looks', shape: 'stack', label: 'show', targets: SPRITE, tooltip: 'Makes the sprite visible.' },
-  { type: 'lo_hide', category: 'looks', shape: 'stack', label: 'hide', targets: SPRITE, tooltip: 'Makes the sprite invisible. Hidden sprites touch nothing.' },
+  { type: 'lo_show', core: 'do', category: 'looks', shape: 'stack', label: 'show', targets: SPRITE, tooltip: 'Makes the sprite visible.' },
+  { type: 'lo_hide', core: 'do', category: 'looks', shape: 'stack', label: 'hide', targets: SPRITE, tooltip: 'Makes the sprite invisible. Hidden sprites touch nothing.' },
   { type: 'lo_layer', category: 'looks', shape: 'stack', label: 'go to {LAYER} layer', inputs: { LAYER: menu('layer') }, targets: SPRITE, tooltip: 'Draws in front of or behind the other sprites.' },
 
   // ---- Sound
-  { type: 'so_play', category: 'sound', shape: 'stack', label: 'play sound {SOUND}', inputs: { SOUND: menu('sound', 'pop') }, tooltip: 'Plays a sound and keeps going.' },
+  { type: 'so_play', core: 'do', category: 'sound', shape: 'stack', label: 'play sound {SOUND}', inputs: { SOUND: menu('sound', 'pop') }, tooltip: 'Plays a sound and keeps going.' },
   { type: 'so_play_wait', category: 'sound', shape: 'stack', label: 'play sound {SOUND} until done', inputs: { SOUND: menu('sound', 'pop') }, tooltip: 'Plays a sound and waits for it to end.' },
   { type: 'sd_music', category: 'sound', shape: 'stack', label: 'play {SOUND} as music', inputs: { SOUND: menu('sound', 'pop') }, tooltip: 'Loops a sound in the background. Only one music plays at a time.' },
   { type: 'so_stop', category: 'sound', shape: 'stack', label: 'stop all sounds', tooltip: 'Silences everything, music too.' },
 
   // ---- Flow
-  { type: 'fl_wait', category: 'control', shape: 'stack', label: 'wait {SECONDS} seconds', inputs: { SECONDS: num(1) }, groupEnd: true, tooltip: 'Pauses this script.' },
+  { type: 'fl_wait', core: 'do', category: 'control', shape: 'stack', label: 'wait {SECONDS} seconds', inputs: { SECONDS: num(1) }, groupEnd: true, tooltip: 'Pauses this script.' },
   { type: 'fl_repeat', category: 'control', shape: 'c', label: 'repeat {TIMES} times', inputs: { TIMES: num(10) }, tooltip: 'Runs the blocks inside again and again, one round per frame.' },
-  { type: 'co_forever', category: 'control', shape: 'c-end', label: 'forever', groupEnd: true, tooltip: 'Runs the blocks inside every frame, forever.' },
-  { type: 'fl_if', category: 'control', shape: 'c', label: 'if {COND} then', inputs: { COND: cond }, tooltip: 'Runs the blocks inside only when the condition is true.' },
+  { type: 'co_forever', core: 'do', category: 'control', shape: 'c-end', label: 'forever', groupEnd: true, tooltip: 'Runs the blocks inside every frame, forever.' },
+  { type: 'fl_if', core: 'do', category: 'control', shape: 'c', label: 'if {COND} then', inputs: { COND: cond }, tooltip: 'Runs the blocks inside only when the condition is true.' },
   { type: 'fl_if_else', category: 'control', shape: 'e', label: 'if {COND} then', elseLabel: 'else', inputs: { COND: cond }, groupEnd: true, tooltip: 'Chooses between two sets of blocks.' },
   { type: 'fl_wait_until', category: 'control', shape: 'stack', label: 'wait until {COND}', inputs: { COND: cond }, tooltip: 'Pauses until the condition is true.' },
   { type: 'fl_repeat_until', category: 'control', shape: 'c', label: 'repeat until {COND}', inputs: { COND: cond }, groupEnd: true, tooltip: 'Repeats until the condition is true.' },
   { type: 'fl_stop', category: 'control', shape: 'cap', label: 'stop this script', tooltip: 'Ends this script. Other scripts keep going.' },
 
   // ---- Logic: conditions and numbers
-  { type: 'cd_touching', category: 'logic', shape: 'boolean', label: 'touching {WHO}?', inputs: { WHO: who('edge', ['anyone', 'edge', 'mouse']) }, targets: SPRITE, tooltip: 'True while this sprite touches the character.' },
-  { type: 'cd_key', category: 'logic', shape: 'boolean', label: '{KEY} key pressed?', inputs: { KEY: menu('key', 'space') }, tooltip: 'True while the key is down.' },
+  { type: 'cd_touching', core: 'check', category: 'logic', shape: 'boolean', label: 'touching {WHO}?', inputs: { WHO: who('edge', ['anyone', 'edge', 'mouse']) }, targets: SPRITE, tooltip: 'True while this sprite touches the character.' },
+  { type: 'cd_key', core: 'check', category: 'logic', shape: 'boolean', label: '{KEY} key pressed?', inputs: { KEY: menu('key', 'space') }, tooltip: 'True while the key is down.' },
   { type: 'cd_mouse', category: 'logic', shape: 'boolean', label: 'mouse down?', tooltip: 'True while the mouse button (or a finger) is down.' },
   { type: 'cd_ground', category: 'logic', shape: 'boolean', label: 'on the ground?', targets: SPRITE, groupEnd: true, tooltip: 'True while this sprite stands on something.' },
-  { type: 'cd_compare', category: 'logic', shape: 'boolean', label: '{A} {OP} {B}', inputs: { A: value(''), OP: menu('compare'), B: value('10') }, tooltip: 'Compares two numbers (= also compares words).' },
+  { type: 'cd_compare', core: 'check', category: 'logic', shape: 'boolean', label: '{A} {OP} {B}', inputs: { A: value(''), OP: menu('compare'), B: value('10') }, tooltip: 'Compares two numbers (= also compares words).' },
   { type: 'cd_and', category: 'logic', shape: 'boolean', label: '{A} and {B}', inputs: { A: cond, B: cond }, tooltip: 'True when both are true.' },
   { type: 'cd_or', category: 'logic', shape: 'boolean', label: '{A} or {B}', inputs: { A: cond, B: cond }, tooltip: 'True when either is true.' },
   { type: 'cd_not', category: 'logic', shape: 'boolean', label: 'not {A}', inputs: { A: cond }, tooltip: 'True when the other is false.' },
-  { type: 'cd_words', category: 'logic', shape: 'boolean', label: '{TEXT}', inputs: { TEXT: text('I am near the flag') }, groupEnd: true, tooltip: 'Any condition, in your own words.' },
-  { type: 'nm_random', category: 'logic', shape: 'reporter', output: 'number', label: 'random {A} to {B}', inputs: { A: num(1), B: num(10) }, tooltip: 'A random whole number (or decimal, if you use decimals).' },
+  { type: 'cd_words', core: 'check', category: 'logic', shape: 'boolean', label: '{TEXT}', inputs: { TEXT: text('I am near the flag') }, groupEnd: true, tooltip: 'Any condition, in your own words.' },
+  { type: 'nm_random', core: 'check', category: 'logic', shape: 'reporter', output: 'number', label: 'random {A} to {B}', inputs: { A: num(1), B: num(10) }, tooltip: 'A random whole number (or decimal, if you use decimals).' },
   { type: 'nm_math', category: 'logic', shape: 'reporter', output: 'number', label: '{A} {OP} {B}', inputs: { A: num(0), OP: menu('math'), B: num(0) }, tooltip: 'Adds, subtracts, multiplies or divides.' },
   { type: 'nm_distance', category: 'logic', shape: 'reporter', output: 'number', label: 'distance to {WHO}', inputs: { WHO: who('mouse', ['mouse', 'center']) }, targets: SPRITE, tooltip: 'How far away the character is, in steps.' },
   { type: 'nm_my', category: 'logic', shape: 'reporter', output: 'number', label: 'my {PROP}', inputs: { PROP: menu('prop') }, targets: SPRITE, tooltip: 'This sprite\'s position, size, direction or costume number.' },
   { type: 'nm_timer', category: 'logic', shape: 'reporter', output: 'number', label: 'time', tooltip: 'Seconds since the game started.' },
-  { type: 'nm_words', category: 'logic', shape: 'reporter', output: 'value', label: '{TEXT}', inputs: { TEXT: text('a speed that gets faster over time') }, tooltip: 'Any number or words, described in your own words.' },
+  { type: 'nm_words', core: 'check', category: 'logic', shape: 'reporter', output: 'value', label: '{TEXT}', inputs: { TEXT: text('a speed that gets faster over time') }, tooltip: 'Any number or words, described in your own words.' },
 
   // ---- Memory: variables. The palette adds one round block per variable.
   { type: 'mem_var', category: 'variables', shape: 'reporter', output: 'value', label: '{VARIABLE}', inputs: { VARIABLE: { kind: 'label', default: 'my variable' } }, hidden: true, tooltip: 'The value this variable holds.' },
-  { type: 'mem_set', category: 'variables', shape: 'stack', label: 'set {VARIABLE} to {VALUE}', inputs: { VARIABLE: menu('variable', 'my variable'), VALUE: value('0') }, tooltip: 'Stores a value.' },
-  { type: 'mem_change', category: 'variables', shape: 'stack', label: 'change {VARIABLE} by {AMOUNT}', inputs: { VARIABLE: menu('variable', 'my variable'), AMOUNT: num(1) }, tooltip: 'Adds to a value (or takes away, with a minus number).' },
-  { type: 'va_show', category: 'variables', shape: 'stack', label: 'show {VARIABLE} on screen', inputs: { VARIABLE: menu('variable', 'my variable') }, groupEnd: true, tooltip: 'Shows the value while playing.' },
+  { type: 'mem_set', core: 'memory', category: 'variables', shape: 'stack', label: 'set {VARIABLE} to {VALUE}', inputs: { VARIABLE: menu('variable', 'my variable'), VALUE: value('0') }, tooltip: 'Stores a value.' },
+  { type: 'mem_change', core: 'memory', category: 'variables', shape: 'stack', label: 'change {VARIABLE} by {AMOUNT}', inputs: { VARIABLE: menu('variable', 'my variable'), AMOUNT: num(1) }, tooltip: 'Adds to a value (or takes away, with a minus number).' },
+  { type: 'va_show', core: 'memory', category: 'variables', shape: 'stack', label: 'show {VARIABLE} on screen', inputs: { VARIABLE: menu('variable', 'my variable') }, groupEnd: true, tooltip: 'Shows the value while playing.' },
   { type: 'mem_ask', category: 'variables', shape: 'stack', label: 'ask {QUESTION} and wait', inputs: { QUESTION: value("What's your name?") }, tooltip: 'Asks the player to type an answer.' },
   { type: 'nm_answer', category: 'variables', shape: 'reporter', output: 'value', label: 'answer', tooltip: 'What the player typed last.' },
 
@@ -316,9 +351,9 @@ export const BLOCKS: BlockSpec[] = [
   { type: 'pr_call', category: 'myblocks', shape: 'stack', label: 'use skill {NAME}', inputs: { NAME: menu('procedure', 'jump') }, tooltip: 'Runs one of your skills, then keeps going.' },
 
   // ---- Rules: what must always hold, and checks that it does
-  { type: 'ga_rule', category: 'rules', shape: 'rule', label: 'rule: {RULE}', inputs: { RULE: text('the player has 3 lives') }, tooltip: 'A fact about the game, in your own words. It holds for the whole game.' },
-  { type: 'ru_always', category: 'rules', shape: 'rule', label: 'always: {RULE}', inputs: { RULE: text('face the way I move') }, targets: SPRITE, tooltip: 'Something this sprite always does, the whole game.' },
-  { type: 'ru_never', category: 'rules', shape: 'rule', label: 'never: {RULE}', inputs: { RULE: text('walk through walls') }, targets: SPRITE, groupEnd: true, tooltip: 'Something this sprite must never do. Saying what not to do is as useful as saying what to do.' },
+  { type: 'ga_rule', core: 'idea', category: 'rules', shape: 'rule', label: 'rule: {RULE}', inputs: { RULE: text('the player has 3 lives') }, tooltip: 'A fact about the game, in your own words. It holds for the whole game.' },
+  { type: 'ru_always', core: 'idea', category: 'rules', shape: 'rule', label: 'always: {RULE}', inputs: { RULE: text('face the way I move') }, targets: SPRITE, tooltip: 'Something this sprite always does, the whole game.' },
+  { type: 'ru_never', core: 'idea', category: 'rules', shape: 'rule', label: 'never: {RULE}', inputs: { RULE: text('walk through walls') }, targets: SPRITE, groupEnd: true, tooltip: 'Something this sprite must never do. Saying what not to do is as useful as saying what to do.' },
   { type: 'ru_check', category: 'rules', shape: 'rule', label: 'check: {COND}', inputs: { COND: cond }, tooltip: 'Something that should always be true. While you play, Amble tells you if it ever isn\'t.' },
 ];
 
@@ -333,6 +368,11 @@ export function labelInputs(label: string): string[] {
 export function menuOf(type: string, input: string): MenuKind | undefined {
   const spec = BLOCK_BY_TYPE.get(type)?.inputs?.[input];
   return spec?.kind === 'menu' ? spec.menu : undefined;
+}
+
+/** The blocks of the simple palette, for a sprite or the stage. */
+export function coreBlocksFor(target: 'sprite' | 'stage'): BlockSpec[] {
+  return blocksFor(target).filter((b) => b.core && !b.hidden);
 }
 
 /** Blocks offered when editing a sprite or the stage. */

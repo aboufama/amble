@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayerHost } from '../player/host';
-import { moveSpriteFromStage, previewProject, registerPlayer, startGame, stopGame } from '../actions';
-import { compileNeedsRequest } from '../compiler/compile';
+import { addWish, hasGameLine, moveSpriteFromStage, previewProject, registerPlayer, startGame, stopGame } from '../actions';
+import { compileNeedsRequest, type CompileProgress } from '../compiler/compile';
+import { projectFreedom } from '../compiler/codegen';
+import { isDisabled, oneLine, topBlocks } from '../compiler/serialize';
+import type { Project } from '../project/types';
 import { useStore } from '../store';
 import { ExpandIcon, FlagIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, StopIcon, WarningIcon } from './icons';
 import { useProblemCount } from './ProblemsDialog';
@@ -11,6 +14,85 @@ function isEditable(el: EventTarget | null): boolean {
   if (!node) return false;
   if (node.isContentEditable) return true;
   return ['INPUT', 'TEXTAREA', 'SELECT'].includes(node.tagName);
+}
+
+/** The game: line, when the build under way is writing the whole game from it. */
+function gameLineBeingBuilt(project: Project, building: Array<{ targetId: string; words: string }>): string | null {
+  if (projectFreedom(project) === 'just what I say') return null;
+  const line = topBlocks(project.stage.blocks).find((b) => b.type === 'br_game' && !isDisabled(b));
+  const words = oneLine(line?.fields?.WHAT);
+  return words && building.some((b) => b.targetId === project.stage.id && b.words === words) ? words : null;
+}
+
+const MAKING_LINES = [
+  'Inventing the characters',
+  'Deciding what makes it fun',
+  'Planning a big finish',
+  'Tuning how it feels to move',
+  'Hiding a surprise or two',
+  'Picking the sounds',
+  'Giving the boss a name',
+  'Making it fair',
+];
+
+/** Shown over the stage while a whole game is made from an idea: what is happening, and for how long. */
+function MakingGame({ progress, idea }: { progress: CompileProgress; idea: string }) {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const t = window.setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 500);
+    return () => window.clearInterval(t);
+  }, []);
+  let step = 'Thinking up your game';
+  let detail = MAKING_LINES[Math.floor(seconds / 6) % MAKING_LINES.length];
+  if (progress.stage === 'writing') {
+    step = 'Writing the game';
+    detail = progress.chars ? `${progress.chars.toLocaleString()} characters of code so far` : 'Writing the code';
+  } else if (progress.stage === 'checking' || progress.stage === 'repairing') {
+    step = 'Checking the code';
+    detail = progress.message;
+  } else if (progress.stage === 'assets') {
+    step = 'Drawing the art and making the sounds';
+    detail = progress.assetsTotal ? `${progress.assetsDone ?? 0} of ${progress.assetsTotal} done` : progress.message;
+  }
+  const time = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  return (
+    <div className="making-game" role="status" aria-live="polite">
+      <div className="making-idea">“{idea.length > 110 ? `${idea.slice(0, 108)}…` : idea}”</div>
+      <div className="making-dots" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="making-step">{step}</div>
+      <div className="making-detail">{detail}</div>
+      <div className="making-time">{time} · a whole game takes two or three minutes</div>
+    </div>
+  );
+}
+
+/** "Change something": a wish in plain words, added to the game as a rule and built in. */
+function WishBox({ busy }: { busy: boolean }) {
+  const [wish, setWish] = useState('');
+  const send = () => {
+    if (!wish.trim() || busy) return;
+    addWish(wish);
+    setWish('');
+  };
+  return (
+    <form
+      className="wish-box"
+      onSubmit={(e) => {
+        e.preventDefault();
+        send();
+      }}
+    >
+      <input value={wish} onChange={(e) => setWish(e.target.value)} placeholder="Change something: “make it snow”, “add a second boss”…" aria-label="Change something in the game" maxLength={300} disabled={busy} />
+      <button className="btn primary small" type="submit" disabled={busy || !wish.trim()} title="Adds it to the game as a rule on the stage, and builds it in">
+        Change
+      </button>
+    </form>
+  );
 }
 
 /** The game stage: a sandboxed player iframe with green flag / stop / compile controls. */
@@ -109,6 +191,11 @@ export function StagePanel() {
   const building = compiling && compileState.forPlay;
   const buildingCount = new Set(compileState.building.map((b) => `${b.targetId}\u0000${b.words}`)).size;
   const running = runState === 'running' || runState === 'paused';
+  // A whole game being made from the game: line takes a couple of minutes: the stage says what's happening.
+  const makingGame = compiling ? gameLineBeingBuilt(project, compileState.building) : null;
+  const howToPlay = project.compiled?.howToPlay?.trim();
+  // A game made from an idea can be changed the way it was made: by saying so.
+  const canWish = useMemo(() => hasGameLine(project), [project]) && Boolean(project.compiled?.pieces?.some((p) => p.kind === 'game'));
 
   return (
     <div className={`stage-panel ${fullscreen ? 'full-screen' : ''}`}>
@@ -179,7 +266,15 @@ export function StagePanel() {
             Click the green flag to play.
           </div>
         )}
+        {makingGame && progress && <MakingGame progress={progress} idea={makingGame} />}
       </div>
+      {/* How to play a game the compiler made from an idea (it says so itself). */}
+      {howToPlay && !fullscreen && (
+        <p className="how-to-play" title={howToPlay}>
+          {howToPlay}
+        </p>
+      )}
+      {canWish && !fullscreen && <WishBox busy={compiling} />}
     </div>
   );
 }

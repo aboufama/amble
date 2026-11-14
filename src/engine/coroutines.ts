@@ -1,4 +1,5 @@
 import { reportError } from './bridge';
+import { beginStep } from './sandbox';
 
 /** Anything that can own coroutines/timers; they stop when the owner is destroyed. */
 export interface CoroutineOwner {
@@ -34,6 +35,7 @@ export class Coroutine {
       return;
     }
     try {
+      beginStep();
       const result = this.gen.next();
       if (result.done) this.done = true;
     } catch (err) {

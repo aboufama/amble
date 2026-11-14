@@ -77,8 +77,10 @@ export class CameraRig {
     this.following = { target, opts: { smooth: opts.smooth ?? 0.85, offsetX: opts.offsetX ?? 0, offsetY: opts.offsetY ?? 0, bounds: opts.bounds } };
   }
 
+  /** Shakes the view: `strength` in stage pixels (4 is gentle, 12 is strong). A value under 1 is read as Phaser's share of the screen (0.01 = 1%). */
   shake(strength = 8, seconds = 0.3): void {
-    this.shakeStrength = Number(strength) || 0;
+    const s = Number(strength) || 0;
+    this.shakeStrength = s > 0 && s < 1 ? s * STAGE_WIDTH : s;
     this.shakeDuration = Math.max(0.01, Number(seconds) || 0.3);
     this.shakeTime = this.shakeDuration;
   }

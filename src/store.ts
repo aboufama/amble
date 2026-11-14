@@ -12,6 +12,17 @@ import { migrateProject } from './project/migrate';
 export type Tab = 'code' | 'costumes' | 'sounds';
 /** Scratch's stage size buttons: the normal stage, or a small one that leaves more room for code. */
 export type StageSize = 'small' | 'large';
+export type PaletteMode = 'simple' | 'all';
+const PALETTE_KEY = 'amble:palette';
+
+function loadPalette(): PaletteMode {
+  try {
+    return localStorage.getItem(PALETTE_KEY) === 'all' ? 'all' : 'simple';
+  } catch {
+    return 'simple';
+  }
+}
+
 export type RunState = 'loading' | 'idle' | 'running' | 'paused' | 'stopped';
 export type OutputTab = 'game' | 'problems' | 'console' | 'code';
 
@@ -44,6 +55,8 @@ export interface EditorState {
   selectedId: string;
   tab: Tab;
   stageSize: StageSize;
+  /** The block palette: the few blocks most games need, or all of them (kept in this browser). */
+  palette: PaletteMode;
   costumeSel: Record<string, string>;
   soundSel: Record<string, string>;
   settings: AiSettings;
@@ -64,6 +77,8 @@ export interface EditorState {
   needsAccount: boolean;
   run: { state: RunState; errors: PlayerError[]; logs: LogEntry[] };
   dialog: null | 'settings' | 'new' | 'about';
+  /** The start screen was opened from File > New game (so there may be a project to keep). */
+  startFromMenu: boolean;
   prompt: PromptRequest | null;
   /** The tab shown in the problems dialog ('game' is an old name for 'problems'). */
   outputTab: OutputTab;
@@ -80,6 +95,7 @@ export interface EditorState {
   select(id: string): void;
   setTab(tab: Tab): void;
   setStageSize(size: StageSize): void;
+  setPalette(mode: PaletteMode): void;
   selectCostume(targetId: string, assetId: string): void;
   selectSound(targetId: string, assetId: string): void;
   setSettings(patch: Partial<AiSettings>): void;
@@ -91,6 +107,8 @@ export interface EditorState {
   addLog(level: LogEntry['level'], message: string): void;
   clearRunOutput(): void;
   setDialog(dialog: EditorState['dialog']): void;
+  /** Opens the start screen: on the first visit, or from the menu. */
+  openStart(fromMenu: boolean): void;
   setPrompt(prompt: PromptRequest | null): void;
   setOutputTab(tab: OutputTab): void;
   setProblemsOpen(open: boolean): void;
@@ -109,6 +127,7 @@ export const useStore = create<EditorState>()(
     selectedId: initial.sprites[0]?.id ?? initial.stage.id,
     tab: 'code',
     stageSize: 'large',
+    palette: loadPalette(),
     costumeSel: {},
     soundSel: {},
     settings: loadSettings(),
@@ -117,6 +136,7 @@ export const useStore = create<EditorState>()(
     needsAccount: false,
     run: { state: 'loading', errors: [], logs: [] },
     dialog: null,
+    startFromMenu: false,
     prompt: null,
     outputTab: 'game',
     problemsOpen: false,
@@ -152,6 +172,15 @@ export const useStore = create<EditorState>()(
     setStageSize: (size) =>
       set((s) => {
         s.stageSize = size;
+      }),
+    setPalette: (mode) =>
+      set((s) => {
+        s.palette = mode;
+        try {
+          localStorage.setItem(PALETTE_KEY, mode);
+        } catch {
+          /* ignore */
+        }
       }),
     selectCostume: (targetId, assetId) =>
       set((s) => {
@@ -201,6 +230,11 @@ export const useStore = create<EditorState>()(
     setDialog: (dialog) =>
       set((s) => {
         s.dialog = dialog;
+      }),
+    openStart: (fromMenu) =>
+      set((s) => {
+        s.dialog = 'new';
+        s.startFromMenu = fromMenu;
       }),
     setPrompt: (prompt) =>
       set((s) => {

@@ -11,6 +11,7 @@ import { ProblemsDialog } from './components/ProblemsDialog';
 import { SpritePane } from './components/SpritePane';
 import { PromptDialog, SettingsDialog, Toast } from './components/Dialogs';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { StartDialog, startSeen } from './components/StartDialog';
 import { BlocksTabIcon, BrushTabIcon, SpeakerTabIcon } from './components/icons';
 
 function useAutosave() {
@@ -18,6 +19,8 @@ function useAutosave() {
   useEffect(() => {
     void loadSavedProject().then((p) => {
       if (p) useStore.getState().setProject(p);
+      // The first visit starts with "What do you want to make?" (and the demos).
+      else if (!startSeen()) useStore.getState().openStart(false);
       setLoaded(true);
     });
   }, []);
@@ -97,6 +100,7 @@ export function App() {
         </section>
       </main>
       {dialog === 'settings' && <SettingsDialog />}
+      {dialog === 'new' && <StartDialog />}
       <ProblemsDialog />
       <PromptDialog />
       <Toast />

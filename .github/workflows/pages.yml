@@ -3,7 +3,8 @@ name: Deploy demo to GitHub Pages
 # Builds the app and publishes dist/ to the gh-pages branch, which GitHub Pages serves.
 on:
   push:
-    branches: [claude/text-game-builder-ai-jxuruz, main]
+    # One branch only: two branches pushed together raced for the same site (and one run was cancelled).
+    branches: [main]
   workflow_dispatch:
 
 permissions:

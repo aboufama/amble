@@ -1,4 +1,5 @@
 import { ambleCostumes, block, character, newProject, newSprite, svgAsset, synthSound, variable, workspace } from './defaults';
+import { ideaProject } from './idea';
 import { uid } from './ids';
 import { migrateProject } from './migrate';
 import { isProject } from './persistence';
@@ -317,18 +318,48 @@ export interface Example {
   make(): Project;
   /**
    * Shipped built: public/demos/<id>.amble holds the project with its compiled game (code, the
-   * compiler's characters and art), made by scripts/precompile-demos.mjs, so it plays at once.
+   * compiler's characters and art) and public/demos/<id>.jpg a picture of it, both made by
+   * scripts/precompile-demos.mjs, so it plays at once.
    */
   prebuilt?: boolean;
+  /** For a game made from an idea: the sentence that is the whole program. */
+  idea?: string;
 }
 
-/** Blank projects and examples offered in the File menu. */
+/**
+ * A demo that is nothing but an idea: one sentence on the stage with the imagination dial on
+ * "go wild". The compiler made everything else: the cast, the art, the sounds, the rules, the acts.
+ */
+function fromIdea(id: string, title: string, idea: string): Example {
+  return {
+    id,
+    title,
+    idea,
+    description: `Made from one sentence: “${idea}”`,
+    prebuilt: true,
+    make: () => {
+      const p = ideaProject(idea, 'go wild');
+      p.title = title;
+      return p;
+    },
+  };
+}
+
+/** Blank projects and examples offered on the start screen and in the File menu. */
 export const EXAMPLES: Example[] = [
-  { id: 'neon-drift', title: 'Neon Drift', description: 'Steer a comet through a neon asteroid storm, blast waves of rocks, then take on the Mothership.', make: neonDrift, prebuilt: true },
-  { id: 'lantern-cave', title: 'Lantern Cave', description: 'A platformer in the dark: find 5 crystals by lantern light, then escape the collapsing cave.', make: lanternCave, prebuilt: true },
-  { id: 'sky-whale', title: 'Sky Whale', description: 'Hold space to swim up. Sunset turns to aurora night: eat stars, catch shooting stars, dodge storms.', make: skyWhale, prebuilt: true },
-  { id: 'pocket-planet', title: 'Pocket Planet', description: 'Click to drop cats, trees and houses on a tiny planet with its own gravity, day and night.', make: pocketPlanet, prebuilt: true },
-  { id: 'star-catcher', title: 'Star Catcher', description: 'Catch the falling stars. Almost all exact blocks, built as you play.', make: starCatcher },
+  fromIdea('disco-rex', 'Meteor Disco Rex', 'a T-rex on roller skates dodges meteors at a disco'),
+  fromIdea('pizza-planets', 'Pizza Planet Express', 'a cat on a rocket scooter delivers pizzas between tiny planets before they get cold'),
+  fromIdea('jelly-knight', 'Jelly Knight', 'a knight made of jelly bounces up a castle made of cake'),
+  fromIdea('penguin-dj', 'Penguin DJ', 'a penguin DJ keeps the dance floor from melting'),
+  fromIdea('ghost-library', 'Candle Ghost', 'a ghost who is scared of the dark collects candles in a haunted library'),
+  fromIdea('broom-chase', 'Runaway Broom', "a wizard's broom has escaped: chase it through a thunderstorm"),
+  fromIdea('snail-garden', 'Snail Garden', 'grow a garden while greedy snails try to eat it'),
+  fromIdea('sub-cave', 'Shy Monsters', 'a tiny submarine explores a glowing sea cave full of shy monsters'),
+  { id: 'neon-drift', title: 'Neon Drift', description: 'Rules and blocks: steer a comet through a neon asteroid storm, blast waves of rocks, then take on the Mothership.', make: neonDrift, prebuilt: true },
+  { id: 'lantern-cave', title: 'Lantern Cave', description: 'Rules and blocks: a platformer in the dark. Find 5 crystals by lantern light, then escape the collapsing cave.', make: lanternCave, prebuilt: true },
+  { id: 'sky-whale', title: 'Sky Whale', description: 'Rules and blocks: hold space to swim up. Eat stars, catch shooting stars, dodge storms as night falls.', make: skyWhale, prebuilt: true },
+  { id: 'pocket-planet', title: 'Pocket Planet', description: 'Rules and blocks: click to drop cats, trees and houses on a tiny planet with its own gravity.', make: pocketPlanet, prebuilt: true },
+  { id: 'star-catcher', title: 'Star Catcher', description: 'Almost all exact blocks: catch the falling stars. Built as you play.', make: starCatcher },
 ];
 
 /** The demo as shipped: built when it has a prebuilt file, else as written (built on the first flag). */

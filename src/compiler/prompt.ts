@@ -1,5 +1,6 @@
 import { serializeBlocks } from './serialize';
 import { projectVariables, type PieceRequest, type TargetPlan } from './codegen';
+import type { Freedom } from '../blocks/spec';
 import type { CompiledGame, CompiledPiece, CostumeAsset, Project, SoundAsset, SpriteTarget, Target, WorldMode } from '../project/types';
 
 // -----------------------------------------------------------------------------
@@ -24,6 +25,7 @@ Reply with the BODY of each piece's method only (no signature, no braces around 
 - message: body of \`piece()\` that returns the text for the end-of-game banner ("" for none).
 - behavior: body of \`*piece()\`, started for the sprite and for each copy of it when the game starts. It runs in the background all game, usually \`for (;;) { ...; yield; }\`.
 - rule: body of \`*piece()\`, started once when the game starts. Make the rule true for the whole game: set things up, then watch in a \`for (;;) { ...; yield; }\` loop if needed.
+- game: body of \`*piece()\` on the stage, started once when the game starts. It is the whole game, made from the author's game: line (see "Directing a game").
 - art style: a rule for the look of the whole game, in that style: set it up when the game starts with Phaser (see below): the background behind the sprites (gradients, layered hills or skylines, decorations, moving particles like stars, snow or fireflies) and a mood for the whole picture (camera effects like a soft glow or vignette). Keep the author's own costumes and backdrops as they are; new art is made in this style anyway.
 Pieces of one sprite share its fields (this.something). Reuse the names in the code already written for that sprite. Give any field you add a starting value before using it (e.g. \`this.speed ??= 200\`).
 Only the engine API below: no imports, DOM, network, timers or async.
@@ -113,23 +115,24 @@ The game (this.game):
   vars: shared object for game-wide state (score, lives, level). Initialize it in the stage's start().
   time (seconds since start), dt, random(min, max) (integers if both are integers), broadcast(name, data), on(name, fn)
   over(message?) / win(message?): show a banner and end the game (nothing after them runs). restart(), pause(), resume()
-  ui.text(id, text, { x, y, size, color, align, background, bold })  on-screen text in screen coordinates (x -240..240, y -180..180, 0,0 = center). ui.hide(id), ui.remove(id)
+  ui.text(id, text, { x, y, size, color, align, background, bold })  on-screen text in screen coordinates (x -240..240, y -180..180, 0,0 = center). align is "center" by default (x is the middle of the text), or "left" / "right" (x is that edge). ui.hide(id), ui.remove(id)
   ui.value(label, () => value, { x, y })  a live value box (score, lives...), stacked top-left by default
   ui.button(id, label, { x, y, size, background }, () => { ... })
   effects.burst({ x, y, color, count, speed, size, lifetime, gravity })  particle burst
-  camera: follow(sprite, { smooth: 0.85, bounds: { minX, maxX, minY, maxY }, offsetX, offsetY }) for scrolling worlds; x, y, zoom (1 = normal); shake(strength, seconds); view() -> { left, right, top, bottom }; phaser (Phaser's camera: flash(ms, r, g, b), fade, postFX). The backdrop stays fixed behind everything.
+  camera: follow(sprite, { smooth: 0.85, bounds: { minX, maxX, minY, maxY }, offsetX, offsetY }) for scrolling worlds; x, y, zoom (1 = normal); shake(strength in pixels (4 gentle, 12 strong), seconds); view() -> { left, right, top, bottom }; phaser (Phaser's camera: flash(ms, r, g, b), fade, postFX). The backdrop stays fixed behind everything.
   backdrop (get/set by name), nextBackdrop(), background = "#rrggbb" (color behind everything)
   The Stage class also has this.backdrop, this.backdrops, this.nextBackdrop().
 
 # Phaser (for anything more elaborate)
 this.game.scene is the Phaser.Scene the game runs in, and \`Phaser\` is a global. Use them freely for what the API above doesn't cover:
 - Drawing: scene.add.graphics() (fillStyle, fillGradientStyle, fillRect, fillRoundedRect, fillCircle, lineStyle, strokePath...), scene.add.rectangle / ellipse / star / polygon, scene.add.text(x, y, text, style), scene.add.tileSprite (repeating backgrounds; scroll with tilePositionX), scene.add.image(x, y, sprite.image.texture.key) to reuse a costume.
-- Particles: scene.add.particles(x, y, "amble-dot", { speed, lifespan, scale, alpha, tint, frequency, quantity, gravityY, blendMode: "ADD", follow: sprite.image... }) for rain, snow, sparkles, trails, fire, smoke. "amble-dot" is a soft white dot; tint it.
+- Particles: scene.add.particles(x, y, "amble-dot", { speed, lifespan, scale, alpha, tint, frequency, quantity, gravityY, blendMode: "ADD", follow: sprite.image... }) for rain, snow, sparkles, trails, fire, smoke. "amble-dot" is a soft white dot; tint it. To change an emitter later use only these: emitter.updateConfig({ ... }), setParticleSpeed(x, y), setParticleGravity(x, y), setFrequency(ms, quantity), setQuantity(n), explode(count, x, y), emitParticleAt(x, y, count), start(), stop(), setPosition(x, y), destroy().
 - Effects (WebGL): sprite.image.postFX.addGlow(color, strength), addShadow(), addBloom(), addVignette(), addBlur(); camera.phaser.postFX.addVignette(...), addBloom(...), addColorMatrix().grayscale(); camera.phaser.flash(250), camera.phaser.fade(...).
 - Tweens: scene.tweens.add({ targets, props or fields, duration (ms), ease: "Sine.easeInOut", yoyo, repeat: -1 }) for visual polish (pulsing, bobbing, color). Keep game logic and timing on Amble's clock (coroutines, this.after, this.every).
 - Physics for your own shapes: scene.matter.add.rectangle(wx, wy, w, h, { isStatic: true }) for level geometry, slopes (scene.matter.add.fromVertices), constraints and chains (scene.matter.add.constraint, scene.matter.add.chain).
 - Coordinates: Phaser objects use world pixels with y down and (0, 0) at the starting view's top left: worldX = x + 240, worldY = 180 - y for a stage point (x, y). Phaser rotation is in radians, clockwise.
 - Depth: sprites draw at their layer (small numbers); setDepth(-10) puts your drawing behind the sprites (the backdrop is further back still) and setDepth(100) in front. setScrollFactor(0) pins something to the screen, setScrollFactor(0.3) makes a slow parallax layer.
+- Speed: school laptops play this. Draw scenery once and then move it (a tileSprite's tilePosition, tweens, a few objects) instead of clearing and redrawing a Graphics every frame; use at most one camera post effect, and no blur; remove what leaves the screen.
 - Everything you add is cleaned up when the game stops. No loading files or network: make art from shapes, graphics, particles and the costumes you have (or new assets).`;
 
 const OUTPUT_RULES = `# Characters, art and sound
@@ -140,10 +143,50 @@ const OUTPUT_RULES = `# Characters, art and sound
   - Describe colors, shapes, style and pose specifically (e.g. "a round red apple with a green leaf, side view").
   - Earlier compiled assets are kept; list one again only to replace it.`;
 
+/**
+ * Directing: the game piece. The author gave a sentence or two (and maybe a cast, a look and some
+ * rules) and the compiler makes the whole game. The structure they gave is kept; what it leaves
+ * open is the compiler's to invent, as far as the imagination dial says.
+ */
+const DIRECTOR = `# Directing a game (the "game" piece)
+The author gave you the idea and trusts you to make the game. Their game: line, the rest of the brief (art style, made for, rules, you win when...) and their sprites are the script you were handed; everything they left open is yours to decide. Make a complete, polished game that someone plays for a few minutes and then shows a friend.
+
+## What you write
+- The game piece runs once at the start, on the stage: set up the state (this.game.vars), build the world, start the systems (spawners, waves, timers, the HUD, music) and run the game's arc. Keep it readable: small helpers and a few \`this.run(function* () { ... })\` loops rather than one giant loop.
+- The characters go in "sprites": each with its whole class, and its art in "assets". A character's own behavior lives in its class (start(), onSpawn(), update(dt)), not in the game piece. Templates that get cloned start hidden (\`start() { this.hide(); }\`) and their clones do the work.
+- The author's own sprites are the cast: use them by name for what they plainly are (the player, the enemy, the thing to collect), with their costumes and sounds, and steer them from the game piece or with \`this.game.find("Name")\`. If one of them has scripts, those already run: build around them and never do the same thing twice. If the author made no sprites, the whole cast is yours.
+- When you write the game piece, "sprites" is the complete list of characters you add: earlier ones you leave out are removed.
+- Art: ask in "assets" for every costume, backdrop and sound you use, each described vividly and all in one style. Characters that move get two or three costumes (step, flap, blink) and animate. 6 to 14 images is a good amount; one of them a backdrop if the game doesn't draw its own.
+- Sound: a sound for every moment that matters (jump, hit, collect, power-up, win, lose), and one short looping tune for \`this.game.music(name)\`.
+- Rules the author wrote as separate rule: or always: blocks are other pieces (yours to write too, or already written): the game piece provides what they don't. Don't ask questions about the game piece: decide, and make it good.
+
+## What makes it a real game (all of these)
+- It plays well in the first second: snappy controls, and how to play shown on screen for the first few seconds ("← → move   space jump"). Keyboard and mouse both where it makes sense; a click or tap should always do something.
+- A goal you understand at a glance, progress you can see (score, a bar, a counter), and stakes (lives, a timer, something coming for you).
+- An arc. Gentle for the first 10 seconds, then something new every 15 to 20 seconds: a new enemy, a faster wave, a change of rules, a change of scene. It builds to a finale: a boss, a last rush, a big finish. A full play lasts two to three minutes, and losing early is easy to retry.
+- Juice on everything: particles when something is hit, collected or destroyed; a small camera shake on impacts; things pop in, squash, stretch and fade with tweens instead of appearing and vanishing; numbers that fly up from what scored them; trails behind fast things; a flash when the player is hurt, then a moment of safety.
+- Big and bold: the stage is only 480 x 360, so nothing is tiny. The player is 50 to 90 pixels tall, enemies and pickups 30 to 80, and the scenery reaches every corner of the screen.
+- A living world in the art style: layers that move at different speeds, drifting particles (dust, stars, snow, leaves), and a slow change as the game goes on (dusk falls, a storm rolls in, the music picks up).
+- Text on screen is part of the fun: name the waves, call out combos, give the boss a title. Keep every HUD element inside x -225..225 and y -165..165 so nothing is cut off.
+- An ending: winning and losing each get their moment (a burst, a beat of slow motion, a banner) before \`this.game.win(text)\` or \`this.game.over(text)\`, with a line that fits the game.
+- It is fair and it works: the player can always avoid what hurts them, nothing appears on top of them, everything needed can be reached, and no state can get stuck. Walk through a whole play in your head, start to finish, before you answer.
+
+## Keep it fast
+School laptops and phones play this, so: at most about 120 sprites and 300 particles alive (remove what leaves the screen; there can only be 300 copies at once); draw scenery once and move it (a tileSprite's tilePosition, tweens, a few objects) instead of clearing and redrawing a Graphics every frame; at most one camera post effect, and no blur.`;
+
+const FREEDOM: Record<Exclude<Freedom, 'just what I say'>, string> = {
+  'fill in the gaps': `## How much to invent: fill in the gaps
+Stay close to what the author wrote. Build the game they describe, complete and polished as above, and invent only what it needs to work and feel good. No mechanics, characters or twists they didn't ask for.`,
+  'go wild': `## How much to invent: go wild
+The author wants to be amazed, and to laugh. Keep their idea at the heart of the game, then take it somewhere they didn't see coming. Think like a designer showing off: a second act where the rules flip (gravity turns over, the hunter becomes the hunted, the floor starts to move), something that grows, multiplies or transforms as you play, weather and a world that changes scene, an absurd boss with a name, a title and phases, power-ups with personality that change how the game plays for a few seconds, a secret for the curious, a running joke in the on-screen text, and an ending that is a spectacle. Choose three bold ideas and commit to them completely rather than ten half-made ones; each new act should look different at a glance (new colors, new scenery, new music cue). Be playful and specific, never random for its own sake: every surprise makes the game more fun to play, and the author's idea is still what the game is about.`,
+};
+
 /** The compile request's system prompt. Every game is 2D now; `mode` is left over from 3D projects. */
-export function piecesSystemPrompt(mode?: WorldMode): string {
+export function piecesSystemPrompt(mode?: WorldMode, opts: { freedom?: Freedom } = {}): string {
   void mode;
-  return [INTRO, COMMON_API, OUTPUT_RULES].join('\n\n');
+  const parts = [INTRO, COMMON_API, OUTPUT_RULES];
+  if (opts.freedom && opts.freedom !== 'just what I say') parts.push(DIRECTOR, FREEDOM[opts.freedom]);
+  return parts.join('\n\n');
 }
 
 // -----------------------------------------------------------------------------
@@ -255,8 +298,12 @@ function describeCompiled(compiled: CompiledGame | null): string {
   if (!compiled || (!compiled.assets.length && !compiled.sprites.length)) return '';
   const lines: string[] = [];
   if (compiled.sprites.length) {
-    lines.push('## Characters added by earlier compiles (they exist; use them by name)');
-    for (const s of compiled.sprites) lines.push(`- "${s.name}": ${s.description}`);
+    lines.push('## Characters added by earlier compiles (they exist; use them by name). To change one, list it in "sprites" again with its whole new class.');
+    for (const s of compiled.sprites) {
+      lines.push(`- "${s.name}": ${s.description}`);
+      const source = compiled.code.find((c) => c.targetId === s.id)?.source;
+      if (source) lines.push(`\`\`\`js\n${source}\n\`\`\``);
+    }
   }
   if (compiled.assets.length) {
     lines.push('## Art and sounds made by earlier compiles (they exist)');
@@ -298,7 +345,7 @@ export function piecesUserPrompt(input: PiecesPromptInput): string {
     parts.push(
       [
         '## Write these pieces',
-        ...tasks.map(({ id, request: r }) => `- ${id}: ${r.kind}${r.kind === 'action' || r.kind === 'timed' ? `, repeats: ${r.inLoop ? 'yes' : 'no'}` : ''}, in "${r.targetName}" (${r.script}): ${r.block}`),
+        ...tasks.map(({ id, request: r }) => `- ${id}: ${r.kind}${r.kind === 'action' || r.kind === 'timed' ? `, repeats: ${r.inLoop ? 'yes' : 'no'}` : ''}${r.kind === 'game' ? ` (the whole game; imagination: ${r.freedom ?? 'fill in the gaps'})` : ''}, in "${r.targetName}" (${r.script}): ${r.block}`),
       ].join('\n'),
     );
   }

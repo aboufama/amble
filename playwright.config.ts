@@ -14,6 +14,20 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: `http://localhost:${port}`,
+    // The tests start in the editor with every block in the palette. (The start screen that opens on
+    // a first visit, and the simple palette, have their own tests: e2e/start.spec.ts.)
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: `http://localhost:${port}`,
+          localStorage: [
+            { name: 'amble:start', value: 'seen' },
+            { name: 'amble:palette', value: 'all' },
+          ],
+        },
+      ],
+    },
     viewport: { width: 1440, height: 900 },
     launchOptions: {
       executablePath,

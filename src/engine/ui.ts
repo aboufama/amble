@@ -49,6 +49,14 @@ export const UI_CSS = `
 .amble-ui__hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); padding: 4px 10px; font-size: 12px; color: white; background: rgba(0,0,0,0.45); border-radius: 10px; }
 `;
 
+/** How far to move a box of `size` starting at `start` so it sits inside 0..`span`, a few pixels from the edge. */
+export function nudge(start: number, size: number, span: number, margin = 4): number {
+  if (size >= span - 2 * margin) return margin - start;
+  if (start < margin) return margin - start;
+  if (start + size > span - margin) return span - margin - size - start;
+  return 0;
+}
+
 function place(el: HTMLElement, x: number, y: number): void {
   el.style.left = `${STAGE_WIDTH / 2 + x}px`;
   el.style.top = `${STAGE_HEIGHT / 2 - y}px`;
@@ -61,6 +69,8 @@ function place(el: HTMLElement, x: number, y: number): void {
 export class Ui {
   readonly root: HTMLDivElement;
   private texts = new Map<string, HTMLDivElement>();
+  /** What each text last showed, to skip setting it again. */
+  private readonly textKeys = new Map<string, string>();
   private buttons = new Map<string, HTMLButtonElement>();
   private values = new Map<string, ValueEntry>();
   private banner: HTMLDivElement | null = null;
@@ -83,17 +93,29 @@ export class Ui {
       this.texts.set(id, el);
     }
     const align = opts.align ?? 'center';
+    const x = Number(opts.x) || 0;
+    const y = Number(opts.y) || 0;
+    // A HUD is set again every frame with the same words: only touch the page when something changed.
+    const key = JSON.stringify([String(text), x, y, opts.size, opts.color, opts.bold, opts.background, align]);
+    if (this.textKeys.get(id) === key && el.style.display !== 'none') return;
+    this.textKeys.set(id, key);
     el.textContent = String(text);
-    place(el, opts.x ?? 0, opts.y ?? 0);
+    place(el, x, y);
     el.style.fontSize = `${opts.size ?? 20}px`;
     el.style.color = opts.color ?? '#ffffff';
     el.style.fontWeight = opts.bold === false ? '400' : '700';
     el.style.background = opts.background ?? 'transparent';
     el.style.padding = opts.background ? '4px 10px' : '0';
     el.style.textAlign = align;
-    el.style.transform =
-      align === 'left' ? 'translate(0, -50%)' : align === 'right' ? 'translate(-100%, -50%)' : 'translate(-50%, -50%)';
     el.style.display = '';
+    // The whole text stays on the stage: centered text placed near an edge (a score at x = -215)
+    // would be cut in half, so it is nudged back in.
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const left = STAGE_WIDTH / 2 + x - (align === 'left' ? 0 : align === 'right' ? w : w / 2);
+    const top = STAGE_HEIGHT / 2 - y - h / 2;
+    const tx = align === 'left' ? '0px' : align === 'right' ? '-100%' : '-50%';
+    el.style.transform = `translate(calc(${tx} + ${w ? nudge(left, w, STAGE_WIDTH) : 0}px), calc(-50% + ${h ? nudge(top, h, STAGE_HEIGHT) : 0}px))`;
   }
 
   /** Shows a labelled live value (like a Scratch variable monitor). Stacks down the left edge by default. */
@@ -157,6 +179,7 @@ export class Ui {
     this.buttons.get(id)?.remove();
     this.values.get(id)?.el.remove();
     this.texts.delete(id);
+    this.textKeys.delete(id);
     this.buttons.delete(id);
     this.values.delete(id);
   }

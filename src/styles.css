@@ -281,8 +281,14 @@ select {
   cursor: default;
 }
 
+/* The File menu lists every demo (the start screen shows them with pictures): it scrolls on short windows. */
 .menubar-menu:has(.examples) {
-  max-width: 320px;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+.menubar-menu-section.examples button {
+  line-height: 28px;
 }
 
 .menubar-menu-label {
@@ -291,25 +297,6 @@ select {
   letter-spacing: 0.4px;
   text-transform: uppercase;
   opacity: 0.75;
-}
-
-.menubar-menu button.example-item {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 6px 10px;
-  line-height: 1.3;
-  white-space: normal;
-}
-
-.example-title {
-  font-size: 12.5px;
-}
-
-.example-desc {
-  font-size: 11px;
-  font-weight: normal;
-  opacity: 0.85;
 }
 
 .menubar-divider {
@@ -1094,6 +1081,162 @@ select {
   font-size: 11.5px;
   transform: translateX(-50%);
   pointer-events: none;
+}
+
+/* A whole game being made from an idea: what's happening, over the stage */
+.making-game {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px 26px;
+  border-radius: inherit;
+  background: linear-gradient(160deg, hsla(250, 60%, 28%, 0.94), hsla(285, 55%, 34%, 0.94));
+  color: #fff;
+  text-align: center;
+}
+
+.making-idea {
+  max-width: 400px;
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.35;
+  opacity: 0.9;
+}
+
+.making-dots {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 2px;
+}
+
+.making-dots span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffd84d;
+  animation: making-bounce 1s ease-in-out infinite;
+}
+
+.making-dots span:nth-child(2) {
+  background: #7ee08a;
+  animation-delay: 0.15s;
+}
+
+.making-dots span:nth-child(3) {
+  background: #7cd4ff;
+  animation-delay: 0.3s;
+}
+
+@keyframes making-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-12px);
+  }
+}
+
+.making-step {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.making-detail {
+  min-height: 18px;
+  font-size: 13px;
+  opacity: 0.92;
+}
+
+.making-time {
+  margin-top: 6px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+.gui-body.stage-small .making-game {
+  gap: 3px;
+  padding: 8px 10px;
+}
+
+.gui-body.stage-small .making-idea,
+.gui-body.stage-small .making-time {
+  display: none;
+}
+
+.gui-body.stage-small .making-step {
+  font-size: 13px;
+}
+
+.gui-body.stage-small .making-detail {
+  font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .making-dots span {
+    animation: none;
+  }
+}
+
+/* Change something: a wish in words, under the stage */
+.wish-box {
+  display: flex;
+  gap: 6px;
+  margin: 6px 2px 0;
+}
+
+.wish-box input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--ui-white);
+  color: var(--text-primary);
+  font-size: 12.5px;
+}
+
+.wish-box input:focus {
+  outline: none;
+  border-color: var(--looks-secondary);
+  box-shadow: 0 0 0 3px var(--looks-light-transparent);
+}
+
+.gui-body.stage-small .wish-box {
+  display: none;
+}
+
+/* How to play (said by the compiler for a game made from an idea) */
+.how-to-play {
+  margin: 6px 2px 0;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--ui-white);
+  box-shadow: var(--raise-sm);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Short windows keep the room for the sprites: the game says how to play on its own screen too. */
+@media (max-height: 800px) {
+  .how-to-play {
+    display: none;
+  }
+}
+
+.gui-body.stage-small .how-to-play {
+  display: none;
 }
 
 .gui-body.stage-small .stage-hint {
@@ -3385,5 +3528,162 @@ details summary {
   .amble-snap > .blocklyPath,
   .green-flag.building::before {
     animation: none;
+  }
+}
+
+/* ---------- Start screen: an idea in a sentence, or a demo ---------- */
+
+.modal.start {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.start-idea {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.start-label {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.start-idea textarea {
+  width: 100%;
+  min-height: 62px;
+  padding: 10px 12px;
+  border: 2px solid var(--looks-transparent);
+  border-radius: var(--radius-md);
+  background: var(--ui-white);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 15.5px;
+  line-height: 1.35;
+  resize: vertical;
+}
+
+.start-idea textarea:focus {
+  outline: none;
+  border-color: var(--looks-secondary);
+  box-shadow: 0 0 0 4px var(--looks-light-transparent);
+}
+
+.start-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.start-spacer {
+  flex: 1;
+}
+
+.start-levels {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--ui-tertiary);
+}
+
+.start-levels button {
+  height: 28px;
+  padding: 0 13px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.start-levels button.on {
+  background: var(--looks-secondary);
+  color: var(--ui-white);
+  box-shadow: var(--raise-sm);
+}
+
+.btn.start-make {
+  height: 36px;
+  padding: 0 20px;
+  font-size: 14px;
+}
+
+.start-hint {
+  margin: 0;
+  color: var(--text-primary-transparent);
+  font-size: 12px;
+}
+
+.start-heading {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.start-demos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.start-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--ui-white);
+  box-shadow: var(--raise-sm);
+  color: var(--text-primary);
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.start-demo:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--float);
+}
+
+.start-thumb {
+  display: block;
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(150deg, hsl(250, 55%, 40%), hsl(300, 50%, 48%));
+}
+
+.start-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.start-demo-title {
+  padding: 4px 9px 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.start-demo-desc {
+  padding: 0 9px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-primary-transparent);
+}
+
+.start-foot {
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .start-demos {
+    grid-template-columns: repeat(2, 1fr);
   }
 }

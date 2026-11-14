@@ -157,7 +157,9 @@ async function writePieces(
   warnings: string[],
   briefBefore?: string,
 ): Promise<Written> {
-  const system = piecesSystemPrompt('2d');
+  // Writing the game piece (the whole game from the game: line) brings the directing notes with it.
+  const freedom = tasks.find((t) => t.request.kind === 'game')?.request.freedom;
+  const system = piecesSystemPrompt('2d', { freedom });
   const user = piecesUserPrompt({ project, plans, tasks, revisable, written, problems: opts.fixProblems, briefBefore });
   const ask = (prompt: string) =>
     chatJson<PiecesReply>(transport, {
@@ -171,7 +173,7 @@ async function writePieces(
       onProgress: (p) =>
         opts.onProgress?.(
           p.phase === 'waiting'
-            ? { stage: 'thinking', message: `Compiling ${tasks.length} block${tasks.length > 1 ? 's' : ''} written in words` }
+            ? { stage: 'thinking', message: freedom ? 'Thinking up your game' : `Compiling ${tasks.length} block${tasks.length > 1 ? 's' : ''} written in words` }
             : { stage: 'writing', message: 'Compiling', chars: p.chars },
         ),
     });
@@ -208,11 +210,28 @@ async function writePieces(
     revised.push(`${r.request.targetName}: ${r.request.block}`);
   }
   let failed = check(reply, tasks);
-  if (failed.length) {
-    opts.onProgress?.({ stage: 'repairing', message: `Fixing ${failed.length} block${failed.length > 1 ? 's' : ''}` });
-    const again = `${user}\n\n## Your previous code for these pieces didn't work\n${failed.map((f) => `- ${f.task.id}: ${f.error}`).join('\n')}\n\nReply again with only these pieces: ${failed.map((f) => f.task.id).join(', ')} (sprites and assets can be empty).`;
+  // Characters that came with the pieces: their classes must parse too (a game's cast is most of the game).
+  const brokenSprites = (reply.sprites ?? [])
+    .map((sp) => ({ name: String(sp.name ?? '').trim(), errors: instrumentTargetCode(String(sp.code ?? ''), 'sprite').errors }))
+    .filter((sp) => sp.name && sp.errors.length);
+  if (failed.length || brokenSprites.length) {
+    const n = failed.length + brokenSprites.length;
+    opts.onProgress?.({ stage: 'repairing', message: `Fixing ${n} ${failed.length ? `block${n > 1 ? 's' : ''}` : `character${n > 1 ? 's' : ''}`}` });
+    const problems = [...failed.map((f) => `- ${f.task.id}: ${f.error}`), ...brokenSprites.map((sp) => `- sprite "${sp.name}": ${sp.errors.join('; ')}`)];
+    const wanted = [
+      failed.length ? `these pieces: ${failed.map((f) => f.task.id).join(', ')}` : '',
+      brokenSprites.length ? `these sprites, each with its whole class: ${brokenSprites.map((sp) => `"${sp.name}"`).join(', ')}` : '',
+    ].filter(Boolean);
+    const again = `${user}\n\n## Your previous code for these pieces didn't work\n${problems.join('\n')}\n\nReply again with only ${wanted.join(', and ')} (${brokenSprites.length ? 'no other sprites; ' : 'sprites and '}assets can be empty).`;
     const second = await ask(again);
     failed = check(second, failed.map((f) => f.task));
+    // A character sent again replaces the broken one.
+    for (const fixed of second.sprites ?? []) {
+      const name = String(fixed.name ?? '').trim();
+      const at = (reply.sprites ?? []).findIndex((sp) => String(sp.name ?? '').trim() === name);
+      if (at >= 0 && brokenSprites.some((sp) => sp.name === name)) reply.sprites[at] = { ...reply.sprites[at], code: fixed.code };
+    }
+    reply.assets = [...(reply.assets ?? []), ...(second.assets ?? [])];
     reply.warnings = [...(reply.warnings ?? []), ...(second.warnings ?? [])];
     reply.questions = [...(reply.questions ?? []), ...(second.questions ?? [])];
   }
@@ -345,7 +364,8 @@ async function runJobs(jobs: AssetJob[], project: Project, style: string, transp
       report();
     }
   };
-  await Promise.all([worker(), worker(), worker()]);
+  // A whole game asks for a dozen pictures and sounds: several at a time.
+  await Promise.all(Array.from({ length: Math.min(6, jobs.length) }, () => worker()));
   return results.filter((r): r is CompiledAsset => Boolean(r));
 }
 
@@ -420,9 +440,14 @@ export async function compileProject(project: Project, options: CompileOptions):
   const userNames = new Set(project.sprites.map((s) => s.name));
   const sprites: CompiledSprite[] = [];
   const spriteSource = new Map<string, string>();
+  // A new game piece (the whole game) comes with its whole cast: characters of the game before, which it left out, go.
+  const newGame = tasks.some((t) => t.request.kind === 'game' && code.has(t.request.key)) && Boolean(reply);
+  const hasGame = inUse.some((r) => r.kind === 'game');
+  const recast = new Set(newGame ? (reply?.sprites ?? []).map((sp) => String(sp.name ?? '').trim()) : []);
   if (!fresh) {
     for (const s of previous?.sprites ?? []) {
       if (userNames.has(s.name)) continue;
+      if (newGame && !recast.has(s.name)) continue;
       const src = previous!.code.find((c) => c.targetId === s.id)?.source;
       sprites.push(s);
       if (src) spriteSource.set(s.id, src);
@@ -509,7 +534,9 @@ export async function compileProject(project: Project, options: CompileOptions):
     mode: '2d',
     inputHash: inputHash(project),
     summary: '',
-    howToPlay: '',
+    // A game made from the game: line says how it's played and what it's called (kept while that game stays).
+    howToPlay: newGame ? String(reply?.howToPlay ?? '').trim().slice(0, 200) : hasGame ? (previous?.howToPlay ?? '') : '',
+    ...(newGame && String(reply?.title ?? '').trim() ? { title: String(reply?.title).trim().slice(0, 60) } : hasGame && previous?.title ? { title: previous.title } : {}),
     warnings: [...new Set(warnings)],
     code: entries,
     sprites,

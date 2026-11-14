@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { downloadProject, readProjectFile } from '../project/persistence';
 import { exportGameHtml } from '../project/exportHtml';
 import { pickFile } from '../project/importers';
-import { EXAMPLES, blankProject, loadExample } from '../project/examples';
+import { EXAMPLES, loadExample } from '../project/examples';
 import { buildNow, compile, flushBlocks, signInWithChatGpt } from '../actions';
 import { confirmUser } from '../prompt';
 import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
@@ -86,7 +86,7 @@ export function MenuBar() {
             {open === 'file' && (
               <div className="menubar-menu" role="menu">
                 <div className="menubar-menu-section">
-                  <button role="menuitem" onClick={act(async () => void ((await confirmReplace()) && setProject(blankProject())))}>
+                  <button role="menuitem" onClick={act(() => useStore.getState().openStart(true))}>
                     New game
                   </button>
                 </div>
@@ -124,9 +124,8 @@ export function MenuBar() {
                 <div className="menubar-menu-section examples">
                   <div className="menubar-menu-label">Examples</div>
                   {EXAMPLES.map((ex) => (
-                    <button key={ex.id} role="menuitem" className="example-item" aria-label={`Example: ${ex.title}`} onClick={act(async () => void ((await confirmReplace()) && setProject(await loadExample(ex))))}>
-                      <span className="example-title">{ex.title}</span>
-                      <span className="example-desc">{ex.description}</span>
+                    <button key={ex.id} role="menuitem" aria-label={`Example: ${ex.title}`} title={ex.description} onClick={act(async () => void ((await confirmReplace()) && setProject(await loadExample(ex))))}>
+                      {ex.title}
                     </button>
                   ))}
                 </div>

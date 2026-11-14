@@ -21,13 +21,19 @@ export interface PiecesReply {
   warnings: string[];
   /** Questions about words you had to guess at, each for one piece (shown on its block). */
   questions?: Array<{ piece: string; question: string }>;
+  /** With the game piece: a name for the game. */
+  title?: string;
+  /** With the game piece: how to play, in one line. */
+  howToPlay?: string;
 }
 
 export const PIECES_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['pieces', 'sprites', 'assets', 'warnings', 'questions'],
+  required: ['pieces', 'sprites', 'assets', 'warnings', 'questions', 'title', 'howToPlay'],
   properties: {
+    title: str('When you write a game piece: a short, catchy name for the game (2 to 4 words). Otherwise "".'),
+    howToPlay: str('When you write a game piece: the controls and the goal in one short line, e.g. "← → to skate, space to jump. Dodge the meteors!". Otherwise "".'),
     pieces: {
       type: 'array',
       description: 'One entry per piece you were asked to write, plus any piece already written that you rewrite.',

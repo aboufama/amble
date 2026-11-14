@@ -50,3 +50,17 @@ describe('the camera at any canvas scale', () => {
     expect(phaser(120, 1, { scroll: c.scrollY, zoom: c.zoom, origin: c.originY })).toBeCloseTo(360, 6);
   });
 });
+
+describe('text on the stage', () => {
+  it('is nudged back in when it would be cut off at an edge', async () => {
+    const { nudge } = await import('../src/engine/ui');
+    // A 200-wide score centered at x = -215 (stage pixel 25) starts at -75: moved right to the margin.
+    expect(nudge(-75, 200, 480)).toBe(79);
+    // Off the right edge: moved left.
+    expect(nudge(400, 200, 480)).toBe(-124);
+    // Already inside: left alone.
+    expect(nudge(100, 200, 480)).toBe(0);
+    // Wider than the stage: it starts at the margin.
+    expect(nudge(-50, 600, 480)).toBe(54);
+  });
+});

@@ -46,7 +46,9 @@ describe.each(EXAMPLES.map((e) => [e.title, e] as const))('example %s', (_title,
     const p = example.make();
     const brief = plansOf(p).flatMap((plan) => plan.brief);
     expect(brief.some((b) => b.startsWith('game:'))).toBe(true);
-    expect(brief.some((b) => b.startsWith('art style:'))).toBe(true);
+    // A game made from an idea is its sentence and the dial; the others say how they look.
+    expect(brief.some((b) => b.startsWith(example.idea ? 'imagination:' : 'art style:'))).toBe(true);
+    if (example.idea) expect(p.sprites).toEqual([]);
     for (const s of p.sprites) expect(s.description.trim(), s.name).not.toBe('');
   });
 
@@ -93,9 +95,22 @@ describe.each(EXAMPLES.map((e) => [e.title, e] as const))('example %s', (_title,
 
 describe('the demos', () => {
   it('lean on blocks written in words (Star Catcher is the exact-blocks one)', () => {
-    for (const e of EXAMPLES.filter((x) => x.id !== 'star-catcher')) {
+    for (const e of EXAMPLES.filter((x) => x.id !== 'star-catcher' && !x.idea)) {
       const { words, exact } = census(e.make());
       expect(words, e.title).toBeGreaterThan(exact);
+    }
+  });
+
+  it('made from an idea are a sentence and the dial, and nothing else', () => {
+    const ideas = EXAMPLES.filter((x) => x.idea);
+    expect(ideas.length).toBeGreaterThanOrEqual(6);
+    for (const e of ideas) {
+      const p = e.make();
+      const { words, exact } = census(p);
+      // game: [the sentence] and imagination: [go wild].
+      expect([words, exact], e.title).toEqual([1, 1]);
+      expect(p.sprites, e.title).toEqual([]);
+      expect(p.title).toBe(e.title);
     }
   });
 });

@@ -1,12 +1,21 @@
 # Amble
 
-Make real 2D games with blocks. Amble has its own block language: lots of **exact blocks** for the basics (move, walk, jump, touching, repeat, score...), and **blocks in your own words** for everything else (`do [spin around and shrink away]`, `always: [twinkle as I fall]`). Games run on [Phaser](https://phaser.io/).
+Say what game you want in a sentence, and Amble makes it: the characters, the art, the sounds, the rules, even a boss. Then change it by saying what to change, or with blocks. Games run on [Phaser](https://phaser.io/).
+
+```
+game: [a T-rex on roller skates dodges meteors at a disco]
+imagination: [go wild ▾]
+```
+
+That is a whole program. It builds "Meteor Disco Rex": a T-rex in sunglasses, seven named acts ("MOONWALK FLOOR: Skates get slippery!"), vinyl shields, music, and DJ Boombox as the boss. Under the sentence there's a full block language when you want control: a few **exact blocks** for the basics (walk, jump, when I touch, score...) and **blocks in your own words** for everything else (`rule: [the player has 3 lives]`, `always: [twinkle as I fall]`, `do [spin around and shrink away]`).
 
 **Try it:** on Vercel, with the OpenAI key set on the server, blocks in your own words build for every visitor with no account ([Deploying to Vercel](#deploying-to-vercel)). The GitHub Pages copy at https://aboufama.github.io/amble/ has no server, so there you add your own OpenAI API key in **Settings** (it stays in your browser). Running Amble on your own computer? You can **sign in with ChatGPT** instead.
 
 ![The Amble editor](docs/editor-2d.png)
 
-- **Blocks that teach how to direct anything.** The categories follow how you'd brief a capable helper. **Brief**: say what you're making, who it's for, how it looks, and what winning means. **Characters**: name exactly who you mean, by dragging their block (with their picture) into a slot. **Rules**: say what must always or never happen, and add **checks** that tell you when something isn't true. **Skills**: break big jobs into named steps.
+- **An idea is a program.** The start screen asks "What do you want to make?". Your sentence goes on the stage as a `game:` block, with the **imagination** dial next to it: *fill in the gaps* builds exactly the game you describe, *go wild* adds twists, acts and bosses of its own, and *just what I say* leaves the game to your blocks. Under the stage, **Change something** takes a wish in plain words ("make it snow", "add a second boss"), adds it to the stage as a `rule:` block and builds it into the game that's there.
+- **Structure you can see.** What you said stays as blocks: the idea, the look (`art style:`), the rules, when you win and lose, and your own sprites as the cast (the compiler uses them by name and draws the characters you didn't make). Change a sentence and only what depends on it is built again.
+- **A small palette.** The palette starts with five groups (Idea, When, Do, Check, Memory) and about 25 blocks, a third of the language, because words do the rest. **More blocks** at the bottom shows all of them by category; **Fewer blocks** goes back.
 - **Exact where it can be, open where it should be.** Exact blocks compile instantly, offline, the same way every time. Words reach the whole game: a sentence on one sprite can change how another one plays, so when you add or change words (or the brief), the compile sees the whole program and may rewrite words elsewhere to fit, and tells you when it does. Words it didn't need to touch keep their code, and moving scripts around never recompiles anything. **Edit → Build everything again** starts over and writes everything again, so it can come out different.
 - **You make the assets.** Paint costumes, upload images, record or synthesize sounds.
 - **The compiler fills the gaps.** If your words need something you didn't make (the stars in "catch the falling stars", a laser sound, a crate to jump on), the compiler makes it. It shows up as a **compiled asset** with a dashed outline. Keep it to make it yours, or delete it and the next compile makes a new one. Compiled assets are reused between compiles, so your game doesn't change looks every build, until you change the **art style**: then the compiler makes its art again in the new style.
@@ -24,17 +33,15 @@ Then either:
 - open **Settings** and paste an OpenAI API key (stored only in your browser), or
 - put `OPENAI_API_KEY=sk-...` in a `.env` file (see `.env.example`). The dev server then proxies OpenAI calls, and the key never reaches the browser (the same way the Vercel deployment does).
 
-Press the green flag: the starter project uses only exact blocks, so it compiles instantly and needs no account. Then open one of the demos under **File → Examples**. They're written mostly in words, and they ship already built, so they play the moment you press the flag:
+The first visit opens the start screen: type an idea and press **Make my game** (a whole game takes two or three minutes, and about 10 cents of GPT-6.1 Terra), or open a demo. The demos ship already built, so they play the moment you open them:
 
-| Demo | What the words do |
+| Demos | What they are |
 |---|---|
-| **Neon Drift** | Steer a comet with the mouse and blast asteroids with space. Waves, lives, combos, a golden shockwave power-up, synthwave music, and at wave 4 the Mothership boss: all rules in words. |
-| **Lantern Cave** | A platformer in the dark. The whole level, the flickering lantern light, bouncy mushrooms, bats, the 5 crystals and the cave collapsing behind you are words; walking and jumping are exact blocks. |
-| **Sky Whale** | Hold space to swim up. Sunset turns into an aurora night, with parallax clouds, stars to eat, shooting stars that leave a rainbow trail, and storm clouds that cost hearts. |
-| **Pocket Planet** | A physics toy: click to drop cats, trees, houses, ducks and balloons onto a tiny planet whose gravity pulls toward its center, with day and night. |
-| **Star Catcher** | The exact-blocks one: almost everything compiles instantly, and its three blocks in words build the first time you press the flag. |
+| **Meteor Disco Rex**, **Pizza Planet Express**, **Jelly Knight**, **Penguin DJ**, **Candle Ghost**, **Runaway Broom**, **Snail Garden**, **Shy Monsters** | Each is one sentence and the dial on *go wild*, nothing else: open the stage's code to see the two blocks. The compiler invented the cast, the acts, the bosses, the art and the music. |
+| **Neon Drift**, **Lantern Cave**, **Sky Whale**, **Pocket Planet** | Rules and blocks: a few exact blocks for the controls, and a dozen sentences (`rule:`, `always:`, `never:`) for everything else. |
+| **Star Catcher** | Almost all exact blocks, with three blocks in words that build the first time you press the flag. |
 
-Change a demo's blocks and only those words build again; **Edit → Build everything again** rebuilds all of it with your model. The shipped builds are in `public/demos/`: after changing a demo in `src/project/examples.ts`, build them again with GPT-6.1 Terra by running the dev server with a key and `node scripts/precompile-demos.mjs` (it plays each one and only writes those that build and run without problems).
+Change a demo's words and only those build again; **Edit → Build everything again** rebuilds all of it with your model. The shipped builds and their pictures are in `public/demos/`: after changing a demo in `src/project/examples.ts`, build them again by running the dev server with a key and `node scripts/precompile-demos.mjs` (it plays each one for a minute of game time and only writes those that build and run without problems).
 
 ### Models: Best and Efficient
 
@@ -71,10 +78,11 @@ The GitHub Pages demo has no server, so there it's API keys only.
 
 1. **The block language** (`src/blocks/spec.ts`) defines every block once: its shape (hat, stack, C, reporter, condition, or a standalone rule), its inputs (typed numbers and words, menus, character slots, condition slots) and its help text. The editor (`src/blocks/blockly.ts`) and the compiler both read it.
 2. **Exact blocks compile locally** (`src/compiler/codegen.ts`). Like Scratch, each script becomes a coroutine that its trigger starts (with Scratch's rules for restarting), loops yield once per frame, and every exact block becomes a direct engine call. The same blocks always give the same code.
-3. **Words become pieces.** A block in your own words becomes a small method. Its key is a hash of what it says and where it is (the words, the block, the sprite, whether it repeats). Pieces whose key is new go out, all in one request with the whole program and the code of every piece already written (`src/compiler/prompt.ts`, strict JSON from `src/compiler/schema.ts`). Words reach the whole game, so the reply can also rewrite pieces written before, on any sprite, when the new words need them to change; a changed brief sends them to be looked at again too. The art style is a piece of its own: a rule that sets up the game's look when it starts. Pieces that don't parse get one repair round. Pieces nothing rewrote come from the last compile, and undoing an edit compiles instantly again. **Edit → Build everything again** starts over: every piece is written again and the compiled art is made again.
-4. **Check and harden.** Every class is parsed with acorn (`src/compiler/transform.ts`). Loops get guards so a runaway `while (true)` pauses or stops instead of freezing the page. A missing `yield*` before `wait()` is added, and hooks that wait become coroutines.
-5. **Make assets.** Compiled costumes are drawn as SVG (or by an image model, if you choose that in Settings). Sounds come from a small synthesizer (`src/audio/synth.ts`). If generation fails, a placeholder keeps the game running.
-6. **Run.** The green flag builds what changed and then plays the game in an iframe with an opaque origin and a Content-Security-Policy that blocks all network access. A moment after you finish typing words, they're built quietly in the background, so the flag usually plays at once; while a block is being built it goes pale and fills back in with bricks of its own colour. With no account, blocks in your own words do nothing until they're built (adding a key or signing in builds them right away), and everything else still plays. Problems show where they happen, as a note pinned beside the block: an error or a failed **check** from the last run (with **Fix it**, which builds the words of the sprites that had problems again, with the problems attached), a block that doesn't work where it is, words that didn't build (**Try again**), and words waiting for a key or a sign-in. When words could mean quite different games, the compiler picks one and asks about it in a note on their block; the answer joins the words, and they build again. The **Problems** dialog lists everything at once.
+3. **An idea becomes a game.** With the imagination dial on, the stage's `game:` line is one piece of a kind of its own, the game piece (`src/compiler/codegen.ts`): the compile request then carries directing notes (`DIRECTOR` in `src/compiler/prompt.ts`: what makes it a real game, how much to invent, how to keep it fast) and the reply brings the whole cast as sprite classes with their art, sounds and music, a name for the game and how to play it. Later requests show that code, so a new rule can change the game that's there; a new idea replaces its cast.
+4. **Words become pieces.** A block in your own words becomes a small method. Its key is a hash of what it says and where it is (the words, the block, the sprite, whether it repeats). Pieces whose key is new go out, all in one request with the whole program and the code of every piece already written (`src/compiler/prompt.ts`, strict JSON from `src/compiler/schema.ts`). Words reach the whole game, so the reply can also rewrite pieces written before, on any sprite, when the new words need them to change; a changed brief sends them to be looked at again too. The art style is a piece of its own: a rule that sets up the game's look when it starts. Pieces that don't parse get one repair round. Pieces nothing rewrote come from the last compile, and undoing an edit compiles instantly again. **Edit → Build everything again** starts over: every piece is written again and the compiled art is made again.
+5. **Check and harden.** Every class is parsed with acorn (`src/compiler/transform.ts`). Loops get guards so a runaway `while (true)` pauses or stops instead of freezing the page. A missing `yield*` before `wait()` is added, and hooks that wait become coroutines.
+6. **Make assets.** Compiled costumes are drawn as SVG (or by an image model, if you choose that in Settings). Sounds come from a small synthesizer (`src/audio/synth.ts`). If generation fails, a placeholder keeps the game running.
+7. **Run.** The green flag builds what changed and then plays the game in an iframe with an opaque origin and a Content-Security-Policy that blocks all network access. A moment after you finish typing words, they're built quietly in the background, so the flag usually plays at once; while a block is being built it goes pale and fills back in with bricks of its own colour. With no account, blocks in your own words do nothing until they're built (adding a key or signing in builds them right away), and everything else still plays. Problems show where they happen, as a note pinned beside the block: an error or a failed **check** from the last run (with **Fix it**, which builds the words of the sprites that had problems again, with the problems attached), a block that doesn't work where it is, words that didn't build (**Try again**), and words waiting for a key or a sign-in. When words could mean quite different games, the compiler picks one and asks about it in a note on their block; the answer joins the words, and they build again. The **Problems** dialog lists everything at once.
 
 Old projects made with earlier versions of Amble are converted to the new blocks when they're opened (`src/project/migrate.ts`), keeping every word.
 
@@ -83,6 +91,7 @@ Old projects made with earlier versions of Amble are converted to the new blocks
 The Amble engine (`src/engine/`) is a thin, consistent game layer over Phaser 3:
 
 - **Consistent timing.** Logic and physics run in fixed ticks: exactly 60 per second on every machine, independent of the monitor's refresh rate. `wait()`, timers and tweens use game time, not wall-clock time.
+- **Sharp at any size.** The stage is drawn at the screen's own resolution (full screen, the small stage, Retina displays), and the camera is set up so that everything, including scenery and text pinned to the screen with `setScrollFactor(0)`, lands where it would on a 480 x 360 canvas (`cameraSetup` in `src/engine/camera.ts`).
 - **Unity-style sprites.** `class Player extends Sprite { start() {} update(dt) {} onKeyDown(key) {} onClick() {} onMessage(name, data) {} onCollide(other) {} onSpawn() {} }`, plus coroutines (`*start() { yield* this.wait(1) }`).
 - **2D:** a 480×360 stage in pixels (Scratch coordinates), drawn at the screen's own resolution, costumes as Phaser images, a scrolling camera, layers.
 - **Physics:** Matter (dynamic/static/kinematic bodies, shapes, collisions, sensors), stepped once per tick in stage units.
@@ -102,8 +111,9 @@ src/
                code instrumentation, compiled assets
   engine/      the game runtime that runs inside the player iframe (Phaser)
   player/      editor <-> player protocol, iframe host, run-package builder
-  project/     data model, defaults and examples, migration of old projects, persistence, HTML export
-  components/  React UI (blocks editor, paint editor, sounds, stage, problems, sprite pane)
+  project/     data model, defaults, the idea project (idea.ts) and the demos (examples.ts), migration
+               of old projects, persistence, HTML export
+  components/  React UI (start screen, blocks editor, paint editor, sounds, stage, problems, sprite pane)
 api/           the server function (Vercel, and the dev server): /api/config and the guarded OpenAI proxy
 server/        dev-server bridge for "Sign in with ChatGPT" (runs the Codex CLI)
 dev/engine-test.html   a page for poking the engine directly (npm run dev → /dev/engine-test.html)
@@ -137,7 +147,7 @@ Vercel builds Production from the repository's default branch; other branches ge
 
 ## Deploying to GitHub Pages
 
-`.github/workflows/pages.yml` builds the app on every push to the default branch (and `main`) and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves (Settings → Pages → Deploy from a branch → `gh-pages`, `/ (root)`). The build uses relative paths, so it works from any sub-path. On a static host there's no server key and no ChatGPT sign-in: exact blocks work for everyone, and each visitor uses their own OpenAI key from Settings to compile blocks in their own words.
+`.github/workflows/pages.yml` builds the app on every push to `main` and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves (Settings → Pages → Deploy from a branch → `gh-pages`, `/ (root)`). The build uses relative paths, so it works from any sub-path. On a static host there's no server key and no ChatGPT sign-in: exact blocks work for everyone, and each visitor uses their own OpenAI key from Settings to compile blocks in their own words.
 
 ## Security notes
 
@@ -150,11 +160,15 @@ Vercel builds Production from the repository's default branch; other branches ge
 ```bash
 npm run typecheck
 npm test                 # unit tests (vitest)
-npm run test:e2e         # Playwright: the editor, instant compiles, and word compiles against a mocked API
+npm run test:e2e         # Playwright: the start screen, a game from an idea, the editor, and word compiles, against a mocked API
 npm run build            # production build in dist/ (includes amble-player.js)
 ```
 
 To point Playwright at an already-installed Chromium, set `PW_CHROMIUM_PATH`, e.g. `PW_CHROMIUM_PATH=/path/to/chrome npm run test:e2e`.
+
+### What a game from an idea costs
+
+Measured with GPT-6.1 Terra at high reasoning, on five ideas of one sentence each: a build takes 2 to 2.5 minutes and costs 9 to 12 cents (one request of about 20,000 output tokens for the game and its cast, then 12 to 20 small ones for its art and sounds, six at a time). A wish through **Change something** took 36 seconds and 3 cents. On the Vercel deployment that is the owner's money for every visitor who presses **Make my game**: set a budget on the key (see [Deploying to Vercel](#deploying-to-vercel)).
 
 ## Ideas for next steps
 

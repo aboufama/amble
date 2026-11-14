@@ -1,4 +1,6 @@
 import { compileNeedsRequest, compileProject, inputHash, NO_ACCOUNT, piecesToWrite } from './compiler/compile';
+import { projectFreedom } from './compiler/codegen';
+import { isDisabled, oneLine, topBlocks } from './compiler/serialize';
 import { AiError } from './compiler/openai';
 import { cancelCodexLogin, fetchCodexStatus, startCodexLogin } from './compiler/chatgpt';
 import type { CodexStatus } from './compiler/codexTypes';
@@ -6,7 +8,8 @@ import { buildRunPackage, packageKey } from './player/package';
 import type { PlayerHost } from './player/host';
 import { findTarget, useStore } from './store';
 import { uniqueName } from './project/ids';
-import { block, workspace } from './project/defaults';
+import { block, workspace, type JsonBlock } from './project/defaults';
+import { UNTITLED } from './project/idea';
 import { applyRename, deleteVariableDeclaration, renameScope, renameVariableDeclaration, type RenameChange } from './blocks/menus';
 import type { MenuKind } from './blocks/spec';
 import type { CompiledAsset, CompiledGame, CostumeAsset, Project, SoundAsset, SpriteTarget } from './project/types';
@@ -159,6 +162,12 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
     if (useStore.getState().projectLoads !== loads) return;
     useStore.getState().update((p) => {
       p.compiled = compiled;
+      // A game made from an idea gets the name the compiler gave it, until the author names it.
+      if (compiled.title && (!p.title.trim() || p.title === UNTITLED)) {
+        p.title = compiled.title;
+        // (The name is part of what a build reads: this build stays the build of the named project.)
+        p.compiled.inputHash = inputHash(p as Project);
+      }
     });
     useStore.getState().setCompile({ status: 'done', progress: null, building: [], forPlay: false });
     const revised = compiled.revised ?? [];
@@ -440,12 +449,44 @@ export interface LiveBlocks {
   targetId(): string | null;
   /** Renames dropdown values in the editor's blocks. */
   renameMenus(kinds: MenuKind[], from: string, to: string): void;
+  /** Adds a standalone block to the blocks on screen, below the others. */
+  append(block: JsonBlock): void;
 }
 
 let live: LiveBlocks | null = null;
 
 export function registerLiveBlocks(next: LiveBlocks | null): void {
   live = next;
+}
+
+/** Does the project make its game from the game: line (the imagination dial is on, and the line has words)? */
+export function hasGameLine(project: Project): boolean {
+  if (projectFreedom(project) === 'just what I say') return false;
+  return topBlocks(project.stage.blocks).some((b) => b.type === 'br_game' && !isDisabled(b) && oneLine(b.fields?.WHAT));
+}
+
+/**
+ * "Change something": a wish in plain words for a game made from an idea. It becomes a rule: block
+ * on the stage (so it stays, can be edited and can be taken away), and the game builds again with
+ * it: the compiler sees the whole game it wrote and changes what the wish needs.
+ */
+export function addWish(words: string): void {
+  const text = words.trim().replace(/\s+/g, ' ');
+  if (!text) return;
+  const store = useStore.getState();
+  const stageId = store.project.stage.id;
+  const rule = block('ga_rule', { RULE: text });
+  flushBlocks();
+  if (live?.targetId() === stageId) live.append(rule);
+  else {
+    store.update((p) => {
+      const tops = topBlocks(p.stage.blocks) as JsonBlock[];
+      // Below the stage's other blocks (their saved positions; a rough height per block is enough).
+      const bottom = tops.reduce((y, b) => Math.max(y, (b.y ?? 0) + 60), 0);
+      p.stage.blocks = { ...(p.stage.blocks ?? {}), blocks: { languageVersion: 0, blocks: [...tops, { ...rule, x: 24, y: bottom + 28 }] } };
+    });
+  }
+  startGame();
 }
 
 /** Saves the blocks on screen into the project now (the editor otherwise does it a moment after each edit). */

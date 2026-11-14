@@ -11,7 +11,7 @@ import { Entity, Sprite, Stage, withConstruction, type TargetLike } from './spri
 import { Ui } from './ui';
 import { loadCostumes, parseColor, type Costume } from './visuals';
 import { reportError, warnOnce } from './bridge';
-import { beginFrame, evaluateClass, sandboxGlobals } from './sandbox';
+import { beginFrame, beginStep, evaluateClass, sandboxGlobals } from './sandbox';
 
 /** The most copies (clones and spawned sprites) that can exist at once, as in Scratch. */
 export const MAX_CLONES = 300;
@@ -445,6 +445,7 @@ export class Game {
     const errors = e._hookErrors.get(name) ?? 0;
     if (errors >= 3) return null;
     try {
+      beginStep();
       const result = (fn as (...a: unknown[]) => unknown).apply(e, args);
       if (isGenerator(result)) {
         if (name === 'update') {
