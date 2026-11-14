@@ -6,7 +6,8 @@ import { checkPiece } from './pieces';
 import { serializeBlocks } from './serialize';
 import { PIECES_SCHEMA, type AssetRequest, type PiecesReply } from './schema';
 import { instrumentTargetCode } from './transform';
-import { generateAsset, placeholderAsset, type AssetJob } from './assets';
+import { costumeSets, generateAsset, isPlaceholder, placeholderAsset, referenceOf, type AssetContext, type AssetJob } from './assets';
+import { artBrief, styleWords } from '../project/styles';
 import { hashString, uid } from '../project/ids';
 import type { CompiledAsset, CompiledCode, CompiledGame, CompiledPiece, CompiledQuestion, CompiledSprite, Project } from '../project/types';
 
@@ -337,6 +338,12 @@ function planAssets(
   return { kept, jobs };
 }
 
+/**
+ * Makes the art and sounds, up to six at a time. Every picture is drawn to the same brief (the
+ * game's art style), so they share a look. A sprite's costumes are frames of one character: its
+ * first costume is drawn, and its other costumes are drawn from that drawing, changing only what
+ * they say. Sprites don't wait for each other; only a sprite's later costumes wait for its first.
+ */
 async function runJobs(jobs: AssetJob[], project: Project, style: string, transport: Transport, settings: AiSettings, opts: CompileOptions, warnings: string[]): Promise<CompiledAsset[]> {
   // By job, not by name: a costume and a sound may share a name.
   const results: Array<CompiledAsset | undefined> = new Array(jobs.length);
@@ -344,28 +351,64 @@ async function runJobs(jobs: AssetJob[], project: Project, style: string, transp
   const report = (current?: string) =>
     opts.onProgress?.({ stage: 'assets', message: current ? `Making ${current}` : 'Making art and sounds', assetsDone: done, assetsTotal: jobs.length });
   report();
-  const queue = jobs.map((job, index) => ({ job, index }));
-  // The art style blocks, wherever they are (the same ones that decide when the art is made again).
-  const styleHint = style.split('\n').filter(Boolean).join(' ').slice(0, 300);
-  const worker = async () => {
-    for (;;) {
-      const next = queue.shift();
-      if (!next) return;
-      const { job, index } = next;
+  // The art style blocks, wherever they are (the same ones that decide when the art is made again), as one brief for every picture.
+  const ctx: AssetContext = { transport, settings, gameTitle: project.title, style: artBrief(styleWords(style)), signal: opts.signal };
+
+  // A whole game asks for a dozen pictures and sounds: several at a time, in the order they can start.
+  let free = 6;
+  const queue: Array<() => void> = [];
+  const failed = new Set<number>();
+  const make = async (index: number, reference?: AssetJob['reference']): Promise<CompiledAsset | null> => {
+    if (free > 0) free--;
+    else await new Promise<void>((start) => queue.push(start));
+    const job = jobs[index];
+    try {
       report(`${job.kind} "${job.name}"`);
-      try {
-        results[index] = await generateAsset(job, { transport, settings, gameTitle: project.title, styleHint, signal: opts.signal });
-      } catch (err) {
-        if (opts.signal?.aborted) throw err;
-        warnings.push(`Couldn't make ${job.kind} "${job.name}" (${(err as Error).message}); used a placeholder.`);
-        results[index] = placeholderAsset(job);
-      }
+      const asset = await generateAsset(reference ? { ...job, reference } : job, ctx);
+      results[index] = asset;
+      return asset;
+    } catch (err) {
+      if (opts.signal?.aborted) throw err;
+      warnings.push(`Couldn't make ${job.kind} "${job.name}" (${(err as Error).message}); used a placeholder.`);
+      results[index] = placeholderAsset(job);
+      failed.add(index);
+      return null;
+    } finally {
       done++;
-      report();
+      if (!opts.signal?.aborted) report();
+      // The place goes to the next one waiting.
+      const next = queue.shift();
+      if (next) next();
+      else free++;
     }
   };
-  // A whole game asks for a dozen pictures and sounds: several at a time.
-  await Promise.all(Array.from({ length: Math.min(6, jobs.length) }, () => worker()));
+
+  // Costumes made before that are staying (a fresh start keeps none): a sprite's new costumes are drawn from them.
+  const remade = (a: CompiledAsset) => jobs.some((j) => j.kind !== 'sound' && j.targetId === a.targetId && j.name === a.name);
+  const staying = opts.fresh || !project.compiled?.pieces ? [] : project.compiled.assets.filter((a) => a.kind === 'image' && !remade(a) && !isPlaceholder(a));
+  const earlier = (job: AssetJob) => (job.kind === 'costume' ? staying.find((a) => a.targetId === job.targetId) : undefined);
+  await Promise.all(
+    costumeSets(jobs).map(async ({ first, rest }) => {
+      const old = earlier(jobs[first]);
+      const before = (old && referenceOf(old)) ?? undefined;
+      if (settings.artMode === 'image') {
+        // An image model can't be shown a drawing: the other costumes are told what the first one shows, and none of them waits.
+        const { name, description, width, height } = jobs[first];
+        await Promise.all([make(first, before), ...rest.map((index) => make(index, before ?? { name, description, width, height }))]);
+        return;
+      }
+      const lead = await make(first, before);
+      // The first costume failed: the others are drawn on their own (or from an earlier costume).
+      const reference = (lead && referenceOf(lead)) ?? before;
+      await Promise.all(rest.map((index) => make(index, reference)));
+    }),
+  );
+  // A costume that couldn't be made looks like another costume of its sprite for now, when it has one.
+  for (const index of failed) {
+    const job = jobs[index];
+    const like = job.kind === 'costume' ? (results.find((r, i) => r && !failed.has(i) && jobs[i].kind === 'costume' && jobs[i].targetId === job.targetId) ?? earlier(job)) : undefined;
+    if (like) results[index] = placeholderAsset(job, like);
+  }
   return results.filter((r): r is CompiledAsset => Boolean(r));
 }
 
