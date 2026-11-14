@@ -258,8 +258,9 @@ export function renderSoundReply(reply: Partial<SoundReply> | null | undefined):
       const recipe = customEffectRecipe(reply.effect);
       if (!recipe) return null;
       const rendered = renderRecipe(recipe);
-      // A design that renders to silence (every layer too quiet or too short) is no use.
-      if (peakOf(rendered.samples) < 0.01) return null;
+      // A design that renders to silence (every layer too quiet or too short) is no use; nor is a blip
+      // where a sound was asked for (durations given in the wrong unit): the library match is used instead.
+      if (peakOf(rendered.samples) < 0.01 || rendered.samples.length / rendered.sampleRate < 0.1) return null;
       const made = toDataUrl(rendered);
       return audible(made) ? { ...made, from: 'custom' } : null;
     }
