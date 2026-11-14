@@ -67,7 +67,7 @@ export function MenuBar() {
     <header className="menubar">
       <div className="menubar-main">
         {/* The logo is the way home: make a new game, open a saved one, play a demo. */}
-        <button className="menubar-brand" aria-label="Amble: home" title="Home: make a new game, open a saved one, or play a demo" onClick={() => useStore.getState().openStart(true)}>
+        <button className="menubar-brand" aria-label="Amble: home" title="Home" onClick={() => useStore.getState().openHome(true)}>
           <AmbleMark size={28} />
           <span className="logo">amble</span>
         </button>
@@ -87,7 +87,7 @@ export function MenuBar() {
             {open === 'file' && (
               <div className="menubar-menu" role="menu">
                 <div className="menubar-menu-section">
-                  <button role="menuitem" onClick={act(() => useStore.getState().openStart(true))}>
+                  <button role="menuitem" onClick={act(() => useStore.getState().openHome(true))}>
                     New game
                   </button>
                 </div>

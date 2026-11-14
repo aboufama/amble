@@ -51,7 +51,10 @@ if (!config.serverKey) {
 
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 
+// The editor, not Home (where a first visit starts).
+const inEditor = () => localStorage.setItem('amble:start', 'seen');
 const first = await browser.newPage();
+await first.addInitScript(inEditor);
 await first.goto(url);
 await first.waitForSelector('.blocklyMainBackground', { timeout: 60_000 });
 const ids = await first.evaluate(async () => {
@@ -66,6 +69,7 @@ async function build(id) {
   const say = (line) => lines.push(`   ${line}`);
   // A browser context of its own: its own spend counter and saved project.
   const context = await browser.newContext({ viewport: { width: 1100, height: 700 } });
+  await context.addInitScript(inEditor);
   const p = await context.newPage();
   const pageErrors = [];
   p.on('pageerror', (e) => pageErrors.push(e.message));
@@ -76,7 +80,7 @@ async function build(id) {
       const store = window.__ambleStore;
       const { EXAMPLES } = await import('/src/project/examples.ts');
       const actions = await import('/src/actions.ts');
-      store.getState().setDialog(null);
+      store.getState().closeHome();
       store.getState().setSettings({ apiKey: '', useChatGpt: false, model, reasoningEffort: effort, assetModel: model, artMode: 'svg' });
       store.getState().setProject(EXAMPLES.find((e) => e.id === id).make());
       await new Promise((r) => setTimeout(r, 1200));
