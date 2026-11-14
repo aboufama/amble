@@ -248,6 +248,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     const removeZoom = addZoomControls(ws);
     ws.registerButtonCallback(MAKE_VARIABLE, () => void makeVariable());
     ws.registerButtonCallback(MAKE_SKILL, () => void makeSkill());
+    // The switch under the palette: "More blocks" / "Fewer blocks".
     ws.registerButtonCallback(TOGGLE_PALETTE, () => {
       const st = useStore.getState();
       st.setPalette(st.palette === 'simple' ? 'all' : 'simple');
@@ -357,7 +358,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
         schedulePalette();
         refreshPictures();
       }
-      // More blocks / Fewer blocks.
+      // More blocks / Fewer blocks: the board, or every block by category.
       if (state.palette !== prev.palette) refreshPalette();
     });
     return () => {

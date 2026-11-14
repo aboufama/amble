@@ -4,7 +4,7 @@ import {
   BLOCKS,
   CATEGORIES,
   SIMPLE_GROUPS,
-  coreBlocksFor,
+  simpleGroupBlocks,
   CHARACTER_SPECIAL_LABELS,
   SHADOW_TYPES,
   blocksFor,
@@ -20,7 +20,7 @@ import { FLAG_ICON, REPEAT_ICON } from './icons';
 import { registerFields } from './fields';
 import { registerComments } from './comments';
 import { BLOCK_FONT_FAMILY, BLOCK_TEXT_COLOUR, registerRenderer } from './renderer';
-import { registerWorkspaceUi } from './workspaceUi';
+import { TOGGLE_PALETTE, registerWorkspaceUi, type PaletteCategoryInfo, type PaletteInfo } from './workspaceUi';
 
 /** Loops get Scratch's little arrow at the bottom right. */
 const LOOPS = new Set(['fl_repeat', 'co_forever', 'fl_repeat_until']);
@@ -180,8 +180,8 @@ export const AMBLE_THEME = Blockly.Theme.defineTheme('amble', {
 
 export const MAKE_VARIABLE = 'MAKE_VARIABLE';
 export const MAKE_SKILL = 'MAKE_SKILL';
-/** The palette's "More blocks" / "Fewer blocks" button. */
-export const TOGGLE_PALETTE = 'TOGGLE_PALETTE';
+/** The switch under the palette: "More blocks" / "Fewer blocks". */
+export { TOGGLE_PALETTE };
 
 export interface PaletteContext {
   /** Editing the stage (it has no motion blocks, and only stage blocks). */
@@ -249,32 +249,41 @@ function characterBlocks(ctx: PaletteContext): Blockly.utils.toolbox.FlyoutItemI
   return items;
 }
 
-/** The simple palette: five groups with the blocks most games need, then the way to all of them. */
-function simpleToolbox(ctx: PaletteContext): Blockly.utils.toolbox.ToolboxInfo {
-  const core = coreBlocksFor(ctx.isStage ? 'stage' : 'sprite');
+type CategoryInfo = Blockly.utils.toolbox.CategoryInfo;
+
+/** Where a group's card is on the board: across the top (no column), or in the left or right column. */
+const BOARD_COLUMN = { top: null, left: 0, right: 1 } as const;
+
+/** A category of the palette, in its colour. */
+function category(name: string, style: (typeof CATEGORIES)[number], contents: Blockly.utils.toolbox.FlyoutItemInfoArray, more: PaletteCategoryInfo = {}): CategoryInfo {
+  return { kind: 'category', name, categorystyle: `${style.id}_category`, borderColour: style.tertiary, ...more, contents } as unknown as CategoryInfo;
+}
+
+/**
+ * The simple palette: one board with the blocks most games need, a card for each thing the
+ * author wants to do. Nothing scrolls; the switch under it leads to every block.
+ */
+function simpleToolbox(ctx: PaletteContext): PaletteInfo {
   const variables = ctx.menus ? variablesFor(ctx.menus.project, ctx.menus.target) : [];
-  const groups = SIMPLE_GROUPS.map((g) => {
+  const groups: CategoryInfo[] = [];
+  for (const g of SIMPLE_GROUPS) {
     const contents: Blockly.utils.toolbox.FlyoutItemInfoArray = [];
-    // The brief (game, imagination, art style, win and lose) is the Stage's, as in the full palette.
-    const blocks = core.filter((b) => b.core === g.id && (ctx.isStage || b.category !== 'brief'));
+    const blocks = simpleGroupBlocks(g, ctx.isStage ? 'stage' : 'sprite');
     if (g.id === 'memory') {
       contents.push({ kind: 'button', text: 'Make a Variable', callbackkey: MAKE_VARIABLE });
-      variables.forEach((v, i) => contents.push({ kind: 'block', type: 'mem_var', fields: { VARIABLE: v }, ...(i === variables.length - 1 ? { gap: GROUP_GAP } : {}) }));
+      for (const v of variables) contents.push({ kind: 'block', type: 'mem_var', fields: { VARIABLE: v } });
+      // Like Scratch, "set" and "change" appear once there is a variable.
       if (variables.length) for (const b of blocks) contents.push(paletteBlock(b, ctx));
-      contents.push({ kind: 'sep', gap: GROUP_GAP });
-      contents.push({ kind: 'button', text: 'More blocks', callbackkey: TOGGLE_PALETTE });
     } else {
       for (const b of blocks) contents.push(paletteBlock(b, ctx));
     }
-    contents.push({ kind: 'sep', gap: GROUP_GAP });
-    const style = CATEGORIES.find((c) => c.id === g.style)!;
-    return { kind: 'category', name: g.name, categorystyle: `${style.id}_category`, borderColour: style.tertiary, contents } as unknown as Blockly.utils.toolbox.CategoryInfo;
-  });
-  return { kind: 'categoryToolbox', contents: groups };
+    if (contents.length) groups.push(category(g.name, CATEGORIES.find((c) => c.id === g.style)!, contents, { note: g.note, hint: g.hint, column: BOARD_COLUMN[g.place], rows: g.rows }));
+  }
+  return { kind: 'categoryToolbox', layout: 'board', contents: groups };
 }
 
 /** The block palette for the sprite or stage being edited. */
-export function toolboxFor(ctx: PaletteContext): Blockly.utils.toolbox.ToolboxInfo {
+export function toolboxFor(ctx: PaletteContext): PaletteInfo {
   if (ctx.simple) return simpleToolbox(ctx);
   const available = blocksFor(ctx.isStage ? 'stage' : 'sprite').filter((b) => !b.hidden);
   const variables = ctx.menus ? variablesFor(ctx.menus.project, ctx.menus.target) : [];
@@ -304,14 +313,7 @@ export function toolboxFor(ctx: PaletteContext): Blockly.utils.toolbox.ToolboxIn
           for (const b of blocks) contents.push(paletteBlock(b, ctx));
       }
       contents.push({ kind: 'sep', gap: GROUP_GAP });
-      if (c.id === 'rules') contents.push({ kind: 'button', text: 'Fewer blocks', callbackkey: TOGGLE_PALETTE }, { kind: 'sep', gap: GROUP_GAP });
-      return {
-        kind: 'category',
-        name: c.name,
-        categorystyle: `${c.id}_category`,
-        borderColour: c.tertiary,
-        contents,
-      } as unknown as Blockly.utils.toolbox.CategoryInfo;
+      return category(c.name, c, contents);
     }),
   };
 }

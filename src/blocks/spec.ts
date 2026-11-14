@@ -57,24 +57,54 @@ export const CATEGORIES: Category[] = [
 ];
 
 /**
- * The simple palette: a handful of groups holding the blocks most games need (about a third of
- * the language), since words do the rest. The full palette, by category, is one click away.
+ * The simple palette: one board that shows the blocks most games need all at once (about a third
+ * of the language), since words do the rest. It is organised by what the author wants to do, and
+ * the blocks that take words come first: the card across the top is all words, and Do and Check
+ * open with theirs. The full palette, by category, is one click away.
  */
 export type SimpleGroupId = 'idea' | 'when' | 'do' | 'check' | 'memory';
 
 export interface SimpleGroup {
   id: SimpleGroupId;
+  /** The heading of its card on the board: what the author wants to do. */
   name: string;
+  /** A few quiet words after the heading, where the card is wide enough for them. */
+  note?: string;
+  /** Shown when the pointer rests on the heading. */
+  hint: string;
   /** The category whose colour and icon it wears. */
   style: CategoryId;
+  /** Where its card is on the board: across the top, or in the left or right column under that. */
+  place: 'top' | 'left' | 'right';
+  /**
+   * Its blocks row by row, where the order of BLOCKS won't do: the blocks that take words first,
+   * then blocks that share a row when there is room (each list starts a row). Blocks of the group
+   * that aren't listed follow, in the order of BLOCKS.
+   */
+  rows?: string[][];
 }
 
+/** In the order they are read on the board: the card across the top, the left column, the right column. */
 export const SIMPLE_GROUPS: SimpleGroup[] = [
-  { id: 'idea', name: 'Idea', style: 'brief' },
-  { id: 'when', name: 'When', style: 'events' },
-  { id: 'do', name: 'Do', style: 'game' },
-  { id: 'check', name: 'Check', style: 'logic' },
-  { id: 'memory', name: 'Memory', style: 'variables' },
+  { id: 'idea', name: 'Say what happens', note: 'in your own words', hint: 'Write what you want in your own words. Amble works out the rest.', style: 'brief', place: 'top' },
+  { id: 'when', name: 'When…', hint: 'Starts a script: the blocks under it run when this happens.', style: 'events', place: 'left' },
+  {
+    id: 'check',
+    name: 'Check',
+    hint: 'Questions and values to drop into the slots of other blocks. The first two take your own words.',
+    style: 'logic',
+    place: 'left',
+    rows: [['cd_words'], ['nm_words'], ['cd_touching'], ['cd_key'], ['cd_compare']],
+  },
+  {
+    id: 'do',
+    name: 'Do',
+    hint: 'Steps for a script. "do" takes anything, in your own words.',
+    style: 'game',
+    place: 'right',
+    rows: [['ga_do'], ['kit_walk'], ['kit_jump'], ['kit_gravity', 'lo_show', 'lo_hide'], ['lk_say_for'], ['so_play', 'fl_wait'], ['co_forever', 'fl_if']],
+  },
+  { id: 'memory', name: 'Remember', hint: 'Variables keep a number or words, like the score.', style: 'variables', place: 'right', rows: [['mem_set'], ['mem_change'], ['va_show']] },
 ];
 
 export type BlockShape =
@@ -222,6 +252,8 @@ export interface BlockSpec {
   hidden?: boolean;
   /** In the simple palette (the few blocks most games need), under this group. Every block is in the full one. */
   core?: SimpleGroupId;
+  /** In the simple palette only when editing these (default: wherever the block is offered). */
+  coreTargets?: Array<'sprite' | 'stage'>;
   /** Shown on hover. Say what the block does and how to use it, in plain words. */
   tooltip: string;
 }
@@ -239,11 +271,11 @@ const STAGE: Array<'sprite' | 'stage'> = ['stage'];
 export const BLOCKS: BlockSpec[] = [
   // ---- Brief: what you're making, for whom, and what "done" means
   { type: 'br_game', core: 'idea', category: 'brief', shape: 'rule', label: 'game: {WHAT}', inputs: { WHAT: text('Amble collects stars and dodges spikes') }, tooltip: 'Say what the game is, in a sentence or two. With "imagination:" on, Amble builds the whole game from it.' },
-  { type: 'br_freedom', core: 'idea', category: 'brief', shape: 'rule', label: 'imagination: {LEVEL}', inputs: { LEVEL: menu('freedom', 'fill in the gaps') }, tooltip: 'How much Amble may invent. "fill in the gaps" builds the whole game your game: line describes. "go wild" adds its own surprises. "just what I say" leaves the game to your blocks.' },
+  { type: 'br_freedom', category: 'brief', shape: 'rule', label: 'imagination: {LEVEL}', inputs: { LEVEL: menu('freedom', 'fill in the gaps') }, hidden: true, tooltip: 'How much Amble may invent. "fill in the gaps" builds the whole game your game: line describes. "go wild" adds its own surprises. "just what I say" leaves the game to your blocks.' },
   { type: 'br_audience', category: 'brief', shape: 'rule', label: 'made for: {WHO}', inputs: { WHO: text('kids who are new to games') }, tooltip: 'Who will play it. This decides how hard, fast and wordy the game is.' },
   { type: 'br_style', core: 'idea', category: 'brief', shape: 'rule', label: 'art style: {STYLE}', inputs: { STYLE: text('bright cartoon with thick outlines') }, groupEnd: true, tooltip: 'How the game looks. The world is set up in this style, and new art is made to match.' },
-  { type: 'br_win', core: 'idea', category: 'brief', shape: 'rule', label: 'you win when {COND}', inputs: { COND: cond }, tooltip: 'The goal. The game is won the moment this becomes true.' },
-  { type: 'br_lose', core: 'idea', category: 'brief', shape: 'rule', label: 'you lose when {COND}', inputs: { COND: cond }, tooltip: 'The game is over the moment this becomes true.' },
+  { type: 'br_win', category: 'brief', shape: 'rule', label: 'you win when {COND}', inputs: { COND: cond }, tooltip: 'The goal. The game is won the moment this becomes true.' },
+  { type: 'br_lose', category: 'brief', shape: 'rule', label: 'you lose when {COND}', inputs: { COND: cond }, tooltip: 'The game is over the moment this becomes true.' },
 
   // ---- Triggers: when things happen
   { type: 'ev_start', core: 'when', category: 'events', shape: 'hat', label: 'when {FLAG} clicked', tooltip: 'Runs when the game starts.' },
@@ -278,7 +310,7 @@ export const BLOCKS: BlockSpec[] = [
 
   // ---- Game: ready-made game pieces, and blocks for anything you can describe
   { type: 'ga_do', core: 'do', category: 'game', shape: 'stack', label: 'do {ACTION}', inputs: { ACTION: text('spin around once') }, tooltip: 'Anything, in your own words.' },
-  { type: 'ga_do_for', core: 'do', category: 'game', shape: 'stack', label: 'do {ACTION} for {SECONDS} seconds', inputs: { ACTION: text('grow big, then back'), SECONDS: num(1) }, groupEnd: true, tooltip: 'Anything that takes time, in your own words. The script waits until it is done.' },
+  { type: 'ga_do_for', category: 'game', shape: 'stack', label: 'do {ACTION} for {SECONDS} seconds', inputs: { ACTION: text('grow big, then back'), SECONDS: num(1) }, groupEnd: true, tooltip: 'Anything that takes time, in your own words. The script waits until it is done.' },
   { type: 'kit_walk', core: 'do', category: 'game', shape: 'stack', label: 'walk with {KEYS} at speed {SPEED}', inputs: { KEYS: menu('controls'), SPEED: num(200) }, targets: SPRITE, tooltip: 'From now on the player steers this sprite. Speed is steps per second.' },
   { type: 'kit_jump', core: 'do', category: 'game', shape: 'stack', label: 'jump with {KEY} strength {POWER}', inputs: { KEY: menu('key', 'space'), POWER: num(600) }, targets: SPRITE, tooltip: 'From now on the key makes this sprite jump when it stands on something. Turns on gravity.' },
   { type: 'kit_gravity', core: 'do', category: 'game', shape: 'stack', label: 'fall with gravity', targets: SPRITE, tooltip: 'Falls and lands on solid things (and on the bottom of the screen).' },
@@ -331,7 +363,7 @@ export const BLOCKS: BlockSpec[] = [
   { type: 'cd_or', category: 'logic', shape: 'boolean', label: '{A} or {B}', inputs: { A: cond, B: cond }, tooltip: 'True when either is true.' },
   { type: 'cd_not', category: 'logic', shape: 'boolean', label: 'not {A}', inputs: { A: cond }, tooltip: 'True when the other is false.' },
   { type: 'cd_words', core: 'check', category: 'logic', shape: 'boolean', label: '{TEXT}', inputs: { TEXT: text('I am near the flag') }, groupEnd: true, tooltip: 'Any condition, in your own words.' },
-  { type: 'nm_random', core: 'check', category: 'logic', shape: 'reporter', output: 'number', label: 'random {A} to {B}', inputs: { A: num(1), B: num(10) }, tooltip: 'A random whole number (or decimal, if you use decimals).' },
+  { type: 'nm_random', category: 'logic', shape: 'reporter', output: 'number', label: 'random {A} to {B}', inputs: { A: num(1), B: num(10) }, tooltip: 'A random whole number (or decimal, if you use decimals).' },
   { type: 'nm_math', category: 'logic', shape: 'reporter', output: 'number', label: '{A} {OP} {B}', inputs: { A: num(0), OP: menu('math'), B: num(0) }, tooltip: 'Adds, subtracts, multiplies or divides.' },
   { type: 'nm_distance', category: 'logic', shape: 'reporter', output: 'number', label: 'distance to {WHO}', inputs: { WHO: who('mouse', ['mouse', 'center']) }, targets: SPRITE, tooltip: 'How far away the character is, in steps.' },
   { type: 'nm_my', category: 'logic', shape: 'reporter', output: 'number', label: 'my {PROP}', inputs: { PROP: menu('prop') }, targets: SPRITE, tooltip: 'This sprite\'s position, size, direction or costume number.' },
@@ -351,7 +383,7 @@ export const BLOCKS: BlockSpec[] = [
   { type: 'pr_call', category: 'myblocks', shape: 'stack', label: 'use skill {NAME}', inputs: { NAME: menu('procedure', 'jump') }, tooltip: 'Runs one of your skills, then keeps going.' },
 
   // ---- Rules: what must always hold, and checks that it does
-  { type: 'ga_rule', core: 'idea', category: 'rules', shape: 'rule', label: 'rule: {RULE}', inputs: { RULE: text('the player has 3 lives') }, tooltip: 'A fact about the game, in your own words. It holds for the whole game.' },
+  { type: 'ga_rule', core: 'idea', coreTargets: STAGE, category: 'rules', shape: 'rule', label: 'rule: {RULE}', inputs: { RULE: text('the player has 3 lives') }, tooltip: 'A fact about the game, in your own words. It holds for the whole game.' },
   { type: 'ru_always', core: 'idea', category: 'rules', shape: 'rule', label: 'always: {RULE}', inputs: { RULE: text('face the way I move') }, targets: SPRITE, tooltip: 'Something this sprite always does, the whole game.' },
   { type: 'ru_never', core: 'idea', category: 'rules', shape: 'rule', label: 'never: {RULE}', inputs: { RULE: text('walk through walls') }, targets: SPRITE, groupEnd: true, tooltip: 'Something this sprite must never do. Saying what not to do is as useful as saying what to do.' },
   { type: 'ru_check', category: 'rules', shape: 'rule', label: 'check: {COND}', inputs: { COND: cond }, tooltip: 'Something that should always be true. While you play, Amble tells you if it ever isn\'t.' },
@@ -370,9 +402,26 @@ export function menuOf(type: string, input: string): MenuKind | undefined {
   return spec?.kind === 'menu' ? spec.menu : undefined;
 }
 
+/**
+ * The blocks of one group of the simple palette, in the order shown. The brief (game, art style)
+ * is the Stage's, as in the full palette.
+ */
+export function simpleGroupBlocks(group: SimpleGroup, target: 'sprite' | 'stage'): BlockSpec[] {
+  const blocks = blocksFor(target).filter(
+    (b) => b.core === group.id && !b.hidden && !(b.category === 'brief' && target !== 'stage') && (!b.coreTargets || b.coreTargets.includes(target)),
+  );
+  const order = group.rows?.flat() ?? [];
+  const place = (b: BlockSpec) => {
+    const i = order.indexOf(b.type);
+    return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  // A stable sort: blocks the group doesn't order keep the order of BLOCKS.
+  return blocks.sort((a, b) => place(a) - place(b));
+}
+
 /** The blocks of the simple palette, for a sprite or the stage. */
 export function coreBlocksFor(target: 'sprite' | 'stage'): BlockSpec[] {
-  return blocksFor(target).filter((b) => b.core && !b.hidden);
+  return SIMPLE_GROUPS.flatMap((g) => simpleGroupBlocks(g, target));
 }
 
 /** Blocks offered when editing a sprite or the stage. */
