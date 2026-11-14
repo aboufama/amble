@@ -627,9 +627,10 @@ describe('compileProject', () => {
     const second = await compileProject(changed, { settings });
     expect(server.calls).toHaveLength(4);
     // The moon is drawn again, in the new style, from the same description.
-    const redraw = server.calls[3].body.messages[1].content;
+    const [brief, redraw] = server.calls[3].body.messages.map((m) => m.content);
     expect(redraw).toContain('a smiling crescent moon');
-    expect(redraw).toContain('art style: [pale blue watercolor]');
+    expect(redraw).toContain("in the game's art style (pale blue watercolor)");
+    expect(brief).toContain('The author asked for this style, in their own words: "pale blue watercolor".');
     expect(second.style).toBe('art style: [pale blue watercolor]');
     expect(second.assets.map((a) => [a.name, a.request])).toEqual([['moon', 'a smiling crescent moon']]);
     expect(second.assets[0].kind === 'image' && atob(second.assets[0].dataUrl.split(',')[1])).toContain('#9ad0ff');

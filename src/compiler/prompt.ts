@@ -2,6 +2,7 @@ import { serializeBlocks } from './serialize';
 import { projectVariables, type PieceRequest, type TargetPlan } from './codegen';
 import type { Freedom } from '../blocks/spec';
 import type { CompiledGame, CompiledPiece, CostumeAsset, Project, SoundAsset, SpriteTarget, Target, WorldMode } from '../project/types';
+import { artBrief, pixelGrid, type ArtBrief } from '../project/styles';
 
 // -----------------------------------------------------------------------------
 // System prompt: writing the pieces (the parts of blocks written in the author's own words)
@@ -364,6 +365,33 @@ export function piecesUserPrompt(input: PiecesPromptInput): string {
 // Asset prompts
 // -----------------------------------------------------------------------------
 
+/** A costume a sprite already has, for its other costumes to be drawn from. */
+export interface ArtReference {
+  name: string;
+  description: string;
+  width: number;
+  height: number;
+  /** Its drawing (an image model's costume has none: only its description is passed on). */
+  svg?: string;
+}
+
+/**
+ * A sprite's costumes are animation frames, each drawn in its own request: the later ones are given
+ * the first one's drawing, to copy and change only where their description says.
+ */
+function referenceNote(opts: { spriteName: string; width: number; height: number }, ref: ArtReference): string {
+  const resized = ref.width !== opts.width || ref.height !== opts.height;
+  return `
+"${opts.spriteName}" already has the costume "${ref.name}" (${ref.width} x ${ref.height} px: ${ref.description}), drawn below. The game swaps a sprite's costumes in place, as animation frames, so anything that differs between them without a reason makes the character flicker. Draw the new costume by copying that drawing and editing it:
+- Keep the same character exactly: the same shapes, proportions, colours, gradients and line weight, at the same size and in the same position on the canvas. Copy the parts that don't change as they are, element for element, with the same numbers.
+- Change only what the new costume's description asks for (a leg forward, wings down, eyes closed, a mouth open), by moving or redrawing those parts alone.
+- If the new costume is not the same character or thing at all (an explosion, a broken version, another item), draw what is asked instead, in the same style, palette and line weight, at a matching size.${
+    resized ? `\n- This canvas is ${opts.width} x ${opts.height} px, not ${ref.width} x ${ref.height}: keep the character the size it is there if it fits, centred the same way, and otherwise scale it down just enough to fit.` : ''
+  }
+Costume "${ref.name}":
+${ref.svg}`;
+}
+
 export function svgPrompt(opts: {
   kind: 'costume' | 'backdrop';
   mode: WorldMode;
@@ -372,26 +400,58 @@ export function svgPrompt(opts: {
   description: string;
   spriteName: string;
   gameTitle: string;
-  styleHint: string;
+  /** The game's art brief, the same for every picture (Amble's own look when left out). */
+  style?: ArtBrief;
+  /** A costume this sprite already has: the new one is drawn from it. */
+  reference?: ArtReference;
 }): { system: string; user: string } {
-  const system = `You draw game art as SVG, in the friendly flat style of Scratch costumes: bold simple shapes, clean dark outlines (stroke 2-4 px, round joins), bright cheerful colors, a little shading with one or two darker/lighter shapes, no text unless asked. Reply with JSON: { "svg": "<svg ...>...</svg>" }.
-Rules:
+  const style = opts.style ?? artBrief('');
+  const heading = style.preset ? `: ${style.preset.label} (${style.preset.words})` : '';
+  // The brief comes first and is the same in every request of a game; the rules for this kind of picture follow.
+  const system = `You are the artist of a 2D game made in Amble, a game maker for kids: you draw the game's pictures as SVG code, one picture per request. Reply with JSON: { "svg": "<svg ...>...</svg>" }.
+
+# The game's art style${heading}
+${style.svg}
+Every picture of the game is drawn in its own request, by an artist who cannot see the other pictures, and together they must look like one artist's work. So keep to this brief in every picture: the same colours for the same things, the same outlines, the same shading and the same amount of detail.
+
+# Rules
 - The root <svg> must have xmlns="http://www.w3.org/2000/svg", width, height and viewBox="0 0 W H" exactly as requested.
-- ${opts.kind === 'backdrop' ? 'Fill the whole canvas (it is a background). Keep it simple enough that sprites stand out in front of it.' : 'Transparent background: do not draw a background rectangle. The subject should fill most of the canvas with about 4 px margin.'}
-- ${opts.kind === 'costume' ? 'Characters and vehicles face right unless told otherwise.' : ''}
-- Only use basic SVG elements (path, rect, circle, ellipse, polygon, polyline, line, g, linearGradient/radialGradient). No <image>, <foreignObject>, <script>, external references, CSS files or fonts.
+- ${opts.kind === 'backdrop' ? 'Fill the whole canvas (it is a background), in the same style as the sprites. Keep it simple enough that sprites stand out in front of it.' : 'Transparent background: do not draw a background rectangle. The subject should fill most of the canvas with about 4 px margin.'}
+- ${opts.kind === 'costume' ? 'Characters and vehicles face right unless told otherwise.' : 'No characters in the foreground.'}
+- You may draw with these, unless the art style rules some of them out: path, rect, circle, ellipse, polygon, polyline, line and g; linearGradient, radialGradient, pattern, clipPath, mask and use (pointing at an id in the same picture); and, only where the style calls for them, filters made of feGaussianBlur, feDropShadow, feOffset, feMerge, feFlood, feComposite, feColorMatrix, feTurbulence and feDisplacementMap. Give colours and strokes as attributes (fill="#ffcc00" stroke-width="3"), not with <style> or class.
+- No <image>, <foreignObject>, <script>, animation, links, event handlers, external references, CSS files or fonts: they are removed. No text unless asked.
 - Keep it under 12 KB.`;
-  const user = `Game: ${opts.gameTitle}
-Sprite: ${opts.spriteName}
-Draw a ${opts.kind} of ${opts.width} x ${opts.height} px: ${opts.description}${opts.styleHint ? `\nMatch the style of the author's art: ${opts.styleHint}` : ''}`;
-  return { system, user };
+  const lines = [`Game: ${opts.gameTitle}`, `Sprite: ${opts.spriteName}`, `Draw a ${opts.kind} of ${opts.width} x ${opts.height} px${style.words ? `, in the game's art style (${style.name})` : ''}: ${opts.description}`];
+  if (style.pixel) {
+    const grid = pixelGrid(opts.width, opts.height, opts.kind === 'backdrop');
+    lines.push(`Pixel grid: one pixel is ${grid.size} x ${grid.size} units, so this picture is ${grid.columns} x ${grid.rows} pixels; every x, y, width and height is a multiple of ${grid.size}.`);
+  }
+  if (opts.kind === 'costume' && opts.reference?.svg) lines.push(referenceNote(opts, opts.reference));
+  return { system, user: lines.join('\n') };
 }
 
-export function imagePrompt(opts: { kind: 'costume' | 'backdrop'; mode: WorldMode; description: string; gameTitle: string }): string {
+export function imagePrompt(opts: {
+  kind: 'costume' | 'backdrop';
+  mode: WorldMode;
+  description: string;
+  gameTitle: string;
+  /** The game's art brief (Amble's own look when left out). */
+  style?: ArtBrief;
+  /** A costume this sprite already has (an image model is only told what it shows). */
+  reference?: Pick<ArtReference, 'name' | 'description'>;
+}): string {
+  const look = opts.style?.image ?? '';
   if (opts.kind === 'backdrop') {
-    return `A colorful 2D video game background for "${opts.gameTitle}": ${opts.description}. Flat, friendly cartoon style like Scratch, clean shapes, no text, no characters in the foreground.`;
+    return look
+      ? `A 2D video game background for "${opts.gameTitle}": ${opts.description}. Art style: ${look}. Every picture of the game is in this style. No text, no characters in the foreground.`
+      : `A colorful 2D video game background for "${opts.gameTitle}": ${opts.description}. Flat, friendly cartoon style like Scratch, clean shapes, no text, no characters in the foreground.`;
   }
-  return `A single game sprite for "${opts.gameTitle}": ${opts.description}. Flat cartoon style like Scratch costumes, bold clean outlines, bright colors, centered, side view facing right, isolated on a transparent background, no text, no shadow on the ground.`;
+  const same = opts.reference
+    ? ` It is another costume of a sprite that already has the costume "${opts.reference.name}", which shows: ${opts.reference.description}. Where this one shows the same character or thing, keep its colours, proportions and details the same, and change only what this costume asks for.`
+    : '';
+  return `A single game sprite for "${opts.gameTitle}": ${opts.description}. ${
+    look ? `Art style: ${look}. Every picture of the game is in this style. Centered` : 'Flat cartoon style like Scratch costumes, bold clean outlines, bright colors, centered'
+  }, side view facing right, isolated on a transparent background, no text, no shadow on the ground.${same}`;
 }
 
 export function soundPrompt(description: string): { system: string; user: string } {
