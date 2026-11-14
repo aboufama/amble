@@ -139,7 +139,7 @@ export function StyleKnob({ value, onChange, look = 'bar' }: StyleKnobProps) {
           </div>
           <div className="style-more">
             {custom === null ? (
-              <button type="button" role="menuitemradio" aria-checked={own} className={own ? 'on' : ''} title="Say the look in your own words" onClick={() => setCustom('')}>
+              <button type="button" role="menuitemradio" aria-checked={own} className={own ? 'on' : ''} title="Type a style" onClick={() => setCustom('')}>
                 <BrushIcon size={16} />
                 <span>Custom…</span>
               </button>
@@ -151,13 +151,13 @@ export function StyleKnob({ value, onChange, look = 'bar' }: StyleKnobProps) {
                   if (custom.trim()) choose(custom.trim());
                 }}
               >
-                <input autoFocus value={custom} maxLength={200} placeholder="Your own, like “pixel art”" aria-label="Your own art style" onChange={(e) => setCustom(e.target.value)} />
+                <input autoFocus value={custom} maxLength={200} placeholder="e.g. pixel art" aria-label="Your own art style" onChange={(e) => setCustom(e.target.value)} />
                 <button type="submit" className="btn primary small" disabled={!custom.trim()}>
                   Use
                 </button>
               </form>
             )}
-            <button type="button" role="menuitemradio" aria-checked={!value} className={!value ? 'on' : ''} title="No art style: block. Amble picks a look that fits the game." onClick={() => choose('')}>
+            <button type="button" role="menuitemradio" aria-checked={!value} className={!value ? 'on' : ''} title="No style" onClick={() => choose('')}>
               <span className="style-swatch none" aria-hidden="true" />
               <span>None</span>
             </button>

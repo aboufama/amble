@@ -335,12 +335,11 @@ export interface Example {
 function fromIdea(id: string, title: string, idea: string, opts: { dial?: Dial; style?: string } = {}): Example {
   const dial = opts.dial ?? 3;
   const style = opts.style ? (STYLE_PRESETS.find((p) => p.id === opts.style)?.words ?? opts.style) : '';
-  const how = [dial === 4 ? 'the dial on Grand' : '', opts.style ? `${STYLE_PRESETS.find((p) => p.id === opts.style)?.label ?? opts.style} style` : ''].filter(Boolean).join(', ');
   return {
     id,
     title,
     idea,
-    description: `Made from one sentence${how ? ` (${how})` : ''}: “${idea}”`,
+    description: `“${idea}”`,
     prebuilt: true,
     make: () => {
       const p = ideaProject(idea, dial, style);
@@ -360,11 +359,11 @@ export const EXAMPLES: Example[] = [
   fromIdea('penguin-dj', 'Penguin DJ', 'a penguin DJ keeps the dance floor from melting', { style: 'neon' }),
   fromIdea('snail-garden', 'Snail Garden', 'grow a garden while greedy snails try to eat it', { style: 'paper' }),
   fromIdea('sub-cave', 'Shy Monsters', 'a tiny submarine explores a glowing sea cave full of shy monsters', { style: 'storybook' }),
-  { id: 'neon-drift', title: 'Neon Drift', description: 'Rules and blocks: steer a comet through a neon asteroid storm, blast waves of rocks, then take on the Mothership.', make: neonDrift, prebuilt: true },
-  { id: 'lantern-cave', title: 'Lantern Cave', description: 'Rules and blocks: a platformer in the dark. Find 5 crystals by lantern light, then escape the collapsing cave.', make: lanternCave, prebuilt: true },
-  { id: 'sky-whale', title: 'Sky Whale', description: 'Rules and blocks: hold space to swim up. Eat stars, catch shooting stars, dodge storms as night falls.', make: skyWhale, prebuilt: true },
-  { id: 'pocket-planet', title: 'Pocket Planet', description: 'Rules and blocks: click to drop cats, trees and houses on a tiny planet with its own gravity.', make: pocketPlanet, prebuilt: true },
-  { id: 'star-catcher', title: 'Star Catcher', description: 'Almost all exact blocks: catch the falling stars. Built as you play.', make: starCatcher },
+  { id: 'neon-drift', title: 'Neon Drift', description: 'Steer a comet through an asteroid storm.', make: neonDrift, prebuilt: true },
+  { id: 'lantern-cave', title: 'Lantern Cave', description: 'Find 5 crystals in a dark cave.', make: lanternCave, prebuilt: true },
+  { id: 'sky-whale', title: 'Sky Whale', description: 'Hold space to swim up and eat stars.', make: skyWhale, prebuilt: true },
+  { id: 'pocket-planet', title: 'Pocket Planet', description: 'Click to drop things on a tiny planet.', make: pocketPlanet, prebuilt: true },
+  { id: 'star-catcher', title: 'Star Catcher', description: 'Catch the falling stars.', make: starCatcher },
 ];
 
 /** The demo as shipped: built when it has a prebuilt file, else as written (built on the first flag). */

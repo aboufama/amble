@@ -24,51 +24,28 @@ function gameLineBeingBuilt(project: Project, building: Array<{ targetId: string
   return words && building.some((b) => b.targetId === project.stage.id && b.words === words) ? words : null;
 }
 
-const MAKING_LINES = [
-  'Inventing the characters',
-  'Deciding what makes it fun',
-  'Planning a big finish',
-  'Tuning how it feels to move',
-  'Hiding a surprise or two',
-  'Picking the sounds',
-  'Giving the boss a name',
-  'Making it fair',
-];
-
 /** Shown over the stage while a whole game is made from an idea: what is happening, and for how long. */
-function MakingGame({ progress, idea, grand }: { progress: CompileProgress; idea: string; grand: boolean }) {
+function MakingGame({ progress }: { progress: CompileProgress }) {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
     const started = Date.now();
     const t = window.setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 500);
     return () => window.clearInterval(t);
   }, []);
-  let step = 'Thinking up your game';
-  let detail = MAKING_LINES[Math.floor(seconds / 6) % MAKING_LINES.length];
-  if (progress.stage === 'writing') {
-    step = 'Writing the game';
-    detail = progress.chars ? `${progress.chars.toLocaleString()} characters of code so far` : 'Writing the code';
-  } else if (progress.stage === 'checking' || progress.stage === 'repairing') {
-    step = 'Checking the code';
-    detail = progress.message;
-  } else if (progress.stage === 'assets') {
-    step = 'Drawing the art and making the sounds';
-    detail = progress.assetsTotal ? `${progress.assetsDone ?? 0} of ${progress.assetsTotal} done` : progress.message;
-  }
+  let step = 'Thinking';
+  if (progress.stage === 'writing') step = 'Writing the game';
+  else if (progress.stage === 'checking' || progress.stage === 'repairing') step = 'Checking';
+  else if (progress.stage === 'assets') step = progress.assetsTotal ? `Art and sounds ${progress.assetsDone ?? 0} / ${progress.assetsTotal}` : 'Art and sounds';
   const time = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
   return (
     <div className="making-game" role="status" aria-live="polite">
-      <div className="making-idea">“{idea.length > 110 ? `${idea.slice(0, 108)}…` : idea}”</div>
       <div className="making-dots" aria-hidden="true">
         <span />
         <span />
         <span />
       </div>
       <div className="making-step">{step}</div>
-      <div className="making-detail">{detail}</div>
-      <div className="making-time">
-        {time} · {grand ? 'a grand game takes several minutes' : 'a whole game takes two or three minutes'}
-      </div>
+      <div className="making-time">{time}</div>
     </div>
   );
 }
@@ -89,8 +66,8 @@ function WishBox({ busy }: { busy: boolean }) {
         send();
       }}
     >
-      <input value={wish} onChange={(e) => setWish(e.target.value)} placeholder="Change something: “make it snow”, “add a second boss”…" aria-label="Change something in the game" maxLength={300} disabled={busy} />
-      <button className="btn primary small" type="submit" disabled={busy || !wish.trim()} title="Adds it to the game as a rule on the stage, and builds it in">
+      <input value={wish} onChange={(e) => setWish(e.target.value)} placeholder="Change something…" aria-label="Change something in the game" maxLength={300} disabled={busy} />
+      <button className="btn primary small" type="submit" disabled={busy || !wish.trim()}>
         Change
       </button>
     </form>
@@ -268,7 +245,7 @@ export function StagePanel() {
             Click the green flag to play.
           </div>
         )}
-        {makingGame && progress && <MakingGame progress={progress} idea={makingGame} grand={projectFreedom(project) === 'grand'} />}
+        {makingGame && progress && <MakingGame progress={progress} />}
       </div>
       {/* How to play a game the compiler made from an idea (it says so itself). */}
       {howToPlay && !fullscreen && (

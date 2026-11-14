@@ -42,7 +42,7 @@ test("confirmations use Amble's dialog, never the browser's", async ({ page }) =
   await page.getByRole('menuitem', { name: 'New game' }).click();
   const start = page.getByRole('dialog', { name: 'Make a game' });
   await expect(start).toBeVisible();
-  await start.getByRole('button', { name: 'Start with an empty project and blocks' }).click();
+  await start.getByRole('button', { name: 'Empty project' }).click();
   const replace = page.getByRole('dialog', { name: 'Replace Project' });
   await expect(replace).toBeVisible();
   await expect(replace.getByRole('button', { name: 'Replace' })).toHaveClass(/danger/);

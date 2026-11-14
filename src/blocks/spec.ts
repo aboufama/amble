@@ -86,7 +86,7 @@ export interface SimpleGroup {
 
 /** In the order they are read on the board: the card across the top, the left column, the right column. */
 export const SIMPLE_GROUPS: SimpleGroup[] = [
-  { id: 'idea', name: 'Say what happens', note: 'in your own words', hint: 'Write what you want in your own words. Amble works out the rest.', style: 'brief', place: 'top' },
+  { id: 'idea', name: 'Say what happens', hint: 'Write what you want in your own words. Amble works out the rest.', style: 'brief', place: 'top' },
   { id: 'when', name: 'When…', hint: 'Starts a script: the blocks under it run when this happens.', style: 'events', place: 'left' },
   {
     id: 'check',

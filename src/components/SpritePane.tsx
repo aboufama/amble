@@ -457,7 +457,6 @@ function StageInfo() {
         <b>Stage</b>
         <span className="muted">{backdrops === 0 ? 'No backdrops yet' : `${backdrops} ${backdrops === 1 ? 'backdrop' : 'backdrops'}`}</span>
       </div>
-      <p className="stage-info-note muted">Its code holds your game's brief: game, made for, art style.</p>
     </div>
   );
 }

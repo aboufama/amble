@@ -82,7 +82,6 @@ export function GameDial({ value, onChange, look = 'bar', onPreview, note }: Gam
       )}
       {look === 'bar' && shown !== null && (
         <div className="dial-card" role="tooltip">
-          <small>How much Amble makes</small>
           <b>{DIAL_STOPS[shown].label}</b>
           <span>{DIAL_STOPS[shown].hint}</span>
           {note?.(shown) && <span className="dial-note">{note(shown)}</span>}

@@ -37,7 +37,7 @@ describe('the five stops of the dial', () => {
       [3, 'go wild', 'Wild'],
       [4, 'grand', 'Grand'],
     ]);
-    for (const s of DIAL_STOPS) expect(s.hint.length, s.label).toBeGreaterThan(20);
+    for (const s of DIAL_STOPS) expect(s.hint.length, s.label).toBeGreaterThan(0);
     expect(DEFAULT_DIAL).toBe(3);
   });
 

@@ -27,11 +27,11 @@ export interface DialStop {
 
 /** The dial's five stops, 0 to 4. */
 export const DIAL_STOPS: readonly DialStop[] = [
-  { dial: 0, freedom: 'just what I say', label: 'My blocks', hint: 'Amble invents nothing: the game: line only says what the game is about, and your blocks are the game.' },
-  { dial: 1, freedom: 'small', label: 'Small', hint: 'A small, simple game: only what your idea needs.' },
-  { dial: 2, freedom: 'fill in the gaps', label: 'Full', hint: 'The complete, polished game your idea describes, and nothing you didn’t ask for.' },
-  { dial: 3, freedom: 'go wild', label: 'Wild', hint: 'Your whole idea, plus surprises of Amble’s own: twists, acts, a boss.' },
-  { dial: 4, freedom: 'grand', label: 'Grand', hint: 'The most: a grand game in several acts that each look different, with a boss in phases, an opening and an ending. Four to six minutes of play.' },
+  { dial: 0, freedom: 'just what I say', label: 'My blocks', hint: 'Only your blocks.' },
+  { dial: 1, freedom: 'small', label: 'Small', hint: 'A small, simple game.' },
+  { dial: 2, freedom: 'fill in the gaps', label: 'Full', hint: 'The game you describe.' },
+  { dial: 3, freedom: 'go wild', label: 'Wild', hint: 'Your idea, plus surprises.' },
+  { dial: 4, freedom: 'grand', label: 'Grand', hint: 'Several acts and a boss.' },
 ];
 
 /** Where the dial starts for a new idea. */

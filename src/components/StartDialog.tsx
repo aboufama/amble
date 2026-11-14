@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { pickSavedProject, startGame } from '../actions';
 import type { Dial } from '../blocks/spec';
 import { resolveTransport } from '../compiler/openai';
-import { DEFAULT_DIAL, DIAL_STOPS } from '../project/controls';
+import { DEFAULT_DIAL } from '../project/controls';
 import { EXAMPLES, blankProject, loadExample, type Example } from '../project/examples';
 import { ideaProject } from '../project/idea';
 import type { Project } from '../project/types';
@@ -58,8 +58,6 @@ export function StartDialog() {
   const fromMenu = useStore((s) => s.startFromMenu);
   const [idea, setIdea] = useState('');
   const [dial, setDial] = useState<Dial>(DEFAULT_DIAL);
-  /** The stop being pointed at on the dial: the line under it explains that one. */
-  const [pointed, setPointed] = useState<Dial | null>(null);
   const [style, setStyle] = useState('');
   const [busy, setBusy] = useState(false);
   // Can words be built here? (A key in Settings, the site's own key, or a ChatGPT sign-in.) Unknown at first.
@@ -121,8 +119,6 @@ export function StartDialog() {
     input.current?.focus();
   };
 
-  const stop = DIAL_STOPS[pointed ?? dial];
-  const wait = dial === 4 ? 'A grand game takes several minutes.' : 'It takes two or three minutes.';
   return (
     <Modal title="Make a game" onClose={close} wide className="start">
       <div className="start-idea">
@@ -135,7 +131,7 @@ export function StartDialog() {
           value={idea}
           rows={2}
           maxLength={600}
-          placeholder={`A sentence is enough, like “${IDEA_STARTERS[0]}”`}
+          placeholder={IDEA_STARTERS[0]}
           onChange={(e) => setIdea(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -146,36 +142,26 @@ export function StartDialog() {
         />
         <div className="start-knobs">
           <div className="start-knob">
-            <span className="start-knob-label">How much should Amble make?</span>
-            <GameDial look="page" value={dial} onChange={setDial} onPreview={setPointed} />
+            <span className="start-knob-label">Size</span>
+            <GameDial look="page" value={dial} onChange={setDial} />
           </div>
           <div className="start-knob">
             <span className="start-knob-label">Art style</span>
             <StyleKnob look="page" value={style} onChange={setStyle} />
           </div>
         </div>
-        {/* What the stop the dial is on (or the one being pointed at) means. */}
-        <p className="start-hint">
-          <b>{stop.label}.</b> {stop.hint}
-        </p>
         <div className="start-row">
           <button className="btn small" onClick={surprise} title="Fill in an idea to try">
             Give me an idea
           </button>
-          <span className="start-note">
-            {!makes
-              ? 'Your sentence goes on the stage, and you build the game with blocks.'
-              : account === false
-                ? 'Making a game from an idea needs an OpenAI API key here (Settings). The demos below play without one.'
-                : `${wait} You can change it after.`}
-          </span>
+          <span className="start-note">{makes && account === false ? 'Needs an OpenAI API key (Settings).' : ''}</span>
           <button className="btn primary start-make" disabled={!words || busy} onClick={makeGame}>
             Make my game
           </button>
         </div>
       </div>
 
-      <h3 className="start-heading">Or play one of these, and change it</h3>
+      <h3 className="start-heading">Demos</h3>
       <div className="start-demos">
         {EXAMPLES.map((ex) => (
           <button key={ex.id} className="start-demo" onClick={() => openDemo(ex)} disabled={busy} aria-label={`Demo: ${ex.title}`}>
@@ -191,8 +177,8 @@ export function StartDialog() {
         <button className="btn" onClick={() => void openSaved()} disabled={busy} title="A game you saved to your computer (File > Save to your computer)">
           <FileIcon size={16} /> Open a saved game
         </button>
-        <button className="btn" onClick={() => void replace(() => blankProject(), false)} disabled={busy} title="Amble, a few blocks, and nothing else: build the game yourself">
-          <BlocksTabIcon size={16} /> Start with an empty project and blocks
+        <button className="btn" onClick={() => void replace(() => blankProject(), false)} disabled={busy} title="Build it yourself with blocks">
+          <BlocksTabIcon size={16} /> Empty project
         </button>
       </div>
     </Modal>

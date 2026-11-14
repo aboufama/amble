@@ -171,7 +171,6 @@ test('the palette starts as one board: every block in view at once, under plain 
   await openEditor(page);
   // A card for each thing the author wants to do, and no column of categories.
   await expect(page.locator('.ambleBoardHeading > text:not(.ambleBoardNote)')).toHaveText(['Say what happens', 'When…', 'Check', 'Do', 'Remember']);
-  await expect(page.locator('.ambleBoardNote')).toHaveText('in your own words');
   await expect(page.locator('.blocklyToolbox')).toBeHidden();
 
   // A sprite: 26 blocks and the project's variable, the ones that take words first.
@@ -419,9 +418,8 @@ test('the dial and the style knob say how the game is made, on the home screen a
   // The dial: five stops, each explained as you point at it. The arrow keys move it; a click sets it.
   const dial = start.getByRole('radiogroup', { name: /^Dial/ });
   await expect(dial.getByRole('radio')).toHaveCount(5);
-  await expect(start.locator('.start-hint')).toContainText('Wild. Your whole idea, plus surprises');
+  await expect(dial.getByRole('radio', { name: 'Wild' })).toHaveAttribute('aria-checked', 'true');
   await dial.getByRole('radio', { name: 'Small' }).hover();
-  await expect(start.locator('.start-hint')).toContainText('Small. A small, simple game');
   await dial.getByRole('radio', { name: 'Wild' }).focus();
   await page.keyboard.press('ArrowLeft');
   await expect(dial.getByRole('radio', { name: 'Full' })).toBeFocused();
@@ -467,7 +465,7 @@ test('the dial and the style knob say how the game is made, on the home screen a
   // Pointing at a stop explains it.
   await bar.getByRole('radio', { name: 'Small' }).hover();
   await expect(bar.getByRole('tooltip')).toContainText('Small');
-  await expect(bar.getByRole('tooltip')).toContainText('only what your idea needs');
+  await expect(bar.getByRole('tooltip')).toContainText('A small, simple game');
   await page.getByTitle('Stop').click();
 
   // Moving the dial: the game needs building (the flag says so), and moving it back keeps the game that's there.
@@ -542,7 +540,7 @@ test('the logo opens the home screen: make a game, play a demo, open a saved gam
   const replace = page.getByRole('dialog', { name: 'Replace Project' });
   // The first visit starts there, with nothing to lose: starting empty asks nothing.
   await expect(start).toBeVisible();
-  await start.getByRole('button', { name: 'Start with an empty project' }).click();
+  await start.getByRole('button', { name: 'Empty project' }).click();
   await expect(start).toHaveCount(0);
   await expect(replace).toHaveCount(0);
   await expect(page.locator('.sprite-tile', { hasText: 'Amble' })).toBeVisible();
@@ -560,7 +558,7 @@ test('the logo opens the home screen: make a game, play a demo, open a saved gam
   await expect(start.getByRole('button', { name: 'Art style: none' })).toBeVisible();
   await expect(start.getByRole('button', { name: 'Make my game' })).toBeDisabled();
   await expect(start.getByRole('button', { name: /^Demo: / })).toHaveCount(13);
-  await expect(start.getByRole('button', { name: 'Start with an empty project' })).toBeVisible();
+  await expect(start.getByRole('button', { name: 'Empty project' })).toBeVisible();
 
   // Open a saved game: what File > Load from your computer does. There is a project now, so it asks first.
   const saved = await page.evaluate(() => JSON.stringify({ ...(window as unknown as StoreWindow).__ambleStore.getState().project, title: 'My saved game', dial: 2 }));

@@ -457,9 +457,8 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       {compiledSprite && (
         <div className="compiled-overlay">
           <div className="compiled-card">
-            <h3>{compiledSprite.sprite.name} joined so your words work</h3>
+            <h3>{compiledSprite.sprite.name}</h3>
             {compiledSprite.sprite.description && <p>{compiledSprite.sprite.description}</p>}
-            <p className="muted small">Keep it to make it yours: what it does becomes a block you can change.</p>
             <div className="row">
               {DEV_TOOLS && (
                 <button
