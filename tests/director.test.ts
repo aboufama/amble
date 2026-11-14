@@ -3,7 +3,7 @@ import { planTarget, projectFreedom } from '../src/compiler/codegen';
 import { compileNeedsRequest, compileProject } from '../src/compiler/compile';
 import { DEFAULT_SETTINGS } from '../src/compiler/openai';
 import { classNames, piecesSystemPrompt, piecesUserPrompt } from '../src/compiler/prompt';
-import { BLOCKS, SIMPLE_GROUPS, blocksFor, coreBlocksFor } from '../src/blocks/spec';
+import { BLOCKS, BLOCK_BY_TYPE, SIMPLE_GROUPS, blocksFor, coreBlocksFor } from '../src/blocks/spec';
 import { toolboxFor } from '../src/blocks/blockly';
 import { block, newProject, workspace } from '../src/project/defaults';
 import { ideaProject } from '../src/project/idea';
@@ -176,27 +176,84 @@ describe('making a game from an idea', () => {
 });
 
 describe('the simple palette', () => {
-  const names = (ctx: { isStage: boolean; simple: boolean }) => {
-    const box = toolboxFor({ isStage: ctx.isStage, menus: null, simple: ctx.simple }) as unknown as { contents: Array<{ name: string; contents: Array<{ kind: string; type?: string; text?: string }> }> };
-    return box.contents.map((c) => ({ name: c.name, blocks: c.contents.filter((i) => i.kind === 'block').map((i) => i.type!), buttons: c.contents.filter((i) => i.kind === 'button').map((i) => i.text!) }));
+  interface Group {
+    name: string;
+    column?: number | null;
+    rows?: string[][];
+    contents: Array<{ kind: string; type?: string; text?: string }>;
+  }
+  /** The palette of a project with one variable, for its stage or its sprite. */
+  const palette = (ctx: { isStage: boolean; simple: boolean }) => {
+    const p = newProject();
+    const menus = { project: p, target: ctx.isStage ? p.stage : p.sprites[0], newMessages: [] };
+    return toolboxFor({ isStage: ctx.isStage, menus, simple: ctx.simple }) as unknown as { layout?: string; contents: Group[] };
   };
+  const names = (ctx: { isStage: boolean; simple: boolean }) =>
+    palette(ctx).contents.map((c) => ({ name: c.name, blocks: c.contents.filter((i) => i.kind === 'block').map((i) => i.type!), buttons: c.contents.filter((i) => i.kind === 'button').map((i) => i.text!) }));
+  const count = (groups: ReturnType<typeof names>) => groups.reduce((n, g) => n + g.blocks.filter((b) => b !== 'char_ref').length, 0);
 
-  it('shows five groups with about a third of the blocks, and the way to the rest', () => {
+  it('is one board: a card for each thing the author wants to do, under plain headings', () => {
     for (const isStage of [true, false]) {
-      const simple = names({ isStage, simple: true });
-      const all = names({ isStage, simple: false });
-      expect(simple.map((g) => g.name)).toEqual(SIMPLE_GROUPS.map((g) => g.name));
-      const count = (groups: typeof simple) => groups.reduce((n, g) => n + g.blocks.filter((b) => b !== 'char_ref').length, 0);
-      expect(count(simple)).toBeLessThanOrEqual(30);
-      expect(count(simple)).toBeLessThan(count(all) / 2);
-      expect(simple.at(-1)!.buttons).toContain('More blocks');
-      expect(all.at(-1)!.buttons).toContain('Fewer blocks');
+      const simple = palette({ isStage, simple: true });
+      expect(simple.layout).toBe('board');
+      expect(simple.contents.map((g) => g.name)).toEqual(['Say what happens', 'When…', 'Check', 'Do', 'Remember']);
+      expect(simple.contents.map((g) => g.name)).toEqual(SIMPLE_GROUPS.map((g) => g.name));
+      // "Say what happens" lies across the top; When… and Check stand in the left column, Do and Remember in the right one.
+      expect(simple.contents.map((g) => g.column)).toEqual([null, 0, 0, 1, 1]);
+      // The full palette is a list by category, as before.
+      const all = palette({ isStage, simple: false });
+      expect(all.layout).toBeUndefined();
+      expect(all.contents).toHaveLength(11);
     }
   });
 
-  it('puts the idea first: the game line, the dial and the look on the stage', () => {
-    expect(names({ isStage: true, simple: true })[0]).toMatchObject({ name: 'Idea', blocks: ['br_game', 'br_freedom', 'br_style', 'br_win', 'br_lose', 'ga_rule'] });
-    expect(names({ isStage: false, simple: true })[0]).toMatchObject({ name: 'Idea', blocks: ['ga_rule', 'ru_always', 'ru_never'] });
+  it('holds few enough blocks to show them all at once: about a third of the language', () => {
+    const stage = names({ isStage: true, simple: true });
+    const sprite = names({ isStage: false, simple: true });
+    // 19 blocks on the stage and 26 on a sprite, and a block for the project's one variable.
+    expect(count(stage)).toBe(20);
+    expect(count(sprite)).toBe(27);
+    expect(count(stage) / count(names({ isStage: true, simple: false }))).toBeLessThan(0.36);
+    expect(count(sprite) / count(names({ isStage: false, simple: false }))).toBeLessThan(0.33);
+    // The exact basics are there; what a sentence does better is in the full palette.
+    const blocks = sprite.flatMap((g) => g.blocks);
+    expect(blocks).toEqual(expect.arrayContaining(['kit_walk', 'kit_jump', 'kit_gravity', 'lk_say_for', 'so_play', 'fl_wait', 'co_forever', 'fl_if', 'lo_show', 'lo_hide', 'mem_set', 'mem_change']));
+    for (const rare of ['ga_do_for', 'nm_random', 'br_win', 'br_lose', 'mv_turn']) expect(blocks, rare).not.toContain(rare);
+    expect(stage.flatMap((g) => g.blocks)).not.toContain('br_win');
+  });
+
+  it('puts the blocks that take words first', () => {
+    const stage = names({ isStage: true, simple: true });
+    const sprite = names({ isStage: false, simple: true });
+    // The top card is all words: the game, its look and its rules on the stage; what a sprite always and never does.
+    expect(stage[0]).toMatchObject({ name: 'Say what happens', blocks: ['br_game', 'br_style', 'ga_rule'] });
+    expect(sprite[0]).toMatchObject({ name: 'Say what happens', blocks: ['ru_always', 'ru_never'] });
+    for (const groups of [stage, sprite]) {
+      expect(groups.find((g) => g.name === 'Do')!.blocks[0]).toBe('ga_do');
+      expect(groups.find((g) => g.name === 'Check')!.blocks.slice(0, 2)).toEqual(['cd_words', 'nm_words']);
+    }
+    expect(sprite.find((g) => g.name === 'Do')!.blocks).toEqual(['ga_do', 'kit_walk', 'kit_jump', 'kit_gravity', 'lo_show', 'lo_hide', 'lk_say_for', 'so_play', 'fl_wait', 'co_forever', 'fl_if']);
+    expect(stage.find((g) => g.name === 'Do')!.blocks).toEqual(['ga_do', 'so_play', 'fl_wait', 'co_forever', 'fl_if']);
+    expect(sprite.find((g) => g.name === 'When…')!.blocks).toEqual(['ev_start', 'ev_key', 'ev_click', 'ev_touch', 'ev_every']);
+    expect(stage.find((g) => g.name === 'When…')!.blocks).toEqual(['ev_start', 'ev_key', 'ev_stage_click', 'ev_every']);
+  });
+
+  it('offers variables once there is one, and no switch among the blocks (it sits under the palette, always in view)', () => {
+    for (const isStage of [true, false]) {
+      const simple = names({ isStage, simple: true });
+      expect(simple.at(-1)).toMatchObject({ name: 'Remember', blocks: ['mem_var', 'mem_set', 'mem_change', 'va_show'], buttons: ['Make a Variable'] });
+      expect(simple.flatMap((g) => g.buttons)).toEqual(['Make a Variable']);
+      expect(names({ isStage, simple: false }).flatMap((g) => g.buttons)).toEqual(['Make a Variable', 'Make a Skill']);
+    }
+    const bare = toolboxFor({ isStage: false, menus: null, simple: true }) as unknown as { contents: Group[] };
+    expect(bare.contents.at(-1)!.contents.map((i) => i.kind)).toEqual(['button']);
+  });
+
+  it('leaves the imagination dial out of both palettes, and keeps its block for old projects', () => {
+    for (const isStage of [true, false]) {
+      for (const simple of [true, false]) expect(names({ isStage, simple }).flatMap((g) => g.blocks)).not.toContain('br_freedom');
+    }
+    expect(BLOCK_BY_TYPE.get('br_freedom')).toMatchObject({ hidden: true, category: 'brief', shape: 'rule', label: 'imagination: {LEVEL}' });
   });
 
   it('only ever offers blocks that the full palette has', () => {
@@ -205,5 +262,7 @@ describe('the simple palette', () => {
       for (const b of coreBlocksFor(target)) expect(all.has(b.type), b.type).toBe(true);
     }
     expect(BLOCKS.filter((b) => b.core && b.hidden)).toEqual([]);
+    // The rows a group arranges are its own blocks.
+    for (const g of SIMPLE_GROUPS) for (const type of g.rows?.flat() ?? []) expect(BLOCK_BY_TYPE.get(type)?.core, type).toBe(g.id);
   });
 });

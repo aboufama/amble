@@ -73,7 +73,8 @@ function everyBlockProject(): Project {
     }
   };
   for (const spec of BLOCKS) {
-    if (spec.hidden) continue;
+    // (The imagination dial has left the palette, but old projects hold it: it still compiles.)
+    if (spec.hidden && spec.type !== 'br_freedom') continue;
     if (!spec.targets || spec.targets.includes('stage')) add(spec, stage);
     if (!spec.targets || spec.targets.includes('sprite')) add(spec, sprite);
   }

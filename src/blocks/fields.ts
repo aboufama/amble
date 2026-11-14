@@ -107,6 +107,15 @@ export class FieldAmbleText extends FieldMultilineInput {
   override initView() {
     super.initView();
     this.borderRect_?.classList.add('ambleTextRect');
+    this.fieldGroup_?.classList.add('ambleWords');
+  }
+
+  /**
+   * Words are written in the code, not in the palette: a click on them there counts as a click
+   * on their block, which adds it to the code with its words open (see addBlockToCode).
+   */
+  override isClickableInFlyout(): boolean {
+    return false;
   }
 
   protected override getDisplayText_(): string {
