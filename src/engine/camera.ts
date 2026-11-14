@@ -110,9 +110,42 @@ export class CameraRig {
     this._y += (ty - this._y) * t;
   }
 
-  /** @internal Points Phaser's camera at the view; `scale` is canvas pixels per stage pixel. */
-  _apply(scale: number): void {
-    this.cam.setZoom(scale * this._zoom);
-    this.cam.centerOn(STAGE_WIDTH / 2 + this._x + this.shakeX, STAGE_HEIGHT / 2 - this._y - this.shakeY);
+  /** @internal The middle of the view, in Phaser's world pixels (the shake included). */
+  _center(): { x: number; y: number } {
+    return { x: STAGE_WIDTH / 2 + this._x + this.shakeX, y: STAGE_HEIGHT / 2 - this._y - this.shakeY };
   }
+
+  /**
+   * @internal Points Phaser's camera at the view; `scale` is canvas pixels per stage pixel.
+   *
+   * The canvas is drawn at the screen's own resolution (full screen, a small stage, a Retina
+   * display), so Phaser's camera zooms by `scale`. Phaser zooms around the middle of the canvas and
+   * measures scroll in canvas pixels, which is only right for things that scroll with the camera:
+   * anything pinned to the screen (`setScrollFactor(0)`: backgrounds, HUD text) or on a parallax
+   * layer would land in the wrong place at every scale but 1. So the camera is set up to behave, for
+   * every scroll factor, exactly as it would on a 480 x 360 canvas, scaled up: scroll in stage
+   * pixels, and the zoom origin placed so that the picture is that one times `scale`.
+   */
+  _apply(scale: number): void {
+    const { scrollX, scrollY, zoom, originX, originY } = cameraSetup(scale, this._zoom, this._x + this.shakeX, this._y + this.shakeY);
+    this.cam.setZoom(zoom);
+    this.cam.setScroll(scrollX, scrollY);
+    this.cam.setOrigin(originX / Math.max(1, this.cam.width), originY / Math.max(1, this.cam.height));
+  }
+}
+
+/**
+ * Phaser camera settings that show, on a canvas of 480 x 360 stage pixels times `scale`, what a
+ * 480 x 360 camera centered on stage point (x, y) at `zoom` would show, for every scroll factor.
+ *
+ * Phaser draws a point p (after scroll) at `Z * (p - O) + O`, with Z its zoom and O its origin in
+ * canvas pixels. The 480 x 360 picture, scaled, is `scale * (zoom * (p - 240) + 240)`. They agree
+ * when Z = scale * zoom and O = 240 * scale * (1 - zoom) / (1 - Z) (0 without a zoom).
+ */
+export function cameraSetup(scale: number, zoom: number, x: number, y: number): { scrollX: number; scrollY: number; zoom: number; originX: number; originY: number } {
+  let z = scale * zoom;
+  // Zoomed, with scale * zoom exactly 1: no origin does it. A zoom a hair off is invisible.
+  if (zoom !== 1 && Math.abs(1 - z) < 5e-4) z = 1.0005;
+  const k = zoom === 1 ? 0 : (scale * (1 - zoom)) / (1 - z);
+  return { scrollX: x, scrollY: -y, zoom: z, originX: (STAGE_WIDTH / 2) * k, originY: (STAGE_HEIGHT / 2) * k };
 }

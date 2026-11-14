@@ -425,7 +425,7 @@ export class Game {
     if (this.backdropImage) {
       // Fixed to the screen, like Scratch's: it fills the view whatever the camera does.
       const look = this.stageDef.costumes[this.backdropIndex];
-      const mid = this.scene.cameras.main.midPoint;
+      const mid = this.camera._center();
       this.backdropImage.setPosition(mid.x, mid.y);
       this.backdropImage.setOrigin(0.5, 0.5);
       this.backdropImage.setScale(STAGE_WIDTH / (look.width * look.density) / this.camera.zoom, STAGE_HEIGHT / (look.height * look.density) / this.camera.zoom);
