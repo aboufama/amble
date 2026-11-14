@@ -25,7 +25,8 @@ describe.each(EXAMPLES.filter((e) => e.prebuilt).map((e) => [e.title, e] as cons
     expect(compileNeedsRequest(project)).toBe(false);
     expect(compiled.code.length).toBeGreaterThanOrEqual(1 + project.sprites.length);
     expect(compiled.warnings).toEqual([]);
-    expect(raw!.length).toBeLessThan(2_000_000);
+    // Music loops are a few hundred KB each; a grand game has several.
+    expect(raw!.length).toBeLessThan(4_000_000);
   });
 
   it('is the demo as written (rebuild it after changing the demo)', () => {
