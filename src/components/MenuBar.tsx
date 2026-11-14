@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
-import { downloadProject, readProjectFile } from '../project/persistence';
+import { downloadProject } from '../project/persistence';
 import { exportGameHtml } from '../project/exportHtml';
-import { pickFile } from '../project/importers';
 import { EXAMPLES, loadExample } from '../project/examples';
-import { buildNow, compile, flushBlocks, signInWithChatGpt } from '../actions';
+import { buildNow, compile, flushBlocks, pickSavedProject, signInWithChatGpt } from '../actions';
 import { confirmUser } from '../prompt';
 import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
 import { DEV_TOOLS } from './ProblemsDialog';
 import { ModeSwitch, SpendMeter } from './ModeSwitch';
+import { ProjectDial } from './GameDial';
+import { ProjectStyleKnob } from './StyleKnob';
 import { useServerConfig } from './useServerConfig';
 
 export function MenuBar() {
@@ -66,10 +67,11 @@ export function MenuBar() {
   return (
     <header className="menubar">
       <div className="menubar-main">
-        <div className="menubar-brand" aria-label="Amble">
+        {/* The logo is the way home: make a new game, open a saved one, play a demo. */}
+        <button className="menubar-brand" aria-label="Amble: home" title="Home: make a new game, open a saved one, or play a demo" onClick={() => useStore.getState().openStart(true)}>
           <AmbleMark size={28} />
           <span className="logo">amble</span>
-        </div>
+        </button>
         {showSettings && (
           <button className="menubar-item" onClick={() => setDialog('settings')} title="Settings (sign-in, API key)">
             <SettingsIcon size={20} />
@@ -94,10 +96,8 @@ export function MenuBar() {
                   <button
                     role="menuitem"
                     onClick={act(async () => {
-                      const files = await pickFile('.amble,application/json');
-                      if (!files.length) return;
-                      const project = await readProjectFile(files[0]);
-                      if (await confirmReplace()) setProject(project);
+                      const project = await pickSavedProject();
+                      if (project && (await confirmReplace())) setProject(project);
                     })}
                   >
                     Load from your computer
@@ -190,6 +190,9 @@ export function MenuBar() {
         />
       </div>
       <div className="menubar-build">
+        {/* Always there: how much of the game Amble makes, and how it looks. */}
+        <ProjectDial />
+        <ProjectStyleKnob />
         <ModeSwitch />
         <SpendMeter />
       </div>

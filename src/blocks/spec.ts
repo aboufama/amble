@@ -128,13 +128,30 @@ export type MenuKind =
   | 'freedom';
 
 /**
- * How much the compiler may invent when it makes the game from the `game:` line.
- * - just what I say: the line only says what the game is about (the blocks make the game).
- * - fill in the gaps: the compiler builds the whole game the line describes, and nothing more.
- * - go wild: the same, and it adds its own surprises.
+ * How much the compiler may invent (and, a little, how big the game is) when it makes the game from
+ * the `game:` line. These are the five stops of the dial in the top bar, in order: a level's place
+ * in this list is its stop, 0 to 4 (see `dialOf` and `freedomOf`).
+ * - just what I say (0, "My blocks"): the line only says what the game is about (the blocks make the game).
+ * - small (1): a small, simple game: only what the idea needs.
+ * - fill in the gaps (2, "Full"): the complete, polished game the line describes, and nothing more.
+ * - go wild (3, "Wild"): the same, and it adds its own surprises.
+ * - grand (4): the most: a grand game in several acts, with a boss, an opening and an ending.
  */
-export const FREEDOM_LEVELS = ['just what I say', 'fill in the gaps', 'go wild'] as const;
+export const FREEDOM_LEVELS = ['just what I say', 'small', 'fill in the gaps', 'go wild', 'grand'] as const;
 export type Freedom = (typeof FREEDOM_LEVELS)[number];
+
+/** A stop of the dial (a project's `dial`): the place of its level in FREEDOM_LEVELS. */
+export type Dial = 0 | 1 | 2 | 3 | 4;
+
+/** The dial stop of a level ('go wild' is 3). */
+export function dialOf(freedom: Freedom): Dial {
+  return Math.max(0, FREEDOM_LEVELS.indexOf(freedom)) as Dial;
+}
+
+/** The level at a dial stop (3 is 'go wild'). Anything that isn't a stop is 0, 'just what I say'. */
+export function freedomOf(dial: number | undefined): Freedom {
+  return FREEDOM_LEVELS[dial as Dial] ?? FREEDOM_LEVELS[0];
+}
 
 /** Choices of the fixed menus. The first one is the default. */
 export const MENU_CHOICES: Partial<Record<MenuKind, string[]>> = {
@@ -238,7 +255,7 @@ const STAGE: Array<'sprite' | 'stage'> = ['stage'];
 
 export const BLOCKS: BlockSpec[] = [
   // ---- Brief: what you're making, for whom, and what "done" means
-  { type: 'br_game', core: 'idea', category: 'brief', shape: 'rule', label: 'game: {WHAT}', inputs: { WHAT: text('Amble collects stars and dodges spikes') }, tooltip: 'Say what the game is, in a sentence or two. With "imagination:" on, Amble builds the whole game from it.' },
+  { type: 'br_game', core: 'idea', category: 'brief', shape: 'rule', label: 'game: {WHAT}', inputs: { WHAT: text('Amble collects stars and dodges spikes') }, tooltip: 'Say what the game is, in a sentence or two. With the dial at the top on Small or more, Amble builds the whole game from it.' },
   { type: 'br_freedom', core: 'idea', category: 'brief', shape: 'rule', label: 'imagination: {LEVEL}', inputs: { LEVEL: menu('freedom', 'fill in the gaps') }, tooltip: 'How much Amble may invent. "fill in the gaps" builds the whole game your game: line describes. "go wild" adds its own surprises. "just what I say" leaves the game to your blocks.' },
   { type: 'br_audience', category: 'brief', shape: 'rule', label: 'made for: {WHO}', inputs: { WHO: text('kids who are new to games') }, tooltip: 'Who will play it. This decides how hard, fast and wordy the game is.' },
   { type: 'br_style', core: 'idea', category: 'brief', shape: 'rule', label: 'art style: {STYLE}', inputs: { STYLE: text('bright cartoon with thick outlines') }, groupEnd: true, tooltip: 'How the game looks. The world is set up in this style, and new art is made to match.' },

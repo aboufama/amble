@@ -107,8 +107,9 @@ describe('the demos', () => {
     for (const e of ideas) {
       const p = e.make();
       const { words, exact } = census(p);
-      // game: [the sentence] and imagination: [go wild].
-      expect([words, exact], e.title).toEqual([1, 1]);
+      // game: [the sentence], and the dial on "Wild" (no block for it).
+      expect([words, exact], e.title).toEqual([1, 0]);
+      expect(p.dial, e.title).toBe(3);
       expect(p.sprites, e.title).toEqual([]);
       expect(p.title).toBe(e.title);
     }

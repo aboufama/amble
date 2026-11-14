@@ -1,6 +1,7 @@
+import type { Dial } from '../blocks/spec';
 import type { RotationStyleName, WorldMode } from '../player/protocol';
 
-export type { RotationStyleName, WorldMode };
+export type { Dial, RotationStyleName, WorldMode };
 
 /** A bitmap or SVG image (costume or backdrop). */
 export interface ImageAsset {
@@ -189,5 +190,11 @@ export interface Project {
    * variables were declared; their names then come from the blocks that use them.
    */
   variables?: string[];
+  /**
+   * The dial in the top bar: how much of the game Amble makes from the stage's `game:` line, from 0
+   * (nothing: the blocks are the game) to 4 (a grand game). See FREEDOM_LEVELS in src/blocks/spec.ts.
+   * Missing in projects from before the dial: their `imagination:` block says it, if they have one.
+   */
+  dial?: Dial;
   compiled: CompiledGame | null;
 }

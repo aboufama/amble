@@ -303,6 +303,26 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
         Blockly.serialization.blocks.append({ ...block, x: 24, y: bottom + 28 } as Blockly.serialization.blocks.State, ws);
         flushSave();
       },
+      setField: (type, field, value) => {
+        const block = ws.getTopBlocks(false).find((b) => b.type === type && b.isEnabled());
+        if (!block) return false;
+        // Set from outside the editor (the style knob), not typed: saved at once, and nothing builds until the flag.
+        Blockly.Events.disable();
+        try {
+          block.setFieldValue(value, field);
+        } finally {
+          Blockly.Events.enable();
+        }
+        liveCache.current = null;
+        flushSave();
+        return true;
+      },
+      remove: (type) => {
+        Blockly.Events.setGroup(true);
+        for (const block of ws.getTopBlocks(false)) if (block.type === type && block.isEnabled()) block.dispose(false);
+        Blockly.Events.setGroup(false);
+        flushSave();
+      },
     });
 
     ws.addChangeListener((e: Blockly.Events.Abstract) => {

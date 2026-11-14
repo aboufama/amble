@@ -36,7 +36,7 @@ const MAKING_LINES = [
 ];
 
 /** Shown over the stage while a whole game is made from an idea: what is happening, and for how long. */
-function MakingGame({ progress, idea }: { progress: CompileProgress; idea: string }) {
+function MakingGame({ progress, idea, grand }: { progress: CompileProgress; idea: string; grand: boolean }) {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
     const started = Date.now();
@@ -66,7 +66,9 @@ function MakingGame({ progress, idea }: { progress: CompileProgress; idea: strin
       </div>
       <div className="making-step">{step}</div>
       <div className="making-detail">{detail}</div>
-      <div className="making-time">{time} · a whole game takes two or three minutes</div>
+      <div className="making-time">
+        {time} · {grand ? 'a grand game takes several minutes' : 'a whole game takes two or three minutes'}
+      </div>
     </div>
   );
 }
@@ -266,7 +268,7 @@ export function StagePanel() {
             Click the green flag to play.
           </div>
         )}
-        {makingGame && progress && <MakingGame progress={progress} idea={makingGame} />}
+        {makingGame && progress && <MakingGame progress={progress} idea={makingGame} grand={projectFreedom(project) === 'grand'} />}
       </div>
       {/* How to play a game the compiler made from an idea (it says so itself). */}
       {howToPlay && !fullscreen && (

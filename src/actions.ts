@@ -9,9 +9,12 @@ import type { PlayerHost } from './player/host';
 import { findTarget, useStore } from './store';
 import { uniqueName } from './project/ids';
 import { block, workspace, type JsonBlock } from './project/defaults';
+import { applyDial, projectDial, projectStyle, withBlockBelow, withStyle } from './project/controls';
 import { UNTITLED } from './project/idea';
+import { pickFile } from './project/importers';
+import { readProjectFile } from './project/persistence';
 import { applyRename, deleteVariableDeclaration, renameScope, renameVariableDeclaration, type RenameChange } from './blocks/menus';
-import type { MenuKind } from './blocks/spec';
+import type { Dial, MenuKind } from './blocks/spec';
 import type { CompiledAsset, CompiledGame, CostumeAsset, Project, SoundAsset, SpriteTarget } from './project/types';
 
 // -----------------------------------------------------------------------------
@@ -451,6 +454,10 @@ export interface LiveBlocks {
   renameMenus(kinds: MenuKind[], from: string, to: string): void;
   /** Adds a standalone block to the blocks on screen, below the others. */
   append(block: JsonBlock): void;
+  /** Sets a field of the first standalone block of this type on screen (switched-off blocks aside); false when there is none. */
+  setField(type: string, field: string, value: string): boolean;
+  /** Takes the standalone blocks of this type off the screen (switched-off ones stay). */
+  remove(type: string): void;
 }
 
 let live: LiveBlocks | null = null;
@@ -459,7 +466,7 @@ export function registerLiveBlocks(next: LiveBlocks | null): void {
   live = next;
 }
 
-/** Does the project make its game from the game: line (the imagination dial is on, and the line has words)? */
+/** Does the project make its game from the game: line (the dial is past "My blocks", and the line has words)? */
 export function hasGameLine(project: Project): boolean {
   if (projectFreedom(project) === 'just what I say') return false;
   return topBlocks(project.stage.blocks).some((b) => b.type === 'br_game' && !isDisabled(b) && oneLine(b.fields?.WHAT));
@@ -478,15 +485,45 @@ export function addWish(words: string): void {
   const rule = block('ga_rule', { RULE: text });
   flushBlocks();
   if (live?.targetId() === stageId) live.append(rule);
-  else {
-    store.update((p) => {
-      const tops = topBlocks(p.stage.blocks) as JsonBlock[];
-      // Below the stage's other blocks (their saved positions; a rough height per block is enough).
-      const bottom = tops.reduce((y, b) => Math.max(y, (b.y ?? 0) + 60), 0);
-      p.stage.blocks = { ...(p.stage.blocks ?? {}), blocks: { languageVersion: 0, blocks: [...tops, { ...rule, x: 24, y: bottom + 28 }] } };
-    });
-  }
+  else store.update((p) => void (p.stage.blocks = withBlockBelow(p.stage.blocks, rule)));
   startGame();
+}
+
+/**
+ * The dial: how much of the game Amble makes from the stage's game: line, 0 ("My blocks": nothing)
+ * to 4 ("Grand"). The game then needs building, and the green flag builds it: nothing is built
+ * here, so moving the dial back before then keeps the game that's there (a whole game takes
+ * minutes to make, and the one before is gone when it is done).
+ */
+export function setDial(dial: Dial): void {
+  flushBlocks();
+  // Where it already stands (a project from before the dial says it with its imagination: block): nothing changes.
+  if (projectDial(useStore.getState().project) === dial) return;
+  // The dial replaced the imagination: block: one left from before goes, on screen and in the project.
+  live?.remove('br_freedom');
+  useStore.getState().update((p) => applyDial(p as Project, dial));
+}
+
+/**
+ * The style knob: the stage's art style: block gets these words as they are (a preset's, or the
+ * author's own), a new block if the stage has none; no words takes the block away. Like the dial,
+ * it says what the next build makes: the green flag builds it.
+ */
+export function setStyle(words: string): void {
+  const text = words.trim();
+  flushBlocks();
+  const store = useStore.getState();
+  if (projectStyle(store.project) === text) return;
+  if (live?.targetId() !== store.project.stage.id) store.update((p) => void (p.stage.blocks = withStyle(p.stage.blocks, text)));
+  // The stage is in the editor: its blocks on screen change (and are saved from there).
+  else if (!text) live.remove('br_style');
+  else if (!live.setField('br_style', 'STYLE', text)) live.append(block('br_style', { STYLE: text }));
+}
+
+/** "Load from your computer": asks for a saved game (a .amble file) and reads it. Null when none was picked. */
+export async function pickSavedProject(): Promise<Project | null> {
+  const files = await pickFile('.amble,application/json');
+  return files.length ? readProjectFile(files[0]) : null;
 }
 
 /** Saves the blocks on screen into the project now (the editor otherwise does it a moment after each edit). */

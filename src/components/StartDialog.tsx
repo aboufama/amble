@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
-import { startGame } from '../actions';
-import { FREEDOM_LEVELS, type Freedom } from '../blocks/spec';
+import { pickSavedProject, startGame } from '../actions';
+import type { Dial } from '../blocks/spec';
 import { resolveTransport } from '../compiler/openai';
+import { DEFAULT_DIAL, DIAL_STOPS } from '../project/controls';
 import { EXAMPLES, blankProject, loadExample, type Example } from '../project/examples';
 import { ideaProject } from '../project/idea';
+import type { Project } from '../project/types';
 import { confirmUser } from '../prompt';
 import { Modal } from './Dialogs';
+import { GameDial } from './GameDial';
+import { BlocksTabIcon, FileIcon } from './icons';
+import { StyleKnob } from './StyleKnob';
 
 /** Ideas to start from: one sentence is all a game needs. (Not the demos' own: those are already built.) */
 export const IDEA_STARTERS = [
@@ -18,11 +23,6 @@ export const IDEA_STARTERS = [
   'a wizard cat turns falling raindrops into fish before they hit the ground',
   'an astronaut fixes a spinning space station while aliens unscrew the bolts',
   'a dragon who is afraid of fire runs a lemonade stand in a volcano',
-];
-
-const LEVELS: Array<{ level: Freedom; label: string; hint: string }> = [
-  { level: 'fill in the gaps', label: 'Just my idea', hint: 'Amble builds the game you describe, and nothing you didn’t ask for.' },
-  { level: 'go wild', label: 'Go wild', hint: 'Amble builds your idea, then adds surprises of its own: twists, bosses, secrets.' },
 ];
 
 const START_SEEN = 'amble:start';
@@ -45,17 +45,22 @@ function markStartSeen(): void {
 }
 
 /**
- * The start screen: say what you want to make (a sentence is enough) and Amble makes the game,
- * or open one of the demos. It opens on the first visit and from File > New game.
+ * The home screen: say what you want to make (a sentence is enough), set the dial (how much of the
+ * game Amble makes) and the art style, and Amble makes the game; or play one of the demos, open a
+ * saved game, or start with an empty project. It opens by itself on the first visit, and from the
+ * logo in the top bar and File > New game.
  */
 export function StartDialog() {
   const setDialog = useStore((s) => s.setDialog);
   const setProject = useStore((s) => s.setProject);
   const notify = useStore((s) => s.notify);
-  // Opened from the menu, there may be a game to lose: ask before replacing it.
+  // Opened from the logo or the menu, there may be a game to lose: ask before replacing it.
   const fromMenu = useStore((s) => s.startFromMenu);
   const [idea, setIdea] = useState('');
-  const [freedom, setFreedom] = useState<Freedom>('go wild');
+  const [dial, setDial] = useState<Dial>(DEFAULT_DIAL);
+  /** The stop being pointed at on the dial: the line under it explains that one. */
+  const [pointed, setPointed] = useState<Dial | null>(null);
+  const [style, setStyle] = useState('');
   const [busy, setBusy] = useState(false);
   // Can words be built here? (A key in Settings, the site's own key, or a ChatGPT sign-in.) Unknown at first.
   const [account, setAccount] = useState<boolean | null>(null);
@@ -72,7 +77,7 @@ export function StartDialog() {
 
   const close = () => setDialog(null);
 
-  const replace = async (make: () => Promise<ReturnType<typeof blankProject>> | ReturnType<typeof blankProject>, play: boolean) => {
+  const replace = async (make: () => Promise<Project> | Project, play: boolean) => {
     if (busy) return;
     if (fromMenu && !(await confirmUser({ title: 'Replace Project', message: 'Replace the current project? Save it to your computer first if you want to keep it.', confirmLabel: 'Replace', danger: true }))) return;
     setBusy(true);
@@ -89,23 +94,35 @@ export function StartDialog() {
   };
 
   const words = idea.trim();
+  // On "My blocks" Amble makes nothing: the sentence goes on the stage, and the blocks are the game.
+  const makes = dial > 0;
   const makeGame = () => {
     if (!words) return;
-    if (account === false) {
+    if (makes && account === false) {
       // Nothing to build with here (a copy of Amble with no key of its own): Settings is where a key goes.
       notify('Making a game from an idea needs an OpenAI API key here. Add one in Settings, then try again.', 'error');
       setDialog('settings');
       return;
     }
-    void replace(() => ideaProject(words, freedom), true);
+    void replace(() => ideaProject(words, dial, style), makes);
   };
   const openDemo = (ex: Example) => void replace(() => loadExample(ex), Boolean(ex.prebuilt));
+  const openSaved = async () => {
+    try {
+      const project = await pickSavedProject();
+      if (project) await replace(() => project, false);
+    } catch (err) {
+      notify((err as Error).message, 'error');
+    }
+  };
   const surprise = () => {
     const others = IDEA_STARTERS.filter((s) => s !== idea);
     setIdea(others[Math.floor(Math.random() * others.length)]);
     input.current?.focus();
   };
 
+  const stop = DIAL_STOPS[pointed ?? dial];
+  const wait = dial === 4 ? 'A grand game takes several minutes.' : 'It takes two or three minutes.';
   return (
     <Modal title="Make a game" onClose={close} wide className="start">
       <div className="start-idea">
@@ -127,27 +144,35 @@ export function StartDialog() {
             }
           }}
         />
-        <div className="start-row">
-          <div className="start-levels" role="radiogroup" aria-label="Imagination">
-            {LEVELS.map((l) => (
-              <button key={l.level} role="radio" aria-checked={freedom === l.level} className={freedom === l.level ? 'on' : ''} title={l.hint} onClick={() => setFreedom(l.level)}>
-                {l.label}
-              </button>
-            ))}
+        <div className="start-knobs">
+          <div className="start-knob">
+            <span className="start-knob-label">How much should Amble make?</span>
+            <GameDial look="page" value={dial} onChange={setDial} onPreview={setPointed} />
           </div>
+          <div className="start-knob">
+            <span className="start-knob-label">Art style</span>
+            <StyleKnob look="page" value={style} onChange={setStyle} />
+          </div>
+        </div>
+        {/* What the stop the dial is on (or the one being pointed at) means. */}
+        <p className="start-hint">
+          <b>{stop.label}.</b> {stop.hint}
+        </p>
+        <div className="start-row">
           <button className="btn small" onClick={surprise} title="Fill in an idea to try">
             Give me an idea
           </button>
-          <span className="start-spacer" />
+          <span className="start-note">
+            {!makes
+              ? 'Your sentence goes on the stage, and you build the game with blocks.'
+              : account === false
+                ? 'Making a game from an idea needs an OpenAI API key here (Settings). The demos below play without one.'
+                : `${wait} You can change it after.`}
+          </span>
           <button className="btn primary start-make" disabled={!words || busy} onClick={makeGame}>
             Make my game
           </button>
         </div>
-        <p className="start-hint">
-          {account === false
-            ? 'Making a game from an idea needs an OpenAI API key here (Settings). The demos below play without one.'
-            : `${LEVELS.find((l) => l.level === freedom)?.hint} It takes two or three minutes; then change any sentence and it builds again.`}
-        </p>
       </div>
 
       <h3 className="start-heading">Or play one of these, and change it</h3>
@@ -163,13 +188,13 @@ export function StartDialog() {
         ))}
       </div>
       <div className="start-foot">
-        <button className="link-btn" onClick={() => void replace(() => blankProject(), false)}>
-          Start with an empty project and blocks
+        <button className="btn" onClick={() => void openSaved()} disabled={busy} title="A game you saved to your computer (File > Save to your computer)">
+          <FileIcon size={16} /> Open a saved game
+        </button>
+        <button className="btn" onClick={() => void replace(() => blankProject(), false)} disabled={busy} title="Amble, a few blocks, and nothing else: build the game yourself">
+          <BlocksTabIcon size={16} /> Start with an empty project and blocks
         </button>
       </div>
     </Modal>
   );
 }
-
-// (The levels offered here are two of the dial's three: "just what I say" is the empty project.)
-void FREEDOM_LEVELS;
