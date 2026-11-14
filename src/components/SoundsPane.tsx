@@ -3,13 +3,12 @@ import { compiledAssetsFor, findCompiledSprite, findTarget, useStore } from '../
 import { deleteCompiledAsset, keepCompiledAsset, renameSound } from '../actions';
 import { importSoundFile, pickFile } from '../project/importers';
 import { exportAsset } from '../project/persistence';
-import { synthSound } from '../project/defaults';
 import { uniqueName, uid } from '../project/ids';
-import { SOUND_PRESETS } from '../audio/synth';
+import { browseSounds, renderLibrarySound } from '../audio/library';
 import { EDIT_SAMPLE_RATE, SOUND_EFFECTS, applyEffect, chunkLevels, decodeSound, encodeSound, waveformPath, type SoundEffect } from '../audio/effects';
 import type { CompiledAsset, SoundAsset } from '../project/types';
 import { Modal } from './Dialogs';
-import { Library } from './Library';
+import { SoundLibrary } from './SoundLibrary';
 import { confirmDelete } from '../prompt';
 import { moveItem, useReorder } from './useReorder';
 import { ActionMenu, AssetTile, ContextMenu } from './SpritePane';
@@ -328,7 +327,14 @@ export function SoundsPane() {
     });
     selectSound(selectedId, s.id);
   };
-  const addPreset = (name: string) => add({ ...synthSound(name, name as keyof typeof SOUND_PRESETS), id: uid('a') });
+  const addLibrarySound = (s: { name: string; dataUrl: string; duration: number }) => add({ id: uid('a'), name: s.name, kind: 'sound', dataUrl: s.dataUrl, mime: 'audio/wav', duration: s.duration });
+  /** Surprise: any effect from the library. */
+  const surprise = () => {
+    const effects = browseSounds({ kind: 'effect' });
+    const pick = effects[Math.floor(Math.random() * effects.length)];
+    const sound = pick && renderLibrarySound(pick.id);
+    if (sound) addLibrarySound({ name: pick.name, ...sound });
+  };
   const upload = async () => {
     for (const f of await pickFile('audio/*', true)) {
       try {
@@ -426,7 +432,6 @@ export function SoundsPane() {
       </button>
     </AssetTile>
   );
-  const presetNames = Object.keys(SOUND_PRESETS);
 
   return (
     <div className="asset-panel">
@@ -443,7 +448,7 @@ export function SoundsPane() {
             onClick={() => setLibrary(true)}
             items={[
               { label: 'Upload Sound', icon: <UploadIcon size={20} strokeWidth={2.4} />, onClick: () => void upload() },
-              { label: 'Surprise', icon: <DiceIcon size={20} strokeWidth={2.4} />, onClick: () => addPreset(presetNames[Math.floor(Math.random() * presetNames.length)]) },
+              { label: 'Surprise', icon: <DiceIcon size={20} strokeWidth={2.4} />, onClick: surprise },
               { label: 'Record', icon: <MicIcon size={20} strokeWidth={2.4} />, onClick: () => setRecording(true) },
             ]}
           />
@@ -550,24 +555,19 @@ export function SoundsPane() {
         )}
       </div>
       {library && (
-        <Library
-          title="Choose a Sound"
+        <SoundLibrary
+          playingKey={playing.key}
+          onPlay={playSound}
+          onStop={stopSound}
           onClose={() => {
             stopSound();
             setLibrary(false);
           }}
-          onChoose={(name) => {
+          onChoose={(s) => {
             stopSound();
             setLibrary(false);
-            addPreset(name);
+            addLibrarySound(s);
           }}
-          items={presetNames.map((name) => ({
-            id: name,
-            name,
-            image: <SoundIcon size={56} className="library-sound-icon" />,
-            onHover: () => playSound(`library:${name}`, synthSound(name, name as keyof typeof SOUND_PRESETS).dataUrl),
-            onLeave: stopSound,
-          }))}
         />
       )}
       {recording && (

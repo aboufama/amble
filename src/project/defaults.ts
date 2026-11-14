@@ -1,3 +1,4 @@
+import { presetSound } from '../audio/library';
 import { synthToDataUrl, SOUND_PRESETS } from '../audio/synth';
 import { BLOCK_BY_TYPE, SHADOW_TYPES } from '../blocks/spec';
 import { svgDataUrl } from './images';
@@ -141,8 +142,9 @@ export function blankBackdrop(name = 'backdrop1', color = '#ffffff'): ImageAsset
   return svgAsset(name, `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360"><rect width="480" height="360" fill="${color}"/></svg>`, 480, 360);
 }
 
+/** A starter sound ("pop", "jump"...): the library's version of it, or the old synth's if there is none. */
 export function synthSound(name: string, preset: keyof typeof SOUND_PRESETS): SoundAsset {
-  const { dataUrl, duration } = synthToDataUrl(SOUND_PRESETS[preset]);
+  const { dataUrl, duration } = presetSound(preset) ?? synthToDataUrl(SOUND_PRESETS[preset]);
   return { id: uid('a'), name, kind: 'sound', dataUrl, mime: 'audio/wav', duration };
 }
 

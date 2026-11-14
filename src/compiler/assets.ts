@@ -1,7 +1,7 @@
 import { chatJson, generateImage, type AiSettings, type Transport } from './openai';
 import { imagePrompt, soundPrompt, svgPrompt, type ArtReference } from './prompt';
 import { SOUND_SCHEMA, SVG_SCHEMA, type SvgReply } from './schema';
-import { synthToDataUrl, type SynthRecipe } from '../audio/synth';
+import { candidateLine, fallbackSound, renderSoundReply, soundCandidates, soundKindFor, styleLines, type MadeSound, type SoundReply } from '../audio/custom';
 import { resizeImage, sanitizeSvg, svgDataUrl, svgFromDataUrl, trimTransparent } from '../project/images';
 import { uid } from '../project/ids';
 import type { ArtBrief } from '../project/styles';
@@ -160,19 +160,38 @@ async function makeImageModelArt(job: AssetJob, ctx: AssetContext): Promise<Comp
   };
 }
 
+/**
+ * A sound for the game: the closest library sounds are shown to the model, which picks one or
+ * designs its own (one request, as before). If the request fails, or the answer can't be used,
+ * the best library match is used instead: a build never ends with a missing or silent sound.
+ */
 async function makeSound(job: AssetJob, ctx: AssetContext): Promise<CompiledAsset> {
-  const { system, user } = soundPrompt(job.description);
-  const recipe = await chatJson<SynthRecipe>(ctx.transport, {
-    model: ctx.settings.assetModel || ctx.settings.model,
-    system,
-    user,
-    schema: SOUND_SCHEMA as unknown as Record<string, unknown>,
-    schemaName: 'sound_recipe',
-    reasoningEffort: 'low',
-    kind: 'sound',
-    signal: ctx.signal,
-  });
-  const { dataUrl, duration } = synthToDataUrl(recipe);
+  const candidates = soundCandidates(job.name, job.description, 10);
+  let made: MadeSound | null = null;
+  try {
+    const { system, user } = soundPrompt({
+      name: job.name,
+      description: job.description,
+      gameTitle: ctx.gameTitle,
+      music: soundKindFor(job.name, job.description) === 'music',
+      candidates: candidates.map(candidateLine),
+      styles: styleLines(),
+    });
+    const reply = await chatJson<SoundReply>(ctx.transport, {
+      model: ctx.settings.assetModel || ctx.settings.model,
+      system,
+      user,
+      schema: SOUND_SCHEMA as unknown as Record<string, unknown>,
+      schemaName: 'sound_recipe',
+      reasoningEffort: 'low',
+      kind: 'sound',
+      signal: ctx.signal,
+    });
+    made = renderSoundReply(reply);
+  } catch (err) {
+    if (ctx.signal?.aborted) throw err;
+  }
+  const { dataUrl, duration } = made ?? fallbackSound(job.name, job.description, candidates);
   return {
     id: uid('a'),
     kind: 'sound',
@@ -205,7 +224,8 @@ export async function generateAsset(job: AssetJob, ctx: AssetContext): Promise<C
 export function placeholderAsset(job: AssetJob, like?: CompiledAsset): CompiledAsset {
   const base = { id: uid('a'), name: job.name, description: job.description, targetId: job.targetId, targetName: job.targetName, request: job.description };
   if (job.kind === 'sound') {
-    const { dataUrl, duration } = synthToDataUrl({ segments: [{ wave: 'sine', startFreq: 660, endFreq: 880, duration: 0.1, startVolume: 0.6, endVolume: 0 }] });
+    // The closest sound in the library (nothing is generated, so this works offline).
+    const { dataUrl, duration } = fallbackSound(job.name, job.description);
     return { ...base, kind: 'sound', dataUrl, mime: 'audio/wav', duration };
   }
   if (like?.kind === 'image' && job.kind === 'costume') return { ...like, ...base };

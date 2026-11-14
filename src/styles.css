@@ -3414,6 +3414,193 @@ body.reordering * {
   white-space: nowrap;
 }
 
+/* ---------- The sound library: search, listen, add ---------- */
+
+.sound-library-tools {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 4px;
+}
+
+.sound-library-search {
+  display: flex;
+  flex: 1 1 320px;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  max-width: 560px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 40px;
+  background: var(--ui-white);
+  color: var(--text-primary-transparent);
+  transition: 0.25s ease-out;
+}
+
+.sound-library-search:focus-within {
+  border-color: var(--looks-secondary);
+  box-shadow: 0 0 0 4px var(--looks-transparent);
+}
+
+.sound-library-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+}
+
+.sound-library-chips {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sound-library-chips.categories {
+  padding: 8px 16px 0;
+}
+
+.sound-chip {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  background: var(--ui-white);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.sound-chip:hover {
+  border-color: var(--looks-secondary);
+}
+
+.sound-chip.on {
+  border-color: var(--looks-secondary);
+  background: var(--looks-secondary);
+  color: var(--ui-white);
+}
+
+.sound-library-grid {
+  user-select: none;
+}
+
+.sound-card {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 176px;
+  height: 148px;
+  margin: 8px;
+  overflow: hidden;
+  border: 2px solid var(--rim);
+  border-radius: var(--radius-md);
+  background: var(--ui-white);
+  box-shadow: var(--raise);
+  color: var(--text-primary);
+}
+
+.sound-card:hover,
+.sound-card.playing {
+  border-color: var(--sound-primary);
+}
+
+.sound-card-listen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 0;
+  padding: 12px 10px 4px;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sound-card-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--sound-primary);
+  color: var(--ui-white);
+}
+
+.sound-card.playing .sound-card-icon {
+  background: var(--sound-tertiary);
+}
+
+.sound-card.busy .sound-card-icon {
+  opacity: 0.6;
+}
+
+.sound-card-name {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: bold;
+  line-height: 1.2;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.sound-card-tags {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-primary-transparent);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sound-card-add {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 30px;
+  border: none;
+  border-top: 1px solid var(--line);
+  background: var(--ui-secondary);
+  color: var(--looks-secondary);
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.sound-card-add:hover {
+  background: var(--looks-secondary);
+  color: var(--ui-white);
+}
+
+.sound-library-more {
+  align-self: center;
+  margin: 8px 16px 24px;
+}
+
+.sound-library-empty {
+  width: 100%;
+  margin: 48px 16px;
+  color: var(--text-primary-transparent);
+  font-size: 14px;
+  text-align: center;
+}
+
 /* ---------- Dialogs (Scratch's modals) ---------- */
 
 .modal-backdrop {

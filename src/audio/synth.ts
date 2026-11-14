@@ -1,6 +1,8 @@
 /**
- * Tiny retro sound synthesizer. Used for the "Make a sound" presets and for
- * sounds the compiler generates (it describes them as a list of segments).
+ * The first, tiny sound synthesizer: a recipe is a list of segments (one wave, sliding in pitch
+ * and volume) played one after another. Sounds are now made by the sound engine and library
+ * (src/audio/engine.ts, src/audio/library.ts); this stays for its WAV encoder, for projects
+ * and tests that use its recipes, and as the fallback for the starter presets.
  * Pure JS (no Web Audio) so it's deterministic and testable.
  */
 
