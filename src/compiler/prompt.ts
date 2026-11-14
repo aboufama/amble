@@ -394,10 +394,47 @@ export function imagePrompt(opts: { kind: 'costume' | 'backdrop'; mode: WorldMod
   return `A single game sprite for "${opts.gameTitle}": ${opts.description}. Flat cartoon style like Scratch costumes, bold clean outlines, bright colors, centered, side view facing right, isolated on a transparent background, no text, no shadow on the ground.`;
 }
 
-export function soundPrompt(description: string): { system: string; user: string } {
-  const system = `You design short retro game sounds for a tiny synthesizer. Reply with JSON { "segments": [...] } that play one after another.
-Each segment: wave ("sine" | "square" | "triangle" | "sawtooth" | "noise"), startFreq and endFreq in Hz (the pitch slides between them; for noise they set brightness: 200 dull .. 8000 bright), duration in seconds, startVolume and endVolume 0..1.
-Examples: coin = square 988 Hz 0.07 s then square 1319 Hz 0.22 s fading out. jump = square sliding 220 -> 660 Hz over 0.22 s. explosion = noise 1800 -> 90 over 0.9 s fading out. laser = sawtooth 1600 -> 200 over 0.2 s. Melodies: one short segment per note (use volume 0 segments for rests).
-Keep effects under 1.5 s and jingles under 6 s.`;
-  return { system, user: `Sound: ${description}` };
+/**
+ * The request for one sound a game asked for. `candidates` are the closest library sounds, best
+ * first ("id | name | what it is"); `styles` are the styles the composer knows ("id: what it
+ * sounds like"); `music` asks for a loop to play under the game rather than an effect.
+ */
+export function soundPrompt(req: { name: string; description: string; gameTitle?: string; music: boolean; candidates: string[]; styles: string[] }): { system: string; user: string } {
+  const intro = `You choose one sound for a kid's 2D game. You are told what the game asked for, and shown the closest sounds in Amble's sound library (id | name | what it is). Reply with JSON: { "use", "libraryId", "effect", "music" }.
+
+Use the library when you can: its sounds are designed and tested. If a listed sound is the right kind of thing, with about the right length and mood, reply { "use": "library", "libraryId": "<the id, exactly as listed>", "effect": null, "music": null }. Choose by what the game asked for, not only by name. Only when none of them fits, design the sound yourself.`;
+  const effect = `# Designing your own effect
+Reply { "use": "effect", "libraryId": "", "effect": { "layers": [...], "reverb", "echo", "echoTime", "chorus", "drive", "crush" }, "music": null }.
+"layers" are 1 to 8 voices mixed together. A convincing sound usually has 2 to 4: a body, a transient (a click or burst of noise) and some air or ring. reverb, echo, chorus, drive and crush (8-bit crunch) are 0..1, 0 = off.
+Each layer:
+- source: "sine", "triangle", "saw", "square" (tones); "noise" (hiss) or "rumble" (low noise); "pluck" (a plucked string); or a ready-made "bell", "kick", "snare", "hat", "clap", "tom", "cymbal" (for these only start, duration (how long it rings), freq (its pitch), volume and notes matter).
+- start and duration in seconds; freq -> freqEnd in Hz (the pitch glides: up for a jump or power-up, down for a laser, a fall, getting hurt).
+- attack, decay, sustain, release: struck or plucked = attack 0.001, decay = duration, sustain 0; held = attack 0.01, sustain 0.8; a swell = a long attack.
+- vibratoRate / vibratoDepth (Hz / semitones) and tremoloRate / tremoloDepth (Hz / 0..1): slow = wobble, 25 Hz and up = rough, buzzing, growling.
+- detune (cents; three copies, for a thick sound), pulseWidth (square: 0.5 square, 0.1 thin), fmRatio / fmAmount (sine: 3.5 / 2 = bell, 1.4 / 5 = clang, 1 / 3 = growl).
+- filter: "lowpass", "highpass", "bandpass" or "none"; cutoff -> cutoffEnd in Hz (a sweep); resonance 0..1. Noise through a band-pass sweeping up = whoosh; through a low-pass falling from 5000 to 200 = explosion; through a high-pass at 5000 = hiss, sizzle, rain.
+- notes: a run in semitones above freq ([0, 4, 7, 12] = a rising arpeggio), one every noteStep seconds; [] = one note.
+Write every field (0 for numbers you don't use, "none", []). Keep an effect under 2 seconds unless it is asked to be long.
+Examples (only the fields that matter):
+- coin: square 988 Hz for 0.07 s (sustain 0.8); then at start 0.07 a square 1319 Hz, decay 0.3, sustain 0; reverb 0.15.
+- jump: square 270 -> 650 Hz, duration 0.16, decay 0.16, sustain 0.
+- explosion: noise 0.9 s through lowpass 5500 -> 150, decay 0.9, sustain 0; rumble 1.1 s through lowpass 1000 -> 90; sine 150 -> 60 Hz for 0.4 s; drive 0.3.
+- sparkle: bell at 1568 Hz, notes [0, 4, 7, 12, 16], noteStep 0.06, duration 0.3; reverb 0.4, echo 0.3, echoTime 0.12.
+- growl: saw 80 -> 65 Hz for 0.8 s, tremolo 27 Hz depth 0.8, bandpass 500, resonance 0.4; drive 0.5.`;
+  const music = `# Asking for your own music
+Reply { "use": "music", "libraryId": "", "effect": null, "music": { "style", "tempo", "key", "mood", "energy", "seed", "chords", "melody" } }.
+A composer then writes a seamless loop (drums, bass, chords and a lead melody) from:
+- style: one of the styles below.
+- tempo in beats per minute (0 = the style's own); key ("" = any); mood; energy 0 (sparse, gentle) .. 1 (busy, driving).
+- seed: any whole number; a different seed writes a different tune.
+- chords: one per bar in roman numerals, e.g. ["I", "V", "vi", "IV"] or ["i", "bVII", "bVI", "V"]; [] = the style's own.
+- melody: [] to have it composed (usually best); or your own tune on an eighth-note grid, as scale steps 1..15 (1 = the key note, 8 = an octave up), 0 = rest, -1 = hold the last note.
+Styles:
+${req.styles.map((s) => `- ${s}`).join('\n')}`;
+  const system = `${intro}\n\n${req.music ? music : effect}`;
+  const game = req.gameTitle?.trim() ? `The game "${req.gameTitle.trim()}"` : 'The game';
+  const what = req.music ? 'music' : 'sound';
+  const list = req.candidates.length ? req.candidates.map((c, i) => `${i + 1}. ${c}`).join('\n') : '(nothing close)';
+  const user = `${game} asks for the ${what} "${req.name}": ${req.description}\n\nClosest library sounds, best match first:\n${list}`;
+  return { system, user };
 }

@@ -112,26 +112,5 @@ export const SVG_SCHEMA = {
   properties: { svg: str('A complete <svg> document.') },
 } as const;
 
-export const SOUND_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['segments'],
-  properties: {
-    segments: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['wave', 'startFreq', 'endFreq', 'duration', 'startVolume', 'endVolume'],
-        properties: {
-          wave: { type: 'string', enum: ['sine', 'square', 'triangle', 'sawtooth', 'noise'] },
-          startFreq: num('Hz'),
-          endFreq: num('Hz'),
-          duration: num('seconds'),
-          startVolume: num('0..1'),
-          endVolume: num('0..1'),
-        },
-      },
-    },
-  },
-} as const;
+/** The reply to a sound request: a library sound, or a sound of the model's own design (see src/audio/custom.ts). */
+export { SOUND_SCHEMA } from '../audio/soundSchema';
