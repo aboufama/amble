@@ -338,7 +338,8 @@ describe('the style knob', () => {
 describe('the idea of a project', () => {
   it("is the words of the stage's game: line", () => {
     expect(projectIdea(ideaProject(' a cat delivers pizza ', 3))).toBe('a cat delivers pizza');
-    expect(projectIdea(newProject())).toBe('Amble explores a little world');
+    // A new project says nothing about the game: that is the author's to say.
+    expect(projectIdea(newProject())).toBe('');
     const none = newProject();
     none.stage.blocks = workspace(block('br_game', { WHAT: '  ' }), block('br_audience', { WHO: 'kids' }));
     expect(projectIdea(none)).toBe('');

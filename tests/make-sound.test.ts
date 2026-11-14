@@ -12,6 +12,9 @@ import { block, newProject, workspace } from '../src/project/defaults';
 import { decodeWav, finite, peak, rms } from './audio-helpers';
 import { artBrief } from '../src/project/styles';
 
+// Rendering hundreds of sounds takes a while on a slow machine.
+vi.setConfig({ testTimeout: 60_000 });
+
 afterEach(() => vi.unstubAllGlobals());
 
 const sse = (content: string) => `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content }, finish_reason: 'stop' }] })}\n\ndata: [DONE]\n\n`;

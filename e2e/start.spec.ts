@@ -384,7 +384,8 @@ test('a sentence makes a whole game, and "Change something" changes it', async (
     type B = { type: string };
     return (window as unknown as { __ambleWorkspace: { getTopBlocks(o: boolean): B[] } }).__ambleWorkspace.getTopBlocks(true).map((b) => b.type);
   });
-  expect(stageBlocks).toEqual(['br_game', 'ga_rule']);
+  // The size: block sits under the game: line; the wish joins below it.
+  expect(stageBlocks).toEqual(['br_game', 'br_dial', 'ga_rule']);
 });
 
 type StoreWindow = { __ambleStore: { getState(): { project: { dial?: number; title: string; stage: { blocks: { blocks: { blocks: Array<{ type: string; fields?: Record<string, string> }> } } | null } }; select(id: string): void } } };
@@ -400,7 +401,10 @@ const projectControls = (page: Page) =>
 const blocksOnScreen = (page: Page) =>
   page.evaluate(() => {
     type B = { type: string; getFieldValue(name: string): string | null };
-    return (window as unknown as { __ambleWorkspace: { getTopBlocks(o: boolean): B[] } }).__ambleWorkspace.getTopBlocks(true).map((b) => `${b.type}${b.getFieldValue('STYLE') ? `: ${b.getFieldValue('STYLE')}` : ''}`);
+    return (window as unknown as { __ambleWorkspace: { getTopBlocks(o: boolean): B[] } }).__ambleWorkspace
+      .getTopBlocks(true)
+      .filter((b) => b.type !== 'br_dial')
+      .map((b) => `${b.type}${b.getFieldValue('STYLE') ? `: ${b.getFieldValue('STYLE')}` : ''}`);
   });
 
 const PIXEL = 'pixel art: chunky pixels and a small palette, like a 16-bit console game';
@@ -457,31 +461,43 @@ test('the dial and the style knob say how the game is made, on the home screen a
   // The project holds them: the dial itself (no imagination: block) and an art style: block on the stage.
   expect(await projectControls(page)).toEqual({ dial: 4, stage: ['br_game', `br_style: ${PIXEL}`] });
 
-  // The top bar shows the same two controls, for the open project.
+  // The open project shows both: the dial on the stage's size: block (not in the top bar), the style knob in the bar.
   const bar = page.locator('.menubar');
-  await expect(bar.getByRole('radio', { name: 'Grand' })).toHaveAttribute('aria-checked', 'true');
+  await expect(bar.locator('.dial')).toHaveCount(0);
   await expect(bar.getByRole('button', { name: 'Art style: Pixel art' })).toBeVisible();
-  await expect(bar.locator('.dial-name')).toHaveText('Grand');
-  // Pointing at a stop explains it.
-  await bar.getByRole('radio', { name: 'Small' }).hover();
-  await expect(bar.getByRole('tooltip')).toContainText('Small');
-  await expect(bar.getByRole('tooltip')).toContainText('A small, simple game');
   await page.getByTitle('Stop').click();
+  await page.locator('.stage-selector').click();
+  const size = page.locator('.blocklyBlockCanvas .ambleDial');
+  await expect(size.getByRole('radio')).toHaveCount(5);
+  await expect(size.getByRole('radio', { name: 'Grand' })).toHaveAttribute('aria-checked', 'true');
+  // It is always in the stage's code and never one of its blocks: it can't be deleted, and nothing of it is saved.
+  expect(
+    await page.evaluate(() => {
+      type B = { type: string; isDeletable(): boolean };
+      const ws = (window as unknown as { __ambleWorkspace: { getBlocksByType(t: string, o: boolean): B[] } }).__ambleWorkspace;
+      return ws.getBlocksByType('br_dial', false).map((b) => b.isDeletable());
+    }),
+  ).toEqual([false]);
+  expect((await projectControls(page)).stage).toEqual(['br_game', `br_style: ${PIXEL}`]);
 
   // Moving the dial: the game needs building (the flag says so), and moving it back keeps the game that's there.
   const flag = page.locator('.green-flag');
   await expect(flag).not.toHaveClass(/has-new/);
-  await bar.getByRole('radio', { name: 'Small' }).click();
-  await expect(bar.locator('.dial-name')).toHaveText('Small');
+  await size.getByRole('radio', { name: 'Small' }).click();
+  await expect(size.getByRole('radio', { name: 'Small' })).toHaveAttribute('aria-checked', 'true');
   await expect(flag).toHaveClass(/has-new/);
   expect((await projectControls(page)).dial).toBe(1);
-  await bar.getByRole('radio', { name: 'Small' }).focus();
-  await page.keyboard.press('End');
+  await size.getByRole('radio', { name: 'Grand' }).click();
   await expect(flag).not.toHaveClass(/has-new/);
-  await page.keyboard.press('Home');
-  await page.keyboard.press('ArrowRight');
-  await expect(bar.getByRole('radio', { name: 'Small' })).toHaveAttribute('aria-checked', 'true');
+  await size.getByRole('radio', { name: 'Small' }).click();
+  await expect(size.getByRole('radio', { name: 'Small' })).toHaveAttribute('aria-checked', 'true');
+  expect((await projectControls(page)).stage).toEqual(['br_game', `br_style: ${PIXEL}`]);
   expect(games()).toHaveLength(1);
+  // A sprite's code has no size: block; back on the stage it shows where the dial stands.
+  await page.locator('.sprite-tile.compiled', { hasText: 'Rex' }).click();
+  await expect(size).toHaveCount(0);
+  await page.locator('.stage-selector').click();
+  await expect(size.getByRole('radio', { name: 'Small' })).toHaveAttribute('aria-checked', 'true');
   // The flag builds the small game.
   await flag.click();
   await expect.poll(() => games().length, { timeout: 30_000 }).toBe(2);
@@ -545,9 +561,10 @@ test('the logo opens the home screen: make a game, play a demo, open a saved gam
   await expect(replace).toHaveCount(0);
   await expect(page.locator('.sprite-tile', { hasText: 'Amble' })).toBeVisible();
   await expect(page.locator('.blocklyMainBackground')).toBeVisible();
-  // An empty project is on "My blocks", with no style: the two controls in the top bar say so.
+  // An empty project is on "My blocks", with no style: the stage's size: block and the knob in the top bar say so.
   const bar = page.locator('.menubar');
-  await expect(bar.getByRole('radio', { name: 'My blocks' })).toHaveAttribute('aria-checked', 'true');
+  await page.locator('.stage-selector').click();
+  await expect(page.locator('.blocklyBlockCanvas .ambleDial').getByRole('radio', { name: 'My blocks' })).toHaveAttribute('aria-checked', 'true');
   await expect(bar.getByRole('button', { name: 'Art style: none' })).toBeVisible();
 
   // The logo is the way home: the idea box with the dial and the style knob, the demos, and the two ways to start without an idea.
@@ -576,7 +593,9 @@ test('the logo opens the home screen: make a game, play a demo, open a saved gam
   await expect(start).toHaveCount(0);
   await expect(page.getByLabel('Project title')).toHaveValue('My saved game');
   // The saved game's dial came with it.
-  await expect(bar.getByRole('radio', { name: 'Full' })).toHaveAttribute('aria-checked', 'true');
+  expect((await projectControls(page)).dial).toBe(2);
+  await page.locator('.stage-selector').click();
+  await expect(page.locator('.blocklyBlockCanvas .ambleDial').getByRole('radio', { name: 'Full' })).toHaveAttribute('aria-checked', 'true');
 
   // A file that isn't a game says so, and the home screen stays.
   await page.getByRole('button', { name: 'Amble: home' }).click();
@@ -590,7 +609,7 @@ test('the logo opens the home screen: make a game, play a demo, open a saved gam
   await expect(page.getByLabel('Project title')).toHaveValue('My saved game');
 });
 
-test('the dial and the style knob fit the top bar of a 1280-wide window', async ({ page }) => {
+test('the style knob fits the top bar of a 1280-wide window, and the dial is in the code', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   // The fullest the bar gets: Settings, the sign-in button (Codex is on this computer) and the debug counter.
   await page.route('**/api/codex/status', (route) => route.fulfill({ json: { installed: true, version: '1.0.0', auth: 'none', login: { pending: false, url: null, error: null } } }));
@@ -607,8 +626,7 @@ test('the dial and the style knob fit the top bar of a 1280-wide window', async 
   await page.getByRole('menuitemradio', { name: 'Custom…' }).click();
   await page.getByLabel('Your own art style').fill('like a comic book from the fifties, with big dots and thick ink');
   await page.keyboard.press('Enter');
-  await expect(bar.locator('.dial-name')).toHaveText('My blocks');
-  await expect(bar.locator('.dial-name')).toBeVisible();
+  await expect(bar.locator('.dial')).toHaveCount(0);
   await expect(bar.locator('.style-knob-name')).toBeVisible();
 
   const fit = () =>
@@ -621,17 +639,22 @@ test('the dial and the style knob fit the top bar of a 1280-wide window', async 
       };
     });
   expect(await fit()).toEqual({ overflows: false, overlaps: false, inside: true });
-  // Every stop keeps the bar as it is (the name's place is as wide as the longest).
-  const left = (await bar.locator('.dial').boundingBox())!.x;
-  for (const name of ['Small', 'Full', 'Wild', 'Grand']) {
-    await bar.getByRole('radio', { name }).click();
-    await expect(bar.locator('.dial-name')).toHaveText(name);
-    expect((await bar.locator('.dial').boundingBox())!.x).toBe(left);
-    expect(await fit()).toEqual({ overflows: false, overlaps: false, inside: true });
-  }
-  // Narrower windows (down to the 1024 the editor needs) still fit: the two controls give up their names.
+  // Narrower windows (down to the 1024 the editor needs) still fit: the knob gives up its name.
   await page.setViewportSize({ width: 1024, height: 720 });
-  await expect(bar.locator('.dial-name')).toBeHidden();
-  await expect(bar.getByRole('radio', { name: 'Grand' })).toHaveAttribute('aria-checked', 'true');
   expect(await fit()).toEqual({ overflows: false, overlaps: false, inside: true });
+  // The dial is on the stage's size: block, in view in the code area.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.locator('.stage-selector').click();
+  const size = page.locator('.blocklyBlockCanvas .ambleDial');
+  await expect(size.getByRole('radio', { name: 'My blocks' })).toHaveAttribute('aria-checked', 'true');
+  for (const name of ['Small', 'Full', 'Wild', 'Grand']) {
+    await size.getByRole('radio', { name }).click();
+    await expect(size.getByRole('radio', { name })).toHaveAttribute('aria-checked', 'true');
+  }
+  const box = (await size.boundingBox())!;
+  const area = (await page.locator('.blockly-host').boundingBox())!;
+  expect(box.x).toBeGreaterThan(area.x);
+  expect(box.x + box.width).toBeLessThan(area.x + area.width);
+  expect(box.y).toBeGreaterThan(area.y);
+  expect(box.y + box.height).toBeLessThan(area.y + area.height);
 });

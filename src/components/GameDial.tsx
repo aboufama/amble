@@ -1,8 +1,6 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import type { Dial } from '../blocks/spec';
-import { DIAL_STOPS, projectDial, projectIdea } from '../project/controls';
-import { setDial } from '../actions';
-import { useStore } from '../store';
+import { DIAL_STOPS } from '../project/controls';
 
 interface GameDialProps {
   value: Dial;
@@ -89,13 +87,4 @@ export function GameDial({ value, onChange, look = 'bar', onPreview, note }: Gam
       )}
     </div>
   );
-}
-
-/** The dial of the open project, in the top bar. */
-export function ProjectDial() {
-  const dial = useStore((s) => projectDial(s.project));
-  const idea = useStore((s) => projectIdea(s.project));
-  // Past "My blocks" the game is made from the stage's game: line (so it needs one), and by the green flag, not at once.
-  const note = (stop: Dial) => (stop === 0 ? undefined : !idea ? 'It needs a game: block on the stage that says what the game is.' : stop !== dial ? 'Then the green flag makes the game again.' : undefined);
-  return <GameDial value={dial} onChange={setDial} note={note} />;
 }

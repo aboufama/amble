@@ -208,8 +208,8 @@ export function newProject(): Project {
     [block('ev_key', { KEY: 'space' }), block('so_play', { SOUND: 'jump' })],
     [block('ev_click'), block('lk_say_for', { TEXT: 'Hello!', SECONDS: 2 }), block('so_play', { SOUND: 'pop' })],
   );
+  // The stage starts with no game: line: what the game is, is the author's to say.
   const stage = newStage();
-  stage.blocks = workspace(block('br_game', { WHAT: 'Amble explores a little world' }), block('br_audience', { WHO: 'kids who are new to games' }));
   return {
     format: 'amble',
     version: 1,

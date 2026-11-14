@@ -287,8 +287,8 @@ const STAGE: Array<'sprite' | 'stage'> = ['stage'];
 
 export const BLOCKS: BlockSpec[] = [
   // ---- Brief: what you're making, for whom, and what "done" means
-  { type: 'br_game', core: 'idea', category: 'brief', shape: 'rule', label: 'game: {WHAT}', inputs: { WHAT: text('Amble collects stars and dodges spikes') }, tooltip: 'Say what the game is, in a sentence or two. With the dial at the top on Small or more, Amble builds the whole game from it.' },
-  { type: 'br_freedom', category: 'brief', shape: 'rule', label: 'imagination: {LEVEL}', inputs: { LEVEL: menu('freedom', 'fill in the gaps') }, hidden: true, tooltip: 'From older projects: how much Amble may invent. The dial at the top does this now; moving it removes this block.' },
+  { type: 'br_game', core: 'idea', category: 'brief', shape: 'rule', label: 'game: {WHAT}', inputs: { WHAT: text('your game, in a sentence') }, tooltip: 'Say what the game is, in a sentence or two. With the size: block on Small or more, Amble builds the whole game from it.' },
+  { type: 'br_freedom', category: 'brief', shape: 'rule', label: 'imagination: {LEVEL}', inputs: { LEVEL: menu('freedom', 'fill in the gaps') }, hidden: true, tooltip: 'From older projects: how much Amble may invent. The size: block does this now; moving its dial removes this block.' },
   { type: 'br_audience', category: 'brief', shape: 'rule', label: 'made for: {WHO}', inputs: { WHO: text('kids who are new to games') }, tooltip: 'Who will play it. This decides how hard, fast and wordy the game is.' },
   { type: 'br_style', core: 'idea', category: 'brief', shape: 'rule', label: 'art style: {STYLE}', inputs: { STYLE: text('bright cartoon with thick outlines') }, groupEnd: true, tooltip: 'How the game looks. The world is set up in this style, and new art is made to match.' },
   { type: 'br_win', category: 'brief', shape: 'rule', label: 'you win when {COND}', inputs: { COND: cond }, tooltip: 'The goal. The game is won the moment this becomes true.' },

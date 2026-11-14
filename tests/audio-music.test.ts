@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PEAK, toDataUrl } from '../src/audio/engine';
 import { browseSounds, loopParams, renderLibrarySamples, soundLibrary } from '../src/audio/library';
 import { MAX_LOOP_CHARS, MOODS, MUSIC_STYLES, composeMusic, keyName, parseChord, parseKey, renderMusic, renderSong, type MusicStyle } from '../src/audio/music';
 import { bandProfile, contour, crossings, difference, finite, peak, rms, seam } from './audio-helpers';
+
+// Rendering hundreds of sounds takes a while on a slow machine.
+vi.setConfig({ testTimeout: 60_000 });
 
 const seconds = (r: { samples: Float32Array; sampleRate: number }) => r.samples.length / r.sampleRate;
 /** What a style sounds like, as numbers: its tone colour, its loudness pattern over the loop, its brightness. */

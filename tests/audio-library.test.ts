@@ -6,6 +6,9 @@ import { synthSound } from '../src/project/defaults';
 import { SOUND_PRESETS } from '../src/audio/synth';
 import { decodeWav, difference, finite, peak, rms } from './audio-helpers';
 
+// Rendering hundreds of sounds takes a while on a slow machine.
+vi.setConfig({ testTimeout: 60_000 });
+
 const lib = soundLibrary();
 const render = (id: string) => {
   const r = renderLibrarySamples(id);

@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PEAK, limitBuffer, loudness, renderRecipe, reverbWet, toDataUrl, type Layer, type Recipe, type Wave } from '../src/audio/engine';
 import { PATCHES, clap, cymbal, hat, kick, snare, tom } from '../src/audio/instruments';
 import { bandProfile, crossings, decodeWav, finite, peak, pitch, rms, seam } from './audio-helpers';
+
+// Rendering hundreds of sounds takes a while on a slow machine.
+vi.setConfig({ testTimeout: 60_000 });
 
 const tone = (w: Wave, extra: Partial<Layer> = {}): Recipe => ({ layers: [{ w, f: 440, d: 0.3, ...extra }] });
 

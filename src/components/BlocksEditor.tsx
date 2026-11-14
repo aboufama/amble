@@ -1,14 +1,15 @@
 import { useEffect, useRef } from 'react';
-import { AMBLE_THEME, Blockly, MAKE_SKILL, MAKE_VARIABLE, TOGGLE_PALETTE, registerBlockly, toolboxFor, type PaletteContext } from '../blocks/blockly';
+import { AMBLE_THEME, Blockly, DIAL_BLOCK, MAKE_SKILL, MAKE_VARIABLE, TOGGLE_PALETTE, registerBlockly, toolboxFor, type PaletteContext } from '../blocks/blockly';
 import { FieldAmbleMenu, FieldAmbleText, FieldCharacter, setMenuHost } from '../blocks/fields';
 import { syncAssembly } from '../blocks/assembly';
 import { BLOCK_SCALE, addZoomControls } from '../blocks/workspaceUi';
 import { globalVariables, procedureNames, variablesFor, type MenuContext } from '../blocks/menus';
-import type { MenuKind } from '../blocks/spec';
+import type { Dial, MenuKind } from '../blocks/spec';
 import { findCompiledSprite, findTarget, useStore } from '../store';
-import { buildQuietly, deleteVariable, keepCompiledSprite, registerLiveBlocks, renameVariable } from '../actions';
+import { buildQuietly, deleteVariable, keepCompiledSprite, registerLiveBlocks, renameVariable, setDial } from '../actions';
 import { alertUser, askUser, confirmUser } from '../prompt';
 import type { BlocksState } from '../project/types';
+import { projectDial } from '../project/controls';
 import { CodeIcon, KeepIcon } from './icons';
 import { CodeNotes } from './CodeNotes';
 import { DEV_TOOLS } from './ProblemsDialog';
@@ -33,6 +34,17 @@ function fieldKind(block: Blockly.Block, field: Blockly.Field): MenuKind | null 
   return null;
 }
 
+/** The workspace's blocks as they are saved: all of them but the stage's size: block, which shows the project's dial and isn't one of its blocks. */
+function savedBlocks(ws: Blockly.Workspace): BlocksState {
+  const state = Blockly.serialization.workspaces.save(ws) as BlocksState;
+  const blocks = (state as { blocks?: { blocks?: Array<{ type: string }> } }).blocks;
+  if (blocks?.blocks?.some((b) => b.type === DIAL_BLOCK)) {
+    blocks.blocks = blocks.blocks.filter((b) => b.type !== DIAL_BLOCK);
+    if (!blocks.blocks.length) delete (state as { blocks?: unknown }).blocks;
+  }
+  return state;
+}
+
 /** The Blockly workspace for the selected sprite (or the stage). */
 export function BlocksEditor({ visible }: { visible: boolean }) {
   const divRef = useRef<HTMLDivElement>(null);
@@ -50,11 +62,92 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
   const needsScroll = useRef(false);
   const visibleRef = useRef(visible);
 
+  /** The stage's size: block (the dial), while the stage's code is shown. */
+  const dialBlock = useRef<Blockly.BlockSvg | null>(null);
+  /** The dial is being set to what the project says, not moved by hand. */
+  const dialSync = useRef(false);
+
+  /**
+   * The stage's code always has the size: block: the dial that says how much of the game Amble makes.
+   * It shows `project.dial` and is never saved with the blocks (see savedBlocks).
+   */
+  const addDial = (ws: Blockly.WorkspaceSvg) => {
+    dialBlock.current = null;
+    const { project } = useStore.getState();
+    if (findTarget(project, loadedId.current ?? '')?.kind !== 'stage') return;
+    Blockly.Events.disable();
+    try {
+      const block = ws.newBlock(DIAL_BLOCK);
+      block.setDeletable(false);
+      block.contextMenu = false;
+      const field = block.getField('DIAL');
+      field?.setValue(String(projectDial(project)));
+      field?.setValidator((value: string) => {
+        // Moved by hand: the project's dial follows (once Blockly has finished setting the field).
+        if (!dialSync.current) queueMicrotask(() => setDial(Number(value) as Dial));
+        return value;
+      });
+      block.initSvg();
+      block.render();
+      dialBlock.current = block;
+    } finally {
+      Blockly.Events.enable();
+    }
+  };
+
+  /** Under the game: line, or above everything when there is none: wherever nothing else is. */
+  const placeDial = (ws: Blockly.WorkspaceSvg) => {
+    const block = dialBlock.current;
+    if (!block || block.isDisposed()) return;
+    const others = ws.getTopBlocks(false).filter((b) => b !== block);
+    const boxes = others.map((b) => b.getBoundingRectangle());
+    const size = block.getHeightWidth();
+    const gap = 12;
+    const game = others.find((b) => b.type === 'br_game');
+    let x = 24;
+    let y = 24;
+    if (game) {
+      const box = game.getBoundingRectangle();
+      x = box.left;
+      y = box.bottom + gap;
+      for (let tries = 0; tries < 50; tries++) {
+        const hit = boxes.find((b) => b.left < x + size.width && b.right > x && b.top < y + size.height + gap / 2 && b.bottom > y - gap / 2);
+        if (!hit) break;
+        y = hit.bottom + gap;
+      }
+    } else if (boxes.length) {
+      x = Math.min(...boxes.map((b) => b.left));
+      y = Math.min(...boxes.map((b) => b.top)) - size.height - gap;
+    }
+    Blockly.Events.disable();
+    try {
+      block.moveTo(new Blockly.utils.Coordinate(x, y));
+    } finally {
+      Blockly.Events.enable();
+    }
+  };
+
+  /** The dial shows what the project says (set on the home screen, or by an undo). */
+  const syncDial = () => {
+    const field = dialBlock.current && !dialBlock.current.isDisposed() ? dialBlock.current.getField('DIAL') : null;
+    const want = String(projectDial(useStore.getState().project));
+    if (!field || field.getValue() === want) return;
+    dialSync.current = true;
+    Blockly.Events.disable();
+    try {
+      field.setValue(want);
+    } finally {
+      Blockly.Events.enable();
+      dialSync.current = false;
+    }
+  };
+
   /** Untangles overlapping scripts and scrolls to their top-left corner (like Scratch), once Blockly has measured them. */
   const showScripts = (ws: Blockly.WorkspaceSvg) => {
     void Blockly.renderManagement.finishQueuedRenders().then(() => {
       if (wsRef.current !== ws || !visibleRef.current) return;
       needsScroll.current = false;
+      placeDial(ws);
       const tops = ws.getTopBlocks(false);
       if (!tops.length) return;
       const boxes = tops.map((b) => b.getBoundingRectangle());
@@ -89,7 +182,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     }
     const id = loadedId.current;
     if (!ws || !id || shownLoad.current !== useStore.getState().projectLoads) return;
-    const state = Blockly.serialization.workspaces.save(ws) as Record<string, unknown>;
+    const state = savedBlocks(ws) as Record<string, unknown>;
     useStore.getState().update((p) => {
       const t = findTarget(p, id);
       if (t) t.blocks = state;
@@ -107,7 +200,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       newMessages: newMessages.current,
       get liveBlocks() {
         if (!ws || loading.current || !loadedId.current) return undefined;
-        liveCache.current ??= Blockly.serialization.workspaces.save(ws) as BlocksState;
+        liveCache.current ??= savedBlocks(ws);
         return liveCache.current;
       },
     };
@@ -328,6 +421,8 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
 
     ws.addChangeListener((e: Blockly.Events.Abstract) => {
       if (e.isUiEvent || loading.current || !loadedId.current) return;
+      // The size: block is no block of the project: moving it (or its dial) saves nothing.
+      if (dialBlock.current && (e as { blockId?: string }).blockId === dialBlock.current.id) return;
       liveCache.current = null;
       // Renaming a custom block renames the blocks that run it.
       if (e.type === Blockly.Events.BLOCK_CHANGE) {
@@ -377,6 +472,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
       if (state.project !== prev.project || state.selectedId !== prev.selectedId) {
         schedulePalette();
         refreshPictures();
+        syncDial();
       }
       // More blocks / Fewer blocks: the board, or every block by category.
       if (state.palette !== prev.palette) refreshPalette();
@@ -420,6 +516,7 @@ export function BlocksEditor({ visible }: { visible: boolean }) {
     ws.clearUndo();
     loadedId.current = target?.id ?? null;
     liveCache.current = null;
+    addDial(ws);
     refreshPalette();
     needsScroll.current = true;
     if (visibleRef.current) showScripts(ws);

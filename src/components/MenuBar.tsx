@@ -8,7 +8,6 @@ import { confirmUser } from '../prompt';
 import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
 import { DEV_TOOLS } from './ProblemsDialog';
 import { ModeSwitch, SpendMeter } from './ModeSwitch';
-import { ProjectDial } from './GameDial';
 import { ProjectStyleKnob } from './StyleKnob';
 import { useServerConfig } from './useServerConfig';
 
@@ -191,7 +190,6 @@ export function MenuBar() {
       </div>
       <div className="menubar-build">
         {/* Always there: how much of the game Amble makes, and how it looks. */}
-        <ProjectDial />
         <ProjectStyleKnob />
         <ModeSwitch />
         <SpendMeter />

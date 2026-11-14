@@ -127,6 +127,14 @@ const SHADOW_BLOCKS = [
   { type: SHADOW_TYPES.value, message0: '%1', args0: [{ type: 'field_input', name: 'TEXT', text: '' }], output: 'Value', outputShape: ROUND, style: 'shadow_blocks' },
 ];
 
+/**
+ * The stage's size: block, with the dial on it. It is always in the stage's code and never saved
+ * with it: it shows `project.dial`, so it is no block of the language (not in BLOCKS, not in the
+ * palette, never read by the compiler).
+ */
+export const DIAL_BLOCK = 'br_dial';
+const DIAL_BLOCK_JSON = { type: DIAL_BLOCK, message0: 'size: %1', args0: [{ type: 'field_amble_dial', name: 'DIAL', value: '0' }], style: 'brief_blocks', tooltip: '', inputsInline: true };
+
 let registered = false;
 
 /** Registers the renderer, fields, palette, menus and every Amble block (once). */
@@ -138,7 +146,7 @@ export function registerBlockly(): void {
   registerFields();
   registerWorkspaceUi();
   registerComments();
-  Blockly.common.defineBlocksWithJsonArray([...SHADOW_BLOCKS, ...BLOCKS.map(blockJson)]);
+  Blockly.common.defineBlocksWithJsonArray([...SHADOW_BLOCKS, DIAL_BLOCK_JSON, ...BLOCKS.map(blockJson)]);
 }
 
 const blockStyles: Record<string, Partial<Blockly.Theme.BlockStyle>> = {

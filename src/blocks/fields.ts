@@ -3,6 +3,7 @@ import { FieldMultilineInput } from '@blockly/field-multilineinput';
 import { BLOCK_BY_TYPE, CHARACTER_SPECIAL_LABELS, type CharacterSpecial, type MenuKind } from './spec';
 import { ALL_SPECIALS, DELETE_VARIABLE, NEW_MESSAGE, RECORD_SOUND, RENAME_VARIABLE, isActionValue, menuOptions, type MenuContext } from './menus';
 import { SPECIAL_ICONS, UNKNOWN_CHARACTER_ICON } from './icons';
+import { DIAL_STOPS } from '../project/controls';
 
 // -----------------------------------------------------------------------------
 // The editor's hooks for menus that need the project or a dialog
@@ -388,6 +389,100 @@ export class FieldCharacter extends Blockly.FieldLabelSerializable {
   }
 }
 
+// -----------------------------------------------------------------------------
+// The dial
+// -----------------------------------------------------------------------------
+
+const DIAL_GAP = 60;
+const DIAL_DOT = 4.5;
+const DIAL_KNOB = 9.5;
+const DIAL_LEFT = 32;
+const DIAL_RIGHT = 24;
+const DIAL_TRACK_Y = 12;
+const DIAL_LABEL_Y = 34;
+const DIAL_HEIGHT = 42;
+const DIAL_FONT = 'fill: #fff; font-size: 12.5px; cursor: pointer';
+const dialX = (stop: number): number => DIAL_LEFT + stop * DIAL_GAP;
+
+/**
+ * The dial on the stage's size: block: five named stops on a track, from "My blocks" to "Grand".
+ * A click on a stop (or near one) sets it. The value is the stop's number as a string, "0" to "4".
+ */
+export class FieldDial extends Blockly.Field<string> {
+  static override fromJson(options: Blockly.FieldConfig & { value?: string }): FieldDial {
+    return new FieldDial(options.value ?? '0', undefined, options);
+  }
+
+  override EDITABLE = true;
+  override SERIALIZABLE = true;
+
+  private stops: SVGGElement[] = [];
+  private filled: SVGLineElement | null = null;
+
+  override initView() {
+    const group = this.fieldGroup_ as SVGGElement;
+    const svg = Blockly.utils.dom.createSvgElement;
+    group.setAttribute('role', 'radiogroup');
+    group.setAttribute('aria-label', 'Size');
+    group.classList.add('ambleDial');
+    const track = { x1: dialX(0), y1: DIAL_TRACK_Y, y2: DIAL_TRACK_Y, stroke: '#fff', 'stroke-width': 4, 'stroke-linecap': 'round' };
+    svg(Blockly.utils.Svg.LINE, { ...track, x2: dialX(DIAL_STOPS.length - 1), 'stroke-opacity': 0.35 }, group);
+    this.filled = svg(Blockly.utils.Svg.LINE, { ...track, x2: dialX(0) }, group);
+    this.stops = DIAL_STOPS.map((stop, i) => {
+      const g = svg(Blockly.utils.Svg.G, { role: 'radio', 'aria-label': stop.label, class: 'ambleDialStop', style: 'cursor: pointer' }, group);
+      // The whole column answers a click, not only the dot.
+      svg(Blockly.utils.Svg.RECT, { x: dialX(i) - DIAL_GAP / 2, y: 0, width: DIAL_GAP, height: DIAL_HEIGHT, fill: '#fff', 'fill-opacity': 0 }, g);
+      svg(Blockly.utils.Svg.CIRCLE, { cx: dialX(i), cy: DIAL_TRACK_Y, r: DIAL_DOT, fill: '#fff' }, g);
+      const name = svg(Blockly.utils.Svg.TEXT, { x: dialX(i), y: DIAL_LABEL_Y, 'text-anchor': 'middle', style: DIAL_FONT }, g);
+      name.textContent = stop.label;
+      const title = document.createElementNS(Blockly.utils.dom.SVG_NS, 'title');
+      title.textContent = stop.hint;
+      g.appendChild(title);
+      return g;
+    });
+  }
+
+  protected override doClassValidation_(value?: unknown): string | null {
+    const stop = Number(value);
+    return Number.isInteger(stop) && stop >= 0 && stop < DIAL_STOPS.length ? String(stop) : null;
+  }
+
+  protected override getText_(): string | null {
+    return DIAL_STOPS[Number(this.getValue() ?? 0)]?.label ?? '';
+  }
+
+  protected override render_() {
+    const at = Number(this.getValue() ?? 0);
+    this.stops.forEach((g, i) => {
+      g.setAttribute('aria-checked', String(i === at));
+      const dot = g.querySelector('circle');
+      dot?.setAttribute('r', String(i === at ? DIAL_KNOB : DIAL_DOT));
+      dot?.setAttribute('fill-opacity', i <= at ? '1' : '0.55');
+      const name = g.querySelector('text');
+      name?.setAttribute('fill-opacity', i === at ? '1' : '0.75');
+      name?.setAttribute('font-weight', i === at ? '700' : '500');
+    });
+    this.filled?.setAttribute('x2', String(dialX(at)));
+    this.size_ = new Blockly.utils.Size(dialX(DIAL_STOPS.length - 1) + DIAL_RIGHT, DIAL_HEIGHT);
+  }
+
+  /** A click: the stop nearest to where it landed. */
+  protected override showEditor_(e?: Event) {
+    if (!(e instanceof MouseEvent) || !this.stops.length) return;
+    let nearest = 0;
+    let best = Infinity;
+    this.stops.forEach((g, i) => {
+      const box = g.getBoundingClientRect();
+      const d = Math.abs(e.clientX - (box.left + box.width / 2));
+      if (d < best) {
+        best = d;
+        nearest = i;
+      }
+    });
+    this.setValue(String(nearest));
+  }
+}
+
 let registered = false;
 
 export function registerFields(): void {
@@ -397,4 +492,5 @@ export function registerFields(): void {
   Blockly.fieldRegistry.register('field_amble_text', FieldAmbleText);
   Blockly.fieldRegistry.register('field_amble_menu', FieldAmbleMenu);
   Blockly.fieldRegistry.register('field_amble_character', FieldCharacter);
+  Blockly.fieldRegistry.register('field_amble_dial', FieldDial);
 }
