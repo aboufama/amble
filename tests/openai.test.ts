@@ -74,8 +74,8 @@ describe('chatJson', () => {
     expect(bodies[0]).toMatchObject({ reasoning: { effort: 'low' }, provider: { require_parameters: true, only: ['azure', 'openai'], order: ['azure', 'openai'], allow_fallbacks: false } });
     expect(bodies[0].reasoning_effort).toBeUndefined();
     expect(bodies[1].provider).toEqual({ require_parameters: true });
-    // Amble's own default for the code the build waits for: OpenAI's ultrafast endpoint first, then Azure (faster than OpenAI's own).
-    expect(bodies[2].provider).toEqual({ require_parameters: true, only: ['openai/ultrafast', 'azure', 'openai'], order: ['openai/ultrafast', 'azure', 'openai'], allow_fallbacks: false });
+    // Amble's own default: OpenAI's models on Azure first (the same price, faster).
+    expect(bodies[2].provider).toEqual({ require_parameters: true, only: ['azure', 'openai'], order: ['azure', 'openai'], allow_fallbacks: false });
     // The code the build waits for has providers of its own.
     (globalThis as { __ambleHarness?: object }).__ambleHarness = { providerOrder: { openai: ['azure', 'openai'] }, codeProvider: { openai: ['openai/ultrafast', 'openai'] } };
     try {

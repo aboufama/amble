@@ -139,6 +139,13 @@ function newGameIdea(project: Project, building: Array<{ targetId: string; words
   return words && building.some((b) => b.targetId === project.stage.id && b.words === words) ? words : null;
 }
 
+/** Would the next build write the whole game again (its game: line), not just some words? */
+function wholeGamePending(project: Project): boolean {
+  const line = topBlocks(project.stage.blocks).find((b) => b.type === 'br_game' && !isDisabled(b));
+  const words = oneLine(line?.fields?.WHAT);
+  return Boolean(words) && compileNeedsRequest(project) && piecesToWrite(project, false).some((b) => b.targetId === project.stage.id && b.words === words);
+}
+
 export function needsCompile(project: Project): boolean {
   return !project.compiled || project.compiled.inputHash !== inputHash(project);
 }
@@ -243,12 +250,15 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
 
 let quietTimer: number | null = null;
 
-/** Builds new words quietly in a moment, if there are any by then. */
+/**
+ * Builds new words quietly in a moment, if there are any by then. Not a whole game (the dial or the
+ * art style moved meanwhile): that is a full, paid rebuild, and waits for the flag.
+ */
 function scheduleQuietBuild(): void {
   if (quietTimer !== null) window.clearTimeout(quietTimer);
   quietTimer = window.setTimeout(() => {
     quietTimer = null;
-    buildQuietly();
+    if (!wholeGamePending(useStore.getState().project)) buildQuietly();
   }, 1200);
 }
 

@@ -1,10 +1,10 @@
 /**
  * How a compile is carried out: how hard the model thinks for each kind of request, how art and
  * sounds are made, and whether the code is checked before the game is put together. The defaults
- * are the settings Amble ships with: the speed rounds' s1 (November 2026, GPT-6.2 Sol through
- * OpenRouter: 19.7 seconds a game where the Harness Lab's v25 took 30.5, judged 7.3 to its 7.0): the
- * code on OpenAI's ultrafast endpoint, the characters' classes before the game piece, and the player
- * asked about the look while the game is written (bench/speed.mjs, bench/speed-notes.txt). `fullSize` builds the bigger
+ * are the settings Amble ships with, all at the standard price (no faster, dearer endpoints): the
+ * characters' classes before the game piece, the player asked one question about the look while the
+ * game is written, and a quick change's new art started while its code is written (bench/speed.mjs,
+ * bench/speed-notes.txt). `fullSize` builds the bigger
  * game the judge scored 8 (8, 8, 7) in 31-51 seconds; benchmarks (bench/harness.mjs) try others by setting
  * `globalThis.__ambleHarness` in the page before compiling.
  */
@@ -179,8 +179,8 @@ export const DEFAULT_HARNESS: Harness = {
   edits: true,
   tweakTrial: 0,
   providerSort: null,
-  providerOrder: { openai: ['azure', 'openai/ultrafast', 'openai'] },
-  codeProvider: { openai: ['openai/ultrafast', 'azure', 'openai'] },
+  providerOrder: { openai: ['azure', 'openai'] },
+  codeProvider: null,
   codeTier: null,
   backdropProvider: null,
   artTier: null,

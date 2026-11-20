@@ -708,21 +708,24 @@ async function runJobs(jobs: AssetJob[], project: Project, style: string, transp
 const PENDING = 'pending:';
 
 /** Jobs for the asset list a reply streamed (before its characters exist: see PENDING). */
-function streamedJobs(project: Project, list: AssetRequest[]): AssetJob[] {
+function streamedJobs(project: Project, list: AssetRequest[], keepCompiled = false): AssetJob[] {
   const jobs: AssetJob[] = [];
+  // A quick change's art for a character the compiler made before keeps that character (and is drawn from its costumes).
+  const made = keepCompiled ? (project.compiled?.sprites ?? []) : [];
   const seen = new Set<string>();
   for (const a of list) {
     const name = String(a?.name ?? '').trim();
     const target = String(a?.target ?? '').trim();
     if (!name || !target || !['costume', 'backdrop', 'sound'].includes(a.kind)) continue;
     const user = target.toLowerCase() === 'stage' ? project.stage : project.sprites.find((x) => x.name === target);
+    const madeOne = user ? undefined : made.find((x) => x.name === target);
     const group = a.kind === 'sound' ? 'sound' : 'image';
     // The author's own asset with this name wins (as in planAssets).
     if (user && (group === 'sound' ? user.sounds : user.costumes).some((x) => x.name === name)) continue;
-    const key = `${user?.id ?? target}|${group}|${name}`;
+    const key = `${user?.id ?? madeOne?.id ?? target}|${group}|${name}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    jobs.push({ targetId: user?.id ?? `${PENDING}${target}`, targetName: user?.name ?? target, kind: a.kind, name, description: String(a.description ?? '').trim() || name, width: Number(a.width) || 0, height: Number(a.height) || 0 });
+    jobs.push({ targetId: user?.id ?? madeOne?.id ?? `${PENDING}${target}`, targetName: user?.name ?? madeOne?.name ?? target, kind: a.kind, name, description: String(a.description ?? '').trim() || name, width: Number(a.width) || 0, height: Number(a.height) || 0 });
   }
   return jobs;
 }
@@ -930,7 +933,7 @@ export async function compileProject(project: Project, options: CompileOptions):
     const st = settings;
     const onAssets = streaming
       ? (list: AssetRequest[], title: string) => {
-          const jobs = streamedJobs(project, list);
+          const jobs = streamedJobs(project, list, !fresh);
           if (!jobs.length) return;
           const titled = title ? { ...project, title } : project;
           planned.push(...jobs);
