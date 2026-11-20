@@ -41,7 +41,7 @@ interface Sent {
 
 /** The hosted server: it has a key, and runs the two models Amble builds with. */
 async function mockHostedServer(page: Page, sent: Sent[]) {
-  await page.route('**/api/config', (route) => route.fulfill({ json: { serverKey: true, codex: false, hosted: true, models: ['gpt-6.1-terra', 'gpt-6-luna'] } }));
+  await page.route('**/api/config', (route) => route.fulfill({ json: { serverKey: true, codex: false, hosted: true, models: ['gpt-6.2-sol', 'gpt-6-luna'] } }));
   await page.route('**/api/openai/**', async (route) => {
     const body = JSON.parse(route.request().postData() ?? '{}');
     sent.push({ url: new URL(route.request().url()).pathname, model: body.model, reasoning: body.reasoning_effort, usage: Boolean(body.stream_options?.include_usage), auth: route.request().headers().authorization });
@@ -70,7 +70,6 @@ const played = (frame: Frame) =>
 async function openExample(page: Page, title: string, sprite: string) {
   await page.getByRole('button', { name: /File/ }).click();
   await page.getByRole('menuitem', { name: title }).click();
-  await page.getByRole('dialog', { name: 'Replace Project' }).getByRole('button', { name: 'Replace' }).click();
   await expect(page.locator('.sprite-tile', { hasText: sprite })).toBeVisible();
 }
 
@@ -102,15 +101,15 @@ test('on a hosted Amble, demos play at once, and words build with no key or sign
   expect((await played(frame)).state).toBe('running');
   expect((await played(frame)).rules).toBeGreaterThan(0);
 
-  // One request, through the site's server (no key from this browser), with GPT-6.1 Terra at high reasoning.
-  expect(sent).toEqual([{ url: '/api/openai/chat/completions', model: 'gpt-6.1-terra', reasoning: 'high', usage: true, auth: undefined }]);
+  // One request, through the site's server (no key from this browser), with GPT-6.2 Sol at low reasoning.
+  expect(sent).toEqual([{ url: '/api/openai/chat/completions', model: 'gpt-6.2-sol', reasoning: 'low', usage: true, auth: undefined }]);
   await expect(page.locator('.problems-btn')).toHaveCount(0);
 
-  // The spend counter adds it up: 20k × $1 + 5k × $5 per million.
-  await expect(page.locator('.spend-total')).toHaveText('$0.045');
+  // The spend counter adds it up: 20k × $2 + 5k × $10 per million.
+  await expect(page.locator('.spend-total')).toHaveText('$0.090');
   await page.locator('.spend-chip').click();
   const panel = page.getByRole('dialog', { name: 'Spend' });
-  await expect(panel).toContainText('gpt-6.1-terra');
+  await expect(panel).toContainText('gpt-6.2-sol');
   await expect(panel).toContainText('20.0k');
   await expect(panel).toContainText('(3.0k)');
   await page.keyboard.press('Escape');

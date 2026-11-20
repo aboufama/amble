@@ -4,8 +4,9 @@ import { downloadProject } from '../project/persistence';
 import { exportGameHtml } from '../project/exportHtml';
 import { EXAMPLES, loadExample } from '../project/examples';
 import { buildNow, compile, flushBlocks, pickSavedProject, signInWithChatGpt } from '../actions';
-import { confirmUser } from '../prompt';
-import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon, ShareIcon } from './icons';
+import { copyGame, openGame } from '../games';
+import { showMyGames } from './HomePage';
+import { AmbleMark, BackIcon, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon, ShareIcon } from './icons';
 import { DEV_TOOLS } from './ProblemsDialog';
 import { ModeSwitch, SpendMeter } from './ModeSwitch';
 import { ProjectStyleKnob } from './StyleKnob';
@@ -14,7 +15,6 @@ import { useServerConfig } from './useServerConfig';
 export function MenuBar() {
   const title = useStore((s) => s.project.title);
   const update = useStore((s) => s.update);
-  const setProject = useStore((s) => s.setProject);
   const setDialog = useStore((s) => s.setDialog);
   const notify = useStore((s) => s.notify);
   const codex = useStore((s) => s.codex);
@@ -46,14 +46,6 @@ export function MenuBar() {
     };
   }, [open]);
 
-  const confirmReplace = () =>
-    confirmUser({
-      title: 'Replace Project',
-      message: 'Replace the current project? Save it to your computer first if you want to keep it.',
-      confirmLabel: 'Replace',
-      danger: true,
-    });
-
   const act = (fn: () => void | Promise<void>) => async () => {
     setOpen(null);
     try {
@@ -66,6 +58,11 @@ export function MenuBar() {
   return (
     <header className="menubar">
       <div className="menubar-main">
+        {/* Back to Home: My games, a new game, the hub. (The logo goes there too.) */}
+        <button className="menubar-back" aria-label="Back to My games" title="Back to Home: My games, new games and the hub" onClick={() => useStore.getState().openHome(true)}>
+          <BackIcon size={20} />
+          <span className="menubar-back-label">My games</span>
+        </button>
         {/* The logo is the way home: make a new game, open a saved one, play a demo. */}
         <button className="menubar-brand" aria-label="Amble: home" title="Home" onClick={() => useStore.getState().openHome(true)}>
           <AmbleMark size={28} />
@@ -90,13 +87,27 @@ export function MenuBar() {
                   <button role="menuitem" onClick={act(() => useStore.getState().openHome(true))}>
                     New game
                   </button>
+                  <button role="menuitem" onClick={act(() => showMyGames())}>
+                    My games
+                  </button>
+                  <button
+                    role="menuitem"
+                    title="A copy of this game in My games, to change without touching this one"
+                    onClick={act(async () => {
+                      await copyGame(useStore.getState().project.id, true);
+                      notify('This is your copy. The first one is in My games.', 'info');
+                    })}
+                  >
+                    Make a copy
+                  </button>
                 </div>
                 <div className="menubar-menu-section">
                   <button
                     role="menuitem"
                     onClick={act(async () => {
+                      // It joins My games, next to the one in the editor (which stays saved).
                       const project = await pickSavedProject();
-                      if (project && (await confirmReplace())) setProject(project);
+                      if (project) await openGame(project, { keep: true });
                     })}
                   >
                     Load from your computer
@@ -123,7 +134,7 @@ export function MenuBar() {
                 <div className="menubar-menu-section examples">
                   <div className="menubar-menu-label">Examples</div>
                   {EXAMPLES.map((ex) => (
-                    <button key={ex.id} role="menuitem" aria-label={`Example: ${ex.title}`} title={ex.description} onClick={act(async () => void ((await confirmReplace()) && setProject(await loadExample(ex))))}>
+                    <button key={ex.id} role="menuitem" aria-label={`Example: ${ex.title}`} title={ex.description} onClick={act(async () => void (await openGame(await loadExample(ex))))}>
                       {ex.title}
                     </button>
                   ))}

@@ -18,9 +18,13 @@ export interface HubEntry {
 /** The hub's games, or why there are none to show ("off": this site has no hub). */
 export type HubList = { ok: true; projects: HubEntry[] } | { ok: false; reason: 'off' | 'offline' };
 
+/** When this browser last changed the hub. The list is cached for a few seconds: right after a change, it asks past that. */
+let changedAt = 0;
+
 export async function listHub(): Promise<HubList> {
   try {
-    const res = await fetch('/api/hub', { cache: 'no-store' });
+    const fresh = Date.now() - changedAt < 60_000 ? `?after=${changedAt}` : '';
+    const res = await fetch(`/api/hub${fresh}`, { cache: 'no-store' });
     if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) return { ok: false, reason: res.status === 503 || res.status === 404 ? 'off' : 'offline' };
     const body = (await res.json()) as { projects?: HubEntry[] };
     return { ok: true, projects: Array.isArray(body.projects) ? body.projects : [] };
@@ -114,6 +118,7 @@ export async function shareToHub(project: Project, details: ShareDetails, update
   });
   if (!res.ok) throw await errorOf(res, res.status === 503 || res.status === 404 ? "This site doesn't have a hub yet." : "The game couldn't be shared. Try again in a moment.");
   const body = (await res.json()) as { id: string; key?: string };
+  changedAt = Date.now();
   const all = myShares();
   all[body.id] = { key: body.key ?? mine!.key, projectId: project.id, title: details.title };
   saveShares(all);
@@ -130,6 +135,7 @@ export async function removeFromHub(id: string): Promise<void> {
   if (!mine) throw new Error('Only the browser that shared this game can remove it.');
   const res = await fetch(`/api/hub/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'x-amble-hub': '1', 'x-amble-key': mine.key } });
   if (!res.ok) throw await errorOf(res, "The game couldn't be removed.");
+  changedAt = Date.now();
   const all = myShares();
   delete all[id];
   saveShares(all);

@@ -37,18 +37,12 @@ test("confirmations use Amble's dialog, never the browser's", async ({ page }) =
   await deleteDialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(amble).toBeVisible();
 
-  // New game opens Home (a page of its own); choosing something there asks before replacing the project. Cancel keeps everything.
+  // New game opens Home (a page of its own). Nothing there asks before opening a game: the one in the editor stays in My games.
   await page.getByRole('button', { name: /File/ }).click();
   await page.getByRole('menuitem', { name: 'New game' }).click();
   const home = page.getByRole('region', { name: 'Home' });
   await expect(home).toBeVisible();
   await expect(amble).toBeHidden();
-  await home.getByRole('button', { name: 'Empty project' }).click();
-  const replace = page.getByRole('dialog', { name: 'Replace Project' });
-  await expect(replace).toBeVisible();
-  await expect(replace.getByRole('button', { name: 'Replace' })).toHaveClass(/danger/);
-  await replace.getByRole('button', { name: 'Cancel' }).click();
-  await expect(home).toBeVisible();
   await home.getByRole('button', { name: 'Back to editor' }).click();
   await expect(home).toBeHidden();
   await expect(amble).toBeVisible();
@@ -84,11 +78,11 @@ test('Settings shows the account first and keeps the rest under Advanced', async
   await expect(model).toBeHidden();
   await expect(install).toBeHidden();
   await settings.locator('summary', { hasText: 'Advanced' }).click();
-  await expect(model).toHaveValue('gpt-6.1-terra');
+  await expect(model).toHaveValue('gpt-6.2-sol');
   await expect(install).toBeVisible();
   await expect(settings.getByRole('button', { name: 'Test connection' })).toBeVisible();
   // Nor does the menu bar offer to sign in.
-  await expect(page.locator('.menubar-account button')).toHaveCount(0);
+  await expect(page.locator('.menubar-account').getByRole('button', { name: /Sign/ })).toHaveCount(0);
 
   // Every setting still saves.
   await model.fill('gpt-6-luna');

@@ -24,13 +24,20 @@ interface Call {
   user: string;
 }
 
-/** A model that writes a tiny game for the game piece (a Rex who walks), and a jetpack when asked for one. */
-async function mockModel(page: Page, calls: Call[]) {
+/**
+ * A model that writes a tiny game for the game piece (a Rex who walks), and a jetpack when asked for one.
+ * Questions for the player (`ask`) are its answer to a questions request, which goes in `asked`, not `calls`.
+ */
+async function mockModel(page: Page, calls: Call[], opts: { ask?: Array<{ ask: string; choices: string[] }>; asked?: Call[] } = {}) {
   await page.route('https://api.openai.com/v1/**', async (route) => {
     const body = JSON.parse(route.request().postData() ?? '{}');
     const name: string = body.response_format?.json_schema?.name ?? 'unknown';
     const system: string = body.messages?.[0]?.content ?? '';
     const user: string = body.messages?.[1]?.content ?? '';
+    if (name === 'amble_ask') {
+      opts.asked?.push({ name, system, user });
+      return route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'access-control-allow-origin': '*' }, body: sse(JSON.stringify({ questions: opts.ask ?? [] })) });
+    }
     calls.push({ name, system, user });
     const tasks = [...user.matchAll(/^- (p\d+): (\w+)/gm)].map((m) => ({ id: m[1], kind: m[2] }));
     let reply: unknown = {};
@@ -446,13 +453,13 @@ test('a sentence makes a whole game, and "Change something" changes it', async (
   expect(stageBlocks).toEqual(['br_game', 'br_dial', 'ga_rule']);
 });
 
-type StoreWindow = { __ambleStore: { getState(): { project: { dial?: number; title: string; stage: { blocks: { blocks: { blocks: Array<{ type: string; fields?: Record<string, string> }> } } | null } }; select(id: string): void } } };
+type StoreWindow = { __ambleStore: { getState(): { project: { dial?: number; title: string; stage: { blocks: { blocks?: { blocks: Array<{ type: string; fields?: Record<string, string> }> } } | null } }; select(id: string): void } } };
 
 /** The project's dial, and the stage's blocks as saved in the project (type and words). */
 const projectControls = (page: Page) =>
   page.evaluate(() => {
     const p = (window as unknown as StoreWindow).__ambleStore.getState().project;
-    return { dial: p.dial, stage: (p.stage.blocks?.blocks.blocks ?? []).map((b) => `${b.type}${b.fields?.STYLE ? `: ${b.fields.STYLE}` : ''}`) };
+    return { dial: p.dial, stage: (p.stage.blocks?.blocks?.blocks ?? []).map((b) => `${b.type}${b.fields?.STYLE ? `: ${b.fields.STYLE}` : ''}`) };
   });
 
 /** The stage's blocks as the editor shows them. */
@@ -467,6 +474,55 @@ const blocksOnScreen = (page: Page) =>
 
 const PIXEL = 'pixel art: chunky pixels and a small palette, like a 16-bit console game';
 const NEON = 'neon glow on dark: bright glowing outlines, synthwave colors';
+
+test('while a game is made from an idea, the player picks how it looks, and the art follows', async ({ page }) => {
+  const calls: Call[] = [];
+  const asked: Call[] = [];
+  await page.addInitScript(() => {
+    localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test' }));
+    (window as unknown as { __ambleHarness: object }).__ambleHarness = { ask: true };
+  });
+  await mockModel(page, calls, {
+    asked,
+    ask: [
+      { ask: 'What does your T-rex look like?', choices: ['Purple with spots', 'A robot dinosaur', 'Tiny and fluffy'] },
+      { ask: 'Where is the disco?', choices: ['On the moon', 'Under the sea', 'In a castle'] },
+    ],
+  });
+  await page.goto('/');
+  const home = homePage(page);
+  await home.getByLabel('What do you want to make?').fill('a T-rex on roller skates dodges meteors at a disco');
+  await home.getByRole('button', { name: 'Make my game' }).click();
+
+  // While it is written: one question at a time, on the stage, about what the idea leaves open.
+  const card = page.getByRole('group', { name: 'A question about your game' });
+  await expect(card).toContainText('What does your T-rex look like?');
+  expect(asked).toHaveLength(1);
+  expect(asked[0].user).toContain('a T-rex on roller skates dodges meteors at a disco');
+  await card.getByRole('button', { name: 'A robot dinosaur' }).click();
+  await expect(card).toContainText('Where is the disco?');
+  // "You choose" leaves one to Amble.
+  await card.getByRole('button', { name: 'You choose' }).click();
+  await expect(card).toHaveCount(0);
+
+  // The code leaves the look to the picks, and the art follows them.
+  const frame = await gameFrame(page);
+  await expect.poll(async () => (await flags(frame)).game, { timeout: 40_000 }).toBe(true);
+  expect(calls[0].name).toBe('amble_pieces');
+  expect(calls[0].user).toContain("## The look is the player's");
+  const art = calls.filter((c) => c.name === 'svg_art');
+  expect(art.length).toBeGreaterThan(0);
+  for (const a of art) {
+    expect(a.user).toContain('The player picked how their game looks: What does your T-rex look like? A robot dinosaur.');
+    expect(a.user).not.toContain('Where is the disco?');
+  }
+
+  // Changing the game later asks nothing.
+  await page.getByLabel('Change something in the game').fill('give Rex a jetpack');
+  await page.getByRole('button', { name: 'Change', exact: true }).click();
+  await expect.poll(async () => (await flags(await gameFrame(page)).catch(() => ({ jetpack: false }))).jetpack, { timeout: 30_000 }).toBe(true);
+  expect(asked).toHaveLength(1);
+});
 
 test('the dial and the style knob say how the game is made, on the home screen and in the top bar', async ({ page }) => {
   const calls: Call[] = [];
@@ -620,12 +676,11 @@ const editorState = (page: Page) =>
 test('the logo opens Home, and the editor is as it was on the way back', async ({ page }) => {
   await page.goto('/');
   const home = homePage(page);
-  const replace = page.getByRole('dialog', { name: 'Replace Project' });
-  // The first visit starts there, with nothing to lose: starting empty asks nothing.
+  // The first visit starts there. Starting empty asks nothing.
   await expect(home).toBeVisible();
   await home.getByRole('button', { name: 'Empty project' }).click();
   await expect(home).toHaveCount(0);
-  await expect(replace).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('.sprite-tile', { hasText: 'Amble' })).toBeVisible();
   await expect(page.locator('.blocklyMainBackground')).toBeVisible();
   // An empty project is on "My blocks", with no style: the stage's size: block and the knob in the top bar say so.
@@ -702,70 +757,90 @@ test('the logo opens Home, and the editor is as it was on the way back', async (
   await expect(page.getByLabel('Project title')).toHaveValue('Kept as it was');
 });
 
-test('Home opens a demo, a saved game or an empty project, and asks before replacing a game', async ({ page }) => {
+test('Home opens a demo, a saved game or an empty project next to the game in the editor: nothing is ever replaced', async ({ page }) => {
   await page.goto('/');
   const home = homePage(page);
-  const replace = page.getByRole('dialog', { name: 'Replace Project' });
   const logo = page.getByRole('button', { name: 'Amble: home' });
-  // A first visit has nothing to lose: a demo opens at once, in the editor.
+  const title = page.getByLabel('Project title');
+  const myGames = home.locator('.my-game .home-demo-title');
+  // A demo opens at once, in the editor, asking nothing.
   await expect(home).toBeVisible();
+  await expect(home.getByRole('heading', { name: 'My games' })).toHaveCount(0);
   await home.getByRole('button', { name: 'Demo: Star Catcher' }).click();
   await expect(home).toHaveCount(0);
-  await expect(replace).toHaveCount(0);
-  await expect(page.getByLabel('Project title')).toHaveValue('Star Catcher');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(title).toHaveValue('Star Catcher');
   await expect(page.locator('.sprite-tile', { hasText: 'Star' })).toBeVisible();
   await expect(page.locator('.blocklyMainBackground')).toBeVisible();
   await expect(page).not.toHaveURL(/#home$/);
 
-  // From the editor there is a game to keep: an empty project asks first. Cancel (or Escape) keeps the game, and Home.
+  // Only looked at, a demo isn't one of My games. Changed, it is.
   await logo.click();
   await expect(home).toBeVisible();
+  await expect(home.getByRole('heading', { name: 'My games' })).toHaveCount(0);
+  await home.getByRole('button', { name: 'Back to editor' }).click();
+  await title.fill('Star Catcher, mine');
+  await logo.click();
+  await expect(myGames).toHaveText(['Star Catcher, mine']);
+  await expect(home.locator('.my-game', { hasText: 'Star Catcher, mine' }).locator('.my-game-open')).toHaveText('In the editor');
+
+  // An empty project opens next to it: nothing asked, nothing lost.
   await home.getByRole('button', { name: 'Empty project' }).click();
-  await expect(replace).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(replace).toHaveCount(0);
-  await expect(home).toBeVisible();
-  await home.getByRole('button', { name: 'Empty project' }).click();
-  await replace.getByRole('button', { name: 'Replace' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(home).toHaveCount(0);
-  await expect(page.getByLabel('Project title')).toHaveValue('Untitled game');
+  await expect(title).toHaveValue('Untitled game');
   await expect(page.locator('.sprite-tile', { hasText: 'Amble' })).toBeVisible();
   // An empty project is on "My blocks", with no style: the stage's size: block and the knob in the top bar say so.
   const bar = page.locator('.menubar');
   await page.locator('.stage-selector').click();
   await expect(page.locator('.blocklyBlockCanvas .ambleDial').getByRole('radio', { name: 'My blocks' })).toHaveAttribute('aria-checked', 'true');
   await expect(bar.getByRole('button', { name: 'Art style: none' })).toBeVisible();
+  await title.fill('Second game');
 
-  // Open a saved game: what File > Load from your computer does. It asks first too.
+  // Open a saved game: what File > Load from your computer does. It joins My games at once.
   await logo.click();
+  await expect(myGames).toHaveText(['Second game', 'Star Catcher, mine']);
   const saved = await page.evaluate(() => JSON.stringify({ ...(window as unknown as StoreWindow).__ambleStore.getState().project, title: 'My saved game', dial: 2 }));
-  const pick = async () => {
-    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), home.getByRole('button', { name: 'Open a saved game' }).click()]);
-    await chooser.setFiles({ name: 'saved.amble', mimeType: 'application/json', buffer: Buffer.from(saved) });
-  };
-  await pick();
-  await expect(replace).toBeVisible();
-  await replace.getByRole('button', { name: 'Cancel' }).click();
-  await expect(home).toBeVisible();
-  await pick();
-  await replace.getByRole('button', { name: 'Replace' }).click();
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), home.getByRole('button', { name: 'Open a saved game' }).click()]);
+  await chooser.setFiles({ name: 'saved.amble', mimeType: 'application/json', buffer: Buffer.from(saved) });
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(home).toHaveCount(0);
-  await expect(page.getByLabel('Project title')).toHaveValue('My saved game');
+  await expect(title).toHaveValue('My saved game');
   // The saved game's dial came with it.
   expect((await projectControls(page)).dial).toBe(2);
   await page.locator('.stage-selector').click();
   await expect(page.locator('.blocklyBlockCanvas .ambleDial').getByRole('radio', { name: 'Full' })).toHaveAttribute('aria-checked', 'true');
 
-  // A file that isn't a game says so, and Home stays.
+  // Each one is there to go back to, as it was, and the open one is still open after a reload.
   await logo.click();
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), home.getByRole('button', { name: 'Open a saved game' }).click()]);
-  await chooser.setFiles({ name: 'notes.amble', mimeType: 'application/json', buffer: Buffer.from('{"hello": 1}') });
+  await expect(myGames).toHaveText(['My saved game', 'Second game', 'Star Catcher, mine']);
+  await home.getByRole('button', { name: 'My game: Star Catcher, mine' }).click();
+  await expect(home).toHaveCount(0);
+  await expect(title).toHaveValue('Star Catcher, mine');
+  await expect(page.locator('.sprite-tile', { hasText: 'Star' })).toBeVisible();
+  await page.reload();
+  await expect(title).toHaveValue('Star Catcher, mine');
+
+  // A copy, and deleting it (that one asks: it can't be undone).
+  await logo.click();
+  await home.locator('.my-game', { hasText: 'Second game' }).getByRole('button', { name: 'Make a copy' }).click();
+  // Newest change first: opening a game and leaving it changes nothing.
+  await expect(myGames).toHaveText(['Second game copy', 'My saved game', 'Second game', 'Star Catcher, mine']);
+  await home.locator('.my-game', { hasText: 'Second game copy' }).getByRole('button', { name: 'Delete' }).click();
+  const sure = page.getByRole('dialog', { name: 'Delete a game' });
+  await expect(sure.getByRole('button', { name: 'Delete' })).toHaveClass(/danger/);
+  await sure.getByRole('button', { name: 'Delete' }).click();
+  await expect(myGames).toHaveText(['My saved game', 'Second game', 'Star Catcher, mine']);
+
+  // A file that isn't a game says so, and Home stays.
+  const [notGame] = await Promise.all([page.waitForEvent('filechooser'), home.getByRole('button', { name: 'Open a saved game' }).click()]);
+  await notGame.setFiles({ name: 'notes.amble', mimeType: 'application/json', buffer: Buffer.from('{"hello": 1}') });
   await expect(page.locator('.toast')).toContainText('not an Amble project');
   await expect(home).toBeVisible();
   // Escape goes back, and the game is still there.
   await page.keyboard.press('Escape');
   await expect(home).toHaveCount(0);
-  await expect(page.getByLabel('Project title')).toHaveValue('My saved game');
+  await expect(title).toHaveValue('Star Catcher, mine');
 });
 
 test('a game being made carries on under Home, and waits there for the flag', async ({ page }) => {

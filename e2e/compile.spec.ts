@@ -94,7 +94,6 @@ const game = (frame: Frame) =>
 async function openExample(page: Page, title: string) {
   await page.getByRole('button', { name: /File/ }).click();
   await page.getByRole('menuitem', { name: title }).click();
-  await page.getByRole('dialog', { name: 'Replace Project' }).getByRole('button', { name: 'Replace' }).click();
   await expect(page.locator('.sprite-tile', { hasText: 'Star' })).toBeVisible();
 }
 
@@ -176,7 +175,7 @@ test('words are compiled once, in one request, and reused after', async ({ page 
 
   // Edit > Build everything again starts over: every block in words is built again, and the art made again.
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  await expect(page.getByRole('menuitem', { name: 'Build everything again' })).toHaveAttribute('title', /built again.*last built with gpt-6\.1-terra/);
+  await expect(page.getByRole('menuitem', { name: 'Build everything again' })).toHaveAttribute('title', /built again.*last built with gpt-6\.2-sol/);
   await page.getByRole('menuitem', { name: 'Build everything again' }).click();
   await expect.poll(() => calls.length, { timeout: 30_000 }).toBe(4);
   expect(calls).toEqual(['amble_pieces', 'svg_art', 'amble_pieces', 'svg_art']);

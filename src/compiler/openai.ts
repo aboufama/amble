@@ -290,7 +290,7 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
     throw err;
   } finally {
     if (!got.rejected) recordUsage(req.model, req.kind ?? 'code', got.usage ? chatTokens(got.usage) : null, got.usage?.cost);
-    traceEnd(trace, got.usage, text.length);
+    traceEnd(trace, got.usage, text);
   }
 }
 
@@ -318,10 +318,12 @@ function traceStart(req: ChatJsonRequest): TraceEntry | null {
   return entry;
 }
 
-function traceEnd(entry: TraceEntry | null, usage: ChatUsage | null, chars: number): void {
+function traceEnd(entry: TraceEntry | null, usage: ChatUsage | null, text: string): void {
   if (!entry) return;
   entry.ms = performance.now() - entry.t0;
-  entry.chars = chars;
+  entry.chars = text.length;
+  // Benchmarks that study the replies keep them too.
+  if ((globalThis as { __ambleTraceText?: boolean }).__ambleTraceText) (entry as TraceEntry & { text?: string }).text = text;
   if (usage) {
     const tk = chatTokens(usage);
     Object.assign(entry, { input: tk.input, output: tk.output, reasoning: tk.reasoning, usd: typeof usage.cost === 'number' ? usage.cost : null });

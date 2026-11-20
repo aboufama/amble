@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { useStore, findTarget, type Tab } from './store';
-import { loadSavedProject, saveProject } from './project/persistence';
-import { flushBlocks } from './actions';
+import { loadStartingGame } from './project/myGames';
+import { startAutosave } from './games';
 import { MenuBar } from './components/MenuBar';
 import { BlocksEditor } from './components/BlocksEditor';
 import { CostumesPane } from './components/CostumesPane';
@@ -19,7 +19,7 @@ import { BlocksTabIcon, BrushTabIcon, SpeakerTabIcon } from './components/icons'
 function useAutosave() {
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
-    void loadSavedProject().then((p) => {
+    void loadStartingGame().then((p) => {
       if (p) useStore.getState().setProject(p);
       // The first visit starts on Home ("What do you want to make?" and the demos); so does a page loaded at Home's address.
       if (!p && !homeSeen()) useStore.getState().openHome(false);
@@ -27,24 +27,8 @@ function useAutosave() {
       setLoaded(true);
     });
   }, []);
-  useEffect(() => {
-    if (!loaded) return;
-    let timer: number | null = null;
-    const unsub = useStore.subscribe((state, prev) => {
-      if (state.project === prev.project) return;
-      if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(() => void saveProject(useStore.getState().project), 800);
-    });
-    const flush = () => {
-      flushBlocks();
-      void saveProject(useStore.getState().project);
-    };
-    window.addEventListener('beforeunload', flush);
-    return () => {
-      unsub();
-      window.removeEventListener('beforeunload', flush);
-    };
-  }, [loaded]);
+  // Every change to the open game is saved to My games (games.ts).
+  useEffect(() => (loaded ? startAutosave() : undefined), [loaded]);
   return loaded;
 }
 

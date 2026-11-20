@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
-import { getPlayer, pickSavedProject, startGame } from '../actions';
+import { getPlayer, pickSavedProject } from '../actions';
 import type { Dial } from '../blocks/spec';
 import { resolveTransport } from '../compiler/openai';
 import { DEFAULT_DIAL } from '../project/controls';
@@ -8,6 +8,8 @@ import { EXAMPLES, blankProject, loadExample, type Example } from '../project/ex
 import { ideaProject } from '../project/idea';
 import type { Project } from '../project/types';
 import { confirmUser } from '../prompt';
+import { copyGame, openGame, pictureOpenGame, removeGame, saveNow, switchToGame, type OpenOptions } from '../games';
+import { listGames, thumbsOf, whenChanged, type GameInfo } from '../project/myGames';
 import { GameDial } from './GameDial';
 import { AmbleMark, BackIcon, BlocksTabIcon, CopyIcon, FileIcon } from './icons';
 import { StyleKnob } from './StyleKnob';
@@ -31,6 +33,15 @@ function markHomeSeen(): void {
     /* ignore */
   }
 }
+
+/** Opens Home at My games (File > My games). */
+export function showMyGames(): void {
+  useStore.getState().openHome(true);
+  window.setTimeout(() => document.getElementById('my-games')?.scrollIntoView({ block: 'start' }), 60);
+}
+
+/** How many of My games show before "Show all". */
+const MY_GAMES_SHOWN = 8;
 
 /** Home's address. The editor's is the page without it. */
 const HOME_HASH = '#home';
@@ -99,10 +110,8 @@ export function useHomeAddress(loaded: boolean): void {
 export function HomePage() {
   const closeHome = useStore((s) => s.closeHome);
   const setDialog = useStore((s) => s.setDialog);
-  const setProject = useStore((s) => s.setProject);
   const notify = useStore((s) => s.notify);
-  // Opened from the editor, there may be a game to lose: ask before replacing it.
-  const fromEditor = useStore((s) => s.homeFromEditor);
+  const openId = useStore((s) => s.project.id);
   const [idea, setIdea] = useState('');
   const [dial, setDial] = useState<Dial>(DEFAULT_DIAL);
   const [style, setStyle] = useState('');
@@ -114,9 +123,25 @@ export function HomePage() {
   const [hub, setHub] = useState<HubList | null>(null);
   const [mine, setMine] = useState(() => myShares());
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // My games: every game made here, newest first (null while it loads), and their pictures.
+  const [games, setGames] = useState<GameInfo[] | null>(null);
+  const [thumbs, setThumbs] = useState<Record<string, string | null>>({});
+  const [allGames, setAllGames] = useState(false);
+
+  const refreshGames = async () => {
+    const list = await listGames();
+    setGames(list);
+    setThumbs(await thumbsOf(list.map((g) => g.id)));
+  };
 
   useEffect(() => {
     void listHub().then(setHub);
+    // The game in the editor first gets saved as it is now, and pictured, so its card is up to date.
+    void saveNow()
+      .then(refreshGames)
+      .then(() => pictureOpenGame())
+      .then(refreshGames)
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -161,15 +186,13 @@ export function HomePage() {
     };
   }, [closeHome]);
 
-  const replace = async (make: () => Promise<Project> | Project, play: boolean) => {
+  // Opens a game next to the others: the one in the editor stays saved in My games. The flag builds
+  // what needs building (a whole game, for an idea), then plays.
+  const open = async (make: () => Promise<Project> | Project, opts: OpenOptions) => {
     if (busy) return;
-    if (fromEditor && !(await confirmUser({ title: 'Replace Project', message: 'Replace the current project? Save it to your computer first if you want to keep it.', confirmLabel: 'Replace', danger: true }))) return;
     setBusy(true);
     try {
-      setProject(await make());
-      closeHome();
-      // The flag builds what needs building (a whole game, for an idea), then plays.
-      if (play) window.setTimeout(startGame, 50);
+      await openGame(await make(), opts);
     } catch (err) {
       notify((err as Error).message, 'error');
     } finally {
@@ -188,10 +211,39 @@ export function HomePage() {
       setDialog('settings');
       return;
     }
-    void replace(() => ideaProject(words, dial, style), makes);
+    void open(() => ideaProject(words, dial, style), { keep: true, play: makes });
   };
-  const openDemo = (ex: Example) => void replace(() => loadExample(ex), Boolean(ex.prebuilt));
-  const openHub = (entry: HubEntry) => void replace(() => openHubProject(entry.id), true);
+  const openDemo = (ex: Example) => void open(() => loadExample(ex), { play: Boolean(ex.prebuilt) });
+  const openHub = (entry: HubEntry) => void open(() => openHubProject(entry.id), { play: true });
+  const openMine = async (game: GameInfo) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await switchToGame(game.id);
+    } catch (err) {
+      notify((err as Error).message, 'error');
+      void refreshGames();
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copyMine = async (game: GameInfo) => {
+    try {
+      await copyGame(game.id);
+      await refreshGames();
+    } catch (err) {
+      notify((err as Error).message, 'error');
+    }
+  };
+  const deleteMine = async (game: GameInfo) => {
+    if (!(await confirmUser({ title: 'Delete a game', message: `Delete “${game.title}”? It's gone for good. (If you shared it, the hub keeps its copy.)`, confirmLabel: 'Delete', danger: true }))) return;
+    try {
+      await removeGame(game.id);
+      await refreshGames();
+    } catch (err) {
+      notify((err as Error).message, 'error');
+    }
+  };
   const copyLink = async (id: string) => {
     if (await copyText(playLink(id))) {
       setCopiedId(id);
@@ -199,7 +251,7 @@ export function HomePage() {
     } else notify(playLink(id), 'info');
   };
   const remove = async (entry: HubEntry) => {
-    if (!(await confirmUser({ title: 'Take it out of the hub', message: `Take “${entry.title}” out of the hub? Its link stops working. The game stays in your editor if it's open there.`, confirmLabel: 'Take it out', danger: true }))) return;
+    if (!(await confirmUser({ title: 'Take it out of the hub', message: `Take “${entry.title}” out of the hub? Its link stops working. Your game itself stays in My games.`, confirmLabel: 'Take it out', danger: true }))) return;
     try {
       await removeFromHub(entry.id);
       setMine(myShares());
@@ -220,7 +272,7 @@ export function HomePage() {
   const openSaved = async () => {
     try {
       const project = await pickSavedProject();
-      if (project) await replace(() => project, false);
+      if (project) await open(() => project, { keep: true });
     } catch (err) {
       notify((err as Error).message, 'error');
     }
@@ -229,14 +281,15 @@ export function HomePage() {
   return (
     <section className="home" aria-label="Home" tabIndex={-1}>
       <header className="home-bar">
+        {/* Back is where it is in the editor: the top left. */}
+        <button className="menu-btn home-back" onClick={closeHome}>
+          <BackIcon size={18} />
+          <span>Back to editor</span>
+        </button>
         <h1 className="home-brand">
           <AmbleMark size={28} />
           <span className="logo">amble</span>
         </h1>
-        <button className="menu-btn" onClick={closeHome}>
-          <BackIcon size={18} />
-          <span>Back to editor</span>
-        </button>
       </header>
       <div className="home-page">
         <div className="home-make">
@@ -272,6 +325,42 @@ export function HomePage() {
           </div>
           {makes && account === false && <p className="home-note">Needs an OpenAI API key (Settings).</p>}
         </div>
+
+        {games && games.length > 0 && (
+          <>
+            <h2 className="home-heading" id="my-games">
+              My games
+            </h2>
+            <p className="home-hub-lead">Everything you make is saved here by itself, as you go.</p>
+            <div className="home-demos">
+              {(allGames ? games : games.slice(0, MY_GAMES_SHOWN)).map((game) => (
+                <div key={game.id} className="home-demo hub-card my-game">
+                  <button className="hub-open" onClick={() => void openMine(game)} disabled={busy} aria-label={`My game: ${game.title}`}>
+                    <span className="home-thumb">
+                      {thumbs[game.id] ? <img src={thumbs[game.id]!} alt="" /> : <span className="my-game-tile">{game.title}</span>}
+                      {game.id === openId && <span className="my-game-open">In the editor</span>}
+                    </span>
+                    <span className="home-demo-title">{game.title}</span>
+                    <span className="home-demo-desc">Changed {whenChanged(game.updatedAt)}</span>
+                  </button>
+                  <div className="hub-actions">
+                    <button className="hub-action" onClick={() => void copyMine(game)}>
+                      <CopyIcon size={13} /> Make a copy
+                    </button>
+                    <button className="hub-action quiet" onClick={() => void deleteMine(game)}>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {games.length > MY_GAMES_SHOWN && (
+              <button className="home-more" onClick={() => setAllGames((a) => !a)}>
+                {allGames ? 'Show fewer' : `Show all ${games.length}`}
+              </button>
+            )}
+          </>
+        )}
 
         <h2 className="home-heading">The hub</h2>
         <p className="home-hub-lead">Open a game to play it, change it, and make it yours. Press <b>Share</b> in the editor to put your own game here.</p>
@@ -341,7 +430,7 @@ export function HomePage() {
           <button className="btn" onClick={() => void openSaved()} disabled={busy}>
             <FileIcon size={18} /> Open a saved game
           </button>
-          <button className="btn" onClick={() => void replace(() => blankProject(), false)} disabled={busy}>
+          <button className="btn" onClick={() => void open(() => blankProject(), {})} disabled={busy}>
             <BlocksTabIcon size={18} /> Empty project
           </button>
         </div>

@@ -91,6 +91,8 @@ export interface EditorState {
   /** Edit > Restore: puts back the last deleted sprite, costume, backdrop or sound. */
   restore: { what: 'Sprite' | 'Costume' | 'Backdrop' | 'Sound'; run(): void } | null;
   toast: { id: number; message: string; tone: 'info' | 'error' } | null;
+  /** Questions for the player while their game is made from an idea (src/asking.ts). */
+  ask: AskState | null;
 
   setProject(project: Project): void;
   update(fn: (draft: Project) => void): void;
@@ -118,7 +120,16 @@ export interface EditorState {
   setProblemsOpen(open: boolean): void;
   setRestore(restore: EditorState['restore']): void;
   setRecording(open: boolean): void;
+  setAsk(ask: AskState | null): void;
   notify(message: string, tone?: 'info' | 'error'): void;
+}
+
+/** Questions while a game is made: null questions while they are being thought of; an answer per question asked so far (null: "you choose"). */
+export interface AskState {
+  questions: Array<{ ask: string; choices: string[] }> | null;
+  answers: Array<string | null>;
+  /** The picks have gone to the art (all answered, skipped, or out of time): the questions go. */
+  done: boolean;
 }
 
 let logId = 0;
@@ -148,6 +159,7 @@ export const useStore = create<EditorState>()(
     restore: null,
     recording: false,
     toast: null,
+    ask: null,
 
     setProject: (project) =>
       set((s) => {
@@ -264,6 +276,10 @@ export const useStore = create<EditorState>()(
     setRecording: (open) =>
       set((s) => {
         s.recording = open;
+      }),
+    setAsk: (ask) =>
+      set((s) => {
+        s.ask = ask;
       }),
     notify: (message, tone = 'info') =>
       set((s) => {

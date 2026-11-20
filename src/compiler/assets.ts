@@ -30,7 +30,12 @@ export interface AssetContext {
   signal?: AbortSignal;
   /** A drawing as it is drawn (its SVG so far, made whole), and once more when it is done. */
   onSketch?(sketch: Sketch): void;
+  /** What the player picked for the game's look, in words ("" for nothing). */
+  picks?: string;
 }
+
+/** The player's picks, for a drawing's request. */
+const picksLine = (ctx: AssetContext) => (ctx.picks ? `\nThe player picked how their game looks: ${ctx.picks} Where a pick is about this picture, draw it their way, over the description.` : '');
 
 export interface Sketch {
   target: string;
@@ -124,10 +129,10 @@ async function makeSvgImage(job: AssetJob, ctx: AssetContext): Promise<CompiledA
   const reply = await chatJson<SvgReply>(ctx.transport, {
     model: ctx.settings.assetModel || ctx.settings.model,
     system,
-    user,
+    user: user + picksLine(ctx),
     schema: SVG_SCHEMA as unknown as Record<string, unknown>,
     schemaName: 'svg_art',
-    reasoningEffort: harness().artEffort,
+    reasoningEffort: job.kind === 'backdrop' ? (harness().backdropEffort ?? harness().artEffort) : harness().artEffort,
     kind: 'art',
     signal: ctx.signal,
     onText: sketcher([job], ctx),
@@ -175,7 +180,7 @@ export async function makeSvgSheet(jobs: AssetJob[], ctx: AssetContext): Promise
     `Sprite: ${first.targetName}`,
     `Draw these ${jobs.length} costumes${style.words ? `, in the game's art style (${style.name})` : ''}. Draw the first one, then make each other one by copying it and changing only what its description asks (a leg forward, wings down, eyes closed): the same shapes, colours, line weight, size and position on the canvas, so the character doesn't flicker when the frames swap. A costume that is plainly something else (an explosion, a broken version) is drawn as asked, in the same style.`,
     ...jobs.map((j, i) => `- "${j.name}": ${sizes[i].width} x ${sizes[i].height} px: ${j.description}`),
-  ].join('\n');
+  ].join('\n') + picksLine(ctx);
   const reply = await chatJson<SvgSheetReply>(ctx.transport, {
     model: ctx.settings.assetModel || ctx.settings.model,
     system: sheetSystem,

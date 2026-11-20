@@ -13,6 +13,14 @@ export interface Harness {
   gameEffort: ReasoningEffort | null;
   /** Reasoning for each drawing. */
   artEffort: ReasoningEffort;
+  /**
+   * A new game from an idea asks the player a few quick questions about what the idea leaves open
+   * (the world, the looks, the colours: src/compiler/ask.ts) while the code is written, and the art
+   * follows their picks instead of a theme made up for them.
+   */
+  ask: boolean;
+  /** Reasoning for each backdrop (null: artEffort). A backdrop at low reasoning thought 4-7 seconds before its first stroke. */
+  backdropEffort: ReasoningEffort | null;
   /** Reasoning for each sound pick or design. */
   soundEffort: ReasoningEffort;
   /** Art and sound requests running at once. */
@@ -115,6 +123,8 @@ export interface Harness {
 export const DEFAULT_HARNESS: Harness = {
   gameEffort: null,
   artEffort: 'low',
+  backdropEffort: null,
+  ask: false,
   soundEffort: 'low',
   concurrency: 24,
   costumes: 'sheet',

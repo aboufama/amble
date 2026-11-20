@@ -95,7 +95,10 @@ async function build(id) {
   // --harness '<json>': how the compile is carried out (src/compiler/harness.ts); every request is traced.
   await context.addInitScript((h) => {
     if (h) window.__ambleHarness = JSON.parse(h);
+    // Asking the player (harness "ask"): a quick player picks the first choice of each question.
+    if (h && JSON.parse(h).ask) window.__ambleAutoAnswer = 2500;
     window.__ambleTrace = [];
+    window.__ambleTraceText = true;
   }, opt('harness', ''));
   const p = await context.newPage();
   const pageErrors = [];
@@ -126,6 +129,7 @@ async function build(id) {
         error: s.compile.error,
         warnings: c?.warnings ?? [],
         questions: (c?.questions ?? []).map((q) => q.text),
+        picks: window.__amblePicks ?? null,
         pieces: c?.pieces?.length ?? 0,
         cast: (c?.sprites ?? []).map((x) => x.name),
         assets: c?.assets?.length ?? 0,
@@ -147,7 +151,7 @@ async function build(id) {
         return 0;
       }
     });
-  const record = { id, model, effort, harness: opt('harness', '') ? JSON.parse(opt('harness', '')) : null, trace: built.trace, buildSeconds: built.seconds, status: built.status, error: built.error ?? null, pieces: built.pieces, cast: built.cast, assets: built.assets, how: built.how, warnings: built.warnings, questions: built.questions };
+  const record = { id, model, effort, harness: opt('harness', '') ? JSON.parse(opt('harness', '')) : null, trace: built.trace, buildSeconds: built.seconds, status: built.status, error: built.error ?? null, pieces: built.pieces, cast: built.cast, assets: built.assets, how: built.how, warnings: built.warnings, questions: built.questions, picks: built.picks };
   results.push(record);
   if (built.status !== 'done') {
     record.usd = await spendNow().catch(() => 0);

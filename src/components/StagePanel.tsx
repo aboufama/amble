@@ -9,6 +9,7 @@ import type { Project } from '../project/types';
 import { useStore } from '../store';
 import { ExpandIcon, FlagIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, StopIcon, WarningIcon } from './icons';
 import { useProblemCount } from './ProblemsDialog';
+import { answer, skipQuestions } from '../asking';
 
 function isEditable(el: EventTarget | null): boolean {
   const node = el as HTMLElement | null;
@@ -50,6 +51,7 @@ function MakingGame({ progress }: { progress: CompileProgress }) {
           {preview!.howToPlay && <div className="making-how">{preview!.howToPlay}</div>}
         </div>
       )}
+      <AskCard />
       {preview && <MakingCast preview={preview} />}
       <div className="making-status">
         <div className="making-dots" aria-hidden="true">
@@ -59,6 +61,57 @@ function MakingGame({ progress }: { progress: CompileProgress }) {
         </div>
         <div className="making-step">{step}</div>
         <div className="making-time">{time}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * While the game is written: a few quick questions about how it looks, one at a time. The art follows
+ * the picks; "You choose" leaves one to Amble, and the questions go once the art can't wait any longer.
+ */
+function AskCard() {
+  const ask = useStore((s) => s.ask);
+  const [thanks, setThanks] = useState(false);
+  const picked = Boolean(ask?.answers.some(Boolean));
+  useEffect(() => {
+    if (!ask?.done || !picked) return;
+    setThanks(true);
+    const t = window.setTimeout(() => setThanks(false), 2600);
+    return () => window.clearTimeout(t);
+  }, [ask?.done, picked]);
+  if (thanks) return <div className="ask-card ask-thanks">Drawing it your way…</div>;
+  if (!ask || ask.done || !ask.questions) return null;
+  const at = ask.answers.length;
+  const q = ask.questions[at];
+  if (!q) return null;
+  return (
+    <div className="ask-card" role="group" aria-label="A question about your game">
+      <div className="ask-top">
+        <span className="ask-lead">While I build it…</span>
+        <span className="ask-dots" aria-hidden="true">
+          {ask.questions.map((_, i) => (
+            <span key={i} className={i < at ? 'done' : i === at ? 'now' : ''} />
+          ))}
+        </span>
+      </div>
+      <div className="ask-question">{q.ask}</div>
+      <div className="ask-choices">
+        {q.choices.map((c) => (
+          <button key={c} className="ask-choice" onClick={() => answer(c)}>
+            {c}
+          </button>
+        ))}
+      </div>
+      <div className="ask-more">
+        <button className="ask-skip" onClick={() => answer(null)}>
+          You choose
+        </button>
+        {ask.questions.length - at > 1 && (
+          <button className="ask-skip" onClick={skipQuestions}>
+            Just make it
+          </button>
+        )}
       </div>
     </div>
   );

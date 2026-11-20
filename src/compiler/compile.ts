@@ -13,6 +13,7 @@ import { streamedTitle, watchArray, watchReply } from './stream';
 import { trialRun } from './trial';
 import { writeGameSplit } from './split';
 import { writeGameFanout } from './fanout';
+import { ASKING_GUIDE } from './ask';
 import { CAST_SCHEMA, CAST_WRITER_GUIDE, castWriterPart, fromLean, headerAssets, LEAN_GUIDE, leanSchema, watchLean, type LeanHeader, type LeanReply } from './lean';
 import { artBrief, styleWords } from '../project/styles';
 import { hashString, uid } from '../project/ids';
@@ -54,6 +55,11 @@ export interface CompileOptions {
    * yet do nothing for now (with a warning). For playing when there's no account.
    */
   offline?: boolean;
+  /**
+   * The player's picks for a new game's look (src/asking.ts), in words: the art waits for them, and
+   * the code leaves the look to them.
+   */
+  picks?: Promise<string>;
 }
 
 /**
@@ -333,7 +339,7 @@ async function writePieces(
     // (Awaited with the main reply; a failure before then isn't unhandled.)
     castCall.catch(() => undefined);
   };
-  const user = base + (lean ? `\n\n${LEAN_GUIDE}${castWriter ? `\n\n${CAST_WRITER_GUIDE}` : ''}` : onAssets ? '\n\nWrite "assets" first: every costume, backdrop and sound the game uses, before any code. The art is made from that list while you write the code, so use exactly those names in the code.' : '');
+  const user = base + (lean && opts.picks ? `\n\n${ASKING_GUIDE}` : '') + (lean ? `\n\n${LEAN_GUIDE}${castWriter ? `\n\n${CAST_WRITER_GUIDE}` : ''}` : onAssets ? '\n\nWrite "assets" first: every costume, backdrop and sound the game uses, before any code. The art is made from that list while you write the code, so use exactly those names in the code.' : '');
   let watch = lean ? watchLean(onAssets!, earlyCostumes(project, onAssets!), castWriter ? { headerEnd: harness().balance ? 'balance' : 'contract', call: startCast } : undefined) : onAssets ? watchArray('assets', (items) => onAssets(items as AssetRequest[], streamedTitle(latest))) : null;
   const named: { title?: string; howToPlay?: string } = {};
   let heading = onOutline && freedom
@@ -593,7 +599,9 @@ async function runJobs(jobs: AssetJob[], project: Project, style: string, transp
     opts.onProgress?.({ stage: 'assets', message: current ? `Making ${current}` : 'Making art and sounds', assetsDone: done, assetsTotal: jobs.length });
   report();
   // The art style blocks, wherever they are (the same ones that decide when the art is made again), as one brief for every picture.
-  const ctx: AssetContext = { transport, settings, gameTitle: project.title, style: artBrief(styleWords(style)), signal: opts.signal, onSketch: opts.onSketch };
+  // A new game's art waits for the player's picks (a few seconds at most), and follows them.
+  const picks = opts.picks ? await opts.picks : '';
+  const ctx: AssetContext = { transport, settings, gameTitle: project.title, style: artBrief(styleWords(style)), signal: opts.signal, onSketch: opts.onSketch, picks };
 
   // A whole game asks for a dozen pictures and sounds: several at a time, in the order they can start.
   let free = Math.max(1, harness().concurrency);

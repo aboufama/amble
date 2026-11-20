@@ -55,7 +55,6 @@ const withKey = (page: Page) =>
 async function openExample(page: Page, title: string) {
   await page.getByRole('button', { name: /File/ }).click();
   await page.getByRole('menuitem', { name: title }).click();
-  await page.getByRole('dialog', { name: 'Replace Project' }).getByRole('button', { name: 'Replace' }).click();
   await expect(page.locator('.sprite-tile', { hasText: 'Star' })).toBeVisible();
 }
 

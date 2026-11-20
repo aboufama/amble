@@ -122,13 +122,13 @@ dev/engine-test.html   a page for poking the engine directly (npm run dev → /d
 
 ## Saving and sharing
 
-- Projects autosave in your browser (IndexedDB).
-- **File → Save to your computer** writes a `.amble` file; **Open** reads it back.
+- **My games** (on Home, and **← My games** at the top left of the editor): every game you make is saved in your browser (IndexedDB) as you go, each on its own. Opening another game, a demo or a shared game never replaces anything: the game in the editor stays in My games. A demo or a shared game only looked at doesn't join the list; changed, it does. Cards can be copied or deleted, and **File → Make a copy** copies the open game.
+- **File → Save to your computer** writes a `.amble` file; **Load from your computer** reads it back as a new game in My games.
 - **File → Export playable web page** produces a single `.html` file with the engine, physics and your game inside. It runs anywhere, with no server, on its own or inside another page's iframe (itch.io, a blog). Export builds what changed first, and says so instead of exporting when the build fails.
 - **Share** (top right) puts the game in the hub, with a picture of its stage, and gives a link (`…/#play/<id>`) that opens it in Amble and plays it, for anyone. The game is built first if it needs to be, so it plays without a key. The browser that shared a game can update it (same link) or take it out; anyone can report one, and three reports hide it.
 - **The hub** is on Home: the demos ("From Amble", each with its own link, `#play/demo-<id>`) and the games players shared, newest first. Opening one puts it in the editor to play, change and share as your own.
 
-The hub's server is `api/hub.ts` (its own Vercel function). On Vercel it keeps the games in Vercel Blob: in the project, **Storage → Create → Blob**, connect it to the project (that sets `BLOB_READ_WRITE_TOKEN`), and redeploy. `AMBLE_HUB_ADMIN_KEY` (any long random string) lets you take down any game: `curl -X DELETE -H "x-amble-hub: 1" -H "x-amble-admin: <key>" https://<site>/api/hub/<id>`. Without a Blob store, the site has no hub: Home and Share say sharing isn't switched on. The dev server on your computer keeps its hub in the `.hub` folder.
+The hub's server is `api/hub.ts` (its own Vercel function). On Vercel it keeps the games in Vercel Blob: in the project, **Storage → Create → Blob**, connect it to the project (that sets `BLOB_READ_WRITE_TOKEN`), and redeploy. A private store (`vercel blob create-store <name> --access private`) also needs `AMBLE_HUB_ACCESS=private`. `AMBLE_HUB_ADMIN_KEY` (any long random string) lets you take down any game: `curl -X DELETE -H "x-amble-hub: 1" -H "x-amble-admin: <key>" https://<site>/api/hub/<id>`. Without a Blob store, the site has no hub: Home and Share say sharing isn't switched on. The dev server on your computer keeps its hub in the `.hub` folder.
 
 ## Deploying to Vercel
 

@@ -38,7 +38,7 @@ const SCHEMA = {
 
 const jobs = [];
 for (const run of readdirSync(root)) {
-  if (!/^v\d+-r[1-9]\d*$/.test(run)) continue;
+  if (!/-r[1-9]\d*$/.test(run)) continue;
   for (const d of readdirSync(path.join(root, run))) {
     const dir = path.join(root, run, d);
     if (!existsSync(path.join(dir, 'report.json')) || existsSync(path.join(dir, 'judge.json'))) continue;

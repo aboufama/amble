@@ -172,6 +172,45 @@ select {
   flex: 1;
 }
 
+.menubar-back {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  margin: 0 2px 0 8px;
+  padding: 0 12px 0 8px;
+  border: 1px solid hsla(0, 0%, 100%, 0.35);
+  border-radius: 999px;
+  background: hsla(0, 0%, 100%, 0.12);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.menubar-back:hover {
+  background: hsla(0, 0%, 100%, 0.24);
+}
+
+.menubar-back:focus-visible {
+  outline: 2px solid var(--ui-white);
+  outline-offset: 2px;
+}
+
+/* A narrow bar keeps the arrow (pointing at it still says where it goes). */
+@media (max-width: 1199px) {
+  .menubar-back {
+    padding: 0 7px;
+  }
+
+  .menubar-back-label {
+    display: none;
+  }
+}
+
 .menubar-brand {
   display: flex;
   align-items: center;
@@ -925,6 +964,15 @@ select {
   .style-knob-bar .style-knob-button {
     margin: 0 3px;
   }
+
+  /* The back arrow is the way home here: the logo keeps its mark and gives up its word. */
+  .menubar-brand {
+    padding: 0 6px;
+  }
+
+  .menubar-brand .logo {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1669,6 +1717,116 @@ select {
   align-items: center;
   gap: 4px;
   animation: making-pop 0.35s ease-out;
+}
+
+/* Questions while the game is made: a card over the drawings, one question at a time. */
+.ask-card {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 360px);
+  padding: 10px 12px 8px;
+  border-radius: 14px;
+  background: hsla(0, 0%, 100%, 0.96);
+  color: #2b2350;
+  box-shadow: 0 6px 18px hsla(260, 60%, 10%, 0.35);
+  animation: making-pop 0.3s ease-out;
+}
+
+.ask-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: hsl(260, 35%, 50%);
+  text-transform: uppercase;
+}
+
+.ask-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.ask-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: hsl(260, 25%, 85%);
+}
+
+.ask-dots span.now {
+  background: hsl(260, 60%, 58%);
+}
+
+.ask-dots span.done {
+  background: hsl(150, 50%, 45%);
+}
+
+.ask-question {
+  margin: 6px 0 8px;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.ask-choices {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ask-choice {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 2px solid hsl(260, 55%, 62%);
+  border-radius: 999px;
+  background: hsl(260, 80%, 97%);
+  color: #2b2350;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 0.1s ease,
+    background 0.1s ease;
+}
+
+.ask-choice:hover {
+  background: hsl(260, 75%, 92%);
+}
+
+.ask-choice:active {
+  transform: scale(0.96);
+}
+
+.ask-more {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.ask-skip {
+  padding: 4px 6px;
+  border: none;
+  background: none;
+  color: hsl(260, 25%, 45%);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ask-thanks {
+  width: auto;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .making-title {
@@ -4465,7 +4623,7 @@ details summary {
   z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   height: 48px;
   background: var(--menu-bar);
   box-shadow: 0 1px 3px hsla(247, 40%, 25%, 0.2);
@@ -4740,6 +4898,56 @@ details summary {
 .hub-action.quiet:hover {
   border-color: var(--line);
   color: var(--text-primary);
+}
+
+/* My games: a game with no picture yet shows its name on the card; the one in the editor says so. */
+.my-game .home-thumb {
+  position: relative;
+}
+
+.my-game-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 12px;
+  color: white;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.my-game-open {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: hsla(0, 0%, 100%, 0.92);
+  color: var(--looks-secondary);
+  font-size: 11.5px;
+  font-weight: 800;
+  box-shadow: 0 1px 3px hsla(0, 0%, 0%, 0.18);
+}
+
+.home-more {
+  display: block;
+  margin: 12px auto 0;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--ui-white);
+  color: var(--looks-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.home-more:hover {
+  border-color: var(--looks-secondary);
 }
 
 /* Share: the picture of the stage beside its name, then a line about it. */

@@ -2,6 +2,8 @@ import { compileNeedsRequest, compileProject, inputHash, NO_ACCOUNT, piecesToWri
 import { projectFreedom } from './compiler/codegen';
 import { isDisabled, oneLine, topBlocks } from './compiler/serialize';
 import { AiError } from './compiler/openai';
+import { harness } from './compiler/harness';
+import { askPlayer } from './asking';
 import { cancelCodexLogin, fetchCodexStatus, startCodexLogin } from './compiler/chatgpt';
 import type { CodexStatus } from './compiler/codexTypes';
 import { buildRunPackage, packageKey } from './player/package';
@@ -128,6 +130,15 @@ useStore.subscribe((s, prev) => {
   }
 });
 
+/** The idea a build is about to make a whole new game from (its game: line), or null. */
+function newGameIdea(project: Project, building: Array<{ targetId: string; words: string }>, fresh: boolean): string | null {
+  if (projectFreedom(project) === 'just what I say') return null;
+  if (!fresh && project.compiled?.assets.length) return null;
+  const line = topBlocks(project.stage.blocks).find((b) => b.type === 'br_game' && !isDisabled(b));
+  const words = oneLine(line?.fields?.WHAT);
+  return words && building.some((b) => b.targetId === project.stage.id && b.words === words) ? words : null;
+}
+
 export function needsCompile(project: Project): boolean {
   return !project.compiled || project.compiled.inputHash !== inputHash(project);
 }
@@ -160,6 +171,9 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
   });
   /** After this build: the flag was pressed for blocks that changed while it ran, so build those and play. */
   let playAgain = false;
+  // A whole new game from an idea: the player is asked about its look while it is written.
+  const idea = !instant && !opts.quiet && harness().ask ? newGameIdea(project, building, Boolean(opts.fresh)) : null;
+  const picks = idea ? askPlayer(idea, store.settings, controller.signal) : undefined;
   const done = (compiled: CompiledGame) => {
     // Another project was opened meanwhile: this build was for the one before.
     if (useStore.getState().projectLoads !== loads) return;
@@ -194,6 +208,7 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
         signal: controller.signal,
         fixProblems,
         fresh: opts.fresh,
+        picks,
         onProgress: instant ? undefined : (progress) => useStore.getState().setCompile({ progress }),
       }),
     );
@@ -218,6 +233,8 @@ export async function compile(fixProblems?: string[], opts: { fromFlag?: boolean
   } finally {
     controller = null;
     quietBuild = false;
+    // The questions go with the build.
+    if (useStore.getState().ask) useStore.getState().setAsk(null);
   }
   if (playAgain) startGame();
   // Words typed while this build ran build quietly too (after a successful build only, so a failing one doesn't repeat).

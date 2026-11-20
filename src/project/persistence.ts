@@ -1,30 +1,10 @@
-import { get, set } from 'idb-keyval';
 import { uid } from './ids';
 import type { Project, SpriteTarget } from './types';
 import { DEFAULT_SETTINGS, type AiSettings } from '../compiler/openai';
 import { DEFAULT_IMAGE_MODEL, DEFAULT_MODE, FORMER_BEST, modeSettings, RETIRED_IMAGE_MODELS, RETIRED_MODELS } from '../compiler/models';
 import { migrateProject, migrateSprite } from './migrate';
 
-const PROJECT_KEY = 'amble:project';
 const SETTINGS_KEY = 'amble:settings';
-
-/** Loads the autosaved project (IndexedDB holds big data URLs better than localStorage). */
-export async function loadSavedProject(): Promise<Project | null> {
-  try {
-    const p = await get<Project>(PROJECT_KEY);
-    return p && isProject(p) ? migrateProject(p) : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function saveProject(project: Project): Promise<void> {
-  try {
-    await set(PROJECT_KEY, project);
-  } catch (err) {
-    console.warn('Autosave failed', err);
-  }
-}
 
 export function isProject(value: unknown): value is Project {
   const p = value as Project;

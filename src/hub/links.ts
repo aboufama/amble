@@ -1,35 +1,19 @@
 import { useEffect } from 'react';
 import { useStore } from '../store';
-import { startGame } from '../actions';
 import { EXAMPLES, loadExample } from '../project/examples';
 import type { Project } from '../project/types';
-import { confirmUser } from '../prompt';
-import { homeSeen } from '../components/HomePage';
+import { openGame } from '../games';
 import { linkTarget, openHubProject } from './hub';
 
-/** Opens a game from the hub (or a demo) in the editor and plays it. Asks first when there may be a game to lose. */
-export async function openShared(load: () => Promise<Project>, ask: boolean): Promise<boolean> {
-  const s = useStore.getState();
-  let project: Project;
+/** Opens a game from the hub (or a demo) in the editor and plays it. The game there stays in My games. */
+export async function openShared(load: () => Promise<Project>): Promise<boolean> {
   try {
-    project = await load();
+    await openGame(await load(), { play: true });
+    return true;
   } catch (err) {
-    s.notify((err as Error).message, 'error');
+    useStore.getState().notify((err as Error).message, 'error');
     return false;
   }
-  if (
-    ask &&
-    !(await confirmUser({
-      title: 'Open a shared game',
-      message: `Open “${project.title || 'Untitled game'}”? It takes the place of the game in the editor. Save yours first (File > Save to your computer) if you want to keep it.`,
-      confirmLabel: 'Open it',
-    }))
-  )
-    return false;
-  s.setProject(project);
-  s.closeHome();
-  window.setTimeout(startGame, 50);
-  return true;
 }
 
 /**
@@ -44,13 +28,11 @@ export function usePlayLinks(loaded: boolean): void {
       const target = linkTarget(window.location.hash);
       if (!target) return;
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      // Someone who has used Amble here before may have a game of their own open.
-      const ask = homeSeen();
       if (target.kind === 'demo') {
         const ex = EXAMPLES.find((e) => e.id === target.id);
         if (!ex) return useStore.getState().notify("That demo isn't here anymore.", 'error');
-        void openShared(() => loadExample(ex), ask);
-      } else void openShared(() => openHubProject(target.id), ask);
+        void openShared(() => loadExample(ex));
+      } else void openShared(() => openHubProject(target.id));
     };
     follow();
     window.addEventListener('hashchange', follow);
