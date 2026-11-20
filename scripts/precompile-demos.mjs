@@ -73,7 +73,7 @@ const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_
 const inEditor = () => {
   if (window === window.top) localStorage.setItem('amble:start', 'seen');
 };
-const first = await browser.newPage();
+const first = await browser.newPage({ ignoreHTTPSErrors: true });
 await first.addInitScript(inEditor);
 await first.goto(url, { timeout: 240_000 });
 await first.waitForSelector('.blocklyMainBackground', { timeout: 300_000 });
@@ -90,7 +90,7 @@ async function build(id) {
   const lines = [];
   const say = (line) => lines.push(`   ${line}`);
   // A browser context of its own: its own spend counter and saved project.
-  const context = await browser.newContext({ viewport: { width: 1100, height: 700 } });
+  const context = await browser.newContext({ viewport: { width: 1100, height: 700 }, ignoreHTTPSErrors: true });
   await context.addInitScript(inEditor);
   // --harness '<json>': how the compile is carried out (src/compiler/harness.ts); every request is traced.
   await context.addInitScript((h) => {

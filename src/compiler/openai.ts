@@ -129,6 +129,8 @@ export interface ChatJsonRequest {
   onText?(text: string): void;
   /** What the request makes, for the spend counter. */
   kind?: SpendKind;
+  /** OpenRouter: the providers for this request, by the model's maker (else the harness's for its kind). */
+  provider?: Record<string, string[]> | null;
 }
 
 async function readError(res: Response, t: Transport): Promise<AiError> {
@@ -192,6 +194,8 @@ interface Options {
   usage: boolean;
   format: 'json_schema' | 'json_object';
   effort: boolean;
+  /** Ask for the harness's service tier (priority processing), straight to OpenAI. */
+  tier: boolean;
 }
 
 /** How long to wait (ms) before each retry of a rate-limited request: about a minute and a half in all. */
@@ -214,7 +218,7 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 /** Sends a chat request and returns the parsed JSON reply. Retries without features a model/account rejects. */
 export async function chatJson<T>(t: Transport, req: ChatJsonRequest): Promise<T> {
   if (t.via === 'chatgpt') return parseJsonReply<T>(await codexOnce(req));
-  const opts: Options = { stream: true, usage: true, format: 'json_schema', effort: Boolean(req.reasoningEffort && req.reasoningEffort !== 'default') };
+  const opts: Options = { stream: true, usage: true, format: 'json_schema', effort: Boolean(req.reasoningEffort && req.reasoningEffort !== 'default'), tier: true };
   let waits = 0;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -229,7 +233,8 @@ export async function chatJson<T>(t: Transport, req: ChatJsonRequest): Promise<T
       }
       if (!(err instanceof AiError) || err.status !== 400) throw err;
       const m = err.message.toLowerCase();
-      if (opts.stream && opts.usage && (m.includes('stream_options') || m.includes('include_usage'))) opts.usage = false;
+      if (opts.tier && m.includes('service_tier')) opts.tier = false;
+      else if (opts.stream && opts.usage && (m.includes('stream_options') || m.includes('include_usage'))) opts.usage = false;
       else if (opts.stream && m.includes('stream')) opts.stream = false;
       else if (opts.effort && m.includes('reasoning')) opts.effort = false;
       else if (opts.format === 'json_schema' && (m.includes('response_format') || m.includes('json_schema') || m.includes('schema'))) opts.format = 'json_object';
@@ -259,9 +264,13 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
     if (opts.effort) body.reasoning = { effort: req.reasoningEffort };
     const { providerSort: sort, providerOrder, codeProvider } = harness();
     const maker = req.model.split('/')[0];
-    const order = ((req.kind ?? 'code') === 'code' ? codeProvider?.[maker] : undefined) ?? providerOrder?.[maker];
+    const order = req.provider?.[maker] ?? ((req.kind ?? 'code') === 'code' ? codeProvider?.[maker] : undefined) ?? providerOrder?.[maker];
     body.provider = { require_parameters: true, ...(sort ? { sort } : {}), ...(order?.length ? { only: order, order, allow_fallbacks: false } : {}) };
-  } else if (opts.effort && isReasoningModel(req.model)) body.reasoning_effort = req.reasoningEffort;
+  } else {
+    if (opts.effort && isReasoningModel(req.model)) body.reasoning_effort = req.reasoningEffort;
+    const tier = (req.kind ?? 'code') === 'code' ? harness().codeTier : harness().artTier;
+    if (tier && opts.tier) body.service_tier = tier;
+  }
 
   req.onProgress?.({ phase: 'waiting', chars: 0 });
   // Debug timeline (benchmarks): one entry per request when the page keeps a `__ambleTrace` array.

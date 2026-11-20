@@ -39,17 +39,25 @@ export const ASK_SYSTEM = `You help a child make a video game from their idea. T
 
 Ask about how it looks: the place or world it happens in, what the hero or the main characters look like, the colours or the mood. Only what the idea doesn't already say. Never ask about the rules, the controls or how to play: that is already being written.
 
-- 2 questions, about the two things that change the look most; 1 when the idea already says most of it; none when it says everything.
+- QUESTION_COUNT
 - Each question at most 7 words, in words a 7-year-old can read, naming the thing from their idea ("What does your dragon look like?").
 - 3 choices each: 1 to 4 words, things you can picture, clearly different from each other, every one of them fun. No "other" and no "you choose": the page adds that.
 
 Reply with JSON: { "questions": [{ "ask", "choices" }] }.`;
 
 /** The questions for an idea (none when it can't ask: the build goes on without them). */
-export async function askAboutIdea(idea: string, t: Transport, settings: AiSettings, signal?: AbortSignal): Promise<Question[]> {
+/** The questions request's instructions, for at most `max` questions. */
+export function askSystem(max: number): string {
+  return ASK_SYSTEM.replace(
+    '- QUESTION_COUNT',
+    max <= 1 ? '- 1 question, about the thing that changes the look most; none when the idea already says it.' : '- 2 questions, about the two things that change the look most; 1 when the idea already says most of it; none when it says everything.',
+  );
+}
+
+export async function askAboutIdea(idea: string, t: Transport, settings: AiSettings, signal?: AbortSignal, max = 2): Promise<Question[]> {
   const reply = await chatJson<{ questions?: Question[] }>(t, {
     model: settings.model,
-    system: ASK_SYSTEM,
+    system: askSystem(max),
     user: `Their idea: "${idea.trim().slice(0, 600)}"`,
     schema: ASK_SCHEMA as unknown as Record<string, unknown>,
     schemaName: 'amble_ask',
@@ -57,7 +65,7 @@ export async function askAboutIdea(idea: string, t: Transport, settings: AiSetti
     kind: 'code',
     signal,
   });
-  return cleanQuestions(reply.questions);
+  return cleanQuestions(reply.questions).slice(0, Math.max(1, max));
 }
 
 export function cleanQuestions(raw: unknown): Question[] {

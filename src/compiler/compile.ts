@@ -14,7 +14,7 @@ import { trialRun } from './trial';
 import { writeGameSplit } from './split';
 import { writeGameFanout } from './fanout';
 import { ASKING_GUIDE } from './ask';
-import { CAST_SCHEMA, CAST_WRITER_GUIDE, castWriterPart, fromLean, headerAssets, LEAN_GUIDE, leanSchema, watchLean, type LeanHeader, type LeanReply } from './lean';
+import { CAST_SCHEMA, CAST_WRITER_GUIDE, CAST_WRITER_GUIDE_SLIM, castWriterPart, fromLean, headerAssets, LEAN_GUIDE, LEAN_GUIDE_SPRITES_FIRST, leanSchema, watchLean, type LeanHeader, type LeanReply } from './lean';
 import { artBrief, styleWords } from '../project/styles';
 import { hashString, uid } from '../project/ids';
 import type { CompiledAsset, CompiledCode, CompiledGame, CompiledPiece, CompiledQuestion, CompiledSprite, Project } from '../project/types';
@@ -339,7 +339,7 @@ async function writePieces(
     // (Awaited with the main reply; a failure before then isn't unhandled.)
     castCall.catch(() => undefined);
   };
-  const user = base + (lean && opts.picks ? `\n\n${ASKING_GUIDE}` : '') + (lean ? `\n\n${LEAN_GUIDE}${castWriter ? `\n\n${CAST_WRITER_GUIDE}` : ''}` : onAssets ? '\n\nWrite "assets" first: every costume, backdrop and sound the game uses, before any code. The art is made from that list while you write the code, so use exactly those names in the code.' : '');
+  const user = base + (lean && opts.picks ? `\n\n${ASKING_GUIDE}` : '') + (lean ? `\n\n${harness().spritesFirst && !castWriter ? LEAN_GUIDE_SPRITES_FIRST : LEAN_GUIDE}${castWriter ? `\n\n${harness().slimContract ? CAST_WRITER_GUIDE_SLIM : CAST_WRITER_GUIDE}` : ''}` : onAssets ? '\n\nWrite "assets" first: every costume, backdrop and sound the game uses, before any code. The art is made from that list while you write the code, so use exactly those names in the code.' : '');
   let watch = lean ? watchLean(onAssets!, earlyCostumes(project, onAssets!), castWriter ? { headerEnd: harness().balance ? 'balance' : 'contract', call: startCast } : undefined) : onAssets ? watchArray('assets', (items) => onAssets(items as AssetRequest[], streamedTitle(latest))) : null;
   const named: { title?: string; howToPlay?: string } = {};
   let heading = onOutline && freedom
@@ -357,7 +357,7 @@ async function writePieces(
       model: settings.model,
       system,
       user: prompt,
-      schema: (lean ? leanSchema(harness().balance, castWriter) : watch ? STREAM_SCHEMA : editing ? EDITS_SCHEMA : PIECES_SCHEMA) as unknown as Record<string, unknown>,
+      schema: (lean ? leanSchema(harness().balance, castWriter, harness().spritesFirst, harness().slimContract) : watch ? STREAM_SCHEMA : editing ? EDITS_SCHEMA : PIECES_SCHEMA) as unknown as Record<string, unknown>,
       onText: watch || heading
         ? (text) => {
             latest = text;
@@ -591,7 +591,7 @@ function planAssets(
  * first costume is drawn, and its other costumes are drawn from that drawing, changing only what
  * they say. Sprites don't wait for each other; only a sprite's later costumes wait for its first.
  */
-async function runJobs(jobs: AssetJob[], project: Project, style: string, transport: Transport, settings: AiSettings, opts: CompileOptions, warnings: string[]): Promise<CompiledAsset[]> {
+async function runJobs(jobs: AssetJob[], project: Project, style: string, transport: Transport, settings: AiSettings, opts: CompileOptions, warnings: string[], late = false): Promise<CompiledAsset[]> {
   // By job, not by name: a costume and a sound may share a name.
   const results: Array<CompiledAsset | undefined> = new Array(jobs.length);
   let done = 0;
@@ -601,7 +601,7 @@ async function runJobs(jobs: AssetJob[], project: Project, style: string, transp
   // The art style blocks, wherever they are (the same ones that decide when the art is made again), as one brief for every picture.
   // A new game's art waits for the player's picks (a few seconds at most), and follows them.
   const picks = opts.picks ? await opts.picks : '';
-  const ctx: AssetContext = { transport, settings, gameTitle: project.title, style: artBrief(styleWords(style)), signal: opts.signal, onSketch: opts.onSketch, picks };
+  const ctx: AssetContext = { transport, settings, gameTitle: project.title, style: artBrief(styleWords(style)), signal: opts.signal, onSketch: opts.onSketch, picks, late };
 
   // A whole game asks for a dozen pictures and sounds: several at a time, in the order they can start.
   let free = Math.max(1, harness().concurrency);
@@ -1049,7 +1049,8 @@ export async function compileProject(project: Project, options: CompileOptions):
       transport = await requireTransport(opts.settings);
       settings = effectiveSettings(opts.settings, transport);
     }
-    made = runJobs(jobs, project, style, transport, settings, opts, warnings);
+    // Art asked for once the code is written: the game waits for it alone.
+    made = runJobs(jobs, project, style, transport, settings, opts, warnings, true);
   }
   let more: Promise<CompiledAsset[]> = Promise.resolve([]);
   const moreJobs: AssetJob[] = [];
@@ -1061,7 +1062,7 @@ export async function compileProject(project: Project, options: CompileOptions):
     addMissingAssets(project, extra, sprites, again);
     if (extra.assets.length && transport) {
       moreJobs.push(...planAssets(project, extra.assets, sprites, [...kept, ...jobs.map((j) => placeholderAsset(j))], warnings, false, []).jobs);
-      more = runJobs(moreJobs, project, style, transport, settings, opts, warnings);
+      more = runJobs(moreJobs, project, style, transport, settings, opts, warnings, true);
     }
   }
   /** All the art, once it is made (a stand-in whose drawing never came stays a placeholder). */

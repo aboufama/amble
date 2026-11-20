@@ -57,14 +57,23 @@ const pair = (key: string, description: string) => ({
  * cast and the code. With `castWriter`, the characters' classes are written by a second request at
  * the same time (see CAST_WRITER_GUIDE): this reply writes a contract instead, and no "sprites".
  */
-export function leanSchema(balance: boolean, castWriter = false): typeof LEAN_SCHEMA {
-  if (!balance && !castWriter) return LEAN_SCHEMA;
+export function leanSchema(balance: boolean, castWriter = false, spritesFirst = false, slimContract = false): typeof LEAN_SCHEMA {
+  if (!balance && !castWriter && !spritesFirst) return LEAN_SCHEMA;
   const required: string[] = [...LEAN_SCHEMA.required].filter((k) => !(castWriter && k === 'sprites'));
+  // The characters' classes before the game piece: art their code uses that the cast left out starts sooner.
+  if (spritesFirst && !castWriter) {
+    required.splice(required.indexOf('sprites'), 1);
+    required.splice(required.indexOf('pieces'), 0, 'sprites');
+  }
   const extra = [...(castWriter ? ['contract'] : []), ...(balance ? ['balance'] : [])];
   required.splice(required.indexOf('pieces'), 0, ...extra);
   const all: Record<string, unknown> = {
     ...LEAN_SCHEMA.properties,
-    contract: str('For each character, a few lines: its behavior (how it moves and thinks, reacts, animates), then what others use of it: its methods (with arguments) and fields, the messages it sends and handles (with their data). Then every this.game.vars key (meaning, start value). Compact lines.'),
+    contract: str(
+      slimContract
+        ? 'One short line per character: what the game piece and the others use of it (its methods with arguments, its fields, the messages it sends and handles, with their data). Then the this.game.vars keys (meaning, start value). Its behavior is its cast description and the balance: no more here.'
+        : 'For each character, a few lines: its behavior (how it moves and thinks, reacts, animates), then what others use of it: its methods (with arguments) and fields, the messages it sends and handles (with their data). Then every this.game.vars key (meaning, start value). Compact lines.',
+    ),
     balance: str('Before the code, a few short lines: each act or wave with its numbers (how long, how many, how fast), every timer and limit, and why a first-time player who plays well wins in about the time the dial asks (and how one who struggles still sees the next act). Fix the numbers here, then use them.'),
   };
   return { ...LEAN_SCHEMA, required, properties: Object.fromEntries(required.map((k) => [k, all[k]])) } as unknown as typeof LEAN_SCHEMA;
@@ -76,6 +85,13 @@ Another writer writes every cast member's class at the same time as you write th
 - The game piece directs: the setup, the HUD, spawning and the waves, the arc and its acts, the boss's entrance, the ending. It doesn't move, steer or animate characters itself.
 - Each character's own behavior is its class's: how it moves and thinks, how it reacts (to the player, to being hit, herded or collected), its animation and its juice. Say it in "contract", a few lines for each character, so its writer can write it all.
 "contract" also says exactly what the game piece and the characters use of each other (methods with arguments, fields, messages with data, this.game.vars keys); in the game piece, use the characters only as it says.`;
+
+/** The two writers with a one-line contract per character (`slimContract`): the second writer starts seconds sooner. */
+export const CAST_WRITER_GUIDE_SLIM = `## Two writers at once
+Another writer writes every cast member's class at the same time as you write the game piece, starting the moment your reply reaches "contract" (and "balance"): so there is no "sprites" in this reply, whatever the notes above say, and the header must be quick to write. Split the work between you, about evenly:
+- The game piece directs: the setup, the HUD, spawning and the waves, the arc and its acts, the boss's entrance, the ending. It doesn't move, steer or animate characters itself.
+- Each character's own behavior is its class's: how it moves and thinks, how it reacts, its animation and its juice. Its cast description says what it does (two sentences at most), and "balance" its numbers: that is all its writer gets.
+"contract" is one short line per character: exactly what the game piece and the characters use of each other (methods with arguments, fields, messages with data), then the this.game.vars keys. In the game piece, use the characters only as it says.`;
 
 /** The plan the cast writer works from: the main reply's header, as text. */
 export function headerText(h: LeanHeader): string {
@@ -153,6 +169,10 @@ export const LEAN_SCHEMA = {
     questions: PIECES_SCHEMA.properties.questions,
   },
 } as const;
+
+/** The lean guide with the characters' classes written before the game piece (`spritesFirst`). */
+export const LEAN_GUIDE_SPRITES_FIRST = `## This reply's order
+A new game's reply starts with its cast, and the build starts drawing while you write the code: "cast" first (every new character, with every costume its class will use, by name, and a pose for each), then "backdrops" and "sounds" (a name and a few words each: there is no "assets" list; these are its art and sounds), then the code: first "sprites", each cast member's class, then "pieces", the game piece that directs them. Use exactly those costume, backdrop and sound names in the code.`;
 
 export const LEAN_GUIDE = `## This reply's order
 A new game's reply starts with its cast, and the build starts drawing while you write the code: "cast" first (every new character, with its costumes by name and a pose for each), then "backdrops" and "sounds" (a name and a few words each: there is no "assets" list; these are its art and sounds), then the code: "pieces", and in "sprites" each cast member's class. Use exactly those costume, backdrop and sound names in the code.`;

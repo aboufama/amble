@@ -33,7 +33,7 @@ const WISHES = opt('wishes', '')
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const results = [];
 for (const wish of WISHES) {
-  const context = await browser.newContext({ viewport: { width: 1100, height: 700 } });
+  const context = await browser.newContext({ viewport: { width: 1100, height: 700 }, ignoreHTTPSErrors: true });
   await context.addInitScript((h) => {
     if (window !== window.top) return;
     localStorage.setItem('amble:start', 'seen');

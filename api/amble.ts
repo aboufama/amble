@@ -29,6 +29,12 @@ export interface AmbleApiOptions {
   maxOutputTokens: number;
   /** Largest request body, in bytes. */
   maxBodyBytes: number;
+  /**
+   * Hosted mode, straight to OpenAI: the requests that write code (the game, its fixes, quick
+   * changes, the questions: their reply schemas are named amble_*) get OpenAI's priority processing,
+   * faster and dearer (AMBLE_PRIORITY=1). The page can't ask for it itself, so a visitor can't raise the bill.
+   */
+  priority: boolean;
   /** Requests per visitor (by IP) per window, hosted mode; 0 turns it off. Per server instance. */
   rateLimit: number;
   rateWindowMs: number;
@@ -69,6 +75,7 @@ export function hostedOptions(env: Record<string, string | undefined>): AmbleApi
     allowedImageModels: list(env.AMBLE_IMAGE_MODELS, IMAGE_MODELS),
     maxOutputTokens: int(env.AMBLE_MAX_OUTPUT_TOKENS, 64_000),
     maxBodyBytes: 2_000_000,
+    priority: env.AMBLE_PRIORITY === '1',
     rateLimit: int(env.AMBLE_RATE_LIMIT, 120),
     rateWindowMs: 10 * 60_000,
     codex: false,
@@ -77,7 +84,7 @@ export function hostedOptions(env: Record<string, string | undefined>): AmbleApi
 
 /** Options for the dev/preview server on your computer: your own key, any model, no limits. */
 export function devOptions(env: Record<string, string | undefined>): AmbleApiOptions {
-  return { ...hostedOptions(env), hosted: false, maxBodyBytes: 20_000_000, rateLimit: 0, codex: true };
+  return { ...hostedOptions(env), hosted: false, maxBodyBytes: 20_000_000, priority: false, rateLimit: 0, codex: true };
 }
 
 function json(status: number, body: unknown, extra: Record<string, string> = {}): Response {
@@ -189,6 +196,8 @@ function guardBody(path: string, body: Record<string, unknown>, opts: AmbleApiOp
       return fail(403, `This site builds with ${opts.allowedModels.join(' or ')}. To use ${String(body.model)}, add your own OpenAI API key in Settings.`, 'amble_model_not_allowed');
     }
     const out = { ...pick(body, CHAT_KEYS), ...(router ? routing(body) : {}) };
+    const schema = (body.response_format as { json_schema?: { name?: unknown } } | undefined)?.json_schema?.name;
+    if (opts.priority && !router && typeof schema === 'string' && schema.startsWith('amble_')) out.service_tier = 'priority';
     const asked = Number(out.max_completion_tokens);
     out.max_completion_tokens = Number.isFinite(asked) && asked > 0 ? Math.min(asked, opts.maxOutputTokens) : opts.maxOutputTokens;
     return out;

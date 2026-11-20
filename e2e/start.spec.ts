@@ -480,7 +480,8 @@ test('while a game is made from an idea, the player picks how it looks, and the 
   const asked: Call[] = [];
   await page.addInitScript(() => {
     localStorage.setItem('amble:settings', JSON.stringify({ apiKey: 'sk-test' }));
-    (window as unknown as { __ambleHarness: object }).__ambleHarness = { ask: true };
+    // Two questions here (Amble asks one by default), to see them follow each other.
+    (window as unknown as { __ambleHarness: object }).__ambleHarness = { ask: true, askQuestions: 2 };
   });
   await mockModel(page, calls, {
     asked,

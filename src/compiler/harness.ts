@@ -1,8 +1,10 @@
 /**
  * How a compile is carried out: how hard the model thinks for each kind of request, how art and
  * sounds are made, and whether the code is checked before the game is put together. The defaults
- * are the settings Amble ships with: the Harness Lab's v25 (GPT-6.2 Sol: 26-37 seconds a game where
- * Amble took 139, cheaper, no errors in its runs, judged 7 to 8 of 10). `fullSize` builds the bigger
+ * are the settings Amble ships with: the speed rounds' s1 (November 2026, GPT-6.2 Sol through
+ * OpenRouter: 19.7 seconds a game where the Harness Lab's v25 took 30.5, judged 7.3 to its 7.0): the
+ * code on OpenAI's ultrafast endpoint, the characters' classes before the game piece, and the player
+ * asked about the look while the game is written (bench/speed.mjs, bench/speed-notes.txt). `fullSize` builds the bigger
  * game the judge scored 8 (8, 8, 7) in 31-51 seconds; benchmarks (bench/harness.mjs) try others by setting
  * `globalThis.__ambleHarness` in the page before compiling.
  */
@@ -19,6 +21,8 @@ export interface Harness {
    * follows their picks instead of a theme made up for them.
    */
   ask: boolean;
+  /** How many questions (1 or 2): the art waits for the answers, so one starts it sooner. */
+  askQuestions: number;
   /** Reasoning for each backdrop (null: artEffort). A backdrop at low reasoning thought 4-7 seconds before its first stroke. */
   backdropEffort: ReasoningEffort | null;
   /** Reasoning for each sound pick or design. */
@@ -84,6 +88,13 @@ export interface Harness {
    * half characters, so the build takes the header plus the longer half instead of all of it.
    */
   castWriter: boolean;
+  /**
+   * The lean reply writes the characters' classes before the game piece: a costume a class uses that
+   * the cast left out is found (and drawn) about ten seconds sooner, instead of holding up the end.
+   */
+  spritesFirst: boolean;
+  /** With `castWriter`: a one-line contract per character (its behavior is its cast description and the balance), so the second writer starts seconds sooner. */
+  slimContract: boolean;
   /** Reasoning for the split and fan-out builds' writers (the plan has done the thinking). */
   writerEffort: ReasoningEffort;
   /**
@@ -118,13 +129,26 @@ export interface Harness {
    * 300 tokens a second, at three times the price) speeds up the build where it counts.
    */
   codeProvider: Record<string, string[]> | null;
+  /**
+   * Straight to OpenAI (not through OpenRouter): the service tier for the requests that write code
+   * ("priority": OpenAI's faster, dearer processing; null: the account's default), and for the art.
+   * The same idea as `codeProvider`'s ultrafast endpoint, for a site with an OpenAI key.
+   */
+  codeTier: 'priority' | null;
+  /**
+   * OpenRouter: the providers for backdrops (null: providerOrder). A backdrop is the biggest drawing,
+   * and with a dozen drawings at once it waited longest in the queue: the fast lane ends that.
+   */
+  backdropProvider: Record<string, string[]> | null;
+  artTier: 'priority' | null;
 }
 
 export const DEFAULT_HARNESS: Harness = {
   gameEffort: null,
   artEffort: 'low',
   backdropEffort: null,
-  ask: false,
+  ask: true,
+  askQuestions: 1,
   soundEffort: 'low',
   concurrency: 24,
   costumes: 'sheet',
@@ -140,6 +164,8 @@ export const DEFAULT_HARNESS: Harness = {
   lean: true,
   balance: true,
   castWriter: false,
+  spritesFirst: true,
+  slimContract: false,
   writerEffort: 'low',
   sizeReminder: true,
   fullSize: false,
@@ -147,8 +173,11 @@ export const DEFAULT_HARNESS: Harness = {
   edits: true,
   tweakTrial: 0,
   providerSort: null,
-  providerOrder: { openai: ['azure', 'openai'] },
-  codeProvider: null,
+  providerOrder: { openai: ['azure', 'openai/ultrafast', 'openai'] },
+  codeProvider: { openai: ['openai/ultrafast', 'azure', 'openai'] },
+  codeTier: null,
+  backdropProvider: null,
+  artTier: null,
 };
 
 /** The harness in use: the defaults, with whatever the page set in `__ambleHarness`. */

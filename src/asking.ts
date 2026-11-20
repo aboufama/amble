@@ -7,6 +7,7 @@
 import { useStore } from './store';
 import { askAboutIdea, picksText, type Pick } from './compiler/ask';
 import { resolveTransport, type AiSettings } from './compiler/openai';
+import { harness } from './compiler/harness';
 
 /** How long the art waits for the picks, from the moment the build starts. */
 export const PICKS_WAIT_MS = 10000;
@@ -40,7 +41,7 @@ export function askPlayer(idea: string, settings: AiSettings, signal: AbortSigna
     void (async () => {
       try {
         const t = await resolveTransport(settings);
-        const questions = t ? await askAboutIdea(idea, t, settings, signal) : [];
+        const questions = t ? await askAboutIdea(idea, t, settings, signal, harness().askQuestions) : [];
         if (settled) return;
         if (!questions.length) {
           useStore.getState().setAsk(null);

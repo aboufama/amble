@@ -3,6 +3,7 @@ import { defineConfig, loadEnv, type Plugin, type Connect } from 'vite';
 import react from '@vitejs/plugin-react';
 import { build } from 'esbuild';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
 import { devOptions, handleAmbleApi, hostedOptions } from './api/amble.ts';
@@ -104,9 +105,10 @@ function openaiProxy(env: Record<string, string>): Plugin {
         for await (const chunk of req) chunks.push(chunk as Buffer);
         const headers = new Headers();
         for (const [name, value] of Object.entries(req.headers)) {
-          if (typeof value === 'string' && !['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'content-length', 'expect'].includes(name)) headers.set(name, value);
+          // (HTTP/2's pseudo-headers, ":method" and the like, aren't headers to pass on.)
+          if (typeof value === 'string' && !name.startsWith(':') && !['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'content-length', 'expect'].includes(name)) headers.set(name, value);
         }
-        const request = new Request(`http://${req.headers.host ?? 'localhost'}${req.url}`, {
+        const request = new Request(`http://${req.headers.host ?? (req.headers[':authority'] as string | undefined) ?? 'localhost'}${req.url}`, {
           method: req.method,
           headers,
           body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks),
@@ -114,7 +116,8 @@ function openaiProxy(env: Record<string, string>): Plugin {
         });
         const response = isHub ? await handleHubApi(request, hub) : await handleAmbleApi(request, options);
         res.statusCode = response.status;
-        response.headers.forEach((value, name) => res.setHeader(name, value));
+        // Connection headers belong to HTTP/1.1: HTTP/2 refuses them.
+        response.headers.forEach((value, name) => !['connection', 'keep-alive', 'transfer-encoding', 'upgrade'].includes(name) && res.setHeader(name, value));
         res.flushHeaders();
         if (response.body) for await (const chunk of response.body) res.write(chunk);
         res.end();
@@ -150,6 +153,9 @@ export default defineConfig(({ mode }) => {
     // Relative asset paths, so the build works from any sub-path (e.g. GitHub Pages at /amble/).
     base: './',
     plugins: [react(), playerRuntime(), openaiProxy(env)],
+    // Benchmarks serve over HTTPS (so HTTP/2, like the hosted site, without browsers' six requests at a time
+    // per site over HTTP/1.1): AMBLE_DEV_CERT and AMBLE_DEV_KEY name a certificate and its key.
+    ...(env.AMBLE_DEV_CERT && env.AMBLE_DEV_KEY ? { server: { https: { cert: readFileSync(env.AMBLE_DEV_CERT), key: readFileSync(env.AMBLE_DEV_KEY) } } } : {}),
     build: {
       chunkSizeWarningLimit: 2500,
     },

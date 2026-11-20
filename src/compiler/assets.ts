@@ -32,6 +32,8 @@ export interface AssetContext {
   onSketch?(sketch: Sketch): void;
   /** What the player picked for the game's look, in words ("" for nothing). */
   picks?: string;
+  /** Asked for once the code is written, so the game waits for it alone: it takes the code's fast lane (harness codeProvider). */
+  late?: boolean;
 }
 
 /** The player's picks, for a drawing's request. */
@@ -133,6 +135,7 @@ async function makeSvgImage(job: AssetJob, ctx: AssetContext): Promise<CompiledA
     schema: SVG_SCHEMA as unknown as Record<string, unknown>,
     schemaName: 'svg_art',
     reasoningEffort: job.kind === 'backdrop' ? (harness().backdropEffort ?? harness().artEffort) : harness().artEffort,
+    provider: ctx.late ? harness().codeProvider : job.kind === 'backdrop' ? harness().backdropProvider : null,
     kind: 'art',
     signal: ctx.signal,
     onText: sketcher([job], ctx),
@@ -188,6 +191,7 @@ export async function makeSvgSheet(jobs: AssetJob[], ctx: AssetContext): Promise
     schema: SVG_SHEET_SCHEMA as unknown as Record<string, unknown>,
     schemaName: 'svg_sheet',
     reasoningEffort: harness().artEffort,
+    provider: ctx.late ? harness().codeProvider : null,
     kind: 'art',
     signal: ctx.signal,
     onText: sketcher(jobs, ctx),

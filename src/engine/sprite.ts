@@ -823,32 +823,68 @@ export class Sprite extends Entity {
   }
 
   /**
-   * From now on the player steers this sprite. controls: "arrow keys", "left and right arrows",
-   * "WASD", "A and D" or "the mouse". speed: steps per second.
+   * From now on the player steers this sprite. controls: "arrow keys", "WASD", "arrows and WASD",
+   * "left and right arrows", "A and D" or "the mouse". speed: steps per second. Options (all off
+   * unless given, so blocks walk as they always have): `touch` (hold the mouse or a finger down to
+   * walk toward it when no key is pressed: phones and tablets), `stayOnStage`, `frames` and `fps`
+   * (costumes cycled while it moves; the first shows when it stands), and `face: false` (never mirror).
    */
-  walkWith(controls = 'arrow keys', speed = 200): void {
+  walkWith(controls = 'arrow keys', speed = 200, opts: { touch?: boolean; stayOnStage?: boolean; frames?: string[]; fps?: number; face?: boolean } = {}): void {
     this._walking?.stop();
     const c = String(controls).toLowerCase();
-    const letters = c === 'wasd' || c === 'a and d';
+    const both = c.includes('arrow') && c.includes('wasd');
+    const letters = !both && (c === 'wasd' || c === 'a and d');
     const sideways = c === 'left and right arrows' || c === 'a and d';
     const mouse = c.includes('mouse');
     const v = this._fromSteps(speed);
     const input = this.game.input;
+    const frames = Array.isArray(opts.frames) && opts.frames.length ? opts.frames.map(String) : null;
+    const fps = Number(opts.fps) || 8;
+    const key = (arrow: string, letter: string) => (both ? input.isDown(arrow) || input.isDown(letter) : input.isDown(letters ? letter : arrow)) ? 1 : 0;
+    let moving = false;
     this._walking = this.run(function* walk() {
       for (;;) {
+        let dx = 0;
+        let dy = 0;
         if (mouse) {
+          const before = { x: this.x, y: this.y };
           this.moveTowards({ x: input.mouse.x, y: input.mouse.y }, v * this.game.dt);
+          dx = this.x - before.x;
+          dy = this.y - before.y;
+          if (dx && opts.face !== false) this.flipX = dx < 0;
         } else {
-          const right = input.isDown(letters ? 'd' : 'right') ? 1 : 0;
-          const left = input.isDown(letters ? 'a' : 'left') ? 1 : 0;
-          const up = input.isDown(letters ? 'w' : 'up') ? 1 : 0;
-          const down = input.isDown(letters ? 's' : 'down') ? 1 : 0;
-          const dx = right - left;
-          const dy = sideways ? 0 : up - down;
+          dx = key('right', 'd') - key('left', 'a');
+          dy = sideways ? 0 : key('up', 'w') - key('down', 's');
+          // No key down: a held mouse or finger leads the way.
+          if (!dx && !dy && opts.touch && input.mouse.down) {
+            const tx = input.mouse.x - this.x;
+            const ty = sideways ? 0 : input.mouse.y - this.y;
+            const d = Math.hypot(tx, ty);
+            if (d > Math.max(4, v * this.game.dt)) {
+              dx = tx / d;
+              dy = ty / d;
+            }
+          }
+          // Diagonals no faster than straight lines.
+          const len = Math.hypot(dx, dy);
+          if (len > 1) {
+            dx /= len;
+            dy /= len;
+          }
           this.velocity.x = dx * v;
           // With gravity, up and down belong to jumping and falling.
           if (!this._isDynamic()) this.velocity.y = dy * v;
-          if (dx) this.flipX = dx < 0;
+          if (dx && opts.face !== false) this.flipX = dx < 0;
+        }
+        if (opts.stayOnStage) this.keepOnStage();
+        const now = Boolean(dx || dy);
+        if (frames && now !== moving) {
+          moving = now;
+          if (now) this.animate(frames, fps);
+          else {
+            this.stopAnimation();
+            this.costume = frames[0];
+          }
         }
         yield;
       }

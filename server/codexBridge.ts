@@ -350,13 +350,15 @@ export function isAllowedHost(hostHeader: string | undefined, allowed: AllowedHo
  * without the browser asking this server first).
  */
 export function isSameOrigin(req: IncomingMessage, allowed: AllowedHosts, opts: { anyBody?: boolean } = {}): boolean {
-  if (!isAllowedHost(req.headers.host, allowed)) return false;
+  // HTTP/2 (the dev server over HTTPS) names the host in ":authority".
+  const host = req.headers.host ?? (req.headers[':authority'] as string | undefined);
+  if (!isAllowedHost(host, allowed)) return false;
   const site = req.headers['sec-fetch-site'];
   if (site && site !== 'same-origin' && site !== 'none') return false;
   const origin = req.headers.origin;
   if (origin) {
     try {
-      if (new URL(origin).host !== req.headers.host) return false;
+      if (new URL(origin).host !== host) return false;
     } catch {
       return false;
     }

@@ -113,6 +113,15 @@ describe('hosted proxy', () => {
     await handleAmbleApi(own('/api/openai/chat/completions', chat('gpt-6.1-terra', { n: 8, service_tier: 'priority', tools: [{ type: 'function' }], max_completion_tokens: 50_000, reasoning_effort: 'high' })), opts);
     const sent = JSON.parse(String(upstream.mock.calls[0][1].body));
     expect(sent).toEqual({ ...chat('gpt-6.1-terra'), reasoning_effort: 'high', max_completion_tokens: 1000 });
+    // Priority processing only when the site owner switched it on (AMBLE_PRIORITY=1), for the code (amble_*), not the art.
+    const fast = hosted({ priority: true });
+    const schema = (name: string) => ({ response_format: { type: 'json_schema', json_schema: { name, strict: true, schema: {} } } });
+    await handleAmbleApi(own('/api/openai/chat/completions', chat('gpt-6.1-terra', schema('amble_pieces'))), fast.opts);
+    await handleAmbleApi(own('/api/openai/chat/completions', chat('gpt-6.1-terra', schema('svg_art'))), fast.opts);
+    expect(JSON.parse(String(fast.upstream.mock.calls[0][1].body)).service_tier).toBe('priority');
+    expect(JSON.parse(String(fast.upstream.mock.calls[1][1].body)).service_tier).toBeUndefined();
+    expect(hostedOptions({ AMBLE_PRIORITY: '1' }).priority).toBe(true);
+    expect(hostedOptions({}).priority).toBe(false);
   });
 
   it('draws one image at a time, at a moderate quality', async () => {
