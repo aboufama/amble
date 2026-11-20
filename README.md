@@ -30,9 +30,9 @@ Then either:
 
 - press **Sign in** (top right; it shows when Codex is installed). This needs the [Codex CLI](https://github.com/openai/codex) (`npm install -g @openai/codex`). Compiles then run on your ChatGPT plan with GPT-6 Astra Light, and no API key is needed ([details](#signing-in-with-chatgpt)), or
 - open **Settings** and paste an OpenAI API key (stored only in your browser), or
-- put `OPENAI_API_KEY=sk-...` in a `.env` file (see `.env.example`). The dev server then proxies OpenAI calls, and the key never reaches the browser (the same way the Vercel deployment does).
+- put `OPENAI_API_KEY=sk-...` in a `.env.local` file (see `.env.example`), or `OPENCODE_API_KEY=...` for an [OpenCode](https://opencode.ai) key, which runs the same models through OpenCode's API. The dev server then proxies the model calls, and the key never reaches the browser (the same way the Vercel deployment does).
 
-The first visit opens Home, a page of its own (the logo in the editor's top bar goes back to it): type an idea and press **Make my game** (a whole game takes two or three minutes, and about 10 cents of GPT-6.1 Terra), or open a demo. The demos ship already built, so they play the moment you open them:
+The first visit opens Home, a page of its own (the logo in the editor's top bar goes back to it): type an idea and press **Make my game** (a whole game takes about half a minute, and about 17 cents of GPT-6.2 Sol), or open a demo. The demos ship already built, so they play the moment you open them:
 
 | Demos | What they are |
 |---|---|
@@ -131,20 +131,20 @@ dev/engine-test.html   a page for poking the engine directly (npm run dev → /d
 Vercel runs the app and a small server function, `api/amble.ts`, that holds the OpenAI key, so blocks in your own words build for every visitor with no account and the key never reaches the browser. `vercel.json` already has everything: the Vite build, the rewrites that send `/api/config` and `/api/openai/*` to the function, a 300 s limit for long builds, and cancellation (stopping a build in the editor stops the OpenAI request too).
 
 1. Import the repository in Vercel (**Add New → Project**). The settings come from `vercel.json`.
-2. In **Project → Settings → Environment Variables**, add `OPENAI_API_KEY` with your OpenAI API key (Production, and Preview if you want preview deployments to build too). Never commit the key.
+2. In **Project → Settings → Environment Variables**, add `OPENAI_API_KEY` with your OpenAI API key, or `OPENCODE_API_KEY` with an OpenCode key (Production, and Preview if you want preview deployments to build too). Never commit the key.
 3. Deploy (or redeploy, so the variable takes effect). With a key on the server there's nothing for visitors to set up, so the menu bar has no **Settings** (it shows on the dev server, or with `?dev` in the URL); the Best / Efficient switch stays.
-4. **Set a monthly budget** on the key's OpenAI project (platform.openai.com → Settings → Limits). The function only answers Amble's own page, but anyone can open that page.
+4. **Set a monthly budget** on the key's OpenAI project (platform.openai.com → Settings → Limits), or keep only a little credit on the OpenCode account. The function only answers Amble's own page, but anyone can open that page.
 
 What the function allows, so the key can only be used the way Amble uses it:
 
 - only `chat/completions`, `images/generations` and `models`, only from Amble's own page (same origin, from a browser), only JSON;
-- only the models Amble builds with: `gpt-6.1-terra` and `gpt-6-luna` (`AMBLE_MODELS`, comma-separated, to change), and `gpt-image-2.5-flare` for image art (`AMBLE_IMAGE_MODELS`); a visitor with their own key in Settings can use any model, since their requests go straight to OpenAI;
+- only the models Amble builds with: `gpt-6.2-sol`, `gpt-6.1-terra` and `gpt-6-luna` (`AMBLE_MODELS`, comma-separated, to change), and `gpt-image-2.5-flare` for image art (`AMBLE_IMAGE_MODELS`); a visitor with their own key in Settings can use any model, since their requests go straight to OpenAI;
 - at most 64,000 generated tokens per request (`AMBLE_MAX_OUTPUT_TOKENS`), one image per request, and only the request fields Amble sends (no `n`, `tools` or `service_tier`);
 - 120 requests per visitor per 10 minutes (`AMBLE_RATE_LIMIT`; 0 turns it off). The count is kept per server instance, so it's a speed bump, not a wall: for a hard limit, add a rate-limit rule in Vercel's Firewall too.
 
-`OPENAI_BASE_URL` points it at another OpenAI-compatible endpoint. The local dev server runs the same handler (`vite.config.ts`), without the limits: it's your own key on your own computer. To try exactly what Vercel runs, start it with `AMBLE_HOSTED=1` as well as `OPENAI_API_KEY`.
+`OPENAI_BASE_URL` points it at another OpenAI-compatible endpoint. With `OPENCODE_API_KEY` (and no `OPENAI_API_KEY`) it's OpenCode's, `https://opencode.ai/inference/openai/v1`, where OpenAI's models keep their names; with `https://openrouter.ai/api/v1` and an OpenRouter key, the page names them OpenRouter's way (`openai/gpt-6.2-sol`) and asks for Azure's servers first. The local dev server runs the same handler (`vite.config.ts`), without the limits: it's your own key on your own computer. To try exactly what Vercel runs, start it with `AMBLE_HOSTED=1` as well as `OPENAI_API_KEY`.
 
-Vercel builds Production from the repository's default branch; other branches get Preview deployments, which only build words if `OPENAI_API_KEY` is also enabled for Preview.
+Vercel builds Production from the repository's default branch; other branches get Preview deployments, which only build words if the key is also enabled for Preview.
 
 ## Deploying to GitHub Pages
 
@@ -169,7 +169,7 @@ To point Playwright at an already-installed Chromium, set `PW_CHROMIUM_PATH`, e.
 
 ### What a game from an idea costs
 
-Measured with GPT-6.1 Terra at high reasoning, on five ideas of one sentence each: a build takes 2 to 2.5 minutes and costs 9 to 12 cents (one request of about 20,000 output tokens for the game and its cast, then 12 to 20 small ones for its art and sounds, six at a time). A wish through **Change something** took 36 seconds and 3 cents. On the Vercel deployment that is the owner's money for every visitor who presses **Make my game**: set a budget on the key (see [Deploying to Vercel](#deploying-to-vercel)).
+With GPT-6.2 Sol at low reasoning (the Best mode), through OpenRouter on Azure's servers: a build takes about 30 seconds and costs about 17 cents (one request of about 5,000 output tokens for the cast, backdrops, sounds and code, with each costume drawn as soon as its line streams in, about ten drawings at once). A wish through **Change something** takes 3 to 8 seconds and 2 to 3 cents. On OpenAI's own servers Sol writes about half as fast, so a build takes closer to a minute. Before, with GPT-6.1 Terra at high reasoning, a build took 2 to 2.5 minutes and 9 to 12 cents, and a wish 36 seconds. On the Vercel deployment that is the owner's money for every visitor who presses **Make my game**: set a budget on the key (see [Deploying to Vercel](#deploying-to-vercel)).
 
 ## Ideas for next steps
 

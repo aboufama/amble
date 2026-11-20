@@ -176,6 +176,25 @@ describe('hosted proxy', () => {
     const o = hostedOptions({ OPENAI_API_KEY: ' sk-x ', OPENAI_BASE_URL: 'https://proxy.example/v1/', AMBLE_MODELS: 'a, b', AMBLE_RATE_LIMIT: '7', AMBLE_MAX_OUTPUT_TOKENS: 'lots' });
     expect(o).toMatchObject({ key: 'sk-x', baseUrl: 'https://proxy.example/v1', allowedModels: ['a', 'b'], rateLimit: 7, maxOutputTokens: 64_000, hosted: true });
   });
+
+  it('builds through OpenCode with an OpenCode key, and says so', async () => {
+    const o = hostedOptions({ OPENCODE_API_KEY: ' oc-key ' });
+    expect(o).toMatchObject({ key: 'oc-key', baseUrl: 'https://opencode.ai/inference/openai/v1' });
+    // An OpenAI key wins, and a base URL of its own wins over OpenCode's.
+    expect(hostedOptions({ OPENCODE_API_KEY: 'oc', OPENAI_API_KEY: 'sk' })).toMatchObject({ key: 'sk', baseUrl: 'https://api.openai.com/v1' });
+    expect(hostedOptions({ OPENCODE_API_KEY: 'oc', OPENAI_BASE_URL: 'https://proxy.example/v1' })).toMatchObject({ key: 'oc', baseUrl: 'https://proxy.example/v1' });
+    const upstream = vi.fn(async () => new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }));
+    const opts = { ...o, fetch: upstream as unknown as typeof fetch };
+    expect((await (await handleAmbleApi(new Request(`https://${HOST}/api/config`), opts)).json()).upstream).toBe('opencode');
+    // OpenAI's names, and the reasoning effort the OpenAI way.
+    await handleAmbleApi(own('/api/openai/chat/completions', chat('gpt-6.2-sol', { reasoning_effort: 'low', provider: { only: ['azure'] } })), opts);
+    const [url, init] = upstream.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://opencode.ai/inference/openai/v1/chat/completions');
+    expect((init.headers as Record<string, string>).Authorization ?? new Headers(init.headers).get('authorization')).toBe('Bearer oc-key');
+    const sent = JSON.parse(String(init.body));
+    expect(sent).toMatchObject({ model: 'gpt-6.2-sol', reasoning_effort: 'low' });
+    expect(sent).not.toHaveProperty('provider');
+  });
 });
 
 describe('dev server proxy', () => {

@@ -50,11 +50,20 @@ const list = (v: string | undefined, fallback: string[]) => {
 };
 const int = (v: string | undefined, fallback: number) => (v && /^\d+$/.test(v.trim()) ? Number(v.trim()) : fallback);
 
-/** Hosted options from the environment (Vercel → Project → Settings → Environment Variables). */
+/** OpenCode's API: OpenAI's models under their own names, on the same Chat Completions API as OpenAI's. */
+export const OPENCODE_BASE_URL = 'https://opencode.ai/inference/openai/v1';
+
+/**
+ * Hosted options from the environment (Vercel → Project → Settings → Environment Variables).
+ * The key is OPENAI_API_KEY, or else OPENCODE_API_KEY (an OpenCode key, which then talks to
+ * OpenCode unless OPENAI_BASE_URL says otherwise).
+ */
 export function hostedOptions(env: Record<string, string | undefined>): AmbleApiOptions {
+  const openai = (env.OPENAI_API_KEY ?? '').trim();
+  const opencode = (env.OPENCODE_API_KEY ?? '').trim();
   return {
-    key: (env.OPENAI_API_KEY ?? '').trim(),
-    baseUrl: (env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, ''),
+    key: openai || opencode,
+    baseUrl: (env.OPENAI_BASE_URL || (!openai && opencode ? OPENCODE_BASE_URL : 'https://api.openai.com/v1')).replace(/\/+$/, ''),
     hosted: true,
     allowedModels: list(env.AMBLE_MODELS, MODELS),
     allowedImageModels: list(env.AMBLE_IMAGE_MODELS, IMAGE_MODELS),
@@ -116,13 +125,23 @@ export function resetRateLimit(): void {
   hits.clear();
 }
 
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
+};
+
 /** Is the upstream OpenRouter? (Then models are named "openai/gpt-6.2-sol", and requests can say which providers serve them.) */
 export function isOpenRouter(baseUrl: string): boolean {
-  try {
-    return /(^|\.)openrouter\.ai$/.test(new URL(baseUrl).hostname);
-  } catch {
-    return false;
-  }
+  return /(^|\.)openrouter\.ai$/.test(hostOf(baseUrl));
+}
+
+/** Which API the proxy talks to. */
+export function upstreamOf(baseUrl: string): 'openrouter' | 'opencode' | 'openai' {
+  if (isOpenRouter(baseUrl)) return 'openrouter';
+  return /(^|\.)opencode\.ai$/.test(hostOf(baseUrl)) ? 'opencode' : 'openai';
 }
 
 function modelAllowed(model: unknown, allowed: string[], router = false): boolean {
@@ -193,7 +212,7 @@ async function proxy(request: Request, path: string, opts: AmbleApiOptions): Pro
   const method = ENDPOINTS[path];
   if (opts.hosted && !method) return fail(404, `Unknown endpoint: ${path}`);
   if (opts.hosted && request.method !== method) return fail(405, `Use ${method} for ${path}.`);
-  if (!opts.key) return fail(401, 'OPENAI_API_KEY is not set on the server.');
+  if (!opts.key) return fail(401, 'There is no API key on the server: set OPENAI_API_KEY (or OPENCODE_API_KEY).');
   if (opts.hosted && !isOwnPage(request)) return fail(403, 'Not allowed.');
   if (request.method === 'POST' && !(request.headers.get('content-type') ?? '').includes('application/json')) return fail(415, 'Send JSON.');
   if (rateLimited(request, opts)) return fail(429, 'Lots of builds from here in the last few minutes. Wait a little, then try again.', 'amble_rate_limit');
@@ -343,7 +362,7 @@ export async function handleAmbleApi(request: Request, opts: AmbleApiOptions): P
       hosted: opts.hosted,
       models: opts.hosted ? opts.allowedModels : null,
       // Which API the proxy talks to: through OpenRouter the page names OpenAI's models "openai/…".
-      upstream: isOpenRouter(opts.baseUrl) ? 'openrouter' : 'openai',
+      upstream: upstreamOf(opts.baseUrl),
     });
   }
   if (!route.path) return fail(404, 'Unknown endpoint.');

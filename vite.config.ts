@@ -68,7 +68,7 @@ function playerRuntime(): Plugin {
 }
 
 /**
- * Optional server-side key: if OPENAI_API_KEY is set, `/api/openai/*` is proxied to OpenAI with
+ * Optional server-side key: if OPENAI_API_KEY (or OPENCODE_API_KEY) is set, `/api/openai/*` is proxied upstream with
  * the key attached so it never reaches the browser. It's the same handler Vercel runs
  * (api/amble.ts), in its dev mode: your own key, any model. The same servers also host
  * `/api/codex/*`, the "Sign in with ChatGPT" bridge (server/codexBridge.ts).
