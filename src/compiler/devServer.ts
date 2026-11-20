@@ -7,6 +7,8 @@ export interface DevServerConfig {
   /** A public deployment: its key only runs `models`. */
   hosted: boolean;
   models: string[] | null;
+  /** The API the server's proxy talks to: OpenAI, or OpenRouter (where OpenAI's models are "openai/…"). */
+  upstream: 'openai' | 'openrouter';
 }
 
 let config: Promise<DevServerConfig> | null = null;
@@ -25,8 +27,9 @@ export function devServerConfig(): Promise<DevServerConfig> {
       codex: Boolean(c.codex),
       hosted: Boolean(c.hosted),
       models: Array.isArray(c.models) ? c.models.filter((m): m is string => typeof m === 'string') : null,
+      upstream: c.upstream === 'openrouter' ? ('openrouter' as const) : ('openai' as const),
     }))
-    .catch(() => ({ serverKey: false, codex: false, hosted: false, models: null }))
+    .catch(() => ({ serverKey: false, codex: false, hosted: false, models: null, upstream: 'openai' as const }))
     .then((c) => (known = c));
   return config;
 }

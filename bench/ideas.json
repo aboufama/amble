@@ -1,0 +1,20 @@
+[
+  {
+    "id": "countdown-chickens",
+    "source": "GMTK Game Jam 2026 theme \"Count Down\"",
+    "idea": "a rocket's launch countdown keeps getting interrupted by chickens wandering onto the pad, and you herd them off before it reaches zero",
+    "dial": 3
+  },
+  {
+    "id": "gravity-librarian",
+    "source": "gravity as a resource the player spends, not a fixed rule",
+    "idea": "a librarian who can flip gravity, but every flip costs one book from the tower of books she carries",
+    "dial": 3
+  },
+  {
+    "id": "beat-frog-puzzle",
+    "source": "genre cross-pollination: a puzzle game played with rhythm-game inputs",
+    "idea": "a frog DJ solves sliding tile puzzles, but tiles only move on the beat of the music",
+    "dial": 3
+  }
+]

@@ -573,7 +573,9 @@ describe('compileProject', () => {
     const prompt = server.calls[1].body.messages[1].content;
     expect(idsIn(prompt)).toEqual(['p1']);
     expect(prompt).toContain('- p1: rule, in "Star"');
-    expect(prompt).toContain('## Pieces already written\ne1, e2, e3 (their code is above). They work as they are: rewrite one only when the pieces you write mean it must change');
+    expect(prompt).toContain('## Pieces already written\ne1, e2, e3 (their code is above). They work as they are: edit one only when the pieces you write mean it must change, with edits (its id in "in")');
+    expect(prompt).toContain('## Answer with edits');
+    expect(server.calls[1].body.response_format).toMatchObject({ json_schema: { schema: { required: expect.arrayContaining(['edits']) } } });
     // Words reach the whole game.
     expect(server.calls[1].body.messages[0].content).toContain('# Words reach the whole game');
     const source = (g: typeof first, name: string) => g.code.find((c) => c.targetName === name)!.source;
@@ -589,6 +591,36 @@ describe('compileProject', () => {
     expect(source(third, 'Amble')).toBe(source(second, 'Amble'));
   });
 
+  it('makes a quick change by edits to the code already written, and asks again for an edit that misses', async () => {
+    const p = starCatcher();
+    const server = fakeServer([
+      starReply(),
+      // The new rule as a comment; Amble's sparkles turn pink (one edit, its spacing off), the twinkle
+      // speeds up (an edit naming nothing: it goes where its text is), and one edit misses.
+      (prompt) => ({
+        ...replyTo({ 'rule:': '// The stars spin faster (in their twinkle).' })(prompt),
+        edits: [
+          { in: 'e2', find: 'color:  "#ffd84d",\n count: 12', replace: 'color: "#ff4fd8", count: 30' },
+          { in: '', find: 'this.turn(2);', replace: 'this.turn(6);' },
+          { in: 'e3', find: 'this.spin(1);', replace: 'this.spin(3);' },
+        ],
+      }),
+      // Asked again for the one that missed.
+      () => ({ pieces: [], sprites: [], assets: [], warnings: [], edits: [{ in: 'e3', find: 'this.turn(6);', replace: 'this.turn(6); this.size += 0;' }] }),
+    ]);
+    const first = await compileProject(p, { settings });
+    const changed = { ...p, compiled: first };
+    top(changed.sprites[1]).push(block('ga_rule', { RULE: 'stars spin faster, and the sparkles are big and pink' }));
+    const second = await compileProject(changed, { settings });
+    expect(server.calls).toHaveLength(3);
+    expect(server.calls[2].body.messages[1].content).toContain(`## Edits that didn't apply\n- in e3: "find" "this.spin(1);" isn't there`);
+    const source = (g: typeof first, name: string) => g.code.find((c) => c.targetName === name)!.source;
+    expect(source(second, 'Amble')).toContain('color: "#ff4fd8", count: 30');
+    expect(source(second, 'Star')).toContain('this.turn(6); this.size += 0;');
+    expect(second.revised).toEqual(expect.arrayContaining(['Amble: particles: [a small burst of yellow sparkles]', 'Star: always: [twinkle and spin slowly as I fall]']));
+    expect(second.warnings).toEqual([]);
+  });
+
   it('sends the words written before to be looked at again when the brief changes', async () => {
     const p = starCatcher();
     const server = fakeServer([starReply(), replyTo({}, { e3: 'for (;;) { this.turn(8); yield; }' })]);
@@ -602,7 +634,7 @@ describe('compileProject', () => {
     expect(idsIn(prompt)).toEqual([]);
     expect(prompt).not.toContain('## Write these pieces');
     expect(prompt).toContain('## The brief changed\nThe pieces already written were made for this brief:\n- game: [catch the falling stars before they reach the grass]\n- made for: [kids who are 6 to 10]');
-    expect(prompt).toContain('rewrite one only when the new brief means it must change');
+    expect(prompt).toContain('edit one only when the new brief means it must change');
     expect(second.brief).toContain('made for: [grown-ups who like a challenge]');
     expect(second.code.find((c) => c.targetName === 'Star')!.source).toContain('this.turn(8);');
     expect(second.revised).toEqual(['Star: always: [twinkle and spin slowly as I fall]']);

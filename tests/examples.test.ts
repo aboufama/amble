@@ -87,7 +87,7 @@ describe.each(EXAMPLES.map((e) => [e.title, e] as const))('example %s', (_title,
     const p = example.make();
     const game = await compileProject(p, { settings: { ...DEFAULT_SETTINGS, apiKey: 'sk-test' } });
     expect(bodies.length).toBe(1);
-    expect(bodies[0]).toMatchObject({ model: 'gpt-6.1-terra', reasoning_effort: 'high' });
+    expect(bodies[0]).toMatchObject({ model: 'gpt-6.2-sol', reasoning_effort: 'low' });
     expect(game.warnings).toEqual([]);
     expect(game.pieces?.length).toBe(new Set(plansOf(p).flatMap((plan) => plan.pieces.map((r) => r.key))).size);
   });

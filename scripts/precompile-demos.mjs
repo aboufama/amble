@@ -15,7 +15,7 @@
  * --force to write it anyway). --shots <dir> keeps pictures of the play for a look.
  */
 import { chromium } from '@playwright/test';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,8 +39,25 @@ const playSeconds = Number(opt('play', '150'));
 const immortal = !args.includes('--mortal');
 const jobs = Math.max(1, Number(opt('jobs', '2')));
 
-const outDir = path.join(root, 'public', 'demos');
+// Benchmarking (scripts/bench-models.mjs runs this once per model): --out <dir> writes builds and
+// pictures there instead of public/demos; --report <file.json> writes what happened to each build;
+// --ideas <file.json> builds games from ideas ([{ id, idea, dial?, style? }]) instead of the demos.
+const outDir = path.resolve(opt('out', path.join(root, 'public', 'demos')));
+const report = opt('report', '');
+const ideasFile = opt('ideas', '');
+const ideas = ideasFile ? JSON.parse(readFileSync(ideasFile, 'utf8')) : null;
+const results = [];
 mkdirSync(outDir, { recursive: true });
+// One run per --out folder: a second run for the same folder (another benchmark runner) stops here.
+if (opt('out', '')) {
+  const lock = path.join(outDir, '.lock');
+  try {
+    writeFileSync(lock, String(process.pid), { flag: 'wx' });
+  } catch {
+    console.log(`Already running or done in ${outDir}; skipped.`);
+    process.exit(0);
+  }
+}
 if (shots) mkdirSync(shots, { recursive: true });
 
 const config = await (await fetch(new URL('api/config', url))).json().catch(() => ({}));
@@ -49,18 +66,23 @@ if (!config.serverKey) {
   process.exit(1);
 }
 
-const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 
 // The editor, not Home (where a first visit starts).
-const inEditor = () => localStorage.setItem('amble:start', 'seen');
+// (Only in the editor's own page: the player's sandboxed frame may not touch storage.)
+const inEditor = () => {
+  if (window === window.top) localStorage.setItem('amble:start', 'seen');
+};
 const first = await browser.newPage();
 await first.addInitScript(inEditor);
-await first.goto(url);
-await first.waitForSelector('.blocklyMainBackground', { timeout: 60_000 });
-const ids = await first.evaluate(async () => {
-  const { EXAMPLES } = await import('/src/project/examples.ts');
-  return EXAMPLES.filter((e) => e.prebuilt).map((e) => e.id);
-});
+await first.goto(url, { timeout: 240_000 });
+await first.waitForSelector('.blocklyMainBackground', { timeout: 300_000 });
+const ids = ideas
+  ? ideas.map((i) => i.id)
+  : await first.evaluate(async () => {
+      const { EXAMPLES } = await import('/src/project/examples.ts');
+      return EXAMPLES.filter((e) => e.prebuilt).map((e) => e.id);
+    });
 await first.close();
 
 /** Builds one demo in a page of its own, plays it and writes it. Returns what happened, as lines to print. */
@@ -70,19 +92,29 @@ async function build(id) {
   // A browser context of its own: its own spend counter and saved project.
   const context = await browser.newContext({ viewport: { width: 1100, height: 700 } });
   await context.addInitScript(inEditor);
+  // --harness '<json>': how the compile is carried out (src/compiler/harness.ts); every request is traced.
+  await context.addInitScript((h) => {
+    if (h) window.__ambleHarness = JSON.parse(h);
+    window.__ambleTrace = [];
+  }, opt('harness', ''));
   const p = await context.newPage();
   const pageErrors = [];
   p.on('pageerror', (e) => pageErrors.push(e.message));
-  await p.goto(url);
-  await p.waitForSelector('.blocklyMainBackground', { timeout: 60_000 });
+  await p.goto(url, { timeout: 240_000 });
+  await p.waitForSelector('.blocklyMainBackground', { timeout: 300_000 });
   const built = await p.evaluate(
-    async ({ id, model, effort }) => {
+    async ({ id, model, effort, idea, assetModel }) => {
       const store = window.__ambleStore;
-      const { EXAMPLES } = await import('/src/project/examples.ts');
       const actions = await import('/src/actions.ts');
       store.getState().closeHome();
-      store.getState().setSettings({ apiKey: '', useChatGpt: false, model, reasoningEffort: effort, assetModel: model, artMode: 'svg' });
-      store.getState().setProject(EXAMPLES.find((e) => e.id === id).make());
+      store.getState().setSettings({ apiKey: '', useChatGpt: false, model, reasoningEffort: effort, assetModel: assetModel || model, artMode: 'svg' });
+      if (idea) {
+        const { ideaProject } = await import('/src/project/idea.ts');
+        store.getState().setProject(ideaProject(idea.idea, idea.dial ?? 3, idea.style ?? ''));
+      } else {
+        const { EXAMPLES } = await import('/src/project/examples.ts');
+        store.getState().setProject(EXAMPLES.find((e) => e.id === id).make());
+      }
       await new Promise((r) => setTimeout(r, 1200));
       const t = performance.now();
       await actions.compile(undefined, { fresh: true });
@@ -98,24 +130,41 @@ async function build(id) {
         cast: (c?.sprites ?? []).map((x) => x.name),
         assets: c?.assets?.length ?? 0,
         how: c?.howToPlay ?? '',
+        trace: (window.__ambleTrace ?? []).map((e) => ({ ...e, t0: Math.round(e.t0 - t), ms: Math.round(e.ms ?? 0), first: e.first === undefined ? null : Math.round(e.first) })),
       };
     },
-    { id, model, effort },
+    { id, model, effort, idea: ideas?.find((i) => i.id === id) ?? null, assetModel: opt('asset-model', '') },
   );
   say(`built in ${built.seconds.toFixed(0)} s with ${model} (${effort}): ${built.status}${built.error ? ` (${built.error})` : ''}`);
   say(`${built.pieces} pieces; cast: ${built.cast.join(', ') || 'none'}; art and sounds: ${built.assets}${built.how ? `; how to play: ${built.how}` : ''}`);
   for (const w of built.warnings) say(`warning: ${w}`);
   for (const q of built.questions) say(`question: ${q}`);
+  const spendNow = () =>
+    p.evaluate(() => {
+      try {
+        return Object.values(JSON.parse(localStorage.getItem('amble:spend')).byModel).reduce((n, m) => n + m.usd, 0);
+      } catch {
+        return 0;
+      }
+    });
+  const record = { id, model, effort, harness: opt('harness', '') ? JSON.parse(opt('harness', '')) : null, trace: built.trace, buildSeconds: built.seconds, status: built.status, error: built.error ?? null, pieces: built.pieces, cast: built.cast, assets: built.assets, how: built.how, warnings: built.warnings, questions: built.questions };
+  results.push(record);
   if (built.status !== 'done') {
+    record.usd = await spendNow().catch(() => 0);
     await context.close();
-    return { id, ok: false, lines: [...lines, '   NOT written (the build failed).'] };
+    return { id, ok: false, usd: record.usd, lines: [...lines, '   NOT written (the build failed).'] };
   }
 
-  const frameBox = async () => (await (await p.waitForSelector('iframe.player-frame')).boundingBox());
+  // Benchmarks keep every paid build, even if the play below fails: save it now (the play overwrites it).
+  if (opt('out', '')) {
+    const early = await p.evaluate(() => window.__ambleStore.getState().project);
+    writeFileSync(path.join(outDir, `${id}.amble`), JSON.stringify(early));
+  }
+  const frameBox = async () => (await (await p.waitForSelector('iframe.player-frame', { timeout: 300_000 })).boundingBox());
   // The bot plays badly, and the last acts (the boss, the ending) must run too: so it can't run out of
   // lives. Whatever the game counts as lives, hearts, health... is topped up to the most it has had.
   const snap = async () => {
-    const f = await (await p.waitForSelector('iframe.player-frame')).contentFrame();
+    const f = await (await p.waitForSelector('iframe.player-frame', { timeout: 300_000 })).contentFrame();
     return f
       .evaluate((immortal) => {
         const g = window.__ambleGame;
@@ -207,6 +256,7 @@ async function build(id) {
   await context.close();
 
   if (total < Math.min(playSeconds, 20)) problems.push('it barely played');
+  Object.assign(record, { usd, playedSeconds: total, wallSeconds: wall, ends, problems });
   if (problems.length && !force) {
     // Kept beside the pictures for a look at what went wrong (never shipped).
     if (shots) writeFileSync(path.join(shots, `${id}.rejected.amble`), JSON.stringify(result.project));
@@ -217,7 +267,8 @@ async function build(id) {
   return { id, ok: true, usd, lines: [...lines, `   wrote ${path.relative(root, file)}`] };
 }
 
-const queue = ids.filter((x) => !only.length || only.includes(x));
+// --skip-existing: leave out builds already in --out (a retry after a run that stopped partway).
+const queue = ids.filter((x) => (!only.length || only.includes(x)) && !(args.includes('--skip-existing') && existsSync(path.join(outDir, `${x}.amble`))));
 let failures = 0;
 let spent = 0;
 const worker = async () => {
@@ -233,9 +284,12 @@ const worker = async () => {
     console.log(`\n== ${res.id}\n${res.lines.join('\n')}`);
     if (!res.ok) failures++;
     spent += res.usd ?? 0;
+    // Written after every build too, so what was paid for is kept if a later one fails.
+    if (report) writeFileSync(report, JSON.stringify({ model, effort, playSeconds, at: new Date().toISOString(), results }, null, 2));
   }
 };
 await Promise.all(Array.from({ length: Math.min(jobs, queue.length) }, worker));
 console.log(`\n${failures ? `${failures} not written. ` : ''}Total cost $${spent.toFixed(2)}.`);
+if (report) writeFileSync(report, JSON.stringify({ model, effort, playSeconds, at: new Date().toISOString(), results }, null, 2));
 await browser.close();
 process.exit(failures ? 1 : 0);

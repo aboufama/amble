@@ -40,10 +40,45 @@ describe('routes', () => {
   it('says whether the server has a key, without saying the key', async () => {
     const res = await handleAmbleApi(new Request(`https://${HOST}/api/amble?route=config`), hosted().opts);
     const body = await res.json();
-    expect(body).toEqual({ serverKey: true, codex: false, hosted: true, models: ['gpt-6.1-terra', 'gpt-6-luna'] });
+    expect(body).toEqual({ serverKey: true, codex: false, hosted: true, models: ['gpt-6.2-sol', 'gpt-6.1-terra', 'gpt-6-luna'], upstream: 'openai' });
     expect(JSON.stringify(body)).not.toContain('sk-server');
     const none = await handleAmbleApi(new Request(`https://${HOST}/api/config`), hostedOptions({}));
     expect((await none.json()).serverKey).toBe(false);
+  });
+});
+
+describe('hosted proxy to OpenRouter', () => {
+  const router = () => hosted({ baseUrl: 'https://openrouter.ai/api/v1' });
+
+  it('says so, so the page names the models the OpenRouter way', async () => {
+    const res = await handleAmbleApi(new Request(`https://${HOST}/api/config`), router().opts);
+    expect((await res.json()).upstream).toBe('openrouter');
+  });
+
+  it("takes OpenAI's models by OpenRouter's names, with the reasoning and routing Amble sends, and nothing else", async () => {
+    const { opts, upstream } = router();
+    const provider = { require_parameters: true, only: ['azure', 'openai'], order: ['azure', 'openai'], allow_fallbacks: false, data_collection: 'allow', max_price: { prompt: 999 } };
+    const res = await handleAmbleApi(own('/api/openai/chat/completions', chat('openai/gpt-6.2-sol', { reasoning: { effort: 'low', max_tokens: 99_999 }, provider, transforms: ['x'] })), opts);
+    expect(res.status).toBe(200);
+    const sent = JSON.parse(String(upstream.mock.calls[0][1].body));
+    expect(sent).toMatchObject({ model: 'openai/gpt-6.2-sol', reasoning: { effort: 'low' }, provider: { require_parameters: true, only: ['azure', 'openai'], order: ['azure', 'openai'], allow_fallbacks: false } });
+    expect(sent.reasoning).toEqual({ effort: 'low' });
+    expect(sent.provider).not.toHaveProperty('data_collection');
+    expect(sent.provider).not.toHaveProperty('max_price');
+    expect(sent).not.toHaveProperty('transforms');
+    // Only the site's models, by either name.
+    expect((await handleAmbleApi(own('/api/openai/chat/completions', chat('openai/gpt-6-astra')), opts)).status).toBe(403);
+    expect((await handleAmbleApi(own('/api/openai/chat/completions', chat('anthropic/gpt-6.2-sol')), opts)).status).toBe(403);
+    expect((await handleAmbleApi(own('/api/openai/chat/completions', chat('gpt-6.2-sol')), opts)).status).toBe(200);
+  });
+
+  it("doesn't pass routing on to OpenAI itself", async () => {
+    const { opts, upstream } = hosted();
+    await handleAmbleApi(own('/api/openai/chat/completions', chat('gpt-6.2-sol', { reasoning: { effort: 'low' }, provider: { only: ['azure'] } })), opts);
+    const sent = JSON.parse(String(upstream.mock.calls[0][1].body));
+    expect(sent).not.toHaveProperty('provider');
+    expect(sent).not.toHaveProperty('reasoning');
+    expect((await handleAmbleApi(own('/api/openai/chat/completions', chat('openai/gpt-6.2-sol')), opts)).status).toBe(403);
   });
 });
 
@@ -152,7 +187,7 @@ describe('dev server proxy', () => {
     expect(res.status).toBe(200);
     expect(JSON.parse(String((upstream.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toEqual(body);
     const config = await (await handleAmbleApi(new Request('http://localhost:5173/api/config'), opts)).json();
-    expect(config).toEqual({ serverKey: true, codex: true, hosted: false, models: null });
+    expect(config).toEqual({ serverKey: true, codex: true, hosted: false, models: null, upstream: 'openai' });
   });
 });
 

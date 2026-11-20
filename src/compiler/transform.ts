@@ -94,6 +94,9 @@ export function instrumentTargetCode(source: string, kind: 'sprite' | 'stage'): 
       cls = wrong;
     }
   }
+  // A sprite may build on another sprite's class (`class Sprinter extends Hen`): the engine puts the
+  // other sprites' classes in scope, and the check (lint.ts) reports a name that is no sprite's class.
+  if (!cls && kind === 'sprite') cls = classes.find((c) => c.superClass?.type === 'Identifier' && !['Stage', 'Actor', 'World'].includes(extendsName(c)!)) ?? null;
   if (!cls) {
     errors.push(`No \`class ... extends ${expectedBase}\` declaration was found.`);
     return { className: null, runSource: source, errors, warnings };

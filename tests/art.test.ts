@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { costumeSets, isPlaceholder, placeholderAsset, referenceOf, type AssetJob } from '../src/compiler/assets';
 import { compileProject } from '../src/compiler/compile';
 import { DEFAULT_SETTINGS } from '../src/compiler/openai';
@@ -68,6 +68,10 @@ const svgOf = (assets: CompiledAsset[], name: string) => svgFromDataUrl(assets.f
 const before = (log: string[], a: string, b: string) => log.indexOf(a) >= 0 && log.indexOf(a) < log.indexOf(b);
 
 describe('costumes of one character', () => {
+  // The chained costumes, six at a time (Amble's default now draws a sprite's costumes in one request, all at once).
+  beforeEach(() => void ((globalThis as { __ambleHarness?: object }).__ambleHarness = { costumes: 'chain', concurrency: 6, lean: false }));
+  afterEach(() => void delete (globalThis as { __ambleHarness?: object }).__ambleHarness);
+
   const cast = () => ({
     sprites: [sprite('Rex'), sprite('Meteor')],
     assets: [costume('Rex', 'rex-step1'), costume('Meteor', 'meteor-1'), costume('Rex', 'rex-step2'), backdrop('disco'), costume('Rex', 'rex-blink', 48), costume('Meteor', 'meteor-2'), sound('boom')],
@@ -218,6 +222,10 @@ describe('costumes of one character', () => {
 });
 
 describe('art styles', () => {
+  // (These games come back in the classic reply, with its asset list: Amble's default now starts with the cast.)
+  beforeEach(() => void ((globalThis as { __ambleHarness?: object }).__ambleHarness = { lean: false }));
+  afterEach(() => void delete (globalThis as { __ambleHarness?: object }).__ambleHarness);
+
   /** The brief: the part of a drawing request that says how the game looks. */
   const briefOf = (system: string) => system.slice(system.indexOf("# The game's art style"), system.indexOf('# Rules'));
   const art = () => ({ sprites: [sprite('Rex'), sprite('Coin')], assets: [costume('Rex', 'rex'), costume('Coin', 'coin', 24), backdrop('cave')] });

@@ -119,6 +119,26 @@ export abstract class Entity implements CoroutineOwner {
     return this.game._scheduler.start(this, fn.name || 'run', fn.call(this));
   }
 
+  /**
+   * Coroutine helper: animates numeric properties of any object, e.g. `yield* this.tween(this, { size: 150 }, 0.5)`.
+   * On sprites and the stage alike (the stage's game piece animates its HUD text and scenery with it).
+   */
+  *tween(target: object, props: Record<string, number>, seconds: number, ease: Ease = 'easeInOut'): Generator<void, void, unknown> {
+    const obj = target as Record<string, number>;
+    const from: Record<string, number> = {};
+    for (const k of Object.keys(props)) from[k] = Number(obj[k]) || 0;
+    const fn = EASES[ease] ?? EASES.easeInOut;
+    const start = this.game.time;
+    const total = Math.max(1e-6, Number(seconds) || 0);
+    for (;;) {
+      const t = Math.min(1, (this.game.time - start) / total);
+      const e = fn(t);
+      for (const k of Object.keys(props)) obj[k] = from[k] + (props[k] - from[k]) * e;
+      if (t >= 1) return;
+      yield;
+    }
+  }
+
   /** Coroutine helper: `yield* this.wait(0.5)` pauses for 0.5 seconds of game time. */
   *wait(seconds: number): Generator<void, void, unknown> {
     const until = this.game.time + Math.max(0, Number(seconds) || 0);
@@ -398,23 +418,6 @@ export class Sprite extends Entity {
     const p = this.game._resolvePoint(target, this);
     if (!p) return;
     yield* this.tween(this, { x: p.x, y: p.y }, seconds, ease);
-  }
-
-  /** Coroutine helper: animates numeric properties of any object, e.g. `yield* this.tween(this, { size: 150 }, 0.5)`. */
-  *tween(target: object, props: Record<string, number>, seconds: number, ease: Ease = 'easeInOut'): Generator<void, void, unknown> {
-    const obj = target as Record<string, number>;
-    const from: Record<string, number> = {};
-    for (const k of Object.keys(props)) from[k] = Number(obj[k]) || 0;
-    const fn = EASES[ease] ?? EASES.easeInOut;
-    const start = this.game.time;
-    const total = Math.max(1e-6, Number(seconds) || 0);
-    for (;;) {
-      const t = Math.min(1, (this.game.time - start) / total);
-      const e = fn(t);
-      for (const k of Object.keys(props)) obj[k] = from[k] + (props[k] - from[k]) * e;
-      if (t >= 1) return;
-      yield;
-    }
   }
 
   // ---------- looks ----------

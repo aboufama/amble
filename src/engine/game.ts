@@ -158,12 +158,20 @@ export class Game {
       }),
     );
 
-    for (const { t, costumes, sounds } of loaded) {
+    // Sprites' classes can build on each other (class Sprinter extends Hen) and use each other
+    // (Hen.SPEED): each is evaluated after the sprite classes it names, with them in scope.
+    const classes = new Map<string, TargetDef['cls']>();
+    // A class named before it is evaluated (Hen's code uses Queen, and Queen extends Hen, so Hen goes
+    // first) is in scope as a stand-in that becomes it: Queen.SPEED, new Queen() and instanceof Queen
+    // all reach the real class once it exists.
+    const later = new Map(loaded.filter(({ t }) => t.kind === 'sprite' && t.className).map(({ t }) => [t.className!, lateClass(t.className!, classes)]));
+    for (const { t, costumes, sounds } of evaluationOrder(loaded)) {
       const base: TargetDef['cls'] =
         t.kind === 'stage' ? (class extends Stage {} as TargetDef['cls']) : (class extends Sprite {} as TargetDef['cls']);
       Object.defineProperty(base, 'name', { value: t.kind === 'stage' ? 'Stage' : 'Sprite' });
       const def: TargetDef = { name: t.name, kind: t.kind, run: t, costumes, sounds, cls: base };
-      def.cls = this.evaluate(t, base);
+      def.cls = this.evaluate(t, base, classes, later);
+      if (t.kind === 'sprite' && t.className && def.cls !== base) classes.set(t.className, def.cls);
       if (t.kind === 'stage') this.stageDef = def;
       else this.defs.set(t.name, def);
     }
@@ -193,10 +201,11 @@ export class Game {
     this._render();
   }
 
-  private evaluate(t: RunTarget, base: TargetDef['cls']): TargetDef['cls'] {
+  private evaluate(t: RunTarget, base: TargetDef['cls'], sprites: ReadonlyMap<string, TargetDef['cls']>, later: ReadonlyMap<string, unknown>): TargetDef['cls'] {
     if (!t.code || !t.className) return base;
     try {
       const scope: Record<string, unknown> = {
+        ...Object.fromEntries([...later].filter(([name]) => name !== t.className).map(([name, stub]) => [name, sprites.get(name) ?? stub])),
         ...sandboxGlobals(),
         Phaser: this.host.Phaser,
         Sprite: t.kind === 'sprite' ? base : Sprite,
@@ -204,7 +213,7 @@ export class Game {
       };
       beginFrame();
       const cls = evaluateClass(t.code, t.className, t.name, scope);
-      if (typeof cls !== 'function' || !(cls.prototype instanceof base)) {
+      if (typeof cls !== 'function' || !(cls.prototype instanceof (t.kind === 'stage' ? Stage : Sprite))) {
         throw new Error(`The code for "${t.name}" must declare \`class ${t.className} extends ${t.kind === 'stage' ? 'Stage' : 'Sprite'}\`.`);
       }
       return cls as TargetDef['cls'];
@@ -910,4 +919,63 @@ function applyProps(sprite: Sprite, props: Record<string, unknown>): void {
       reportError(err, { phase: 'run', target: sprite.name, script: 'spawn' });
     }
   }
+}
+
+/**
+ * A stand-in for a sprite's class that isn't evaluated yet: everything done with it (its static
+ * fields and methods, `new`, `instanceof`, `extends`) goes to the class once it is. Before then,
+ * using it is the error using a missing name would be.
+ */
+export function lateClass(name: string, classes: ReadonlyMap<string, unknown>): unknown {
+  const real = (): object => {
+    const c = classes.get(name);
+    if (!c) throw new ReferenceError(`${name} is not defined yet (it is still loading)`);
+    return c as object;
+  };
+  type Ctor = new (...a: unknown[]) => object;
+  const stub: object = new Proxy(function () {} as unknown as object, {
+    get: (_t, key) => Reflect.get(real(), key),
+    set: (_t, key, value) => Reflect.set(real(), key, value),
+    has: (_t, key) => Reflect.has(real(), key),
+    getPrototypeOf: () => Reflect.getPrototypeOf(real()),
+    apply: (_t, self, args) => Reflect.apply(real() as (...a: unknown[]) => unknown, self, args),
+    construct: (_t, args, target): object => Reflect.construct(real() as Ctor, args, target === stub ? (real() as Ctor) : target),
+  });
+  return stub;
+}
+
+/** Does this code name `name` (not as a property, like `this.Hen`)? */
+function usesName(code: string, name: string): boolean {
+  return /^[A-Za-z_$][\w$]*$/.test(name) && new RegExp(`(^|[^\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`).test(code);
+}
+
+/**
+ * The order to evaluate targets' classes in: a sprite class before the classes that extend it, and
+ * before those that otherwise name it (where that doesn't break the first rule: Hen may name
+ * Sprinter in its code while Sprinter extends Hen, and then Hen goes first).
+ */
+export function evaluationOrder<T extends { t: { kind: string; className: string | null; code: string | null } }>(items: T[]): T[] {
+  const byClass = new Map(items.filter((i) => i.t.kind === 'sprite' && i.t.className).map((i) => [i.t.className!, i]));
+  const parentOf = (item: T): T | undefined => {
+    const m = item.t.className && item.t.code ? new RegExp(`class\\s+${item.t.className.replace(/\$/g, '\\$')}\\s+extends\\s+([\\w$]+)`).exec(item.t.code) : null;
+    const p = m ? byClass.get(m[1]) : undefined;
+    return p !== item ? p : undefined;
+  };
+  /** Does `item` extend `other`, however far up? */
+  const extendsFrom = (item: T, other: T): boolean => {
+    for (let p = parentOf(item), n = 0; p && n < items.length; p = parentOf(p), n++) if (p === other) return true;
+    return false;
+  };
+  const out: T[] = [];
+  const seen = new Set<T>();
+  const visit = (item: T) => {
+    if (seen.has(item)) return;
+    seen.add(item);
+    const parent = parentOf(item);
+    if (parent) visit(parent);
+    for (const [name, dep] of byClass) if (dep !== item && !extendsFrom(dep, item) && item.t.code && usesName(item.t.code, name)) visit(dep);
+    out.push(item);
+  };
+  for (const i of items) visit(i);
+  return out;
 }

@@ -28,6 +28,7 @@ export interface Price {
 export const PRICES: Record<string, Price> = {
   'gpt-6.1-terra': { input: 1, cachedInput: 0.05, cacheWrite: 1.25, output: 5 },
   'gpt-6-luna': { input: 0.1, cachedInput: 0.01, cacheWrite: 0.125, output: 0.5 },
+  'gpt-6.2-sol': { input: 2, cachedInput: 0.1, cacheWrite: 2.5, output: 10 },
   'gpt-6.1-sol': { input: 2, cachedInput: 0.1, output: 10 },
   'gpt-6-sol': { input: 2, cachedInput: 0.2, output: 10 },
   'gpt-6-astra': { input: 10, cachedInput: 1, output: 50 },
@@ -56,6 +57,8 @@ export interface ChatUsage {
   completion_tokens?: number;
   prompt_tokens_details?: { cached_tokens?: number | null; cache_write_tokens?: number | null } | null;
   completion_tokens_details?: { reasoning_tokens?: number | null } | null;
+  /** What the request cost in US dollars, when the endpoint says (OpenRouter does). */
+  cost?: number | null;
 }
 
 /** The `usage` of an Images API reply. */
@@ -188,13 +191,16 @@ function add(model: string, kind: SpendKind, tokens: Tokens | null, usd: number 
   });
 }
 
-/** A finished request, with the usage OpenAI reported (null when it reported none). */
-export function recordUsage(model: string, kind: SpendKind, tokens: Tokens | null): void {
+/**
+ * A finished request, with the usage OpenAI reported (null when it reported none). `reportedUsd` is
+ * the cost the endpoint itself reported (OpenRouter), used instead of the price list when present.
+ */
+export function recordUsage(model: string, kind: SpendKind, tokens: Tokens | null, reportedUsd?: number | null): void {
   if (!tokens) {
     add(model, kind, null, null, { incomplete: true });
     return;
   }
-  const usd = costOf(model, tokens);
+  const usd = typeof reportedUsd === 'number' && Number.isFinite(reportedUsd) && reportedUsd >= 0 ? reportedUsd : costOf(model, tokens);
   add(model, kind, tokens, usd, { unpriced: usd === null });
 }
 

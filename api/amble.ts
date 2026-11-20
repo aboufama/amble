@@ -41,7 +41,7 @@ export interface AmbleApiOptions {
   now?: () => number;
 }
 
-const MODELS = ['gpt-6.1-terra', 'gpt-6-luna'];
+const MODELS = ['gpt-6.2-sol', 'gpt-6.1-terra', 'gpt-6-luna'];
 const IMAGE_MODELS = ['gpt-image-2.5-flare'];
 
 const list = (v: string | undefined, fallback: string[]) => {
@@ -116,9 +116,39 @@ export function resetRateLimit(): void {
   hits.clear();
 }
 
-function modelAllowed(model: unknown, allowed: string[]): boolean {
+/** Is the upstream OpenRouter? (Then models are named "openai/gpt-6.2-sol", and requests can say which providers serve them.) */
+export function isOpenRouter(baseUrl: string): boolean {
+  try {
+    return /(^|\.)openrouter\.ai$/.test(new URL(baseUrl).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function modelAllowed(model: unknown, allowed: string[], router = false): boolean {
   if (typeof model !== 'string') return false;
-  return allowed.some((m) => model === m || (model.startsWith(`${m}-`) && /^\d{4}-\d{2}-\d{2}$/.test(model.slice(m.length + 1))));
+  // Through OpenRouter, OpenAI's models carry their maker's name: "openai/gpt-6.2-sol" is gpt-6.2-sol.
+  const name = router && model.startsWith('openai/') ? model.slice('openai/'.length) : model;
+  return allowed.some((m) => name === m || (name.startsWith(`${m}-`) && /^\d{4}-\d{2}-\d{2}$/.test(name.slice(m.length + 1))));
+}
+
+/** OpenRouter's routing, as Amble sends it (src/compiler/openai.ts), and nothing else. */
+function routing(body: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const r = body.reasoning as { effort?: unknown } | undefined;
+  if (r && typeof r === 'object' && ['minimal', 'low', 'medium', 'high'].includes(String(r.effort))) out.reasoning = { effort: r.effort };
+  const p = body.provider as Record<string, unknown> | undefined;
+  if (p && typeof p === 'object') {
+    const names = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && /^[\w.\/-]{1,40}$/.test(x)).slice(0, 8) : undefined);
+    const provider: Record<string, unknown> = {};
+    if (typeof p.require_parameters === 'boolean') provider.require_parameters = p.require_parameters;
+    if (typeof p.allow_fallbacks === 'boolean') provider.allow_fallbacks = p.allow_fallbacks;
+    if (p.sort === 'throughput' || p.sort === 'latency') provider.sort = p.sort;
+    if (names(p.only)) provider.only = names(p.only);
+    if (names(p.order)) provider.order = names(p.order);
+    out.provider = provider;
+  }
+  return out;
 }
 
 const CHAT_KEYS = ['model', 'messages', 'response_format', 'stream', 'stream_options', 'reasoning_effort', 'max_completion_tokens'];
@@ -135,10 +165,11 @@ function pick(body: Record<string, unknown>, keys: string[]): Record<string, unk
  */
 function guardBody(path: string, body: Record<string, unknown>, opts: AmbleApiOptions): Record<string, unknown> | Response {
   if (path === 'chat/completions') {
-    if (!modelAllowed(body.model, opts.allowedModels)) {
+    const router = isOpenRouter(opts.baseUrl);
+    if (!modelAllowed(body.model, opts.allowedModels, router)) {
       return fail(403, `This site builds with ${opts.allowedModels.join(' or ')}. To use ${String(body.model)}, add your own OpenAI API key in Settings.`, 'amble_model_not_allowed');
     }
-    const out = pick(body, CHAT_KEYS);
+    const out = { ...pick(body, CHAT_KEYS), ...(router ? routing(body) : {}) };
     const asked = Number(out.max_completion_tokens);
     out.max_completion_tokens = Number.isFinite(asked) && asked > 0 ? Math.min(asked, opts.maxOutputTokens) : opts.maxOutputTokens;
     return out;
@@ -311,6 +342,8 @@ export async function handleAmbleApi(request: Request, opts: AmbleApiOptions): P
       codex: opts.codex,
       hosted: opts.hosted,
       models: opts.hosted ? opts.allowedModels : null,
+      // Which API the proxy talks to: through OpenRouter the page names OpenAI's models "openai/…".
+      upstream: isOpenRouter(opts.baseUrl) ? 'openrouter' : 'openai',
     });
   }
   if (!route.path) return fail(404, 'Unknown endpoint.');

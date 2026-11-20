@@ -1,8 +1,10 @@
 import { chatJson, generateImage, type AiSettings, type Transport } from './openai';
 import { imagePrompt, soundPrompt, svgPrompt, type ArtReference } from './prompt';
-import { SOUND_SCHEMA, SVG_SCHEMA, type SvgReply } from './schema';
+import { SOUND_SCHEMA, SVG_SCHEMA, SVG_SHEET_SCHEMA, type SvgReply, type SvgSheetReply } from './schema';
+import { harness } from './harness';
 import { candidateLine, fallbackSound, renderSoundReply, soundCandidates, soundKindFor, styleLines, type MadeSound, type SoundReply } from '../audio/custom';
 import { resizeImage, sanitizeSvg, svgDataUrl, svgFromDataUrl, trimTransparent } from '../project/images';
+import { closeSvg, svgSoFar } from './sketch';
 import { uid } from '../project/ids';
 import type { ArtBrief } from '../project/styles';
 import type { CompiledAsset } from '../project/types';
@@ -26,6 +28,38 @@ export interface AssetContext {
   /** The game's art brief: the same for every picture, so they share a look. */
   style: ArtBrief;
   signal?: AbortSignal;
+  /** A drawing as it is drawn (its SVG so far, made whole), and once more when it is done. */
+  onSketch?(sketch: Sketch): void;
+}
+
+export interface Sketch {
+  target: string;
+  name: string;
+  kind: 'costume' | 'backdrop';
+  svg: string;
+  done: boolean;
+}
+
+/** onText for an art request: each of `jobs` (its nth "svg" in the reply) as it is drawn, a few times a second. */
+function sketcher(jobs: AssetJob[], ctx: AssetContext): ((text: string) => void) | undefined {
+  if (!ctx.onSketch) return undefined;
+  let last = 0;
+  return (text) => {
+    const now = Date.now();
+    if (now - last < 150) return;
+    last = now;
+    jobs.forEach((job, i) => {
+      const got = svgSoFar(text, i);
+      const svg = got && !got.done ? closeSvg(got.svg) : null;
+      if (svg) ctx.onSketch!({ target: job.targetName, name: job.name, kind: job.kind === 'backdrop' ? 'backdrop' : 'costume', svg, done: false });
+    });
+  };
+}
+
+function sketched(asset: CompiledAsset, job: AssetJob, ctx: AssetContext): CompiledAsset {
+  const svg = asset.mime === 'image/svg+xml' ? svgFromDataUrl(asset.dataUrl) : null;
+  if (svg) ctx.onSketch?.({ target: job.targetName, name: job.name, kind: job.kind === 'backdrop' ? 'backdrop' : 'costume', svg, done: true });
+  return asset;
 }
 
 /**
@@ -93,12 +127,17 @@ async function makeSvgImage(job: AssetJob, ctx: AssetContext): Promise<CompiledA
     user,
     schema: SVG_SCHEMA as unknown as Record<string, unknown>,
     schemaName: 'svg_art',
-    reasoningEffort: 'low',
+    reasoningEffort: harness().artEffort,
     kind: 'art',
     signal: ctx.signal,
+    onText: sketcher([job], ctx),
   });
   // Pixel art keeps its hard edges whether or not the artist remembered to ask for them.
   const svg = sanitizeSvg(reply.svg, size.width, size.height, { crispEdges: ctx.style.pixel });
+  return sketched(svgAsset(job, size, svg), job, ctx);
+}
+
+function svgAsset(job: AssetJob, size: { width: number; height: number }, svg: string): CompiledAsset {
   return {
     id: uid('a'),
     kind: 'image',
@@ -115,6 +154,49 @@ async function makeSvgImage(job: AssetJob, ctx: AssetContext): Promise<CompiledA
     targetName: job.targetName,
     request: job.description,
   };
+}
+
+/**
+ * All of one sprite's costumes in one request (the harness's "sheet" costumes): drawn together, they
+ * are one character without a second round trip. Returns them in the order of `jobs`; a costume the
+ * reply left out (or that doesn't parse) is null, for the caller to make on its own.
+ */
+export async function makeSvgSheet(jobs: AssetJob[], ctx: AssetContext): Promise<Array<CompiledAsset | null>> {
+  const first = jobs[0];
+  const sizes = jobs.map(imageSize);
+  const { system } = svgPrompt({ kind: 'costume', mode: '2d', width: sizes[0].width, height: sizes[0].height, description: first.description, spriteName: first.targetName, gameTitle: ctx.gameTitle, style: ctx.style });
+  const sheetSystem = system.replace(
+    /^You are the artist[^\n]*\n/,
+    `You are the artist of a 2D game made in Amble, a game maker for kids: you draw the game's pictures as SVG code. This request is all the costumes of one sprite: frames the game swaps in place as animation. Reply with JSON: { "costumes": [{ "name", "svg" }] }, one entry per costume asked for, in order.\n`,
+  );
+  const style = ctx.style;
+  const user = [
+    `Game: ${ctx.gameTitle}`,
+    `Sprite: ${first.targetName}`,
+    `Draw these ${jobs.length} costumes${style.words ? `, in the game's art style (${style.name})` : ''}. Draw the first one, then make each other one by copying it and changing only what its description asks (a leg forward, wings down, eyes closed): the same shapes, colours, line weight, size and position on the canvas, so the character doesn't flicker when the frames swap. A costume that is plainly something else (an explosion, a broken version) is drawn as asked, in the same style.`,
+    ...jobs.map((j, i) => `- "${j.name}": ${sizes[i].width} x ${sizes[i].height} px: ${j.description}`),
+  ].join('\n');
+  const reply = await chatJson<SvgSheetReply>(ctx.transport, {
+    model: ctx.settings.assetModel || ctx.settings.model,
+    system: sheetSystem,
+    user,
+    schema: SVG_SHEET_SCHEMA as unknown as Record<string, unknown>,
+    schemaName: 'svg_sheet',
+    reasoningEffort: harness().artEffort,
+    kind: 'art',
+    signal: ctx.signal,
+    onText: sketcher(jobs, ctx),
+  });
+  const byName = new Map((reply.costumes ?? []).map((c) => [String(c.name ?? '').trim(), String(c.svg ?? '')]));
+  return jobs.map((job, i) => {
+    const raw = byName.get(job.name) ?? reply.costumes?.[i]?.svg;
+    if (!raw) return null;
+    try {
+      return sketched(svgAsset(job, sizes[i], sanitizeSvg(raw, sizes[i].width, sizes[i].height, { crispEdges: ctx.style.pixel })), job, ctx);
+    } catch {
+      return null;
+    }
+  });
 }
 
 async function makeImageModelArt(job: AssetJob, ctx: AssetContext): Promise<CompiledAsset> {
@@ -168,7 +250,8 @@ async function makeImageModelArt(job: AssetJob, ctx: AssetContext): Promise<Comp
 async function makeSound(job: AssetJob, ctx: AssetContext): Promise<CompiledAsset> {
   const candidates = soundCandidates(job.name, job.description, 10);
   let made: MadeSound | null = null;
-  try {
+  // The harness's "library" sounds: the closest library sound, with no request at all.
+  if (harness().sounds !== 'library') try {
     const { system, user } = soundPrompt({
       name: job.name,
       description: job.description,
@@ -183,7 +266,7 @@ async function makeSound(job: AssetJob, ctx: AssetContext): Promise<CompiledAsse
       user,
       schema: SOUND_SCHEMA as unknown as Record<string, unknown>,
       schemaName: 'sound_recipe',
-      reasoningEffort: 'low',
+      reasoningEffort: harness().soundEffort,
       kind: 'sound',
       signal: ctx.signal,
     });

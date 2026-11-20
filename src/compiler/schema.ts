@@ -13,8 +13,18 @@ export interface AssetRequest {
   reuse: boolean;
 }
 
+/** A change to code already written: `find` (exact text in it) becomes `replace`. */
+export interface CodeEdit {
+  /** A piece's id ("e2") or a character's name. */
+  in: string;
+  find: string;
+  replace: string;
+}
+
 /** The reply to a compile request: code for each piece, plus any characters and art they need. */
 export interface PiecesReply {
+  /** Editing (a quick change): changes to code already written. */
+  edits?: CodeEdit[];
   pieces: Array<{ id: string; code: string }>;
   sprites: Array<{ name: string; description: string; x: number; y: number; size: number; direction: number; visible: boolean; code: string }>;
   assets: AssetRequest[];
@@ -112,5 +122,50 @@ export const SVG_SCHEMA = {
   properties: { svg: str('A complete <svg> document.') },
 } as const;
 
+export interface SvgSheetReply {
+  costumes: Array<{ name: string; svg: string }>;
+}
+
+/** Several costumes of one sprite, drawn together in one request (the harness's "sheet" costumes). */
+export const SVG_SHEET_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['costumes'],
+  properties: {
+    costumes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name', 'svg'],
+        properties: { name: str('The costume name, exactly as asked.'), svg: str('A complete <svg> document.') },
+      },
+    },
+  },
+} as const;
+
 /** The reply to a sound request: a library sound, or a sound of the model's own design (see src/audio/custom.ts). */
 export { SOUND_SCHEMA } from '../audio/soundSchema';
+
+/** The reply to a quick change: PIECES_SCHEMA, with code already written changed by edits. */
+export const EDITS_SCHEMA = {
+  ...PIECES_SCHEMA,
+  required: ['edits', ...PIECES_SCHEMA.required],
+  properties: {
+    edits: {
+      type: 'array',
+      description: 'Changes to code already written, in the order to make them.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['in', 'find', 'replace'],
+        properties: {
+          in: str('The piece id ("e2") or the character\'s name.'),
+          find: str('Exact text from that code, long enough to appear only once in it.'),
+          replace: str('Its new text.'),
+        },
+      },
+    },
+    ...PIECES_SCHEMA.properties,
+  },
+} as const;

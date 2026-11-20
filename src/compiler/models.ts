@@ -1,6 +1,7 @@
 /**
- * The two ways Amble builds blocks written in words: "Best" (GPT-6.1 Terra, high reasoning) and
- * "Efficient" (GPT-6 Luna, high reasoning, about a tenth of the price). A mode is just a set of
+ * The two ways Amble builds blocks written in words: "Best" (GPT-6.2 Sol, low reasoning: the
+ * fastest of the models benchmarked in bench/, and judged as good as any) and "Efficient" (GPT-6
+ * Luna, high reasoning, a fraction of the price). A mode is just a set of
  * model settings: picking one writes them into the settings, and editing the models by hand under
  * Settings → Advanced makes the settings "custom" (neither mode).
  */
@@ -26,11 +27,11 @@ export const MODES: Record<ModeId, ModelMode> = {
   best: {
     id: 'best',
     label: 'Best',
-    name: 'GPT-6.1 Terra, high reasoning',
-    description: 'The strongest builds: elaborate games, careful code and art.',
-    model: 'gpt-6.1-terra',
-    reasoningEffort: 'high',
-    assetModel: 'gpt-6.1-terra',
+    name: 'GPT-6.2 Sol, low reasoning',
+    description: 'The strongest builds, and the quickest: elaborate games, careful code and art.',
+    model: 'gpt-6.2-sol',
+    reasoningEffort: 'low',
+    assetModel: 'gpt-6.2-sol',
   },
   efficient: {
     id: 'efficient',
@@ -45,6 +46,9 @@ export const MODES: Record<ModeId, ModelMode> = {
 };
 
 export const DEFAULT_MODE: ModeId = 'best';
+
+/** What Best was before GPT-6.2 Sol: settings saved in it move to Best as it is now. */
+export const FORMER_BEST = { model: 'gpt-6.1-terra', reasoningEffort: 'high', assetModel: 'gpt-6.1-terra' } as const;
 
 /** The model settings a mode writes. */
 export function modeSettings(id: ModeId): Pick<AiSettings, 'model' | 'reasoningEffort' | 'assetModel'> {
@@ -64,7 +68,7 @@ export function modeOf(settings: Pick<AiSettings, 'model' | 'reasoningEffort' | 
 export const DEFAULT_IMAGE_MODEL = 'gpt-image-2.5-flare';
 
 /** Models offered in the Settings model fields (any other id can be typed in). */
-export const SUGGESTED_MODELS = ['gpt-6.1-terra', 'gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-astra'];
+export const SUGGESTED_MODELS = ['gpt-6.2-sol', 'gpt-6.1-terra', 'gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-astra'];
 
 /**
  * Models on OpenAI's deprecation list (gpt-5, gpt-5-mini and gpt-5-nano shut down on 11 December

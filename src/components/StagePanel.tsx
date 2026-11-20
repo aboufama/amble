@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayerHost } from '../player/host';
 import { addWish, hasGameLine, moveSpriteFromStage, previewProject, registerPlayer, startGame, stopGame } from '../actions';
-import { compileNeedsRequest, type CompileProgress } from '../compiler/compile';
+import { compileNeedsRequest, type BuildPreview, type CompileProgress } from '../compiler/compile';
+import { sketchUrl } from '../compiler/sketch';
 import { projectFreedom } from '../compiler/codegen';
 import { isDisabled, oneLine, topBlocks } from '../compiler/serialize';
 import type { Project } from '../project/types';
@@ -37,15 +38,57 @@ function MakingGame({ progress }: { progress: CompileProgress }) {
   else if (progress.stage === 'checking' || progress.stage === 'repairing') step = 'Checking';
   else if (progress.stage === 'assets') step = progress.assetsTotal ? `Art and sounds ${progress.assetsDone ?? 0} / ${progress.assetsTotal}` : 'Art and sounds';
   const time = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  const preview = progress.preview;
+  const shown = Boolean(preview && (preview.title || preview.drawings.length));
+  const backdrop = preview?.drawings.filter((d) => d.kind === 'backdrop').at(-1);
   return (
-    <div className="making-game" role="status" aria-live="polite">
-      <div className="making-dots" aria-hidden="true">
-        <span />
-        <span />
-        <span />
+    <div className={`making-game ${shown ? 'has-preview' : ''}`} role="status" aria-live="polite">
+      {backdrop && <SketchImage className="making-backdrop" svg={backdrop.svg} />}
+      {shown && (
+        <div className="making-head">
+          {preview!.title && <div className="making-title">{preview!.title}</div>}
+          {preview!.howToPlay && <div className="making-how">{preview!.howToPlay}</div>}
+        </div>
+      )}
+      {preview && <MakingCast preview={preview} />}
+      <div className="making-status">
+        <div className="making-dots" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="making-step">{step}</div>
+        <div className="making-time">{time}</div>
       </div>
-      <div className="making-step">{step}</div>
-      <div className="making-time">{time}</div>
+    </div>
+  );
+}
+
+/** A drawing (as far as it is drawn), as an image: an <img> can't run an SVG's scripts or load anything. */
+function SketchImage({ svg, className, alt = '' }: { svg: string; className?: string; alt?: string }) {
+  const src = useMemo(() => sketchUrl(svg), [svg]);
+  return <img className={className} src={src} alt={alt} draggable={false} />;
+}
+
+/** The cast as it is drawn: each character's latest drawing, popping in as it starts and wobbling while it is drawn. */
+function MakingCast({ preview }: { preview: BuildPreview }) {
+  const byTarget = new Map<string, BuildPreview['drawings']>();
+  for (const d of preview.drawings) {
+    if (d.kind !== 'costume') continue;
+    if (!byTarget.has(d.target)) byTarget.set(d.target, []);
+    byTarget.get(d.target)!.push(d);
+  }
+  if (!byTarget.size) return null;
+  // While a sprite's frames are drawn, it shows the one being drawn; once all are, its first.
+  const cast = [...byTarget.values()].map((list) => [...list].reverse().find((d) => !d.done) ?? list[0]);
+  return (
+    <div className="making-cast">
+      {cast.slice(0, 10).map((d) => (
+        <div key={d.target} className={`making-card ${d.done ? '' : 'drawing'}`}>
+          <SketchImage svg={d.svg} alt={d.target} />
+          <span>{d.target}</span>
+        </div>
+      ))}
     </div>
   );
 }

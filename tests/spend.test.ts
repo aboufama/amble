@@ -63,9 +63,16 @@ describe('the running total', () => {
 });
 
 describe('build modes', () => {
-  it('starts in Best: GPT-6.1 Terra with high reasoning', () => {
+  it('starts in Best: GPT-6.2 Sol with low reasoning', () => {
     expect(modeOf(DEFAULT_SETTINGS)).toBe('best');
-    expect(DEFAULT_SETTINGS).toMatchObject({ model: 'gpt-6.1-terra', reasoningEffort: 'high', assetModel: 'gpt-6.1-terra' });
+    expect(DEFAULT_SETTINGS).toMatchObject({ model: 'gpt-6.2-sol', reasoningEffort: 'low', assetModel: 'gpt-6.2-sol' });
+  });
+
+  it('moves settings saved in Best before Sol (GPT-6.1 Terra, high) to Best as it is now', () => {
+    expect(upgradeSettings({ apiKey: 'sk-x', model: 'gpt-6.1-terra', reasoningEffort: 'high', assetModel: 'gpt-6.1-terra' })).toMatchObject({ apiKey: 'sk-x', ...modeSettings('best') });
+    expect(upgradeSettings({ model: 'gpt-6.1-terra', reasoningEffort: 'high', assetModel: '' })).toMatchObject(modeSettings('best'));
+    // Terra picked by hand, with other settings, stays.
+    expect(upgradeSettings({ model: 'gpt-6.1-terra', reasoningEffort: 'medium', assetModel: 'gpt-6.1-terra' })).toMatchObject({ model: 'gpt-6.1-terra', reasoningEffort: 'medium' });
   });
 
   it('Efficient runs GPT-6 Luna with high reasoning', () => {
@@ -74,7 +81,7 @@ describe('build modes', () => {
   });
 
   it('models picked by hand are neither mode', () => {
-    expect(modeOf({ ...DEFAULT_SETTINGS, reasoningEffort: 'low' })).toBeNull();
+    expect(modeOf({ ...DEFAULT_SETTINGS, reasoningEffort: 'medium' })).toBeNull();
     expect(modeOf({ ...DEFAULT_SETTINGS, model: 'gpt-6-astra' })).toBeNull();
     // An empty asset model means "same as the model".
     expect(modeOf({ ...DEFAULT_SETTINGS, ...modeSettings('efficient'), assetModel: '' })).toBe('efficient');
@@ -83,9 +90,9 @@ describe('build modes', () => {
 
   it('moves settings saved with retired models to the default mode, and keeps the rest', () => {
     const old = upgradeSettings({ apiKey: 'sk-x', model: 'gpt-5', reasoningEffort: 'low', assetModel: 'gpt-5-mini', imageModel: 'gpt-image-1', artMode: 'image' });
-    expect(old).toMatchObject({ apiKey: 'sk-x', model: 'gpt-6.1-terra', reasoningEffort: 'high', assetModel: 'gpt-6.1-terra', imageModel: 'gpt-image-2.5-flare', artMode: 'image' });
+    expect(old).toMatchObject({ apiKey: 'sk-x', model: 'gpt-6.2-sol', reasoningEffort: 'low', assetModel: 'gpt-6.2-sol', imageModel: 'gpt-image-2.5-flare', artMode: 'image' });
     const mine = upgradeSettings({ model: 'gpt-6-astra', reasoningEffort: 'medium', assetModel: 'gpt-5-mini' });
-    expect(mine).toMatchObject({ model: 'gpt-6-astra', reasoningEffort: 'medium', assetModel: 'gpt-6.1-terra' });
+    expect(mine).toMatchObject({ model: 'gpt-6-astra', reasoningEffort: 'medium', assetModel: 'gpt-6.2-sol' });
     expect(upgradeSettings({})).toEqual(DEFAULT_SETTINGS);
   });
 });

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateAsset, placeholderAsset, type AssetContext, type AssetJob } from '../src/compiler/assets';
 import { compileProject } from '../src/compiler/compile';
 import { DEFAULT_SETTINGS, type Transport } from '../src/compiler/openai';
@@ -88,6 +88,10 @@ const customEffect: SoundReply = {
 };
 
 describe('a sound for a game being built', () => {
+  // The model picking or designing each sound (Amble's default now takes the closest library sound, with no request).
+  beforeEach(() => void ((globalThis as { __ambleHarness?: object }).__ambleHarness = { sounds: 'model' }));
+  afterEach(() => void delete (globalThis as { __ambleHarness?: object }).__ambleHarness);
+
   it('shows the model the closest library sounds, in one request with a strict schema', async () => {
     const { calls } = model({ use: 'library', libraryId: 'jump-cartoon-m', effect: null, music: null });
     const asset = await generateAsset(job('jump', 'a springy cartoon boing when Amble jumps'), ctx);

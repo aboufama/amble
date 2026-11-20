@@ -139,6 +139,7 @@ this.game.scene is the Phaser.Scene the game runs in, and \`Phaser\` is a global
 const OUTPUT_RULES = `# Characters, art and sound
 - Use costume, backdrop and sound names exactly as listed. Only use names that exist or that you add to assets.
 - If a piece needs a character that doesn't exist (enemies, coins, bullets...), add it to "sprites" with its whole class (\`class <Name> extends Sprite { ... }\`, same API, hooks like start() and update(dt)) and give it a costume in "assets" with the new sprite's name as the target.
+- Kinds of one character (a faster hen, a giant hen, the boss hen) build on its class: \`class Sprinter extends Hen { start() { super.start(); this.speed = 300; } }\` runs Hen's code with only what you change. Every sprite's class is in scope in every class (extend it, or use its static fields), so never copy a class's code into another or borrow it with .call. A sprite that extends another needs the costume names its base's code uses (give it its own drawings under those names).
 - assets: art and sounds your code uses that don't exist yet. They are made from your description, in the game's art style.
   - costume: an image; width/height in pixels (16..400). backdrop: 480 x 360. sound: width = height = 0.
   - Describe colors, shapes, style and pose specifically (e.g. "a round red apple with a green leaf, side view").
@@ -169,7 +170,9 @@ The author gave you the idea and trusts you to make the game. Their game: line, 
 - Juice on everything: particles when something is hit, collected or destroyed; a small camera shake on impacts; things pop in, squash, stretch and fade with tweens instead of appearing and vanishing; numbers that fly up from what scored them; trails behind fast things; a flash when the player is hurt, then a moment of safety.
 - Big and bold: the stage is only 480 x 360, so nothing is tiny. The player is 50 to 90 pixels tall, enemies and pickups 30 to 80, and the scenery reaches every corner of the screen.
 - A living world in the art style: layers that move at different speeds, drifting particles (dust, stars, snow, leaves), and a slow change as the game goes on (dusk falls, a storm rolls in, the music picks up).
-- Text on screen is part of the fun: name the waves, call out combos, give the boss a title. Keep every HUD element inside x -225..225 and y -165..165 so nothing is cut off.
+- Text on screen is part of the fun: name the waves, call out combos, give the boss a title. The HUD lives along the top and bottom edges, on a dark band so it reads on any backdrop, never over the middle where the play is; keep every HUD element inside x -225..225 and y -165..165 so nothing is cut off.
+- A boss plays differently, not just tougher: its own move or pattern to learn, a tell before it strikes, and a weakness the player can use.
+- The backdrop is the scene: don't paint big shapes over it. Draw only what it can't show (a lane, a target zone), outlined or semi-transparent.
 - An ending: winning and losing each get their moment (a burst, a beat of slow motion, a banner) before \`this.game.win(text)\` or \`this.game.over(text)\`, with a line that fits the game.
 - It is fair and it works: the player can always avoid what hurts them, nothing appears on top of them, everything needed can be reached, and no state can get stuck. Walk through a whole play in your head, start to finish, before you answer.
 
@@ -202,6 +205,12 @@ A game this long has to be kind: losing costs a life or sends the player back to
 Size (where the notes above ask for less, this wins): a cast of 8 to 12 characters; 3 to 5 acts, with an opening and an ending; a full play lasts four to six minutes; 14 to 24 images (scenery for every act, drawn or as backdrops); 10 to 14 sounds and three or four looping tunes (the acts', the boss's, the ending's).
 It is a lot of game, so write it compactly: describe the acts and waves as data (lists of what appears when) run by a few shared helpers instead of repeating code for each act, build an act when it starts and remove the one before, and stay within "Keep it fast".`,
 };
+
+/** The size the dial asks for (its "Size:" line), to repeat where the model reads it last. */
+export function freedomSize(freedom: Freedom): string {
+  if (freedom === 'just what I say') return '';
+  return FREEDOM[freedom].split('\n').find((l) => l.startsWith('Size'))?.trim() ?? '';
+}
 
 /** The compile request's system prompt. Every game is 2D now; `mode` is left over from 3D projects. */
 export function piecesSystemPrompt(mode?: WorldMode, opts: { freedom?: Freedom } = {}): string {
@@ -284,7 +293,13 @@ export interface PiecesPromptInput {
   problems?: string[];
   /** The brief the written pieces were made for, when it changed since. */
   briefBefore?: string;
+  /** Code already written changes by edits (see EDITS_GUIDE), not by being written out again. */
+  editing?: boolean;
 }
+
+/** How a reply changes code already written, in an edit (a quick change to a game): small edits, not whole pieces. */
+export const EDITS_GUIDE = `## Answer with edits
+This is a quick change to a game that works: change as little as does what was asked, and nothing else. To change code that is already written (the pieces e1, e2... and the characters' classes), don't write it out again: put each change in "edits", as { "in": the piece's id or the character's name, "find": the exact text to replace, copied character for character from the code above and long enough to appear only once there, "replace": its new text }. A change of numbers (faster, more, bigger, longer) is usually one edit of a number. "pieces" holds only the pieces you were asked to write (a rule whose wish your edits carry out elsewhere can be just a comment saying where); "sprites" holds only new characters.`;
 
 function describeTarget(t: Target, plan: TargetPlan, input: PiecesPromptInput, ids: ReadonlyMap<string, string>, marks: ReadonlyMap<string, string>): string {
   const lines: string[] = [];
@@ -316,11 +331,11 @@ function describeTarget(t: Target, plan: TargetPlan, input: PiecesPromptInput, i
   return lines.join('\n');
 }
 
-function describeCompiled(compiled: CompiledGame | null): string {
+function describeCompiled(compiled: CompiledGame | null, editing = false): string {
   if (!compiled || (!compiled.assets.length && !compiled.sprites.length)) return '';
   const lines: string[] = [];
   if (compiled.sprites.length) {
-    lines.push('## Characters added by earlier compiles (they exist; use them by name). To change one, list it in "sprites" again with its whole new class.');
+    lines.push(`## Characters added by earlier compiles (they exist; use them by name). To change one, ${editing ? 'edit it (with its name in "in")' : 'list it in "sprites" again with its whole new class'}.`);
     for (const s of compiled.sprites) {
       lines.push(`- "${s.name}": ${s.description}`);
       const source = compiled.code.find((c) => c.targetId === s.id)?.source;
@@ -356,7 +371,7 @@ export function piecesUserPrompt(input: PiecesPromptInput): string {
     const plan = byId.get(t.id);
     if (plan) parts.push(describeTarget(t, plan, input, ids, marks));
   }
-  const compiled = describeCompiled(project.compiled);
+  const compiled = describeCompiled(project.compiled, input.editing);
   if (compiled) parts.push(compiled);
   if (input.problems?.length) parts.push(['## The last run had these problems (fix them in the pieces below)', ...input.problems.map((p) => `- ${p}`)].join('\n'));
   if (input.briefBefore !== undefined) {
@@ -375,7 +390,7 @@ export function piecesUserPrompt(input: PiecesPromptInput): string {
     parts.push(
       [
         '## Pieces already written',
-        `${revisable.map((t) => t.id).join(', ')} (their code is above). They work as they are: rewrite one only when ${tasks.length ? 'the pieces you write' : 'the new brief'} mean${tasks.length ? '' : 's'} it must change, with its id and its whole new body. Leave the rest out of your reply.`,
+        `${revisable.map((t) => t.id).join(', ')} (their code is above). They work as they are: ${input.editing ? 'edit' : 'rewrite'} one only when ${tasks.length ? 'the pieces you write' : 'the new brief'} mean${tasks.length ? '' : 's'} it must change, ${input.editing ? 'with edits (its id in "in")' : 'with its id and its whole new body'}. Leave the rest out of your reply.`,
       ].join('\n'),
     );
   }

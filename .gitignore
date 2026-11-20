@@ -7,3 +7,8 @@ test-results
 playwright-report
 .vite
 .scratch
+bench/results
+.env.local.bench
+bench/results*
+bench/removed
+bench/*.log

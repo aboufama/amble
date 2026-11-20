@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { planTarget, projectFreedom } from '../src/compiler/codegen';
 import { compileNeedsRequest, compileProject } from '../src/compiler/compile';
 import { DEFAULT_SETTINGS } from '../src/compiler/openai';
@@ -106,6 +106,10 @@ const art = (target: string, name: string) => ({ target, kind: 'costume', name, 
 const ids = (prompt: string) => [...prompt.matchAll(/^- (p\d+): (\w+)/gm)].map((m) => m[1]);
 
 describe('making a game from an idea', () => {
+  // The classic reply, with its asset list (Amble's default now starts with the cast: tests/lean.test.ts).
+  beforeEach(() => void ((globalThis as { __ambleHarness?: object }).__ambleHarness = { lean: false }));
+  afterEach(() => void delete (globalThis as { __ambleHarness?: object }).__ambleHarness);
+
   it('builds the game, its cast and its art in one request, and names it', async () => {
     const prompts = fakeModel((prompt) => ({
       pieces: ids(prompt).map((id) => ({ id, code: 'this.game.vars.score = 0;\nfor (;;) { yield; }' })),

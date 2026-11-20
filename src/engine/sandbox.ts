@@ -89,7 +89,9 @@ export function clearGameTimers(): void {
 
 /**
  * Evaluates one target's class declaration in a scope where `Sprite`/`Stage`
- * (or `Actor`/`World`) refer to that target's own base class.
+ * (or `Actor`/`World`) refer to that target's own base class, and the other names in `scope` (the
+ * sandbox's, and other sprites' classes) are there too. The code runs in a block of its own, so
+ * it may declare a name of its own that the scope has too (its own `const Hen = ...`).
  */
 export function evaluateClass(
   code: string,
@@ -98,7 +100,7 @@ export function evaluateClass(
   scope: Record<string, unknown>,
 ): unknown {
   const names = Object.keys(scope);
-  const body = `${code}\n;return ${className};\n//# sourceURL=${sourceUrlFor(targetName)}`;
+  const body = `{${code}\n;return ${className};\n}\n//# sourceURL=${sourceUrlFor(targetName)}`;
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
   const factory = new Function(...names, body) as (...values: unknown[]) => unknown;
   return factory(...names.map((n) => scope[n]));
