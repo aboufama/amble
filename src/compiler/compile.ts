@@ -327,17 +327,27 @@ async function writePieces(
         if (key === 'sprites' && x && String(x.name ?? '').trim() && x.code) early(String(x.name).trim(), String(x.code), asked, h.title ?? '');
       },
     });
-    castCall = chatJson<{ sprites: Array<{ name: string; code: string }> }>(transport, {
-      model: settings.model,
-      system,
-      user: `${base}\n\n${castWriterPart(h)}`,
-      schema: CAST_SCHEMA as unknown as Record<string, unknown>,
-      schemaName: 'amble_cast',
-      reasoningEffort: harness().gameEffort ?? settings.reasoningEffort,
-      kind: 'code',
-      signal: opts.signal,
-      onText: feed,
-    }).then((r) => (r.sprites ?? []).map((x) => ({ name: String(x.name ?? '').trim(), code: String(x.code ?? '') })));
+    // The cast in `castWriters` groups, each written by a request of its own at the same time (one group: one request, as before).
+    const names = h.cast.map((c) => String(c.name ?? '').trim()).filter(Boolean);
+    const n = Math.max(1, Math.min(harness().castWriters, names.length));
+    const groups: string[][] = Array.from({ length: n }, () => []);
+    names.forEach((name, i) => groups[i % n].push(name));
+    const write = (only?: string[]) =>
+      chatJson<{ sprites: Array<{ name: string; code: string }> }>(transport, {
+        model: settings.model,
+        system,
+        user: `${base}\n\n${castWriterPart(h, only)}`,
+        schema: CAST_SCHEMA as unknown as Record<string, unknown>,
+        schemaName: 'amble_cast',
+        reasoningEffort: harness().gameEffort ?? settings.reasoningEffort,
+        kind: 'code',
+        signal: opts.signal,
+        onText: n > 1 ? watchReply({ onItem: (key, item) => {
+          const x = item as { name?: string; code?: string } | null;
+          if (key === 'sprites' && x && String(x.name ?? '').trim() && x.code) early(String(x.name).trim(), String(x.code), asked, h.title ?? '');
+        } }) : feed,
+      }).then((r) => (r.sprites ?? []).map((x) => ({ name: String(x.name ?? '').trim(), code: String(x.code ?? '') })));
+    castCall = n > 1 ? Promise.all(groups.map((g) => write(g))).then((lists) => lists.flat()) : write();
     // (Awaited with the main reply; a failure before then isn't unhandled.)
     castCall.catch(() => undefined);
   };

@@ -105,8 +105,11 @@ export function headerText(h: LeanHeader): string {
 }
 
 /** The cast writer's part of its request. */
-export function castWriterPart(h: LeanHeader): string {
-  return `## The plan (written by the game's main writer, who is writing the game piece from it right now)\n${headerText(h)}\n\n## Your part\nWrite the whole class of every character in the cast, in "sprites" (name and code): \`class <Name> extends Sprite { ... }\`, or \`extends <Another character>\` to build on its class (override only what differs). The game piece only directs (spawning, waves, the HUD, the arc): everything a character does itself is yours to write, in full, as the contract describes it: how it moves and thinks, how it reacts, its animation, and its juice (particles, squash, flashes, sounds at its moments). Use the stage and the other characters only as the contract says, with exactly the costume and sound names above.`;
+export function castWriterPart(h: LeanHeader, only?: string[]): string {
+  const who = only?.length
+    ? `the characters ${only.map((n) => `"${n}"`).join(', ')} (only these: other writers write the rest of the cast at the same time, as the contract says)`
+    : 'every character in the cast';
+  return `## The plan (written by the game's main writer, who is writing the game piece from it right now)\n${headerText(h)}\n\n## Your part\nWrite the whole class of ${who}, in "sprites" (name and code): \`class <Name> extends Sprite { ... }\`, or \`extends <Another character>\` to build on its class (override only what differs). The game piece only directs (spawning, waves, the HUD, the arc): everything a character does itself is yours to write, in full, as the contract describes it: how it moves and thinks, how it reacts, its animation, and its juice (particles, squash, flashes, sounds at its moments). Use the stage and the other characters only as the contract says, with exactly the costume and sound names above.`;
 }
 
 export const CAST_SCHEMA = {

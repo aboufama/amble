@@ -198,8 +198,58 @@ interface Options {
   tier: boolean;
 }
 
-/** How long to wait (ms) before each retry of a rate-limited request: about a minute and a half in all. */
-const RATE_LIMIT_WAITS = [2_000, 5_000, 10_000, 20_000, 40_000];
+/** How long to wait (ms) before each retry of a request turned away as busy: about a minute and a half in all. */
+const RATE_LIMIT_WAITS = [2_000, 4_000, 8_000, 15_000, 25_000, 40_000];
+
+/**
+ * The longest reply each kind of request may write. OpenRouter holds a request's worst case against
+ * the account while it runs (its "in-flight budget"), so a drawing that may write 64,000 tokens holds
+ * dozens of times what it costs: realistic limits let many more games be made at once. (Thinking
+ * harder than "low" gets three times as much room, for the reasoning.)
+ */
+const OUTPUT_CAPS: Record<string, number> = {
+  amble_pieces: 24_000,
+  amble_cast: 16_000,
+  amble_code: 16_000,
+  amble_design: 8_000,
+  amble_outline: 8_000,
+  amble_ask: 1_000,
+  svg_art: 8_000,
+  svg_sheet: 12_000,
+  sound_recipe: 3_000,
+};
+
+export function outputCap(req: Pick<ChatJsonRequest, 'schemaName' | 'reasoningEffort'>): number | undefined {
+  const base = OUTPUT_CAPS[req.schemaName];
+  if (!base) return undefined;
+  const effort = req.reasoningEffort ?? 'default';
+  return ['none', 'minimal', 'low'].includes(effort) ? base : Math.min(64_000, base * 3);
+}
+
+/**
+ * Turned away because the service is busy, not because something is wrong: the provider's rate
+ * limit, OpenRouter's in-flight budget (too many requests running at once for the account), or an
+ * overloaded endpoint. Such a request waits its turn and tries again.
+ */
+export function isBusy(err: unknown): boolean {
+  if (!(err instanceof AiError) || err.status === undefined) return false;
+  if (err.status === 429) return !/quota|billing|credit/i.test(err.message);
+  if (err.status === 402) return /in[- ]?flight|settle/i.test(err.message) || err.code === 'in_flight_budget_exhausted';
+  return err.status === 503 || err.status === 529;
+}
+
+/** Listeners told when requests are waiting their turn (the stage says so), and when they are not anymore. */
+const busyListeners = new Set<(busy: boolean) => void>();
+let waitingTurn = 0;
+export function onBusy(listener: (busy: boolean) => void): () => void {
+  busyListeners.add(listener);
+  return () => busyListeners.delete(listener);
+}
+function setWaiting(delta: number): void {
+  const before = waitingTurn > 0;
+  waitingTurn = Math.max(0, waitingTurn + delta);
+  if (before !== waitingTurn > 0) for (const l of busyListeners) l(waitingTurn > 0);
+}
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -225,12 +275,18 @@ export async function chatJson<T>(t: Transport, req: ChatJsonRequest): Promise<T
       const text = await chatOnce(t, req, opts);
       return parseJsonReply<T>(text);
     } catch (err) {
-      // Rate limited (a burst of art requests, or a new account's per-minute cap): wait and try again.
-      if (err instanceof AiError && err.status === 429 && !/quota|billing|credit/i.test(err.message) && waits < RATE_LIMIT_WAITS.length && !req.signal?.aborted) {
-        await sleep(RATE_LIMIT_WAITS[waits++] * (0.75 + Math.random() * 0.5), req.signal);
+      // Busy (a burst of requests, a provider's per-minute cap, too many requests running at once): wait our turn and try again.
+      if (isBusy(err) && waits < RATE_LIMIT_WAITS.length && !req.signal?.aborted) {
+        setWaiting(1);
+        try {
+          await sleep(RATE_LIMIT_WAITS[waits++] * (0.75 + Math.random() * 0.5), req.signal);
+        } finally {
+          setWaiting(-1);
+        }
         attempt--;
         continue;
       }
+      if (isBusy(err)) throw new AiError('So many people are making games right now that yours couldn\'t start. Wait a minute, then press the flag again.', (err as AiError).status, 'amble_busy');
       if (!(err instanceof AiError) || err.status !== 400) throw err;
       const m = err.message.toLowerCase();
       if (opts.tier && m.includes('service_tier')) opts.tier = false;
@@ -258,6 +314,8 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
     stream: opts.stream,
   };
   if (opts.stream && opts.usage) body.stream_options = { include_usage: true };
+  const cap = outputCap(req);
+  if (cap) body.max_completion_tokens = cap;
   if (isRoutedModel(req.model)) {
     // OpenRouter: one reasoning setting for every provider, and only providers that honour the
     // reply's JSON schema (and the other parameters sent) may serve the request.

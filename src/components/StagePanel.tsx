@@ -10,6 +10,7 @@ import { useStore } from '../store';
 import { ExpandIcon, FlagIcon, LargeStageIcon, ShrinkIcon, SmallStageIcon, StopIcon, WarningIcon } from './icons';
 import { useProblemCount } from './ProblemsDialog';
 import { answer, skipQuestions } from '../asking';
+import { onBusy } from '../compiler/openai';
 
 function isEditable(el: EventTarget | null): boolean {
   const node = el as HTMLElement | null;
@@ -29,6 +30,9 @@ function gameLineBeingBuilt(project: Project, building: Array<{ targetId: string
 /** Shown over the stage while a whole game is made from an idea: what is happening, and for how long. */
 function MakingGame({ progress }: { progress: CompileProgress }) {
   const [seconds, setSeconds] = useState(0);
+  // Turned away as busy (lots of games being made at once): the build waits its turn, and says so.
+  const [busy, setBusy] = useState(false);
+  useEffect(() => onBusy(setBusy), []);
   useEffect(() => {
     const started = Date.now();
     const t = window.setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 500);
@@ -62,6 +66,7 @@ function MakingGame({ progress }: { progress: CompileProgress }) {
         <div className="making-step">{step}</div>
         <div className="making-time">{time}</div>
       </div>
+      {busy && <div className="making-busy">Lots of people are making games right now. Yours is next in line…</div>}
     </div>
   );
 }

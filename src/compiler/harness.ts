@@ -97,6 +97,8 @@ export interface Harness {
    * the cast left out is found (and drawn) about ten seconds sooner, instead of holding up the end.
    */
   spritesFirst: boolean;
+  /** With `castWriter`: how many requests write the characters' classes at once, each a share of the cast. */
+  castWriters: number;
   /** With `castWriter`: a one-line contract per character (its behavior is its cast description and the balance), so the second writer starts seconds sooner. */
   slimContract: boolean;
   /** Reasoning for the split and fan-out builds' writers (the plan has done the thinking). */
@@ -172,6 +174,7 @@ export const DEFAULT_HARNESS: Harness = {
   castWriter: false,
   spritesFirst: true,
   slimContract: false,
+  castWriters: 1,
   writerEffort: 'low',
   sizeReminder: true,
   fullSize: false,

@@ -76,7 +76,8 @@ export function hostedOptions(env: Record<string, string | undefined>): AmbleApi
     maxOutputTokens: int(env.AMBLE_MAX_OUTPUT_TOKENS, 64_000),
     maxBodyBytes: 2_000_000,
     priority: env.AMBLE_PRIORITY === '1',
-    rateLimit: int(env.AMBLE_RATE_LIMIT, 120),
+    // A classroom shares one address: 1,000 requests per 10 minutes is about 60 new games (a game is ~15 requests).
+    rateLimit: int(env.AMBLE_RATE_LIMIT, 1000),
     rateWindowMs: 10 * 60_000,
     codex: false,
   };

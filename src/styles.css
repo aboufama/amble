@@ -1719,6 +1719,17 @@ select {
   animation: making-pop 0.35s ease-out;
 }
 
+/* Waiting its turn when lots of games are being made at once. */
+.making-busy {
+  position: relative;
+  z-index: 1;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: hsla(0, 0%, 100%, 0.16);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
 /* Questions while the game is made: a card over the drawings, one question at a time. */
 .ask-card {
   position: relative;
