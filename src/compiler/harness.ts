@@ -142,6 +142,15 @@ export interface Harness {
    */
   codeTier: 'priority' | null;
   /**
+   * OpenRouter: replies written without a response format (the schema in the instructions; a reply
+   * that doesn't parse is asked for again, held to the schema), so providers that can't hold a reply
+   * to a schema may serve it too, in `plainProvider`'s order: Amazon Bedrock serves GPT-6.2 Sol at the
+   * same price as OpenAI and Azure, at ~228 tokens a second, first token in half a second
+   * (November 2026), while Azure was often busy and OpenAI's own endpoint wrote ~80.
+   */
+  plainOutput: boolean;
+  plainProvider: Record<string, string[]> | null;
+  /**
    * OpenRouter: the providers for backdrops (null: providerOrder). A backdrop is the biggest drawing,
    * and with a dozen drawings at once it waited longest in the queue: the fast lane ends that.
    */
@@ -185,6 +194,8 @@ export const DEFAULT_HARNESS: Harness = {
   providerOrder: { openai: ['azure', 'openai'] },
   codeProvider: null,
   codeTier: null,
+  plainOutput: true,
+  plainProvider: { openai: ['amazon-bedrock', 'azure', 'openai'] },
   backdropProvider: null,
   artTier: null,
 };

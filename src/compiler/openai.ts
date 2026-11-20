@@ -192,7 +192,13 @@ interface Options {
   stream: boolean;
   /** Ask for token usage at the end of the stream (for the spend counter). */
   usage: boolean;
-  format: 'json_schema' | 'json_object';
+  /**
+   * json_schema: the provider holds the reply to the schema. json_object: any JSON object (the schema
+   * in the instructions). text: no response format at all (the schema in the instructions), so every
+   * provider of the model may serve it: Amazon Bedrock serves GPT-6.2 Sol at the same price as OpenAI
+   * and Azure, and faster than OpenAI's own endpoint, but can't hold a reply to a schema.
+   */
+  format: 'json_schema' | 'json_object' | 'text';
   effort: boolean;
   /** Ask for the harness's service tier (priority processing), straight to OpenAI. */
   tier: boolean;
@@ -268,13 +274,19 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 /** Sends a chat request and returns the parsed JSON reply. Retries without features a model/account rejects. */
 export async function chatJson<T>(t: Transport, req: ChatJsonRequest): Promise<T> {
   if (t.via === 'chatgpt') return parseJsonReply<T>(await codexOnce(req));
-  const opts: Options = { stream: true, usage: true, format: 'json_schema', effort: Boolean(req.reasoningEffort && req.reasoningEffort !== 'default'), tier: true };
+  const plain = Boolean(harness().plainOutput && isRoutedModel(req.model));
+  const opts: Options = { stream: true, usage: true, format: plain ? 'text' : 'json_schema', effort: Boolean(req.reasoningEffort && req.reasoningEffort !== 'default'), tier: true };
   let waits = 0;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const text = await chatOnce(t, req, opts);
       return parseJsonReply<T>(text);
     } catch (err) {
+      // A reply written without a schema to hold it that isn't valid JSON: once more, held to the schema.
+      if (opts.format === 'text' && err instanceof AiError && err.status === undefined && /valid JSON/i.test(err.message) && !req.signal?.aborted) {
+        opts.format = 'json_schema';
+        continue;
+      }
       // Busy (a burst of requests, a provider's per-minute cap, too many requests running at once): wait our turn and try again.
       if (isBusy(err) && waits < RATE_LIMIT_WAITS.length && !req.signal?.aborted) {
         setWaiting(1);
@@ -304,15 +316,19 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
   const body: Record<string, unknown> = {
     model: req.model,
     messages: [
-      { role: 'system', content: opts.format === 'json_object' ? `${req.system}\n\nReply with a single JSON object that follows this JSON schema:\n${JSON.stringify(req.schema)}` : req.system },
+      {
+        role: 'system',
+        content:
+          opts.format === 'json_schema'
+            ? req.system
+            : `${req.system}\n\nReply with a single JSON object that follows this JSON schema, its fields in this order${opts.format === 'text' ? ', and nothing before or after it (no code fence)' : ''}:\n${JSON.stringify(req.schema)}`,
+      },
       { role: 'user', content: req.user },
     ],
-    response_format:
-      opts.format === 'json_schema'
-        ? { type: 'json_schema', json_schema: { name: req.schemaName, strict: true, schema: req.schema } }
-        : { type: 'json_object' },
     stream: opts.stream,
   };
+  if (opts.format === 'json_schema') body.response_format = { type: 'json_schema', json_schema: { name: req.schemaName, strict: true, schema: req.schema } };
+  else if (opts.format === 'json_object') body.response_format = { type: 'json_object' };
   if (opts.stream && opts.usage) body.stream_options = { include_usage: true };
   const cap = outputCap(req);
   if (cap) body.max_completion_tokens = cap;
@@ -322,7 +338,7 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
     if (opts.effort) body.reasoning = { effort: req.reasoningEffort };
     const { providerSort: sort, providerOrder, codeProvider } = harness();
     const maker = req.model.split('/')[0];
-    const order = req.provider?.[maker] ?? ((req.kind ?? 'code') === 'code' ? codeProvider?.[maker] : undefined) ?? providerOrder?.[maker];
+    const order = (opts.format === 'text' ? harness().plainProvider?.[maker] : undefined) ?? req.provider?.[maker] ?? ((req.kind ?? 'code') === 'code' ? codeProvider?.[maker] : undefined) ?? providerOrder?.[maker];
     body.provider = { require_parameters: true, ...(sort ? { sort } : {}), ...(order?.length ? { only: order, order, allow_fallbacks: false } : {}) };
   } else {
     if (opts.effort && isReasoningModel(req.model)) body.reasoning_effort = req.reasoningEffort;

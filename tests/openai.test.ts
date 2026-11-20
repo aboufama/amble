@@ -62,7 +62,7 @@ describe('chatJson', () => {
         return new Response(sse('{"ok":true}', { prompt_tokens: 10, completion_tokens: 2, cost: 0.5 }), { status: 200 });
       }),
     );
-    (globalThis as { __ambleHarness?: object }).__ambleHarness = { providerOrder: { openai: ['azure', 'openai'] }, codeProvider: { openai: ['openai/ultrafast', 'openai'] } };
+    (globalThis as { __ambleHarness?: object }).__ambleHarness = { plainOutput: false, providerOrder: { openai: ['azure', 'openai'] }, codeProvider: { openai: ['openai/ultrafast', 'openai'] } };
     try {
       await chatJson(t, { ...req, model: 'openai/gpt-6.2-sol', reasoningEffort: 'low', kind: 'art' });
       // Another maker's model isn't held to OpenAI's providers.
@@ -74,10 +74,12 @@ describe('chatJson', () => {
     expect(bodies[0]).toMatchObject({ reasoning: { effort: 'low' }, provider: { require_parameters: true, only: ['azure', 'openai'], order: ['azure', 'openai'], allow_fallbacks: false } });
     expect(bodies[0].reasoning_effort).toBeUndefined();
     expect(bodies[1].provider).toEqual({ require_parameters: true });
-    // Amble's own default: OpenAI's models on Azure first (the same price, faster).
-    expect(bodies[2].provider).toEqual({ require_parameters: true, only: ['azure', 'openai'], order: ['azure', 'openai'], allow_fallbacks: false });
+    // Amble's own default: no response format (the schema in the instructions), so Amazon Bedrock may
+    // serve too, first (the same price, faster than OpenAI's own endpoint), then Azure, then OpenAI.
+    expect(bodies[2].provider).toEqual({ require_parameters: true, only: ['amazon-bedrock', 'azure', 'openai'], order: ['amazon-bedrock', 'azure', 'openai'], allow_fallbacks: false });
+    expect(bodies[2].response_format).toBeUndefined();
     // The code the build waits for has providers of its own.
-    (globalThis as { __ambleHarness?: object }).__ambleHarness = { providerOrder: { openai: ['azure', 'openai'] }, codeProvider: { openai: ['openai/ultrafast', 'openai'] } };
+    (globalThis as { __ambleHarness?: object }).__ambleHarness = { plainOutput: false, providerOrder: { openai: ['azure', 'openai'] }, codeProvider: { openai: ['openai/ultrafast', 'openai'] } };
     try {
       await chatJson(t, { ...req, model: 'openai/gpt-6.2-sol', reasoningEffort: 'low', kind: 'code' });
     } finally {
