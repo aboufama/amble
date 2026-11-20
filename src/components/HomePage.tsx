@@ -9,8 +9,9 @@ import { ideaProject } from '../project/idea';
 import type { Project } from '../project/types';
 import { confirmUser } from '../prompt';
 import { GameDial } from './GameDial';
-import { AmbleMark, BackIcon, BlocksTabIcon, FileIcon } from './icons';
+import { AmbleMark, BackIcon, BlocksTabIcon, CopyIcon, FileIcon } from './icons';
 import { StyleKnob } from './StyleKnob';
+import { copyText, listHub, myShares, openHubProject, playLink, removeFromHub, reportHub, thumbUrl, type HubEntry, type HubList } from '../hub/hub';
 
 const HOME_SEEN = 'amble:start';
 
@@ -109,6 +110,14 @@ export function HomePage() {
   // Can words be built here? (A key in Settings, the site's own key, or a ChatGPT sign-in.) Unknown at first.
   const [account, setAccount] = useState<boolean | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
+  // The hub: games players shared (null while it loads).
+  const [hub, setHub] = useState<HubList | null>(null);
+  const [mine, setMine] = useState(() => myShares());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void listHub().then(setHub);
+  }, []);
 
   useEffect(() => {
     markHomeSeen();
@@ -182,6 +191,32 @@ export function HomePage() {
     void replace(() => ideaProject(words, dial, style), makes);
   };
   const openDemo = (ex: Example) => void replace(() => loadExample(ex), Boolean(ex.prebuilt));
+  const openHub = (entry: HubEntry) => void replace(() => openHubProject(entry.id), true);
+  const copyLink = async (id: string) => {
+    if (await copyText(playLink(id))) {
+      setCopiedId(id);
+      window.setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1600);
+    } else notify(playLink(id), 'info');
+  };
+  const remove = async (entry: HubEntry) => {
+    if (!(await confirmUser({ title: 'Take it out of the hub', message: `Take “${entry.title}” out of the hub? Its link stops working. The game stays in your editor if it's open there.`, confirmLabel: 'Take it out', danger: true }))) return;
+    try {
+      await removeFromHub(entry.id);
+      setMine(myShares());
+      setHub((h) => (h?.ok ? { ok: true, projects: h.projects.filter((p) => p.id !== entry.id) } : h));
+    } catch (err) {
+      notify((err as Error).message, 'error');
+    }
+  };
+  const report = async (entry: HubEntry) => {
+    if (!(await confirmUser({ title: 'Report a game', message: `Report “${entry.title}” as something that shouldn't be in the hub (mean, scary, or someone's private details)? Games a few people report are hidden.`, confirmLabel: 'Report it', danger: true }))) return;
+    try {
+      await reportHub(entry.id);
+      notify('Thanks. Someone will take a look.', 'info');
+    } catch (err) {
+      notify((err as Error).message, 'error');
+    }
+  };
   const openSaved = async () => {
     try {
       const project = await pickSavedProject();
@@ -238,18 +273,69 @@ export function HomePage() {
           {makes && account === false && <p className="home-note">Needs an OpenAI API key (Settings).</p>}
         </div>
 
-        <h2 className="home-heading">Demos</h2>
+        <h2 className="home-heading">The hub</h2>
+        <p className="home-hub-lead">Open a game to play it, change it, and make it yours. Press <b>Share</b> in the editor to put your own game here.</p>
+
+        <h3 className="home-subheading">From Amble</h3>
         <div className="home-demos">
           {EXAMPLES.map((ex) => (
-            <button key={ex.id} className="home-demo" onClick={() => openDemo(ex)} disabled={busy} aria-label={`Demo: ${ex.title}`}>
-              <span className="home-thumb" data-demo={ex.id}>
-                <img src={`demos/${ex.id}.jpg`} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.display = 'none')} />
-              </span>
-              <span className="home-demo-title">{ex.title}</span>
-              <span className="home-demo-desc">{ex.description}</span>
-            </button>
+            <div key={ex.id} className="home-demo hub-card">
+              <button className="hub-open" onClick={() => openDemo(ex)} disabled={busy} aria-label={`Demo: ${ex.title}`}>
+                <span className="home-thumb" data-demo={ex.id}>
+                  <img src={`demos/${ex.id}.jpg`} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                </span>
+                <span className="home-demo-title">{ex.title}</span>
+                <span className="home-demo-desc">{ex.description}</span>
+              </button>
+              <div className="hub-actions">
+                <button className="hub-action" onClick={() => void copyLink(`demo-${ex.id}`)}>
+                  <CopyIcon size={13} /> {copiedId === `demo-${ex.id}` ? 'Copied!' : 'Copy link'}
+                </button>
+              </div>
+            </div>
           ))}
         </div>
+
+        <h3 className="home-subheading">Shared by players</h3>
+        {hub === null ? (
+          <p className="home-hub-empty">Looking for games…</p>
+        ) : !hub.ok ? (
+          <p className="home-hub-empty">{hub.reason === 'off' ? "Sharing isn't switched on for this copy of Amble yet." : "The hub can't be reached right now."}</p>
+        ) : hub.projects.length === 0 ? (
+          <p className="home-hub-empty">Nothing here yet. Make a game and press Share to be the first!</p>
+        ) : (
+          <div className="home-demos">
+            {hub.projects.map((entry) => (
+              <div key={entry.id} className="home-demo hub-card">
+                <button className="hub-open" onClick={() => openHub(entry)} disabled={busy} aria-label={`${entry.title}${entry.author ? ` by ${entry.author}` : ''}`}>
+                  <span className="home-thumb">
+                    <img src={thumbUrl(entry.id)} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  </span>
+                  <span className="home-demo-title">{entry.title}</span>
+                  <span className="home-demo-desc">
+                    {entry.author && <span className="hub-author">by {entry.author}</span>}
+                    {entry.author && entry.about ? ' · ' : ''}
+                    {entry.about}
+                  </span>
+                </button>
+                <div className="hub-actions">
+                  <button className="hub-action" onClick={() => void copyLink(entry.id)}>
+                    <CopyIcon size={13} /> {copiedId === entry.id ? 'Copied!' : 'Copy link'}
+                  </button>
+                  {mine[entry.id] ? (
+                    <button className="hub-action quiet" onClick={() => void remove(entry)}>
+                      Take it out
+                    </button>
+                  ) : (
+                    <button className="hub-action quiet" onClick={() => void report(entry)}>
+                      Report
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="home-foot">
           <button className="btn" onClick={() => void openSaved()} disabled={busy}>

@@ -12,3 +12,4 @@ bench/results
 bench/results*
 bench/removed
 bench/*.log
+.hub

@@ -689,3 +689,11 @@ export const AmbleMark = ({ size = 26, ...rest }: P) => (
     <path d="M12.2 17.8q2.1 1.8 4.2 0" fill="none" stroke="#6b3412" strokeWidth="1.1" strokeLinecap="round" />
   </svg>
 );
+
+/** Share: a paper plane, flying up and to the right, with its fold cut through. */
+export const ShareIcon = (p: P) => (
+  <svg {...paper(p)}>
+    <path d="M3.4 11.6L20.6 3.6L16.2 21L11.6 15.2Z" opacity={BACK} transform="translate(0.9 0.9)" />
+    <path d="M2.6 10.8L19.8 2.8L15.4 20.2L10.8 14.4ZM10.8 14.4L19.8 2.8L9.4 12.6Z" fillRule="evenodd" />
+  </svg>
+);

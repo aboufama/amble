@@ -5,7 +5,7 @@ import { exportGameHtml } from '../project/exportHtml';
 import { EXAMPLES, loadExample } from '../project/examples';
 import { buildNow, compile, flushBlocks, pickSavedProject, signInWithChatGpt } from '../actions';
 import { confirmUser } from '../prompt';
-import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon } from './icons';
+import { AmbleMark, CaretDownIcon, FileIcon, PencilIcon, SettingsIcon, ShareIcon } from './icons';
 import { DEV_TOOLS } from './ProblemsDialog';
 import { ModeSwitch, SpendMeter } from './ModeSwitch';
 import { ProjectStyleKnob } from './StyleKnob';
@@ -195,6 +195,11 @@ export function MenuBar() {
         <SpendMeter />
       </div>
       <div className="menubar-account">
+        {/* Share: the game goes in the hub, with a link that opens it for anyone. */}
+        <button className="menu-btn share" onClick={() => setDialog('share')} title="Put your game in the hub and get a link anyone can play">
+          <ShareIcon size={18} />
+          <span>Share</span>
+        </button>
         {/* Signing in works when Amble runs on your computer and Codex is installed there. */}
         {codex?.installed &&
           (signedIn ? (

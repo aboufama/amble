@@ -191,6 +191,34 @@ function handle(msg: ToPlayer): void {
     case 'pointerUp':
       endStageDrag();
       break;
+    case 'snapshot':
+      snapshot(msg.id);
+      break;
+  }
+}
+
+/** Sends the editor a small picture of the stage (the next frame Phaser draws). */
+function snapshot(id: number): void {
+  const answer = (dataUrl: string | null) => post({ type: 'snapshot', id, dataUrl });
+  if (!phaser) return answer(null);
+  try {
+    phaser.renderer.snapshot(
+      (image) => {
+        try {
+          const img = image as HTMLImageElement;
+          const canvas = document.createElement('canvas');
+          canvas.width = 480;
+          canvas.height = 360;
+          canvas.getContext('2d')!.drawImage(img, 0, 0, 480, 360);
+          answer(canvas.toDataURL('image/jpeg', 0.78));
+        } catch {
+          answer(null);
+        }
+      },
+      'image/png',
+    );
+  } catch {
+    answer(null);
   }
 }
 

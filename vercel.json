@@ -12,12 +12,19 @@
     {
       "source": "/api/openai/:path*",
       "destination": "/api/amble?route=openai&path=:path*"
+    },
+    {
+      "source": "/api/hub/:path*",
+      "destination": "/api/hub?path=:path*"
     }
   ],
   "functions": {
     "api/amble.ts": {
       "maxDuration": 300,
       "supportsCancellation": true
+    },
+    "api/hub.ts": {
+      "maxDuration": 30
     }
   },
   "headers": [

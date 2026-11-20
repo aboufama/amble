@@ -93,7 +93,31 @@ export class PlayerHost {
       case 'spriteMoved':
         this.handlers.onSpriteMoved?.(msg.name, msg.x, msg.y);
         break;
+      case 'snapshot':
+        this.snapshots.get(msg.id)?.(msg.dataUrl);
+        this.snapshots.delete(msg.id);
+        break;
     }
+  }
+
+  private snapshots = new Map<number, (dataUrl: string | null) => void>();
+  private nextSnapshot = 1;
+
+  /** A JPEG of the stage as it is now (null if the player can't draw one within a few seconds). */
+  snapshot(): Promise<string | null> {
+    if (!this.ready) return Promise.resolve(null);
+    const id = this.nextSnapshot++;
+    return new Promise((resolve) => {
+      const timer = window.setTimeout(() => {
+        this.snapshots.delete(id);
+        resolve(null);
+      }, 4000);
+      this.snapshots.set(id, (url) => {
+        window.clearTimeout(timer);
+        resolve(url);
+      });
+      this.post({ type: 'snapshot', id });
+    });
   }
 
   private post(msg: ToPlayer): void {

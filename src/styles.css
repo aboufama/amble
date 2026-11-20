@@ -361,6 +361,20 @@ select {
   font-weight: bold;
 }
 
+.menu-btn.share {
+  height: 34px;
+  margin: 0 6px;
+  padding: 0 14px;
+  border-radius: 17px;
+  background: var(--ui-white);
+  color: var(--looks-secondary);
+}
+
+.menu-btn.share:hover {
+  background: var(--ui-white);
+  filter: brightness(0.95);
+}
+
 .account-dot {
   width: 8px;
   height: 8px;
@@ -3922,6 +3936,12 @@ body.reordering * {
   background: var(--looks-secondary-dark);
 }
 
+.prompt-buttons button:disabled,
+.prompt-buttons button.ok:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* Destructive: Delete, Replace. */
 .prompt-buttons button.ok.danger {
   border-color: #d93a3f;
@@ -4624,6 +4644,214 @@ details summary {
   font-size: 12.5px;
   line-height: 1.35;
   color: var(--text-primary-transparent);
+}
+
+/* The hub: a card opens its game; under it, its link and a quiet second action. */
+.home-hub-lead {
+  margin: -6px 0 6px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-primary-transparent);
+}
+
+.home-subheading {
+  margin: 22px 0 12px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--text-primary-transparent);
+}
+
+.home-hub-empty {
+  margin: 0;
+  padding: 22px 16px;
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  text-align: center;
+  color: var(--text-primary-transparent);
+}
+
+.home-demo.hub-card {
+  padding: 0 0 10px;
+  cursor: default;
+}
+
+.hub-open {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hub-open:focus-visible {
+  outline: 3px solid var(--looks-secondary);
+  outline-offset: -3px;
+}
+
+.hub-author {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.hub-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px 0;
+}
+
+.hub-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ui-white);
+  color: var(--looks-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hub-action:hover {
+  border-color: var(--looks-secondary);
+}
+
+.hub-action.quiet {
+  margin-left: auto;
+  border-color: transparent;
+  color: var(--text-primary-transparent);
+  font-weight: 600;
+}
+
+.hub-action.quiet:hover {
+  border-color: var(--line);
+  color: var(--text-primary);
+}
+
+/* Share: the picture of the stage beside its name, then a line about it. */
+.share-modal {
+  width: 560px;
+}
+
+.share-modal .modal-body {
+  padding: 20px 24px 24px;
+}
+
+.share-top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.share-thumb {
+  flex: 0 0 168px;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(150deg, hsl(250, 55%, 40%), hsl(300, 50%, 48%));
+  color: var(--ui-white);
+  font-weight: 800;
+  font-size: 14px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.share-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.share-fields {
+  flex: 1;
+  min-width: 0;
+}
+
+.share-field {
+  display: block;
+}
+
+.share-field > span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.share-field .prompt-input {
+  height: 40px;
+  margin-bottom: 14px;
+}
+
+.share-note {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-primary-transparent);
+}
+
+.share-error {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: hsla(0, 80%, 60%, 0.12);
+  color: hsl(0, 60%, 40%);
+  font-size: 13px;
+}
+
+.share-busy {
+  align-self: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--looks-secondary);
+}
+
+.share-lead {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.share-link {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.share-link .prompt-input {
+  flex: 1;
+  height: 44px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.share-link .prompt-button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 560px) {
+  .share-top {
+    flex-direction: column;
+  }
+  .share-thumb {
+    flex-basis: auto;
+    width: 100%;
+  }
 }
 
 .home-foot {

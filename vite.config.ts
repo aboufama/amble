@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { allowedHostsOf, codexBridge, isSameOrigin, type AllowedHosts } from './server/codexBridge.ts';
 import { devOptions, handleAmbleApi, hostedOptions } from './api/amble.ts';
+import { handleHubApi, hubOptions } from './api/hub.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -78,14 +79,17 @@ function openaiProxy(env: Record<string, string>): Plugin {
   // AMBLE_HOSTED=1 runs the server side exactly as Vercel does (its limits, no ChatGPT sign-in), to try a deployment locally.
   const hosted = vars.AMBLE_HOSTED === '1';
   const options = hosted ? hostedOptions(vars) : devOptions(vars);
+  // The hub: Vercel Blob with BLOB_READ_WRITE_TOKEN, else the `.hub` folder here.
+  const hub = hubOptions(vars, hosted, path.join(root, '.hub'));
 
   const handler = (allowed: AllowedHosts): Connect.NextHandleFunction => (req, res, next) => {
     const url = (req.url ?? '').split('?')[0];
-    if (url !== '/api/config' && !url.startsWith('/api/openai/')) {
+    const isHub = url === '/api/hub' || url.startsWith('/api/hub/');
+    if (url !== '/api/config' && !url.startsWith('/api/openai/') && !isHub) {
       next();
       return;
     }
-    if (url !== '/api/config' && !isSameOrigin(req, allowed)) {
+    if (url !== '/api/config' && !isSameOrigin(req, allowed, { anyBody: isHub && req.headers['x-amble-hub'] === '1' })) {
       res.statusCode = 403;
       res.end();
       return;
@@ -108,7 +112,7 @@ function openaiProxy(env: Record<string, string>): Plugin {
           body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks),
           signal: controller.signal,
         });
-        const response = await handleAmbleApi(request, options);
+        const response = isHub ? await handleHubApi(request, hub) : await handleAmbleApi(request, options);
         res.statusCode = response.status;
         response.headers.forEach((value, name) => res.setHeader(name, value));
         res.flushHeaders();

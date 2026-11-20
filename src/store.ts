@@ -76,7 +76,7 @@ export interface EditorState {
   /** Words can't build without a sign-in or a key: found on the last try, until the settings or the sign-in change. */
   needsAccount: boolean;
   run: { state: RunState; errors: PlayerError[]; logs: LogEntry[] };
-  dialog: null | 'settings' | 'about';
+  dialog: null | 'settings' | 'about' | 'share';
   /** Home is shown: a page of its own, in place of the editor (which stays as it is underneath). */
   home: boolean;
   /** Home was opened from the editor (the logo, File > New game), so there may be a project to keep. */

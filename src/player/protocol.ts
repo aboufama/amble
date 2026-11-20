@@ -66,7 +66,9 @@ export type ToPlayer =
   | { type: 'key'; phase: 'down' | 'up'; key: string; code: string }
   | { type: 'releaseKeys' }
   /** The mouse button went up in the editor (it may not reach the player while it drags a sprite). */
-  | { type: 'pointerUp' };
+  | { type: 'pointerUp' }
+  /** A picture of the stage as it is now (for the hub's card), answered with `snapshot`. */
+  | { type: 'snapshot'; id: number };
 
 export interface PlayerError {
   message: string;
@@ -85,6 +87,8 @@ export type FromPlayer =
   | ({ type: 'error' } & PlayerError)
   | { type: 'log'; level: 'log' | 'warn' | 'error'; message: string }
   /** A sprite was dragged to a new place on the stopped stage (editor only, 2D). */
-  | { type: 'spriteMoved'; name: string; x: number; y: number };
+  | { type: 'spriteMoved'; name: string; x: number; y: number }
+  /** The stage as a JPEG data URL, or null if it can't be drawn. */
+  | { type: 'snapshot'; id: number; dataUrl: string | null };
 
 export const CHANNEL = 'amble-player';

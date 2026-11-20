@@ -10,6 +10,8 @@ import { StagePanel } from './components/StagePanel';
 import { ProblemsDialog } from './components/ProblemsDialog';
 import { SpritePane } from './components/SpritePane';
 import { PromptDialog, SettingsDialog, Toast } from './components/Dialogs';
+import { ShareDialog } from './components/ShareDialog';
+import { usePlayLinks } from './hub/links';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HomePage, atHome, homeSeen, useHomeAddress } from './components/HomePage';
 import { BlocksTabIcon, BrushTabIcon, SpeakerTabIcon } from './components/icons';
@@ -49,6 +51,7 @@ function useAutosave() {
 export function App() {
   const loaded = useAutosave();
   useHomeAddress(loaded);
+  usePlayLinks(loaded);
   const tab = useStore((s) => s.tab);
   const setTab = useStore((s) => s.setTab);
   const dialog = useStore((s) => s.dialog);
@@ -108,6 +111,7 @@ export function App() {
       </div>
       {home && <HomePage />}
       {dialog === 'settings' && <SettingsDialog />}
+      {dialog === 'share' && <ShareDialog />}
       <PromptDialog />
       <Toast />
     </>

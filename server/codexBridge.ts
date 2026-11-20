@@ -344,7 +344,12 @@ export function isAllowedHost(hostHeader: string | undefined, allowed: AllowedHo
 }
 
 /** Only Amble's own page may use the dev server's AI endpoints (not other sites in your browser). */
-export function isSameOrigin(req: IncomingMessage, allowed: AllowedHosts): boolean {
+/**
+ * Is the request from Amble's own page? `anyBody`: a POST that isn't JSON is fine too (the hub's
+ * forms), when the caller has checked for a header only the page sends (another site can't send one
+ * without the browser asking this server first).
+ */
+export function isSameOrigin(req: IncomingMessage, allowed: AllowedHosts, opts: { anyBody?: boolean } = {}): boolean {
   if (!isAllowedHost(req.headers.host, allowed)) return false;
   const site = req.headers['sec-fetch-site'];
   if (site && site !== 'same-origin' && site !== 'none') return false;
@@ -356,7 +361,7 @@ export function isSameOrigin(req: IncomingMessage, allowed: AllowedHosts): boole
       return false;
     }
   }
-  if (req.method === 'POST' && !String(req.headers['content-type'] ?? '').includes('application/json')) return false;
+  if (req.method === 'POST' && !opts.anyBody && !String(req.headers['content-type'] ?? '').includes('application/json')) return false;
   // Browsers send Origin with every POST: a POST without it (or Sec-Fetch-Site) isn't from Amble's page,
   // e.g. a script on the network when the server runs with --host.
   if (req.method === 'POST' && !origin && !site) return false;
