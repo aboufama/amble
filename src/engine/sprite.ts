@@ -14,6 +14,44 @@ let nextId = 1;
 /** What sprite helpers accept as a target: a sprite, a sprite's name, "mouse", "random", or a point. */
 export type TargetLike = Sprite | string | { x: number; y: number };
 
+/** How `shoot` fires (see Sprite.shoot). */
+export interface ShootOptions {
+  at?: TargetLike | number | null;
+  /** Pixels per second (default 500). */
+  speed?: number;
+  /** Where the shot starts (default: the shooter's position). */
+  from?: TargetLike;
+  /** Aim where a moving target will be (default true). */
+  lead?: boolean;
+  /** Degrees per second the shot may turn toward its target (default 0: flies straight). */
+  homing?: number;
+  /** Pixels it flies before it's removed (default 1500). */
+  range?: number;
+  hits?: string | string[];
+  onHit?: (this: Sprite, target: Sprite, shot: Sprite) => unknown;
+}
+
+/** Where to aim from `from` so a shot at `speed` meets a target at `p` moving at `v` (pixels per second). */
+export function intercept(from: { x: number; y: number }, speed: number, p: { x: number; y: number }, v: { x: number; y: number }): { x: number; y: number } {
+  const dx = p.x - from.x;
+  const dy = p.y - from.y;
+  const a = v.x * v.x + v.y * v.y - speed * speed;
+  const b = 2 * (dx * v.x + dy * v.y);
+  const c = dx * dx + dy * dy;
+  let t: number;
+  if (Math.abs(a) < 1e-6) t = b < 0 ? -c / b : NaN;
+  else {
+    const disc = b * b - 4 * a * c;
+    if (disc < 0) return p;
+    const r = Math.sqrt(disc);
+    const t1 = (-b - r) / (2 * a);
+    const t2 = (-b + r) / (2 * a);
+    t = Math.min(...[t1, t2].filter((x) => x > 0));
+  }
+  if (!Number.isFinite(t) || t <= 0 || t > 4) return p;
+  return { x: p.x + v.x * t, y: p.y + v.y * t };
+}
+
 export type Ease = 'linear' | 'easeIn' | 'easeOut' | 'easeInOut' | 'bounce' | 'elastic' | 'back';
 
 export const EASES: Record<Ease, (t: number) => number> = {
@@ -852,6 +890,90 @@ export class Sprite extends Entity {
   /** Removes this sprite from the game (after onDestroy). */
   destroy(): void {
     this.game._destroy(this);
+  }
+
+  /**
+   * Fires a projectile: a new copy of the sprite `name` that starts here and flies at `speed`
+   * pixels per second toward `at` (a sprite, a sprite's name (the nearest one showing), "mouse",
+   * { x, y }, or a direction in degrees; this sprite's own direction when left out). It turns to
+   * face where it flies (draw it pointing right) and is removed once it is well off the screen or
+   * has flown `range` pixels. Aimed at a sprite, it leads it (aims where it will be when the shot
+   * gets there); `homing` (degrees per second) lets it curve after one that dodges. With `hits`
+   * (a sprite name or a list), the first one it touches gets `onHit(target, shot)` and the shot
+   * is removed (unless onHit returns false: it flies on). Returns the shot, or null.
+   */
+  shoot(name: string, opts: ShootOptions = {}): Sprite | null {
+    const game = this.game;
+    const speed = Number(opts.speed) > 0 ? Number(opts.speed) : 500;
+    const from = opts.from ? game._resolvePoint(opts.from, this) : { x: this._x, y: this._y };
+    if (!from) return null;
+    const target = opts.at instanceof Sprite ? (opts.at.destroyed ? null : opts.at) : typeof opts.at === 'string' && opts.at !== 'mouse' && opts.at !== 'random' ? this._nearestShowing(opts.at) : null;
+    let dir: number;
+    if (typeof opts.at === 'number') dir = opts.at;
+    else if (opts.at === undefined || opts.at === null) dir = this._rotationStyle === 'left-right' || this._rotationStyle === "don't rotate" ? (this.flipX ? 180 : 0) : this._angle;
+    else {
+      const p = target ? { x: target.x, y: target.y } : game._resolvePoint(opts.at, this);
+      if (!p) return null;
+      const aim = target && opts.lead !== false ? intercept(from, speed, p, target.velocity) : p;
+      dir = Math.atan2(aim.y - from.y, aim.x - from.x) / DEG;
+    }
+    const shot = game.spawn(name, { x: from.x, y: from.y, angle: dir, rotationStyle: 'all around', velocity: { x: Math.cos(dir * DEG) * speed, y: Math.sin(dir * DEG) * speed } });
+    if (!shot) return null;
+    const range = Number(opts.range) > 0 ? Number(opts.range) : 1500;
+    const homing = Number(opts.homing) > 0 ? Number(opts.homing) : 0;
+    const hits = opts.hits === undefined ? null : Array.isArray(opts.hits) ? opts.hits : [opts.hits];
+    const onHit = opts.onHit;
+    shot.run(function* fly(this: Sprite) {
+      let flown = 0;
+      for (;;) {
+        const v = this.velocity;
+        const s = Math.hypot(v.x, v.y);
+        if (homing && target && !target.destroyed && target.visible && s > 0) {
+          const want = Math.atan2(target.y - this.y, target.x - this.x) / DEG;
+          const now = Math.atan2(v.y, v.x) / DEG;
+          let turn = ((want - now + 540) % 360) - 180;
+          const max = homing * this.game.dt;
+          turn = Math.max(-max, Math.min(max, turn));
+          const a = (now + turn) * DEG;
+          this.velocity = { x: Math.cos(a) * s, y: Math.sin(a) * s };
+        }
+        if (s > 0) this.angle = Math.atan2(this.velocity.y, this.velocity.x) / DEG;
+        flown += s * this.game.dt;
+        if (hits) {
+          const hit = this.touching(hits);
+          if (hit instanceof Sprite) {
+            const keep = onHit ? onHit.call(this, hit, this) : undefined;
+            if (keep !== false) {
+              this.destroy();
+              return;
+            }
+          }
+        }
+        const view = this.game.camera.view();
+        const margin = 160;
+        if (flown > range || this.x < view.left - margin || this.x > view.right + margin || this.y < view.bottom - margin || this.y > view.top + margin) {
+          this.destroy();
+          return;
+        }
+        yield;
+      }
+    });
+    return shot;
+  }
+
+  /** The nearest showing sprite with this name (not this one), or null. */
+  private _nearestShowing(name: string): Sprite | null {
+    let best: Sprite | null = null;
+    let bestD = Infinity;
+    for (const s of this.game.findAll(name)) {
+      if (s === this || !s.visible) continue;
+      const d = Math.hypot(s.x - this._x, s.y - this._y);
+      if (d < bestD) {
+        best = s;
+        bestD = d;
+      }
+    }
+    return best;
   }
 
   // ---------- internals ----------

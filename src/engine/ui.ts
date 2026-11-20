@@ -1,4 +1,5 @@
 import { STAGE_HEIGHT, STAGE_WIDTH } from '../player/protocol';
+import { normalizeKey } from './input';
 
 export interface TextOptions {
   /** Anchor in stage coordinates: x -240..240, y -180..180 (0,0 = center of the screen). */
@@ -21,6 +22,13 @@ export interface ValueOptions {
 
 export interface ButtonOptions extends TextOptions {
   width?: number;
+  height?: number;
+  /** false greys the button out and ignores clicks (too dear, not ready yet). Default true. */
+  enabled?: boolean;
+  /** true rings the button: the tool or tower picked in a build bar. */
+  selected?: boolean;
+  /** A keyboard shortcut ("1", "q", "space"...): pressing it clicks the button. Shown in its corner. */
+  key?: string;
 }
 
 interface ValueEntry {
@@ -35,7 +43,12 @@ export const UI_CSS = `
 .amble-ui__text { position: absolute; white-space: pre; line-height: 1.15; border-radius: 8px; text-shadow: 0 2px 0 rgba(0,0,0,0.35), 0 0 6px rgba(0,0,0,0.25); }
 .amble-ui__value { position: absolute; display: flex; gap: 6px; align-items: center; padding: 3px 4px 3px 8px; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.15); border-radius: 7px; font-size: 12px; font-weight: 700; color: #585c78; }
 .amble-ui__value span { min-width: 30px; padding: 1px 6px; border-radius: 5px; background: #f87d21; color: white; text-align: center; }
-.amble-ui__button { position: absolute; pointer-events: auto; cursor: pointer; border: none; border-radius: 12px; padding: 8px 18px; font: inherit; font-weight: 700; color: white; background: #149deb; box-shadow: 0 4px 0 rgba(0,0,0,0.25); transform: translate(-50%, -50%); }
+.amble-ui__button { position: absolute; pointer-events: auto; cursor: pointer; border: none; border-radius: 12px; padding: 8px 18px; font: inherit; font-weight: 700; line-height: 1.15; white-space: pre; color: white; background: #149deb; box-shadow: 0 4px 0 rgba(0,0,0,0.25); transform: translate(-50%, -50%); transition: transform 70ms ease-out, filter 90ms, box-shadow 70ms; }
+.amble-ui__button:hover { filter: brightness(1.12); transform: translate(-50%, -50%) scale(1.05); }
+.amble-ui__button:active { transform: translate(-50%, calc(-50% + 3px)); box-shadow: 0 1px 0 rgba(0,0,0,0.25); }
+.amble-ui__button--off, .amble-ui__button--off:hover, .amble-ui__button--off:active { cursor: default; filter: grayscale(0.9) brightness(0.8); opacity: 0.6; transform: translate(-50%, -50%); box-shadow: 0 4px 0 rgba(0,0,0,0.25); }
+.amble-ui__button--picked { outline: 3px solid #ffe066; outline-offset: 2px; }
+.amble-ui__button kbd { position: absolute; top: -7px; right: -7px; min-width: 16px; padding: 0 4px; border-radius: 6px; background: rgba(0,0,0,0.72); color: white; font-family: inherit; font-size: 10px; font-weight: 700; line-height: 15px; text-align: center; }
 .amble-ui__button:active { transform: translate(-50%, calc(-50% + 3px)); box-shadow: 0 1px 0 rgba(0,0,0,0.25); }
 .amble-ui__bubble { position: absolute; width: max-content; max-width: 170px; padding: 6px 10px; background: white; color: #333; border: 2px solid rgba(0,0,0,0.2); border-radius: 14px; font-size: 13px; line-height: 1.25; transform: translate(-50%, -100%); white-space: pre-wrap; word-break: break-word; }
 .amble-ui__bubble::after { content: ""; position: absolute; left: var(--tail, 50%); bottom: -9px; width: 12px; height: 12px; background: white; border-right: 2px solid rgba(0,0,0,0.2); border-bottom: 2px solid rgba(0,0,0,0.2); transform: translateX(-50%) rotate(45deg); }
@@ -143,8 +156,12 @@ export class Ui {
     entry.el.style.display = '';
   }
 
-  /** Shows a clickable button. `onClick` runs on the next game tick. */
-  button(id: string, label: string, opts: ButtonOptions, onClick: () => void): void {
+  /**
+   * Shows a clickable button (call it again with the same id to change it). `onClick` runs on the
+   * next game tick. A button with `enabled: false` is greyed out and ignores clicks and its key.
+   */
+  button(id: string, label: string, opts: ButtonOptions = {}, onClick: () => void = () => {}): void {
+    opts = opts ?? {};
     let el = this.buttons.get(id);
     if (!el) {
       el = document.createElement('button');
@@ -152,18 +169,48 @@ export class Ui {
       this.root.append(el);
       this.buttons.set(id, el);
     }
-    el.textContent = label;
+    const key = opts.key === undefined || opts.key === null || opts.key === '' ? '' : normalizeKey(String(opts.key));
+    const shown = String(label ?? '');
+    const badge = key ? (key.length === 1 ? key.toUpperCase() : key[0].toUpperCase() + key.slice(1)) : '';
+    if (el.dataset.label !== shown || el.dataset.badge !== badge) {
+      el.textContent = shown;
+      if (badge) {
+        const kbd = document.createElement('kbd');
+        kbd.textContent = badge;
+        el.append(kbd);
+      }
+      el.dataset.label = shown;
+      el.dataset.badge = badge;
+    }
+    const enabled = opts.enabled !== false;
+    el.classList.toggle('amble-ui__button--off', !enabled);
+    el.classList.toggle('amble-ui__button--picked', opts.selected === true);
+    el.setAttribute('aria-disabled', String(!enabled));
     place(el, opts.x ?? 0, opts.y ?? 0);
     el.style.fontSize = `${opts.size ?? 16}px`;
     if (opts.background) el.style.background = opts.background;
     if (opts.color) el.style.color = opts.color;
     if (opts.width) el.style.width = `${opts.width}px`;
+    if (opts.height) el.style.height = `${opts.height}px`;
+    const press = () => {
+      if (enabled) this.queue.push(onClick);
+    };
     el.onclick = (e) => {
       e.stopPropagation();
-      this.queue.push(onClick);
+      press();
     };
     el.onpointerdown = (e) => e.stopPropagation();
     el.style.display = '';
+    if (key) this.shortcuts.set(id, { key, press, el });
+    else this.shortcuts.delete(id);
+  }
+
+  /** Keyboard shortcuts of the buttons showing: a key pressed this tick clicks its button. */
+  private shortcuts = new Map<string, { key: string; press: () => void; el: HTMLButtonElement }>();
+
+  /** @internal The game calls this for each key pressed this tick. */
+  pressKey(key: string): void {
+    for (const s of this.shortcuts.values()) if (s.key === key && s.el.isConnected && s.el.style.display !== 'none') s.press();
   }
 
   /** Callbacks from UI events, run by the game during the next tick. */
@@ -178,6 +225,7 @@ export class Ui {
     this.texts.get(id)?.remove();
     this.buttons.get(id)?.remove();
     this.values.get(id)?.el.remove();
+    this.shortcuts.delete(id);
     this.texts.delete(id);
     this.textKeys.delete(id);
     this.buttons.delete(id);

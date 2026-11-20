@@ -357,7 +357,8 @@ export class Game {
     this.updateMouseWorld();
 
     try {
-      // UI callbacks (buttons)
+      // UI callbacks (buttons, and the keys that click them)
+      for (const key of input.pressedThisTick) this.ui.pressKey(key);
       const uiQueue = this.ui.queue;
       this.ui.queue = [];
       for (const fn of uiQueue) {

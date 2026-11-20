@@ -49,6 +49,13 @@ describe('lintGame', () => {
     expect(r.problems[0]).toMatch(/spawn\("Chicken"\), but there is no sprite named "Chicken"/);
   });
 
+  it('finds a shot fired as a sprite nobody made', () => {
+    const src = 'class Hen extends Sprite { start() { this.every(1, () => this.shoot("Egg", { at: "Rocket", hits: "Rocket" })); this.shoot("Rocket"); } }';
+    const r = lintGame(base([{ target: 'Hen', kind: 'sprite', source: src }]));
+    expect(r.problems).toHaveLength(1);
+    expect(r.problems[0]).toMatch(/shoot\("Egg"\), but there is no sprite named "Egg"/);
+  });
+
   it("finds sprite helpers called on the stage, and leaves the stage's own and the class's own alone", () => {
     const src = `class StageScript extends Stage {
       *game() { this._script("x", function* () {}); this._compare(1, 2); this.helper(); this.run(function* () { yield* this.tween(this.vars, { a: 1 }, 1); yield* this.wait(1); }); this.say("hi"); yield* this.glideTo("mouse", 1); this.speak = () => 1; this.speak(); }

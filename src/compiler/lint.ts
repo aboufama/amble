@@ -213,6 +213,8 @@ export function lintGame(input: LintInput): LintResult {
             for (const s of stringsOf(arg)) if (s && !has(input.sounds, s)) missingSounds.add(s);
           } else if (SPRITE_CALLS.has(method) && isGame(callee.object)) {
             for (const s of stringsOf(arg)) if (s && !has(input.sprites, s) && s.toLowerCase() !== 'stage') problems.push(`${cls.target} (line ${node.loc?.start.line}): this.game.${method}("${s}"), but there is no sprite named "${s}". Sprites: ${[...input.sprites].join(', ')}`);
+          } else if (method === 'shoot' && callee.object.type !== 'Super') {
+            for (const s of stringsOf(arg)) if (s && !has(input.sprites, s)) problems.push(`${cls.target} (line ${node.loc?.start.line}): shoot("${s}"), but there is no sprite named "${s}" to fire. Add it (a small hidden template, drawn pointing right) or use one of: ${[...input.sprites].join(', ')}`);
           } else if (method === 'animate' && isThis(callee.object) && cls.kind === 'sprite' && arg?.type === 'ArrayExpression') {
             for (const el of arg.elements as AnyNode[]) for (const s of stringsOf(el)) wantOwn(cls.target, s);
           }
