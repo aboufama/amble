@@ -169,3 +169,9 @@ export const EDITS_SCHEMA = {
     ...PIECES_SCHEMA.properties,
   },
 } as const;
+
+/** A quick change that may add art: its "assets" come first, so their drawings start while the edits are written. */
+export const EDITS_STREAM_SCHEMA = (() => {
+  const { assets, edits, ...rest } = EDITS_SCHEMA.properties;
+  return { ...EDITS_SCHEMA, required: ['assets', ...EDITS_SCHEMA.required.filter((k) => k !== 'assets')], properties: { assets, edits, ...rest } };
+})();

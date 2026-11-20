@@ -21,6 +21,10 @@ export interface Harness {
    * follows their picks instead of a theme made up for them.
    */
   ask: boolean;
+  /** A quick change lists its new art before its edits, and the art starts while the edits are written. */
+  streamEdits: boolean;
+  /** OpenRouter: the providers for quick changes (null: providerOrder, the normal lane). */
+  editProvider: Record<string, string[]> | null;
   /** How many questions (1 or 2): the art waits for the answers, so one starts it sooner. */
   askQuestions: number;
   /** Reasoning for each backdrop (null: artEffort). A backdrop at low reasoning thought 4-7 seconds before its first stroke. */
@@ -149,6 +153,8 @@ export const DEFAULT_HARNESS: Harness = {
   backdropEffort: null,
   ask: true,
   askQuestions: 1,
+  streamEdits: true,
+  editProvider: null,
   soundEffort: 'low',
   concurrency: 24,
   costumes: 'sheet',

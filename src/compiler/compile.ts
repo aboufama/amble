@@ -4,7 +4,7 @@ import { classNameFor, classNames, EDITS_GUIDE, freedomSize, piecesSystemPrompt,
 import { planTarget, type PieceRequest, type TargetPlan } from './codegen';
 import { checkPiece } from './pieces';
 import { serializeBlocks } from './serialize';
-import { EDITS_SCHEMA, PIECES_SCHEMA, type AssetRequest, type CodeEdit, type PiecesReply } from './schema';
+import { EDITS_SCHEMA, EDITS_STREAM_SCHEMA, PIECES_SCHEMA, type AssetRequest, type CodeEdit, type PiecesReply } from './schema';
 import { instrumentTargetCode } from './transform';
 import { costumeSets, generateAsset, isPlaceholder, makeSvgSheet, placeholderAsset, referenceOf, type AssetContext, type AssetJob, type Sketch } from './assets';
 import { harness } from './harness';
@@ -309,6 +309,8 @@ async function writePieces(
   const size = harness().sizeReminder && freedom ? freedomSize(freedom) + (harness().fullSize ? FULL_SIZE : '') : '';
   // A quick change (no new game, and code already written to change): it comes back as edits.
   const editing = harness().edits && !freedom && (revisable.length > 0 || Boolean(project.compiled?.sprites.length));
+  // Only a new game, or a quick change (streamEdits), lists its art first to start it early.
+  if (onAssets && !freedom && !editing) onAssets = undefined;
   const base = piecesUserPrompt({ project, plans, tasks, revisable, written, problems: opts.fixProblems, briefBefore, editing }) + (size ? `\n\n## Before you write\nBuild the whole game the dial asks for, however quickly you work. ${size}` : '') + (editing ? `\n\n${EDITS_GUIDE}` : '');
   // A new game in the lean reply (lean.ts): its cast first, compactly, and the art starts from each entry.
   let lean = Boolean(onAssets && freedom && harness().lean);
@@ -339,7 +341,7 @@ async function writePieces(
     // (Awaited with the main reply; a failure before then isn't unhandled.)
     castCall.catch(() => undefined);
   };
-  const user = base + (lean && opts.picks ? `\n\n${ASKING_GUIDE}` : '') + (lean ? `\n\n${harness().spritesFirst && !castWriter ? LEAN_GUIDE_SPRITES_FIRST : LEAN_GUIDE}${castWriter ? `\n\n${harness().slimContract ? CAST_WRITER_GUIDE_SLIM : CAST_WRITER_GUIDE}` : ''}` : onAssets ? '\n\nWrite "assets" first: every costume, backdrop and sound the game uses, before any code. The art is made from that list while you write the code, so use exactly those names in the code.' : '');
+  const user = base + (lean && opts.picks ? `\n\n${ASKING_GUIDE}` : '') + (lean ? `\n\n${harness().spritesFirst && !castWriter ? LEAN_GUIDE_SPRITES_FIRST : LEAN_GUIDE}${castWriter ? `\n\n${harness().slimContract ? CAST_WRITER_GUIDE_SLIM : CAST_WRITER_GUIDE}` : ''}` : onAssets && editing ? '\n\nWrite "assets" first: only the new costumes, backdrops and sounds this change needs (often none), before the edits. Their art is made while you write the code, so use exactly those names in it.' : onAssets ? '\n\nWrite "assets" first: every costume, backdrop and sound the game uses, before any code. The art is made from that list while you write the code, so use exactly those names in the code.' : '');
   let watch = lean ? watchLean(onAssets!, earlyCostumes(project, onAssets!), castWriter ? { headerEnd: harness().balance ? 'balance' : 'contract', call: startCast } : undefined) : onAssets ? watchArray('assets', (items) => onAssets(items as AssetRequest[], streamedTitle(latest))) : null;
   const named: { title?: string; howToPlay?: string } = {};
   let heading = onOutline && freedom
@@ -357,7 +359,9 @@ async function writePieces(
       model: settings.model,
       system,
       user: prompt,
-      schema: (lean ? leanSchema(harness().balance, castWriter, harness().spritesFirst, harness().slimContract) : watch ? STREAM_SCHEMA : editing ? EDITS_SCHEMA : PIECES_SCHEMA) as unknown as Record<string, unknown>,
+      schema: (lean ? leanSchema(harness().balance, castWriter, harness().spritesFirst, harness().slimContract) : editing ? (watch ? EDITS_STREAM_SCHEMA : EDITS_SCHEMA) : watch ? STREAM_SCHEMA : PIECES_SCHEMA) as unknown as Record<string, unknown>,
+      // A quick change is short: the fast lane (three times the price) saves it little.
+      provider: editing ? (harness().editProvider ?? harness().providerOrder) : undefined,
       onText: watch || heading
         ? (text) => {
             latest = text;
@@ -921,7 +925,7 @@ export async function compileProject(project: Project, options: CompileOptions):
     settings = effectiveSettings(opts.settings, transport);
     opts = { ...opts, settings };
     // Streaming (a new game): its art and sounds are made while the model writes the code.
-    const streaming = harness().streamAssets && tasks.some((t) => t.request.kind === 'game') && (fresh || !previous?.assets.length);
+    const streaming = harness().streamAssets && ((tasks.some((t) => t.request.kind === 'game') && (fresh || !previous?.assets.length)) || harness().streamEdits);
     const t = transport;
     const st = settings;
     const onAssets = streaming
