@@ -131,6 +131,12 @@ export interface ChatJsonRequest {
   kind?: SpendKind;
   /** OpenRouter: the providers for this request, by the model's maker (else the harness's for its kind). */
   provider?: Record<string, string[]> | null;
+  /**
+   * In text mode: reads the reply (instead of it being one JSON object), and, if that fails, the
+   * request asked again held to a JSON schema (`fallback.schema`, with `fallback.user` as its message).
+   */
+  parse?: (text: string) => unknown;
+  fallback?: { schema: Record<string, unknown>; user: string };
 }
 
 async function readError(res: Response, t: Transport): Promise<AiError> {
@@ -171,6 +177,26 @@ function errorFrom(status: number, message: string, code: string | undefined, t:
   return new AiError(message, status, code);
 }
 
+/**
+ * A reply written without a schema to hold it sometimes closes an array of objects without closing
+ * its last object (`..."code": "..."\n  ],`): that object's brace goes back in. Null when that isn't it.
+ */
+export function repairJson(text: string): unknown {
+  let t = text;
+  for (let i = 0; i < 4; i++) {
+    try {
+      return JSON.parse(t);
+    } catch (err) {
+      const at = /position (\d+)/.exec((err as Error).message);
+      if (!at) return null;
+      const pos = Number(at[1]);
+      if (!/^\s*\]/.test(t.slice(pos))) return null;
+      t = `${t.slice(0, pos)}}${t.slice(pos)}`;
+    }
+  }
+  return null;
+}
+
 /** Pulls the JSON object out of a reply (tolerates code fences from non-strict providers). */
 export function parseJsonReply<T>(text: string): T {
   let t = text.trim();
@@ -184,6 +210,8 @@ export function parseJsonReply<T>(text: string): T {
   try {
     return JSON.parse(t) as T;
   } catch (err) {
+    const fixed = repairJson(t);
+    if (fixed !== null) return fixed as T;
     throw new AiError(`The compiler's reply wasn't valid JSON (${(err as Error).message}).`);
   }
 }
@@ -244,6 +272,16 @@ export function isBusy(err: unknown): boolean {
   return err.status === 503 || err.status === 529;
 }
 
+/**
+ * The connection dropped (the network, or the server's own connection to the provider): nothing was
+ * wrong with the request, so it is sent again, at once.
+ */
+export function isDropped(err: unknown): boolean {
+  if (err instanceof TypeError) return /fetch|network|load failed/i.test(err.message);
+  if (!(err instanceof AiError)) return false;
+  return /network error|terminated|fetch failed|socket hang up|ECONNRESET|other side closed/i.test(err.message) && (err.status === undefined || err.status >= 500);
+}
+
 /** Listeners told when requests are waiting their turn (the stage says so), and when they are not anymore. */
 const busyListeners = new Set<(busy: boolean) => void>();
 let waitingTurn = 0;
@@ -274,16 +312,18 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 /** Sends a chat request and returns the parsed JSON reply. Retries without features a model/account rejects. */
 export async function chatJson<T>(t: Transport, req: ChatJsonRequest): Promise<T> {
   if (t.via === 'chatgpt') return parseJsonReply<T>(await codexOnce(req));
-  const plain = Boolean(harness().plainOutput && isRoutedModel(req.model));
+  const plain = Boolean(harness().plainOutput && isRoutedModel(req.model) && (harness().plainArt || (req.kind ?? 'code') === 'code'));
   const opts: Options = { stream: true, usage: true, format: plain ? 'text' : 'json_schema', effort: Boolean(req.reasoningEffort && req.reasoningEffort !== 'default'), tier: true };
   let waits = 0;
+  let drops = 0;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const text = await chatOnce(t, req, opts);
-      return parseJsonReply<T>(text);
+      const asked = opts.format === 'text' || !req.fallback ? req : { ...req, schema: req.fallback.schema, user: req.fallback.user, onText: undefined };
+      const text = await chatOnce(t, asked, opts);
+      return (opts.format === 'text' && req.parse ? req.parse(text) : parseJsonReply<T>(text)) as T;
     } catch (err) {
-      // A reply written without a schema to hold it that isn't valid JSON: once more, held to the schema.
-      if (opts.format === 'text' && err instanceof AiError && err.status === undefined && /valid JSON/i.test(err.message) && !req.signal?.aborted) {
+      // A reply written without a schema to hold it that can't be read: once more, held to the schema.
+      if (opts.format === 'text' && err instanceof AiError && err.status === undefined && /valid JSON|couldn't be read/i.test(err.message) && !req.signal?.aborted) {
         opts.format = 'json_schema';
         continue;
       }
@@ -295,6 +335,12 @@ export async function chatJson<T>(t: Transport, req: ChatJsonRequest): Promise<T
         } finally {
           setWaiting(-1);
         }
+        attempt--;
+        continue;
+      }
+      if (isDropped(err) && drops < 2 && !req.signal?.aborted) {
+        drops++;
+        await sleep(800 * drops, req.signal);
         attempt--;
         continue;
       }
@@ -321,7 +367,9 @@ async function chatOnce(t: Transport, req: ChatJsonRequest, opts: Options): Prom
         content:
           opts.format === 'json_schema'
             ? req.system
-            : `${req.system}\n\nReply with a single JSON object that follows this JSON schema, its fields in this order${opts.format === 'text' ? ', and nothing before or after it (no code fence)' : ''}:\n${JSON.stringify(req.schema)}`,
+            : opts.format === 'text' && req.parse
+              ? `${req.system}\n\nStart the reply with a JSON object that follows this JSON schema, its fields in this order (no code fence), then go on as the message says:\n${JSON.stringify(req.schema)}`
+              : `${req.system}\n\nReply with a single JSON object that follows this JSON schema, its fields in this order${opts.format === 'text' ? ', and nothing before or after it (no code fence)' : ''}:\n${JSON.stringify(req.schema)}`,
       },
       { role: 'user', content: req.user },
     ],

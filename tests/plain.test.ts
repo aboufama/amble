@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { chatJson, type Transport } from '../src/compiler/openai';
+import { chatJson, parseJsonReply, type Transport } from '../src/compiler/openai';
 
 const t: Transport = { baseUrl: 'https://openrouter.ai/api/v1', headers: { Authorization: 'Bearer sk-or-test' }, via: 'browser' };
 const sse = (content: string) =>
@@ -47,6 +47,12 @@ describe('replies without a response format (so Amazon Bedrock may serve them)',
     expect(bodies[1].response_format).toMatchObject({ type: 'json_schema' });
     // Held to the schema, it goes to the providers that can do that.
     expect((bodies[1].provider as { order: string[] }).order).toEqual(['azure', 'openai']);
+  });
+
+  it('puts back the brace of an object left open before its array closes', () => {
+    const broken = '{\n  "sprites": [\n    {"name":"Hen","code":"class Hen extends Sprite {\\n}"\n  ],\n  "title":"Cluck"\n}';
+    expect(parseJsonReply(broken)).toEqual({ sprites: [{ name: 'Hen', code: 'class Hen extends Sprite {\n}' }], title: 'Cluck' });
+    expect(() => parseJsonReply('{"a": [1, 2')).toThrow();
   });
 
   it("isn't used straight to OpenAI (only through OpenRouter)", async () => {

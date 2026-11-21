@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AiError, chatJson, isBusy, onBusy, outputCap, type Transport } from '../src/compiler/openai';
+import { AiError, chatJson, isBusy, isDropped, onBusy, outputCap, type Transport } from '../src/compiler/openai';
 
 const t: Transport = { baseUrl: 'https://openrouter.ai/api/v1', headers: { Authorization: 'Bearer sk-or-test' }, via: 'browser' };
 const sse = (content: string) =>
@@ -53,6 +53,26 @@ describe('many games at once', () => {
     expect(calls).toBe(2);
     expect(told).toEqual([true, false]);
     expect(bodies[0].max_completion_tokens).toBe(8_000);
+  });
+
+  it('sends a request again at once when its connection dropped', async () => {
+    vi.useFakeTimers();
+    expect(isDropped(new TypeError('Failed to fetch'))).toBe(true);
+    expect(isDropped(new AiError('Proxy error: terminated', 502))).toBe(true);
+    expect(isDropped(new AiError('Bad request', 400))).toBe(false);
+    let calls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls++;
+        if (calls === 1) throw new TypeError('network error');
+        return new Response(sse('{"svg":"<svg/>"}'), { status: 200 });
+      }),
+    );
+    const done = chatJson<{ svg: string }>(t, { model: 'openai/gpt-6.2-sol', system: 's', user: 'u', schema: { type: 'object' }, schemaName: 'svg_art', reasoningEffort: 'low', kind: 'art' });
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(await done).toEqual({ svg: '<svg/>' });
+    expect(calls).toBe(2);
   });
 
   it('says plainly when it never got a turn', async () => {

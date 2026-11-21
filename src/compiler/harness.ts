@@ -150,6 +150,10 @@ export interface Harness {
    */
   plainOutput: boolean;
   plainProvider: Record<string, string[]> | null;
+  /** In text mode, a new game's code as plain text after a JSON header (lean.ts), not in JSON strings: fewer tokens. */
+  codeSections: boolean;
+  /** The art in text mode too (else it is held to its schema, on Azure and OpenAI, leaving Bedrock to the code). */
+  plainArt: boolean;
   /**
    * OpenRouter: the providers for backdrops (null: providerOrder). A backdrop is the biggest drawing,
    * and with a dozen drawings at once it waited longest in the queue: the fast lane ends that.
@@ -195,6 +199,8 @@ export const DEFAULT_HARNESS: Harness = {
   codeProvider: null,
   codeTier: null,
   plainOutput: true,
+  plainArt: true,
+  codeSections: false,
   plainProvider: { openai: ['amazon-bedrock', 'azure', 'openai'] },
   backdropProvider: null,
   artTier: null,

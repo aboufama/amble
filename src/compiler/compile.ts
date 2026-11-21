@@ -1,4 +1,4 @@
-import { AiError, CHATGPT_MODEL_NAME, chatJson, effectiveSettings, resolveTransport, type AiSettings, type Transport } from './openai';
+import { AiError, CHATGPT_MODEL_NAME, chatJson, effectiveSettings, isRoutedModel, parseJsonReply, resolveTransport, type AiSettings, type Transport } from './openai';
 import { fetchCodexStatus } from './chatgpt';
 import { classNameFor, classNames, EDITS_GUIDE, freedomSize, piecesSystemPrompt, piecesUserPrompt, type PieceTask } from './prompt';
 import { planTarget, type PieceRequest, type TargetPlan } from './codegen';
@@ -14,6 +14,7 @@ import { trialRun } from './trial';
 import { writeGameSplit } from './split';
 import { writeGameFanout } from './fanout';
 import { ASKING_GUIDE } from './ask';
+import { leanHeaderSchema, parseSections, SECTIONS_GUIDE, sectionsStart, watchSections } from './lean';
 import { CAST_SCHEMA, CAST_WRITER_GUIDE, CAST_WRITER_GUIDE_SLIM, castWriterPart, fromLean, headerAssets, LEAN_GUIDE, LEAN_GUIDE_SPRITES_FIRST, leanSchema, watchLean, type LeanHeader, type LeanReply } from './lean';
 import { artBrief, styleWords } from '../project/styles';
 import { hashString, uid } from '../project/ids';
@@ -351,8 +352,28 @@ async function writePieces(
     // (Awaited with the main reply; a failure before then isn't unhandled.)
     castCall.catch(() => undefined);
   };
+  // The code as plain text after a JSON header (lean.ts: fewer tokens than code in JSON strings), in text mode only.
+  const sections = lean && !castWriter && harness().codeSections && harness().plainOutput && isRoutedModel(settings.model);
+  const sectionsUser = base + (opts.picks ? `\n\n${ASKING_GUIDE}` : '') + `\n\n${SECTIONS_GUIDE}`;
+  /** The art asked for so far and the title, for a class read from its section (art its code uses that the cast left out). */
+  const askedSoFar: AssetRequest[] = [];
+  let titleSoFar = '';
   const user = base + (lean && opts.picks ? `\n\n${ASKING_GUIDE}` : '') + (lean ? `\n\n${harness().spritesFirst && !castWriter ? LEAN_GUIDE_SPRITES_FIRST : LEAN_GUIDE}${castWriter ? `\n\n${harness().slimContract ? CAST_WRITER_GUIDE_SLIM : CAST_WRITER_GUIDE}` : ''}` : onAssets && editing ? '\n\nWrite "assets" first: only the new costumes, backdrops and sounds this change needs (often none), before the edits. Their art is made while you write the code, so use exactly those names in it.' : onAssets ? '\n\nWrite "assets" first: every costume, backdrop and sound the game uses, before any code. The art is made from that list while you write the code, so use exactly those names in the code.' : '');
-  let watch = lean ? watchLean(onAssets!, earlyCostumes(project, onAssets!), castWriter ? { headerEnd: harness().balance ? 'balance' : 'contract', call: startCast } : undefined) : onAssets ? watchArray('assets', (items) => onAssets(items as AssetRequest[], streamedTitle(latest))) : null;
+  let watch = sections
+    ? (() => {
+        const header = watchLean((list, title) => {
+          askedSoFar.push(...list);
+          titleSoFar = title;
+          onAssets!(list, title);
+        });
+        const early = earlyCostumes(project, onAssets!);
+        const code = watchSections((name, source) => early(name, source, askedSoFar, titleSoFar));
+        return (text: string) => {
+          header(text.slice(0, sectionsStart(text)));
+          code(text);
+        };
+      })()
+    : lean ? watchLean(onAssets!, earlyCostumes(project, onAssets!), castWriter ? { headerEnd: harness().balance ? 'balance' : 'contract', call: startCast } : undefined) : onAssets ? watchArray('assets', (items) => onAssets(items as AssetRequest[], streamedTitle(latest))) : null;
   const named: { title?: string; howToPlay?: string } = {};
   let heading = onOutline && freedom
     ? watchReply({
@@ -368,8 +389,14 @@ async function writePieces(
     chatJson<PiecesReply>(transport, {
       model: settings.model,
       system,
-      user: prompt,
-      schema: (lean ? leanSchema(harness().balance, castWriter, harness().spritesFirst, harness().slimContract) : editing ? (watch ? EDITS_STREAM_SCHEMA : EDITS_SCHEMA) : watch ? STREAM_SCHEMA : PIECES_SCHEMA) as unknown as Record<string, unknown>,
+      user: sections && lean ? sectionsUser : prompt,
+      ...(sections && lean
+        ? {
+            parse: (text: string) => parseSections(text, (json) => parseJsonReply<Partial<LeanReply>>(json)),
+            fallback: { schema: leanSchema(harness().balance, false, harness().spritesFirst) as unknown as Record<string, unknown>, user: prompt },
+          }
+        : {}),
+      schema: (sections && lean ? leanHeaderSchema(leanSchema(harness().balance, false, harness().spritesFirst)) : lean ? leanSchema(harness().balance, castWriter, harness().spritesFirst, harness().slimContract) : editing ? (watch ? EDITS_STREAM_SCHEMA : EDITS_SCHEMA) : watch ? STREAM_SCHEMA : PIECES_SCHEMA) as unknown as Record<string, unknown>,
       // A quick change is short: the fast lane (three times the price) saves it little.
       provider: editing ? (harness().editProvider ?? harness().providerOrder) : undefined,
       onText: watch || heading
@@ -943,7 +970,8 @@ export async function compileProject(project: Project, options: CompileOptions):
     const st = settings;
     const onAssets = streaming
       ? (list: AssetRequest[], title: string) => {
-          const jobs = streamedJobs(project, list, !fresh);
+          // (A request sent again after its connection dropped streams the same entries again: they're made once.)
+          const jobs = streamedJobs(project, list, !fresh).filter((j) => !planned.some((p) => p.targetId === j.targetId && p.kind === j.kind && p.name === j.name));
           if (!jobs.length) return;
           const titled = title ? { ...project, title } : project;
           planned.push(...jobs);

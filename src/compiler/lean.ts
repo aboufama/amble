@@ -13,6 +13,7 @@
  */
 import { PIECES_SCHEMA, type AssetRequest, type PiecesReply } from './schema';
 import { watchReply } from './stream';
+import { AiError } from './openai';
 
 interface LeanCostume {
   name: string;
@@ -233,6 +234,68 @@ export function watchLean(
       }
     },
   });
+}
+
+/**
+ * The lean reply with its code as plain text (`codeSections`, text mode only): a JSON header (everything
+ * but the code), then each character's class and the game piece under a line of their own,
+ * `=== sprite <Name> ===` or `=== piece <id> ===`. Code in a JSON string escapes every quote and line
+ * break, about 6% more tokens for the same code: written plainly, the reply is shorter and quicker.
+ */
+export function leanHeaderSchema(full: typeof LEAN_SCHEMA): typeof LEAN_SCHEMA {
+  const required = full.required.filter((k) => k !== 'sprites' && k !== 'pieces');
+  const props = Object.fromEntries(Object.entries(full.properties).filter(([k]) => k !== 'sprites' && k !== 'pieces'));
+  return { ...full, required, properties: props } as unknown as typeof LEAN_SCHEMA;
+}
+
+export const SECTIONS_GUIDE = `## This reply's form
+A new game's reply starts with its cast, and the build starts drawing while you write the code. Write it in two parts:
+1. One JSON object, with no code in it: "title", "howToPlay", "cast" (every new character, with every costume its class will use, by name, and a pose for each), "backdrops" and "sounds" (a name and a few words each: these are its art and sounds), "balance", "warnings", "questions".
+2. Then the code, as plain text after the JSON (not in it, not in code fences): each cast member's whole class under a line of its own, \`=== sprite <Name> ===\` followed by \`class <Name> extends Sprite { ... }\` (or \`extends <Another character>\`), then the game piece under \`=== piece <id> ===\` (the body of its method, exactly as you would write it in "pieces"). Every character in the cast gets its class. Use exactly the costume, backdrop and sound names of part 1 in the code.`;
+
+/** A section's line (a new RegExp each time: a shared global one carries its lastIndex into matchAll). */
+const section = () => /^=== (sprite|piece) (.+?) ===[ \t]*$/gm;
+const unfence = (code: string) => code.replace(/^\s*```[a-z]*\s*\n/i, '').replace(/\n\s*```\s*$/, '').trim();
+
+/** Where a sectioned reply's JSON ends (its first section line), or the whole text when it has none yet. */
+export function sectionsStart(text: string): number {
+  const m = section().exec(text);
+  return m ? m.index : text.length;
+}
+
+/** Reads a sectioned reply into a lean one. Throws (so it is asked for again, as JSON) when it can't be read. */
+export function parseSections(text: string, parseHeader: (json: string) => Partial<LeanReply>): LeanReply {
+  const start = sectionsStart(text);
+  const header = parseHeader(text.slice(0, start));
+  const sprites: LeanReply['sprites'] = [...(header.sprites ?? [])];
+  const pieces: LeanReply['pieces'] = [...(header.pieces ?? [])];
+  const marks = [...text.slice(start).matchAll(section())];
+  marks.forEach((m, i) => {
+    const from = start + m.index! + m[0].length;
+    const to = i + 1 < marks.length ? start + marks[i + 1].index! : text.length;
+    const code = unfence(text.slice(from, to));
+    if (!code) return;
+    // A class written as its body alone gets its class line.
+    if (m[1] === 'sprite') sprites.push({ name: m[2].trim(), code: /^\s*class\s/.test(code) ? code : `class ${m[2].trim()} extends Sprite {\n${code}\n}` });
+    else pieces.push({ id: m[2].trim(), code } as LeanReply['pieces'][number]);
+  });
+  if (!pieces.length && !sprites.length) throw new AiError("The reply's code couldn't be read.");
+  return { ...(header as LeanReply), sprites, pieces };
+}
+
+/** Watches a sectioned reply's code as it streams: each character's class once the section after it starts. */
+export function watchSections(onClass: (name: string, code: string) => void): (text: string) => void {
+  let told = 0;
+  return (text) => {
+    const start = sectionsStart(text);
+    if (start >= text.length) return;
+    const marks = [...text.slice(start).matchAll(section())];
+    for (let i = told; i + 1 < marks.length; i++) {
+      const m = marks[i];
+      if (m[1] === 'sprite') onClass(m[2].trim(), unfence(text.slice(start + m.index! + m[0].length, start + marks[i + 1].index!)));
+      told = i + 1;
+    }
+  };
 }
 
 /** A lean reply as an ordinary one (characters with their code, and the asset list). */
